@@ -138,6 +138,22 @@ public class PodStatsTest {
         }
     }
 
+    @GameTest
+    public void withoutThrustAccelerationZeroesTheLiftAndNothingElse(GameTestHelper helper) {
+        PodStats base = PodStats.base();
+        PodStats cut = base.withoutThrustAcceleration();
+        if (base.thrustAcceleration() <= 0f
+                || cut.thrustAcceleration() != 0f
+                || cut.horizontalSpeed() != base.horizontalSpeed()
+                || cut.enginePower() != base.enginePower()
+                || cut.maxHull() != base.maxHull()
+                || cut.maxClimbSpeed() != base.maxClimbSpeed()) {
+            throw helper.assertionException(
+                    "cutting the lift should zero it and nothing else, got %s from %s", cut, base);
+        }
+        helper.succeed();
+    }
+
     @GameTest(maxTicks = 60)
     public void speedOverrideChangesHowFarTheTreadsDrive(GameTestHelper helper) {
         float speed = PodTuning.DEFAULT.movement().horizontalSpeed() * 2f;

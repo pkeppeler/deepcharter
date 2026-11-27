@@ -61,6 +61,7 @@ public final class WorldFormatGate {
      * empty one, is {@link WorldFormat#LEGACY}. It reads with {@code get}, never {@code computeIfAbsent}: that would make a default
      * record, which is dirty, and the next save would write a file into a world that is refused.
      */
+    // const-param: the tests pass the format the gate runs at (LEGACY); production passes CURRENT
     // test-seam: a test asks the gate at the legacy format, to show that a world with no stamp file starts there
     public static Optional<Refusal> refusal(SavedDataStorage storage, int current) {
         ColonySite site = storage.get(ColonySite.TYPE);

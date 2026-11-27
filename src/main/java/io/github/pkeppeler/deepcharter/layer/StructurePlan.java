@@ -7,19 +7,15 @@ import java.util.OptionalInt;
 import java.util.SplittableRandom;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RailBlock;
-import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.storage.loot.LootTable;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -34,9 +30,9 @@ import org.jspecify.annotations.Nullable;
 final class StructurePlan {
     private static final int FLAGS = Block.UPDATE_SKIP_ON_PLACE;
 
-    private final StructureSite site;
+    final StructureSite site;
     private final ServerLevel level;
-    private final LevelChunk chunk;
+    final LevelChunk chunk;
     private final Band band;
     private final ChunkPos chunkPos;
 
@@ -92,18 +88,10 @@ final class StructurePlan {
     }
 
     /** The world position of a place in the structure, or null where it lies in another chunk. */
-    private @Nullable BlockPos inChunk(int u, int y, int v) {
+    @Nullable
+    BlockPos inChunk(int u, int y, int v) {
         BlockPos pos = column(u, y, v);
         return chunkPos.equals(ChunkPos.containing(pos)) ? pos : null;
-    }
-
-    /** A barrel that fills from {@code table} when it is first opened, the same for the same site every time. */
-    void lootBarrel(int u, int y, int v, ResourceKey<LootTable> table) {
-        set(u, y, v, Blocks.BARREL.defaultBlockState().setValue(BarrelBlock.FACING, Direction.UP));
-        BlockPos pos = inChunk(u, y, v);
-        if (pos != null && chunk.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity barrel) {
-            barrel.setLootTable(table, site.seed());
-        }
     }
 
     void set(int u, int y, int v, BlockState state) {
@@ -135,31 +123,31 @@ final class StructurePlan {
     }
 
     /**
-     * A Company horn that always hangs from a sturdy block: a chain from the first solid block above it, or with none in reach a
-     * beam over it on a post. The support lies in the horn's own chunk, which is complete when drawn (a neighbour may not be).
-     *
-     * @param floorY the height of the floor of the hollow
+     * A Company horn over the middle of the hall, {@link StructureKind#HORN_HEIGHT} above the floor, that always hangs
+     * from a sturdy block: a chain from the first solid block above it, or with none in reach a beam over it on a post
+     * from the floor. The support lies in the horn's own chunk, which is complete when drawn (a neighbour may not be).
      */
-    void companyHorn(int u, int y, int v, int floorY) {
-        OptionalInt ceiling = ceilingAbove(u, y, v);
+    void companyHorn() {
+        int y = StructureKind.HORN_HEIGHT;
+        OptionalInt ceiling = ceilingAbove();
         if (ceiling.isPresent()) {
             for (int cy = y + 1; cy < ceiling.getAsInt(); cy++) {
-                set(u, cy, v, Blocks.IRON_CHAIN.defaultBlockState());
+                set(0, cy, 0, Blocks.IRON_CHAIN.defaultBlockState());
             }
         } else {
             BlockState iron = Blocks.IRON_BLOCK.defaultBlockState();
-            int[] step = postStep(u, v);
-            box(u + step[0], floorY, v + step[1], u + step[0], y + 1, v + step[1], iron);
-            set(u, y + 1, v, iron);
+            int[] step = postStep();
+            box(step[0], 0, step[1], step[0], y + 1, step[1], iron);
+            set(0, y + 1, 0, iron);
         }
-        set(u, y, v, AmbienceRegistry.COMPANY_HORN.defaultBlockState());
+        set(0, y, 0, AmbienceRegistry.COMPANY_HORN.defaultBlockState());
     }
 
-    /** A step to a neighbouring column in the same chunk as {@code (u, v)}, the same from every chunk, so only the horn's chunk draws the post. */
-    private int[] postStep(int u, int v) {
-        BlockPos column = column(u, 0, v);
+    /** A step to a neighbouring column in the horn's chunk, the same from every chunk, so only it draws the post. */
+    private int[] postStep() {
+        BlockPos column = column(0, 0, 0);
         for (int[] step : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-            BlockPos next = column(u + step[0], 0, v + step[1]);
+            BlockPos next = column(step[0], 0, step[1]);
             if (ChunkPos.containing(next).equals(ChunkPos.containing(column))) {
                 return step;
             }
@@ -167,16 +155,19 @@ final class StructurePlan {
         throw new IllegalStateException("every neighbour of " + column + " is in another chunk");
     }
 
-    /** The height of the first sturdy-underside block above {@code y} within {@link StructureKind#HORN_REACH}; empty if none, or the column is in another chunk. */
-    private OptionalInt ceilingAbove(int u, int y, int v) {
+    /**
+     * The height of the first sturdy-underside block above the horn within {@link StructureKind#HORN_REACH}; empty if
+     * none, or the column is in another chunk.
+     */
+    private OptionalInt ceilingAbove() {
         for (int up = 1; up <= StructureKind.HORN_REACH; up++) {
-            BlockPos pos = inChunk(u, y + up, v);
+            BlockPos pos = inChunk(0, StructureKind.HORN_HEIGHT + up, 0);
             if (pos == null || pos.getY() > band.maxY() || chunk.isOutsideBuildHeight(pos)) {
                 return OptionalInt.empty();
             }
             BlockState state = chunk.getBlockState(pos);
             if (!RoomSeal.needsSealing(state) && state.isFaceSturdy(chunk, pos, Direction.DOWN)) {
-                return OptionalInt.of(y + up);
+                return OptionalInt.of(StructureKind.HORN_HEIGHT + up);
             }
         }
         return OptionalInt.empty();
@@ -208,17 +199,10 @@ final class StructurePlan {
                 .setValue(RailBlock.SHAPE, site.alongZ() ? RailShape.NORTH_SOUTH : RailShape.EAST_WEST);
     }
 
-    /** The world direction of a direction given in the structure's own axes: east is {@code +u}, south is {@code +v}. */
-    Direction facing(Direction local) {
-        if (!site.alongZ()) {
-            return local;
-        }
-        return switch (local) {
-            case EAST -> Direction.SOUTH;
-            case SOUTH -> Direction.EAST;
-            case WEST -> Direction.NORTH;
-            case NORTH -> Direction.WEST;
-            case UP, DOWN -> local;
-        };
+    /**
+     * The world direction of the structure's own east, {@code +u}: east, or south for a structure that runs along z.
+     */
+    Direction east() {
+        return site.alongZ() ? Direction.SOUTH : Direction.EAST;
     }
 }

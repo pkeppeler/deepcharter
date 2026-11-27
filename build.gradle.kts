@@ -293,6 +293,7 @@ apply(from = "gradle/gametest-preset.gradle.kts")
 apply(from = "gradle/colour-gate.gradle.kts")
 apply(from = "gradle/input-literal-gate.gradle.kts")
 apply(from = "gradle/test-only-gate.gradle.kts")
+apply(from = "gradle/constant-param-gate.gradle.kts")
 apply(from = "gradle/enum-switch-gate.gradle.kts")
 apply(from = "gradle/clientlock.gradle.kts")
 apply(from = "gradle/lambdynamiclights.gradle.kts")
@@ -324,7 +325,7 @@ tasks.withType<Checkstyle>().configureEach {
 // Python, not files, so no target here touches them.
 spotless {
 	java {
-		target("src/**/*.java", "gradle/OomProbe.java", "tools/TestOnlyGate.java", "tools/EnumSwitchGate.java")
+		target("src/**/*.java", "gradle/OomProbe.java", "tools/TestOnlyGate.java", "tools/ConstantParamGate.java", "tools/EnumSwitchGate.java")
 		palantirJavaFormat(libs.versions.palantirJavaFormat.get())
 		removeUnusedImports()
 	}

@@ -39,6 +39,7 @@ public final class Typewriter {
     }
 
     /** Moves time forward and reveals the letters it uncovers, firing the hook for each, in order. */
+    // const-param: each caller passes its own SECONDS_PER_TICK, and tests advance by other amounts to step the reveal
     public void advance(double seconds) {
         if (seconds < 0) {
             throw new IllegalArgumentException("seconds must not be negative, got " + seconds);

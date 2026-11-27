@@ -520,6 +520,8 @@ public class LamplessFigure extends PathfinderMob {
         return entityData.get(LAMP);
     }
 
+    // const-param: the lamp state is a creature-design knob the creatures session owns; some Retained carry a lamp per
+    // LORE section 11
     public void setLamp(boolean lamp) {
         entityData.set(LAMP, lamp);
     }

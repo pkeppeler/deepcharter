@@ -137,7 +137,7 @@ public final class PodLining {
         // synced state.
         PodStats.MODIFY.register(
                 PodStats.CAP,
-                (pod, stats) -> working(pod) ? stats.withHorizontalSpeed(0f).withThrustAcceleration(0f) : stats);
+                (pod, stats) -> working(pod) ? stats.withHorizontalSpeed(0f).withoutThrustAcceleration() : stats);
     }
 
     /** The pod's lining state, or empty when it is unreadable (logged once). Never throws. */

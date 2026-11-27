@@ -145,12 +145,12 @@ public final class OutpostData extends SavedData {
     }
 
     /**
-     * The first outpost in {@code layer}, of any charter, whose hall a hall with its floor middle at {@code centre} would touch: the
-     * middles are within two edges of each other, level by level, in both x and z.
+     * The first outpost in {@link OutpostBuilder#LAYER}, of any charter, whose hall a hall with its floor middle at
+     * {@code centre} would touch: the middles are within two edges of each other, level by level, in both x and z.
      */
-    public Optional<Outpost> overlapping(int layer, BlockPos centre) {
+    public Optional<Outpost> overlapping(BlockPos centre) {
         return state.orThrow().stream()
-                .filter(outpost -> outpost.layer() == layer)
+                .filter(outpost -> outpost.layer() == OutpostBuilder.LAYER)
                 .filter(outpost -> Math.max(
                                 Math.abs(outpost.centre().getX() - centre.getX()),
                                 Math.abs(outpost.centre().getZ() - centre.getZ()))

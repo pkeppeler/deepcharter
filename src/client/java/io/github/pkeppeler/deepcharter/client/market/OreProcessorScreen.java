@@ -47,7 +47,7 @@ import net.minecraft.world.level.Level;
  */
 public final class OreProcessorScreen extends CrtScreen implements TerminalViewScreen {
     private static final int MARGIN = 24;
-    private static final int BUTTON_WIDTH = 200;
+    private static final int BUTTON_WIDTH = OrderRowButton.WIDTH;
     private static final int BUTTON_HEIGHT = 20;
     private static final int GAP = 6;
     private static final int CLOSE_WIDTH = 90;
@@ -383,7 +383,6 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
             OrderRowButton row = new OrderRowButton(
                     contentLeft(MARGIN),
                     rowY,
-                    BUTTON_WIDTH,
                     deliver,
                     Component.translatable(entry.order().titleKey()).getString().toUpperCase(Locale.ROOT),
                     progressLine(entry),
