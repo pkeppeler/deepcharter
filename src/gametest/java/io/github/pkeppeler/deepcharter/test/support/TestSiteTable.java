@@ -46,6 +46,7 @@ final class TestSiteTable {
         claim("BandReadersTest", LAST, 22997, 23003, 22997, 23003);
 
         row("BlastingChargeTest", 1, 2993, 3023, 64, 7, 5185, 5215);
+        claim("BlastingChargeTest", 1, 3441, 3471, 5185, 5215);
 
         claim("BoltDriverPacingTest", 1, 3709, 3730, 7396, 7404);
         claim("BoltDriverPacingTest", 1, 4317, 4338, 7396, 7404);
@@ -61,6 +62,7 @@ final class TestSiteTable {
         claim("BoltDriverTest", 1, 4477, 4498, 7396, 7404);
         claim("BoltDriverTest", 1, 4509, 4530, 7396, 7404);
         claim("BoltDriverTest", 1, 3261, 3314, 7396, 7404);
+        claim("BoltDriverTest", 1, 4605, 4632, 7396, 7404);
 
         claim("BreachCrossingTest", 1, 1199, 1201, 1199, 1201);
         claim("BreachCrossingTest", 1, 1399, 1401, 1399, 1401);
@@ -419,7 +421,7 @@ final class TestSiteTable {
 
         claim("PodHardLandingTest", 1, 2398, 2402, 2398, 2402);
         row("PodHardLandingTest", 1, 2498, 2502, 50, 5, 2398, 2402);
-        row("PodHardLandingTest", 1, 2798, 2802, 50, 4, 2398, 2402);
+        row("PodHardLandingTest", 1, 2796, 2812, 50, 4, 2398, 2402);
 
         row("PodHazardCuesTest", 1, 9793, 9807, 48, 4, 9793, 9807);
 
