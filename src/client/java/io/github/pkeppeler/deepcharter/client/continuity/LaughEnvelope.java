@@ -31,7 +31,7 @@ record LaughEnvelope(int framesPerSecond, double seconds, float[] values) {
      * The longest laugh a pack may ship: nothing can be skipped until it ends, so a longer one is read as broken. {@link
      * ContinuityScreen} also caps the whole sequence, whatever the data.
      */
-    static final double MAX_SECONDS = 30.0;
+    static final double MAX_SECONDS = 20.0;
     /** The most values a second a pack may give: far more than a frame rate, so a bigger number is a mistake. */
     private static final int MAX_FRAMES_PER_SECOND = 1000;
 
@@ -60,7 +60,7 @@ record LaughEnvelope(int framesPerSecond, double seconds, float[] values) {
             JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
             JsonArray array = json.getAsJsonArray("values");
             int rate = json.get("framesPerSecond").getAsInt();
-            // Gson reads leniently: NaN and Infinity load as numbers, so every bound is written to fail for them.
+            // Gson is lenient: a bare NaN or Infinity reads as that double, so every bound is written to fail for it.
             double seconds = json.get("seconds").getAsDouble();
             if (!(rate > 0 && rate <= MAX_FRAMES_PER_SECOND)) {
                 throw new IllegalStateException("framesPerSecond must be from 1 to " + MAX_FRAMES_PER_SECOND);
