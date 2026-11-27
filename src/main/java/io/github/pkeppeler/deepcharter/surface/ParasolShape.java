@@ -35,6 +35,12 @@ public final class ParasolShape {
 
     public static final int MOST_STEM = 26;
     public static final int LEAST_RADIUS = 4;
+
+    /** Rows {@link #smaller} takes off the stem. */
+    private static final int SHRINK_ROWS = 3;
+
+    /** Cells {@link #smaller} takes off the cap's radius. */
+    private static final int SHRINK_RADIUS = 1;
     /** A cap of this radius is a chunk wide (15 cells), so it fits only with its stem at the chunk's middle. */
     public static final int MOST_RADIUS = 7;
     /** The most cells sideways a stem's curve moves its cap. */
@@ -211,13 +217,13 @@ public final class ParasolShape {
     }
 
     /**
-     * The same parasol made to fit a site where its cap does not have room: a stem {@code rows} shorter (down to {@link
-     * #LEAST_STEM}, its ring kept on it) and a cap {@code narrower} cells narrower (down to {@link #LEAST_RADIUS}), its
-     * dome lowered with it so it stays as flat; empty when neither can give.
+     * The same parasol made to fit a site where its cap does not have room: a stem {@link #SHRINK_ROWS} shorter (down
+     * to {@link #LEAST_STEM}, its ring kept on it) and a cap {@link #SHRINK_RADIUS} cell narrower (down to {@link
+     * #LEAST_RADIUS}), its dome lowered with it so it stays as flat; empty when neither can give.
      */
-    public static Optional<Params> smaller(Params params, int rows, int narrower) {
-        int height = Math.max(LEAST_STEM, params.stemHeight() - rows);
-        int radius = Math.max(LEAST_RADIUS, params.radius() - narrower);
+    public static Optional<Params> smaller(Params params) {
+        int height = Math.max(LEAST_STEM, params.stemHeight() - SHRINK_ROWS);
+        int radius = Math.max(LEAST_RADIUS, params.radius() - SHRINK_RADIUS);
         int straightFrom = 2 + params.leanRows() * params.drift().size();
         if ((height == params.stemHeight() && radius == params.radius()) || straightFrom > height - 2) {
             return Optional.empty();

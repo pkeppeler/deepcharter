@@ -309,7 +309,7 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
                     }
                     // A ledge, a column or a lower roof in the cap's way: a shorter stem and a narrower cap, then
                     // another column.
-                    params = ParasolShape.smaller(params.get(), 3, 1);
+                    params = ParasolShape.smaller(params.get());
                 }
             }
             return false;

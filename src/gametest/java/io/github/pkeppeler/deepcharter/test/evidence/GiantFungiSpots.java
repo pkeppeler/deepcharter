@@ -458,8 +458,8 @@ final class GiantFungiSpots {
                                 seen.add(mark);
                             }
                         }
-                        // The giants it sees first, then how far the view runs open, so a wall at the eye never fills
-                        // it.
+                        // The giants it sees first, then how far the view runs open, so a wall at the eye never
+                        // fills it.
                         int score = seen.isEmpty() ? 0 : seen.size() * 1000 + fan(level, feet, yaw);
                         if (score > bestSeen) {
                             bestSeen = score;

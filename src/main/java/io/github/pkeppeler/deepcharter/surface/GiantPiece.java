@@ -40,6 +40,7 @@ public sealed interface GiantPiece {
             Arm turned = switch (arm) {
                 case LEFT -> Arm.RIGHT;
                 case RIGHT -> Arm.LEFT;
+                // enum-default: the other arms (none, front, back) lie on the mirror's axis and stay
                 default -> arm;
             };
             return new Stem(piece, mirror(facing, axis), turned);

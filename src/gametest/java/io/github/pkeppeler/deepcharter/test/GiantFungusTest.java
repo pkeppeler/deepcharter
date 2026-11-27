@@ -559,8 +559,8 @@ public class GiantFungusTest {
                 }
             }
         }
-        // A parasol curving east, wanted at the east side: mirrored to curve west, its foot where it was wanted or
-        // nearer.
+        // A parasol curving east, wanted at the east side: mirrored to curve west, its foot where it was wanted
+        // or nearer.
         for (long seed = 0; seed < SEEDS; seed++) {
             ParasolShape.Params p = parasol(seed);
             if (p.drift().size() == 2 && p.drift().stream().allMatch(way -> way == Direction.EAST) && !p.twin()) {

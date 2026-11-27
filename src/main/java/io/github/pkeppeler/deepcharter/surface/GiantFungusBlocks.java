@@ -113,6 +113,7 @@ public final class GiantFungusBlocks {
             case SOUTH -> Block.box(PIXELS - z1, y0, x0, PIXELS - z0, y1, x1);
             case WEST -> Block.box(PIXELS - x1, y0, PIXELS - z1, PIXELS - x0, y1, PIXELS - z0);
             case NORTH -> Block.box(z0, y0, PIXELS - x1, z1, y1, PIXELS - x0);
+            // enum-default: east is the box as drawn, and up and down are never a facing
             default -> Block.box(x0, y0, z0, x1, y1, z1);
         };
     }
