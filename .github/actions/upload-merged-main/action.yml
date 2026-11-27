@@ -1,0 +1,31 @@
+# Hands the main sha a shard job merged to its aggregate job (build in ci.yml, client-gametest in client-tests.yml), which
+# checks with tools/ci-shard-main.sh that every shard merged the same one. A matrix job's output holds one shard's value, so
+# each job uploads a file of its own: `main-sha-<name>` in the artifact `merged-main-<name>`. Use it right after merge-main,
+# before the tests, so a failed job still hands its sha over.
+name: Upload the merged main sha
+description: Upload the main sha this job merged as the artifact merged-main-<name>, for the aggregate job.
+
+inputs:
+  main-sha:
+    description: The sha merge-main merged (its main-sha output).
+    required: true
+  name:
+    description: The job's suffix in the file and artifact names (the shard number, or `checks`).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        MAIN_SHA: ${{ inputs.main-sha }}
+        NAME: ${{ inputs.name }}
+      run: echo "$MAIN_SHA" > "$RUNNER_TEMP/main-sha-$NAME"
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: merged-main-${{ inputs.name }}
+        # A re-run uploads the same name again, which v4+ rejects without this. After `--failed` the aggregate reads the
+        # earlier sha of each job that did not re-run; if main moved, the shas differ and it fails.
+        overwrite: true
+        path: ${{ runner.temp }}/main-sha-${{ inputs.name }}
+        retention-days: 1
