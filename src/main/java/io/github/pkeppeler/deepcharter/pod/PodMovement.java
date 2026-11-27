@@ -48,7 +48,7 @@ public final class PodMovement {
             vy += stats.thrustAcceleration() * lift / stats.enginePower();
         }
         // No gravity drops only the gravity term: thrust, drag and the climb cap still apply.
-        vy = Math.min((vy - pod.gravityPull(tuning.gravity())) * tuning.verticalDrag(), stats.maxClimbSpeed());
+        vy = Math.min(tuning.fall(vy, pod.gravityPull(tuning.gravity())), stats.maxClimbSpeed());
 
         pod.setFlying(thrusting);
         pod.setDeltaMovement(vx, vy, vz);
