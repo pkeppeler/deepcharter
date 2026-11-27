@@ -66,7 +66,8 @@ public class BlastingChargeTest {
         Vec3 at = new Vec3(x, FLOOR, Z);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            // Built once the chunk ticks, so its lava is poured into a ticking chunk (#1089) and RoomSeal's read of the
+            // shell loads nothing on the server thread.
             RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
             RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
             level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);

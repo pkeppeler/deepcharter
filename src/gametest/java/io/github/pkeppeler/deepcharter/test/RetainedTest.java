@@ -497,7 +497,13 @@ public class RetainedTest {
                 helper.succeed();
             }
         });
-        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+        // The treads drill through the arena's west wall and on, into the chunks beyond it (#1089): a pod drives up to
+        // 0.4 blocks a tick, about 48 in the 120 ticks it is watched.
+        FarChunks.awaitAllEntityTicking(
+                helper,
+                level,
+                List.of(origin, origin.west(16), origin.west(32), origin.west(48)),
+                () -> made[0] = Arena.build(helper, level, origin, false));
     }
 
     /**
