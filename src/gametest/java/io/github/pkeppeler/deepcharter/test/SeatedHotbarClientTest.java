@@ -39,7 +39,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for the hotbar under the cockpit (#1457): a seated pilot sees vanilla's hotbar and its selection frame (read from pixels: the frame moves to the slot a
@@ -253,10 +252,10 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
             PodFootprint foot = PodFootprint.of(pod);
             BlockPos middle =
                     new BlockPos(foot.lowX() + foot.width() / 2, foot.feetY(), foot.lowZ() + foot.width() / 2);
-            AABB cube = new AABB(
-                    middle.offset(-radius, -radius, -radius), middle.offset(radius + 1, radius + 1, radius + 1));
             List<BlockPos> inside = cells.stream()
-                    .filter(cell -> cube.contains(Vec3.atCenterOf(cell)))
+                    .filter(cell -> Math.abs(cell.getX() - middle.getX()) <= radius
+                            && Math.abs(cell.getY() - middle.getY()) <= radius
+                            && Math.abs(cell.getZ() - middle.getZ()) <= radius)
                     .toList();
             List<BlockPos> outside =
                     cells.stream().filter(cell -> !inside.contains(cell)).toList();
