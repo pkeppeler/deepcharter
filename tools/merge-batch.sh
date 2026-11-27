@@ -75,6 +75,10 @@ refused=()
 stopped=
 not_attempted=()
 build_seq=0
+# Chains: chain_prev[n] is the nearest earlier batch PR whose head is an ancestor of n's head (n's branch merged it);
+# chain_head[n] is the head sha read when the chains were found.
+declare -A chain_prev=()
+declare -A chain_head=()
 
 # comment <n> <text>: a comment on an issue or PR.
 comment() { gh api -X POST "repos/$repo/issues/$1/comments" -f body="$2" >/dev/null; }
@@ -108,6 +112,48 @@ adr_duplicates() {
   sed -E 's#^docs/adr/([0-9]{4})-.*#\1#' <<<"$files" | sort | uniq -d
 }
 
+# is_landed <pr>: the PR is squashed onto the batch being built, or already merged by an earlier group.
+is_landed() {
+  local x
+  for x in ${included[@]+"${included[@]}"}; do [[ $x == "$1" ]] && return 0; done
+  for x in ${merged[@]+"${merged[@]}"}; do [[ $x == "#$1" || $x == "#$1 "* ]] && return 0; done
+  return 1
+}
+
+# find_chains <pr>...: fills chain_prev and chain_head. A PR is chained to the nearest earlier PR in the list whose head
+# is a proper ancestor of its own head. A head it cannot fetch stays unchained (build_batch drops it).
+find_chains() {
+  local n p
+  local -a seen=()
+  for n in "$@"; do
+    if git fetch origin "refs/pull/$n/head" >/dev/null 2>&1; then chain_head[$n]=$(git rev-parse FETCH_HEAD); fi
+  done
+  for n in "$@"; do
+    if [[ -n ${chain_head[$n]:-} ]]; then
+      for p in ${seen[@]+"${seen[@]}"}; do
+        [[ -n ${chain_head[$p]:-} && ${chain_head[$p]} != "${chain_head[$n]}" ]] || continue
+        if git merge-base --is-ancestor "${chain_head[$p]}" "${chain_head[$n]}" 2>/dev/null; then chain_prev[$n]=$p; fi
+      done
+      if [[ -n ${chain_prev[$n]:-} ]]; then say "PR #$n is chained to PR #${chain_prev[$n]}"; fi
+    fi
+    seen+=("$n")
+  done
+}
+
+# squash_onto_batch <pr> <head>: stages the PR's squash in the build worktree. An unchained PR is a squash merge of
+# its head. A chained one is a three-way merge of the batch and its head with its predecessor's head as the merge
+# base, so only its own increment lands. Returns 1 on a conflict.
+squash_onto_batch() {
+  local n=$1 head=$2 prev tree
+  prev=${chain_prev[$n]:-}
+  if [[ -z $prev ]]; then
+    git -C "$build_wt" merge --squash --no-commit "$head" >/dev/null 2>&1
+    return
+  fi
+  tree=$(git -C "$build_wt" merge-tree --write-tree --merge-base="${chain_head[$prev]}" HEAD "$head" 2>/dev/null) || return 1
+  git -C "$build_wt" read-tree --reset -u "$tree"
+}
+
 # build_batch <pr>...: sets $b_branch, $b_sha and the array $included (the PRs squashed onto it); drops the rest.
 # The worktree is removed before it returns. Never resolves a conflict.
 build_batch() {
@@ -133,7 +179,17 @@ build_batch() {
       drop "$n" "head moved from ${head:0:9} to ${fetched:0:9} while building; its review pass no longer covers it"
       continue
     fi
-    if ! git -C "$build_wt" merge --squash --no-commit "$head" >/dev/null 2>&1; then
+    if [[ -n ${chain_prev[$n]:-} ]]; then
+      if ! is_landed "${chain_prev[$n]}"; then
+        drop "$n" "chained to PR #${chain_prev[$n]}, which is not in the batch"
+        continue
+      fi
+      if [[ $head != "${chain_head[$n]}" ]]; then
+        drop "$n" "head moved from ${chain_head[$n]:0:9} to ${head:0:9} after its chain was found"
+        continue
+      fi
+    fi
+    if ! squash_onto_batch "$n" "$head"; then
       drop_reset "$n" "conflicts with main or an earlier PR in the batch"
       continue
     fi
@@ -407,6 +463,7 @@ for n in "$@"; do
   fi
 done
 
+if ((${#passing[@]} > 1)); then find_chains "${passing[@]}"; fi
 if ((${#passing[@]} > 0)); then process_group "${passing[@]}"; fi
 
 echo "batch: summary"

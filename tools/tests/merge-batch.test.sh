@@ -173,6 +173,18 @@ mkpr() {
   git -C "$work/dev" rev-parse HEAD >"$ST/sha.$n"
 }
 
+# mkchain N PREV [file content]: PR N's branch continues PR PREV's head (its branch merged PREV's branch) with one more
+# commit, adding file pN.txt (or the given file) with the content.
+mkchain() {
+  local n=$1 prev=$2 file=${3:-p$1.txt} content=${4:-pr $1}
+  git -C "$work/dev" checkout -q -B "$n-slug" "$(cat "$ST/sha.$prev")"
+  printf '%s\n' "$content" >"$work/dev/$file"
+  git -C "$work/dev" add -A
+  git -C "$work/dev" commit -q -m "wip $n"
+  git -C "$work/dev" push -q -f origin "$n-slug:refs/heads/$n-slug" "$n-slug:refs/pull/$n/head" 2>/dev/null
+  git -C "$work/dev" rev-parse HEAD >"$ST/sha.$n"
+}
+
 # The close call, built from parts so this file has no line the no-pr-reopen lint reads as a tool closing a PR.
 close_verb=PATCH
 close_arg=state=closed
@@ -440,6 +452,64 @@ logged_part "heal: PR 1 gets the merged comment" "issues/1/comments -f body=Merg
 logged "heal: PR 1 is closed" "gh api -X $close_verb repos/pkeppeler/deepcharter/pulls/1 -f $close_arg"
 logged "heal: PR 1's branch is deleted" "gh api -X DELETE repos/pkeppeler/deepcharter/git/refs/heads/1-slug"
 logged "heal: PR 2 alone goes to merge-pr" "merge-pr 2"
+
+# --- chains: a chain of three lands as three increments; an unchained PR in the batch is unaffected ---
+reset
+mkpr 1 shared.txt $'ONE\ntwo\nthree'; mkchain 2 1 shared.txt $'TWO\ntwo\nthree'; mkchain 3 2 shared.txt $'THREE\ntwo\nthree'; mkpr 4
+run_b 1 4 2 3
+exited "chain: exit 0" 0
+printed "chain: every PR merged" "merged:  #1 #4 #2 #3"
+if [[ $(main_subjects) == "Title 1 (#1)|Title 4 (#4)|Title 2 (#2)|Title 3 (#3)|" ]]; then pass "chain: one commit per PR, in order"; else fail "chain: main subjects: $(main_subjects)"; fi
+if [[ $(git --git-dir="$ORIGIN" show refs/heads/main:shared.txt | head -n 1) == THREE ]]; then pass "chain: the last link's content is on main"; else fail "chain: shared.txt on main"; fi
+files=$(git --git-dir="$ORIGIN" log --reverse --format='@%s' --name-only "$base..refs/heads/main" | tr '\n' ' ' | tr -s ' ')
+if [[ $files == *"@Title 2 (#2) shared.txt @Title 3 (#3) shared.txt"* ]]; then pass "chain: links 2 and 3 land only their own increments"; else fail "chain: files per commit: $files"; fi
+printed "chain: the chain is announced" "PR #2 is chained to PR #1"
+printed "chain: link 3 is chained to link 2, not to link 1" "PR #3 is chained to PR #2"
+count "chain: one batch PR for all four" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
+body=$(git --git-dir="$ORIGIN" log --format=%B -n 1 refs/heads/main)
+if [[ $body == *"Closes #3"* ]]; then pass "chain: a chained commit carries Closes"; else fail "chain: commit body: $body"; fi
+
+# --- a chained PR that conflicts is dropped with every later link; unchained PRs go on ---
+reset
+mkpr 5 shared.txt $'FIVE\ntwo\nthree'; mkpr 1; mkchain 2 1 shared.txt $'TWO\ntwo\nthree'; mkchain 3 2; mkpr 4
+run_b 5 1 2 3 4
+exited "chain drop: exit 1" 1
+printed "chain drop: the conflicting link is dropped" "#2 (conflicts with main or an earlier PR in the batch)"
+printed "chain drop: the tail is dropped with the reason" "#3 (chained to PR #2, which is not in the batch)"
+printed "chain drop: the rest merged" "merged:  #5 #1 #4"
+if [[ $(main_subjects) == "Title 5 (#5)|Title 1 (#1)|Title 4 (#4)|" ]]; then pass "chain drop: main has only the PRs before the break and the unchained one"; else fail "chain drop: $(main_subjects)"; fi
+not_logged "chain drop: the dropped tail is not closed" "pulls/3 -f state=closed"
+
+# --- a predecessor that fails the preflight takes its chain with it ---
+reset
+mkpr 1; mkchain 2 1; mkpr 4
+: >"$ST/pre_fail.1"
+run_b 1 2 4
+printed "chain preflight: the successor is chained to nothing in the batch, so it is built whole" "merged:  #2 #4"
+
+# --- red CI bisects a chain at prefixes: the prefix lands, the link behind a refused one is dropped ---
+reset
+mkpr 1; mkchain 2 1; mkchain 3 2; mkpr 4
+echo 2 >"$ST/bad"
+: >"$ST/single_fail.2"
+run_b 1 2 3 4
+printed "chain red: the prefix landed" "merged:  #1 #4"
+printed "chain red: the refused link is reported" "refused: #2 (REFUSED: PR #2 is not mergeable)"
+printed "chain red: the link behind it is dropped" "dropped: #3 (chained to PR #2, which is not in the batch)"
+logged "chain red: the bad link goes to the single gate" "merge-pr 2"
+logged "chain red: the prefix, a group of one, goes through the gate and merges" "merge-pr 1"
+count "chain red: batch PRs opened (all four, then each half)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 2
+not_logged "chain red: the dropped link never reaches the gate" "merge-pr 3"
+
+# --- red CI on the tail of a chain whose prefix landed: the tail is built as increments on top of the prefix ---
+reset
+mkpr 1 shared.txt $'ONE\ntwo\nthree'; mkchain 2 1 shared.txt $'TWO\ntwo\nthree'; mkchain 3 2 shared.txt $'THREE\ntwo\nthree'; mkpr 4
+printf '1\nREFUSED: PR #100 has a check that is not passing: build (newest non-skipped run: failure)\n' >"$ST/ci.1"
+run_b 1 2 3 4
+exited "chain tail: exit 0" 0
+printed "chain tail: all merged" "merged:  #1 #2 #3 #4"
+if [[ $(main_subjects) == "Title 1 (#1)|Title 2 (#2)|Title 3 (#3)|Title 4 (#4)|" ]]; then pass "chain tail: the second half lands link 3 on top of the landed prefix"; else fail "chain tail: $(main_subjects)"; fi
+if [[ $(git --git-dir="$ORIGIN" show refs/heads/main:shared.txt | head -n 1) == THREE ]]; then pass "chain tail: the last link's content is on main"; else fail "chain tail: shared.txt on main"; fi
 
 # --- usage ---
 reset
