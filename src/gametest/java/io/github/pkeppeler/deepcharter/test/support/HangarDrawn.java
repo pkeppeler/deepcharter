@@ -20,6 +20,11 @@ public final class HangarDrawn {
 
     private HangarDrawn() {}
 
+    /** The wrapped lines of the status of the player's Mole as {@code key} words them, top to bottom; empty when the screen draws none. */
+    public static List<Drawn> moleLines(Screen screen, String key, int arguments) {
+        return block(DrawnText.of(screen), key, arguments);
+    }
+
     /** The wrapped lines of the restore prices, top to bottom; empty when the screen draws none. */
     public static List<Drawn> priceLines(Screen screen) {
         return block(DrawnText.of(screen), PRICES_KEY, PRICES_ARGUMENTS);
@@ -34,8 +39,10 @@ public final class HangarDrawn {
         Object[] marks = new Object[arguments];
         Arrays.fill(marks, ARGUMENT);
         String pattern = Component.translatable(key, marks).getString();
-        String start = pattern.substring(0, pattern.indexOf(ARGUMENT));
-        String lastWord = lastWord(pattern.substring(pattern.lastIndexOf(ARGUMENT) + 1));
+        // A text with no argument opens with its own first word and closes with its last.
+        int firstMark = arguments == 0 ? pattern.indexOf(' ') : pattern.indexOf(ARGUMENT);
+        String start = pattern.substring(0, firstMark);
+        String lastWord = lastWord(arguments == 0 ? pattern : pattern.substring(pattern.lastIndexOf(ARGUMENT) + 1));
         int first = -1;
         for (int index = 0; index < drawn.size(); index++) {
             if (drawn.get(index).text().startsWith(start)) {

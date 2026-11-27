@@ -498,7 +498,7 @@ Swap **(c)**.
 
 ### Hangar Console screen
 
-Source `client/hangar/HangarScreen.java`. Sells a refurbished Mole.
+Source `client/hangar/HangarScreen.java`. Assembles a player's one Mole from four parts, restores or scraps the nearest wreck, and writes off the player's own wreck.
 
 ![screen-hangar-console-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-hangar-console-online.png?raw=true)
 

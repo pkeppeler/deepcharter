@@ -180,7 +180,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
     /** What a terminal type's online view carries, at its largest. A type that registers a feature must have one. */
     private static Map<TerminalType, TerminalFeature> features() {
         Map<TerminalType, TerminalFeature> features = new LinkedHashMap<>();
-        features.put(HangarTerminal.TYPE, new HangarView(999));
+        features.put(HangarTerminal.TYPE, new HangarView(999, HangarView.MoleState.WRITING_OFF, 24_000));
         features.put(TerminalTypes.UPGRADE_TERMINAL, upgradeView());
         features.put(TerminalTypes.FUEL_PUMP, new ParkedPodView(Optional.of(UUID.randomUUID())));
         features.put(TerminalTypes.REPAIR_STATION, new ParkedPodView(Optional.of(UUID.randomUUID())));

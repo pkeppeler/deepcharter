@@ -26,9 +26,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * The online screen of the hangar console: buy a refurbished Mole, or restore the wreck nearest the console. The prices on the
- * buttons are the tuning's, and the server decides every press, so the screen never needs to know how many pods the charter has.
- * The server's answer to an action is a new view, which this screen takes in place.
+ * The online screen of the hangar console: assemble the player's one Mole from four parts, restore or scrap the wreck nearest the
+ * console, or write off the player's own wreck. The prices are the tuning's, and the server decides every press. A line under the
+ * prices says where the player's Mole stands. The server's answer to an action is a new view, which this screen takes in place.
  */
 public final class HangarScreen extends CrtScreen implements TerminalViewScreen {
     private static final int MARGIN = 24;
@@ -36,6 +36,8 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
     private static final int BUTTON_HEIGHT = 20;
     private static final int GAP = 6;
     private static final int CLOSE_WIDTH = 90;
+    private static final int TICKS_PER_MINUTE = 1200;
+    private static final int HALF_WIDTH = (BUTTON_WIDTH - GAP) / 2;
 
     /** One wrapped line of the restore prices, where it is drawn. */
     private record PriceLine(String text, int x, int y) {}
@@ -43,6 +45,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
     private TerminalView view;
     private List<PriceLine> priceLines = List.of();
     private List<PriceLine> advanceLines = List.of();
+    private List<PriceLine> moleLines = List.of();
     private final Typewriter typewriter;
 
     public HangarScreen(TerminalView view) {
@@ -101,22 +104,26 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                 ? wrap(Component.translatable("screen.deepcharter.hangar.advance", advanceLeft, catalyst)
                         .getString())
                 : List.of();
+        HangarView hangar = view.feature(HangarView.class).orElse(new HangarView(0, HangarView.MoleState.NONE, 0));
+        List<String> status = wrap(moleLine(hangar));
         List<String> wrapped = wrap(prices);
         int lineHeight = font.lineHeight + CrtTuning.current().lineSpacing();
-        int pricesY = closeY - GAP - (wrapped.size() + advance.size()) * lineHeight;
+        int moleY = closeY - GAP - status.size() * lineHeight;
+        int pricesY = moleY - (wrapped.size() + advance.size()) * lineHeight;
         priceLines = placed(wrapped, pricesY, lineHeight);
         advanceLines = placed(advance, pricesY + wrapped.size() * lineHeight, lineHeight);
-        int restoreY = pricesY - GAP - BUTTON_HEIGHT;
-        int buyY = restoreY - GAP - BUTTON_HEIGHT;
+        moleLines = placed(status, moleY, lineHeight);
+        int scrapY = pricesY - GAP - BUTTON_HEIGHT;
+        int restoreY = scrapY - GAP - BUTTON_HEIGHT;
+        int assembleY = restoreY - GAP - BUTTON_HEIGHT;
         addRenderableWidget(new CrtButton(
                 left,
-                buyY,
+                assembleY,
                 BUTTON_WIDTH,
                 BUTTON_HEIGHT,
-                Component.translatable(
-                        "screen.deepcharter.hangar.buy", tuning.refurbishedMole(), tuning.registrationFee()),
-                button -> send(HangarTerminal.BUY_MOLE)));
-        // The wreck the server restores is the nearest one, so the lines under the button name the price of
+                Component.translatable("screen.deepcharter.hangar.assemble"),
+                button -> send(HangarTerminal.ASSEMBLE_MOLE)));
+        // The wreck the server restores is the nearest one, so the lines under the buttons name the price of
         // each chassis.
         addRenderableWidget(new CrtButton(
                 left,
@@ -125,6 +132,37 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                 BUTTON_HEIGHT,
                 Component.translatable("screen.deepcharter.hangar.restore"),
                 button -> send(HangarTerminal.RESTORE_WRECK)));
+        addRenderableWidget(new CrtButton(
+                left,
+                scrapY,
+                HALF_WIDTH,
+                BUTTON_HEIGHT,
+                Component.translatable("screen.deepcharter.hangar.scrap"),
+                button -> send(HangarTerminal.SCRAP_WRECK)));
+        addRenderableWidget(new CrtButton(
+                left + HALF_WIDTH + GAP,
+                scrapY,
+                HALF_WIDTH,
+                BUTTON_HEIGHT,
+                Component.translatable("screen.deepcharter.hangar.write_off", tuning.writeOffCost()),
+                button -> send(HangarTerminal.WRITE_OFF)));
+    }
+
+    /** One sentence on where the player's one Mole stands, so a refused button has its reason on the screen. */
+    private static String moleLine(HangarView hangar) {
+        return switch (hangar.mole()) {
+            case NONE ->
+                Component.translatable("screen.deepcharter.hangar.mole.none").getString();
+            case WORKING ->
+                Component.translatable("screen.deepcharter.hangar.mole.working").getString();
+            case WRECKED ->
+                Component.translatable("screen.deepcharter.hangar.mole.wrecked").getString();
+            case WRITING_OFF ->
+                Component.translatable(
+                                "screen.deepcharter.hangar.mole.writing_off",
+                                (hangar.writeOffTicksLeft() + TICKS_PER_MINUTE - 1) / TICKS_PER_MINUTE)
+                        .getString();
+        };
     }
 
     private List<String> wrap(String text) {
@@ -183,6 +221,9 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
             CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
         }
         for (PriceLine line : advanceLines) {
+            CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
+        }
+        for (PriceLine line : moleLines) {
             CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
         }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);

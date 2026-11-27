@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
+import io.github.pkeppeler.deepcharter.wreck.WreckEvents;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
@@ -47,10 +49,12 @@ import net.minecraft.world.phys.Vec3;
  * <p>Every method here is safe on a callback path: unreadable hangar data is logged once and skipped.
  */
 public final class Hangar {
-    /** T06, "The Mole is flying again!": the founding Mole handed to its charter, or a refurbished Mole bought. */
+    /** T06, "The Mole is flying again!": the founding Mole handed to its charter, or the first Mole a charter crafts. */
     public static final Identifier MOLE_TRANSMISSION = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t06");
     /** The console stands this far from the hangar anchor, at its east side facing the bay. */
     private static final BlockPos CONSOLE_OFFSET = new BlockPos(5, 0, -3);
+    /** The write-offs are checked this often, in ticks: a second. */
+    private static final int WRITE_OFF_CHECK_TICKS = 20;
 
     private Hangar() {}
 
@@ -59,6 +63,52 @@ public final class Hangar {
         TerminalEvents.REPAIRED.register(Hangar::onRepaired);
         ServerEntityEvents.ENTITY_LOAD.register(Hangar::onLoad);
         PodEvents.REGISTERED.register(Hangar::onRegistered);
+        WreckEvents.WRECKED.register(pod -> markWrecked(pod, true));
+        WreckEvents.RESTORED.register(pod -> markWrecked(pod, false));
+        ServerTickEvents.END_SERVER_TICK.register(Hangar::onTick);
+    }
+
+    /** Records on the pod's Mole place, if it holds one, whether the pod is a wreck. Never throws. */
+    private static void markWrecked(PodEntity pod, boolean wrecked) {
+        if (pod.level() instanceof ServerLevel level) {
+            HangarData.readable(level.getServer()).ifPresent(data -> data.markWrecked(pod.getUUID(), wrecked));
+        }
+    }
+
+    /** Checks the write-offs once a second, against the game time, not the time of day: sleeping must not shorten the day one takes. */
+    private static void onTick(MinecraftServer server) {
+        if (server.getTickCount() % WRITE_OFF_CHECK_TICKS == 0) {
+            settleWriteOffs(server, server.overworld().getGameTime());
+        }
+    }
+
+    /**
+     * Takes the write-offs that are due at game time {@code now}: frees the place, and destroys the wreck with its parts and cargo,
+     * without a drop. A wreck that is not loaded is condemned and destroyed when it loads ({@link #onLoad}). One bad record never
+     * stops the rest.
+     */
+    public static void settleWriteOffs(MinecraftServer server, long now) {
+        Optional<HangarData> data = HangarData.readable(server);
+        if (data.isEmpty()) {
+            return;
+        }
+        for (HangarData.Slot slot : data.get().writeOffs()) {
+            if (slot.writeOffDue().orElseThrow() > now) {
+                continue;
+            }
+            try {
+                data.get().release(slot.pod());
+                Optional<PodEntity> pod = podOf(server, slot.pod());
+                if (pod.isPresent()) {
+                    pod.get().discard();
+                } else {
+                    data.get().condemn(slot.pod());
+                }
+                DeepCharter.LOGGER.info("Wrote off the wreck {} of player {}", slot.pod(), slot.player());
+            } catch (RuntimeException e) {
+                DeepCharter.LOGGER.error("Could not take the write-off of pod {}: it is tried again", slot.pod(), e);
+            }
+        }
     }
 
     /**
@@ -156,6 +206,13 @@ public final class Hangar {
         if (data.get().state().founder().isEmpty()) {
             data.get().setFounder(charter.id());
         }
+        // The founding Mole is the one Mole of the player who repaired it.
+        data.get().state().derelict().ifPresent(derelict -> {
+            if (data.get().slotOf(player.getUUID()).isEmpty()
+                    && data.get().slotHolding(derelict).isEmpty()) {
+                data.get().claim(player.getUUID(), derelict, false);
+            }
+        });
         completeFounding(server, data.get());
     }
 
@@ -182,9 +239,33 @@ public final class Hangar {
         }
         // A pod registered before the hangar recorded every registration is recorded when it loads.
         PodComponents.registration(pod).ifPresent(registration -> data.get().hold(registration.owner(), pod.getUUID()));
+        if (data.get().isCondemned(pod.getUUID())) {
+            pod.discard();
+            data.get().forgetCondemned(pod.getUUID());
+            return;
+        }
         if (data.get().state().derelict().equals(Optional.of(pod.getUUID()))) {
+            giveLegacyFoundingPlace(level.getServer(), data.get(), pod);
             completeFounding(level.getServer(), data.get());
         }
+    }
+
+    /**
+     * A founding Mole repaired before the one-Mole rule has no place on record, because the repair kept only the charter. It is given
+     * to the Director of the founding charter, unless they have a place already. Other Moles of an older world hold no place: the
+     * rule counts only what is crafted after it (ADR 0117). Never throws.
+     */
+    private static void giveLegacyFoundingPlace(MinecraftServer server, HangarData data, PodEntity pod) {
+        HangarData.State state = data.state();
+        if (!state.founded()
+                || data.slotHolding(pod.getUUID()).isPresent()
+                || state.founder().isEmpty()) {
+            return;
+        }
+        Charters.readableFind(server, state.founder().get())
+                .flatMap(Charter::director)
+                .filter(director -> data.slotOf(director).isEmpty())
+                .ifPresent(director -> data.claim(director, pod.getUUID(), Wrecks.isWreck(pod)));
     }
 
     /**

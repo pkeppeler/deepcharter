@@ -97,7 +97,7 @@ public class EntityQueryAuditTest {
                             pod[0] = made.getUUID();
                         },
                         () -> {
-                            int counted = HangarData.get(server).podCount(charter);
+                            int counted = HangarData.get(server).held(charter).size();
                             if (counted != 1) {
                                 throw failure(
                                         helper,
@@ -333,17 +333,17 @@ public class EntityQueryAuditTest {
         CharterId charter = CharterId.random();
         PodEntity pod = TestEntities.create(PodRegistry.POD, helper.getLevel(), EntitySpawnReason.TRIGGERED);
         PodComponents.register(pod, charter);
-        if (HangarData.get(server).podCount(charter) != 0) {
+        if (HangarData.get(server).held(charter).size() != 0) {
             throw failure(helper, "a pod that never entered the world counts for its charter");
         }
         pod.setPos(helper.absoluteVec(new Vec3(2.5, 2, 2.5)));
         helper.getLevel().addFreshEntity(pod);
         try {
-            if (HangarData.get(server).podCount(charter) != 1) {
+            if (HangarData.get(server).held(charter).size() != 1) {
                 throw failure(
                         helper,
                         "a pod in the world should count once, counted %d",
-                        HangarData.get(server).podCount(charter));
+                        HangarData.get(server).held(charter).size());
             }
         } finally {
             pod.discard();

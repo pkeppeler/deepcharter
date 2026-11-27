@@ -61,6 +61,7 @@ public final class Wrecks {
         }
         Versioned.modifyOrThrow(pod, WreckRegistry.STATE, state -> WreckState.INTACT);
         pod.setHull(hull);
+        WreckEvents.RESTORED.invoker().onRestored(pod);
     }
 
     /**
@@ -100,6 +101,7 @@ public final class Wrecks {
             return;
         }
         Versioned.modifyOrThrow(pod, WreckRegistry.STATE, state -> WreckState.WRECKED);
+        WreckEvents.WRECKED.invoker().onWrecked(pod);
         ServerLevel level = (ServerLevel) pod.level();
         List<Entity> crew = List.copyOf(pod.getPassengers());
         Map<CharterId, Charter> charters = chartersToTell(level.getServer(), pod, crew);
@@ -131,6 +133,7 @@ public final class Wrecks {
                 pod.getUUID(),
                 pod.hull());
         Versioned.modifyOrThrow(pod, WreckRegistry.STATE, state -> WreckState.WRECKED);
+        WreckEvents.WRECKED.invoker().onWrecked(pod);
     }
 
     /** Using a wreck, without sneaking, salvages its cargo. Sneaking still looks into the bay, and a working pod is not touched. */

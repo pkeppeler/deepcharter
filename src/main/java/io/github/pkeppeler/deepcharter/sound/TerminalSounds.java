@@ -30,8 +30,10 @@ public final class TerminalSounds {
             Map.entry(FuelPump.FILL, DeepSound.UI_PURCHASE),
             Map.entry(UpgradeTerminal.BUY, DeepSound.UI_PURCHASE),
             Map.entry(RepairStation.BUY, DeepSound.UI_PURCHASE),
-            Map.entry(HangarTerminal.BUY_MOLE, DeepSound.UI_PURCHASE),
-            Map.entry(HangarTerminal.RESTORE_WRECK, DeepSound.UI_PURCHASE));
+            Map.entry(HangarTerminal.ASSEMBLE_MOLE, DeepSound.UI_PURCHASE),
+            Map.entry(HangarTerminal.RESTORE_WRECK, DeepSound.UI_PURCHASE),
+            Map.entry(HangarTerminal.SCRAP_WRECK, DeepSound.UI_PURCHASE),
+            Map.entry(HangarTerminal.WRITE_OFF, DeepSound.UI_PURCHASE));
 
     private TerminalSounds() {}
 

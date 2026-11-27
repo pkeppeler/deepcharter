@@ -1121,7 +1121,7 @@ public class HandbookChaptersOneToFiveTest {
                         OreProcessor.SELL_CARGO,
                         OreProcessor.SELL_INVENTORY,
                         UpgradeTerminal.BUY,
-                        HangarTerminal.BUY_MOLE)) {
+                        HangarTerminal.ASSEMBLE_MOLE)) {
                     TerminalEvents.ACTED.invoker().onActed(server, type, drifter.player(), action);
                 }
             }
@@ -1242,7 +1242,7 @@ public class HandbookChaptersOneToFiveTest {
                             OreProcessor.SELL_CARGO,
                             OreProcessor.SELL_INVENTORY,
                             UpgradeTerminal.BUY,
-                            HangarTerminal.BUY_MOLE)) {
+                            HangarTerminal.ASSEMBLE_MOLE)) {
                         TerminalEvents.ACTED.invoker().onActed(server, type, pilot.player(), action);
                     }
                 }
@@ -1348,11 +1348,11 @@ public class HandbookChaptersOneToFiveTest {
     }
 
     /**
-     * A charter that came after the founding charter repairs no Mole: it buys a refurbished one at the hangar, and the purchase
-     * completes "Repair the Mole".
+     * A charter that came after the founding charter repairs no Mole: it assembles one at the hangar from four parts, and the
+     * assembly completes "Repair the Mole".
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
-    public void aLateCharterCompletesRepairTheMoleByBuyingOneAtTheHangar(GameTestHelper helper) {
+    public void aLateCharterCompletesRepairTheMoleByAssemblingOneAtTheHangar(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         BlockPos anchor = Colony.anchor(server, ColonyAnchor.HANGAR)
                 .orElseThrow(() -> helper.assertionException("the colony was not built when the server started"));
@@ -1382,6 +1382,7 @@ public class HandbookChaptersOneToFiveTest {
                             }
                             for (Item part : HangarTerminal.TYPE.parts()) {
                                 RepairState.get(server).insert(HangarTerminal.TYPE, part);
+                                buyer.player().getInventory().add(new ItemStack(part));
                             }
                             BlockPos console = helper.absolutePos(TERMINAL);
                             helper.getLevel()
@@ -1391,12 +1392,13 @@ public class HandbookChaptersOneToFiveTest {
                             expectCompleted(helper, server, "joining late", List.of(buyer.player()), Set.of());
                             expectDone(
                                     helper,
-                                    Terminals.act(buyer.player(), console, HangarTerminal.BUY_MOLE, new CompoundTag()),
-                                    "buying a Mole");
+                                    Terminals.act(
+                                            buyer.player(), console, HangarTerminal.ASSEMBLE_MOLE, new CompoundTag()),
+                                    "assembling a Mole");
                             expectCompleted(
                                     helper,
                                     server,
-                                    "buying a Mole",
+                                    "assembling a Mole",
                                     List.of(buyer.player()),
                                     Set.of(directive("meet_the_mole", "repair_mole")));
                             helper.succeed();

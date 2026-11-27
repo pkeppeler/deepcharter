@@ -54,6 +54,32 @@ public final class HangarData extends SavedData {
     }
 
     /**
+     * One player's crafted Mole: the one place a charter member has ({@code ADR 0117}). It stays until the pod is scrapped or
+     * written off, wrecked or working.
+     *
+     * @param player      the member who holds the place
+     * @param pod         the Mole that holds it
+     * @param wrecked     the Mole is a wreck now, recorded from the wreck events, so a write-off can be checked without loading the pod
+     * @param writeOffDue the game time at which a filed write-off takes effect; empty when none is filed
+     */
+    public record Slot(UUID player, UUID pod, boolean wrecked, Optional<Long> writeOffDue) {
+        private static final Codec<Slot> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                        UUIDUtil.CODEC.fieldOf("player").forGetter(Slot::player),
+                        UUIDUtil.CODEC.fieldOf("pod").forGetter(Slot::pod),
+                        Codec.BOOL.fieldOf("wrecked").forGetter(Slot::wrecked),
+                        Codec.LONG.optionalFieldOf("write_off_due").forGetter(Slot::writeOffDue))
+                .apply(instance, Slot::new));
+
+        Slot withWrecked(boolean now) {
+            return new Slot(player, pod, now, writeOffDue);
+        }
+
+        Slot withWriteOffDue(long due) {
+            return new Slot(player, pod, wrecked, Optional.of(due));
+        }
+    }
+
+    /**
      * The hangar's saved state.
      *
      * @param derelict the founding Mole's pod, once placed: the hangar places it once, so a world that has one never gets a second
@@ -62,13 +88,20 @@ public final class HangarData extends SavedData {
      * @param held     every pod registered to each charter, recorded when it is registered ({@code PodEvents.REGISTERED}) or, for a pod registered earlier, when it first loads
      * @param advanced the catalysts of the Company's advance that each charter has used. Absent from data saved before the advance
      *                 (it reads as nothing used), so the version stays 1.
+     * @param moles    the crafted Mole of each player who has one. Absent from data saved before the one-Mole rule (it reads as
+     *                 none), so the version stays 1: a Mole of an older world holds no place, except the founding Mole, which is
+     *                 given to the founding charter's Director when it loads (see {@code Hangar}).
+     * @param condemned the pods of written-off wrecks that were not loaded when the write-off took effect: each is destroyed when it
+     *                 loads. Absent from older data (none).
      */
     public record State(
             Optional<UUID> derelict,
             Optional<CharterId> founder,
             boolean founded,
             List<Held> held,
-            List<Advanced> advanced) {
+            List<Advanced> advanced,
+            List<Slot> moles,
+            List<UUID> condemned) {
         private static final MapCodec<State> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
                         UUIDUtil.CODEC.optionalFieldOf("derelict").forGetter(State::derelict),
                         CharterId.CODEC.optionalFieldOf("founder").forGetter(State::founder),
@@ -77,13 +110,49 @@ public final class HangarData extends SavedData {
                         Advanced.CODEC
                                 .listOf()
                                 .optionalFieldOf("advanced", List.of())
-                                .forGetter(State::advanced))
+                                .forGetter(State::advanced),
+                        Slot.CODEC.listOf().optionalFieldOf("moles", List.of()).forGetter(State::moles),
+                        UUIDUtil.CODEC
+                                .listOf()
+                                .optionalFieldOf("condemned", List.of())
+                                .forGetter(State::condemned))
                 .apply(instance, State::new));
-        static final State EMPTY = new State(Optional.empty(), Optional.empty(), false, List.of(), List.of());
+        static final State EMPTY =
+                new State(Optional.empty(), Optional.empty(), false, List.of(), List.of(), List.of(), List.of());
 
         public State {
             held = List.copyOf(held);
             advanced = List.copyOf(advanced);
+            moles = List.copyOf(moles);
+            condemned = List.copyOf(condemned);
+        }
+
+        private State withDerelict(UUID pod) {
+            return new State(Optional.of(pod), founder, founded, held, advanced, moles, condemned);
+        }
+
+        private State withFounder(CharterId charter) {
+            return new State(derelict, Optional.of(charter), founded, held, advanced, moles, condemned);
+        }
+
+        private State withFounded() {
+            return new State(derelict, founder, true, held, advanced, moles, condemned);
+        }
+
+        private State withHeld(List<Held> now) {
+            return new State(derelict, founder, founded, now, advanced, moles, condemned);
+        }
+
+        private State withAdvanced(List<Advanced> now) {
+            return new State(derelict, founder, founded, held, now, moles, condemned);
+        }
+
+        private State withMoles(List<Slot> now) {
+            return new State(derelict, founder, founded, held, advanced, now, condemned);
+        }
+
+        private State withCondemned(List<UUID> now) {
+            return new State(derelict, founder, founded, held, advanced, moles, now);
         }
     }
 
@@ -138,7 +207,7 @@ public final class HangarData extends SavedData {
         if (state().derelict().isPresent()) {
             throw new IllegalStateException("the founding Mole is placed already");
         }
-        change(old -> new State(Optional.of(pod), old.founder(), old.founded(), old.held(), old.advanced()));
+        change(old -> old.withDerelict(pod));
     }
 
     /** Records the charter that repaired the founding Mole. It is the first one: a second call throws. */
@@ -146,12 +215,12 @@ public final class HangarData extends SavedData {
         if (state().founder().isPresent()) {
             throw new IllegalStateException("the founding Mole has a founder already");
         }
-        change(old -> new State(old.derelict(), Optional.of(charter), old.founded(), old.held(), old.advanced()));
+        change(old -> old.withFounder(charter));
     }
 
     /** Records that the founding Mole is registered to its founder and works. */
     void markFounded() {
-        change(old -> new State(old.derelict(), old.founder(), true, old.held(), old.advanced()));
+        change(old -> old.withFounded());
     }
 
     /** Records a pod as the charter's. Recording it twice changes nothing. */
@@ -165,7 +234,7 @@ public final class HangarData extends SavedData {
             pods.add(pod);
             held.removeIf(entry -> entry.charter().equals(charter));
             held.add(new Held(charter, List.copyOf(pods)));
-            return new State(old.derelict(), old.founder(), old.founded(), held, old.advanced());
+            return old.withHeld(held);
         });
     }
 
@@ -192,13 +261,94 @@ public final class HangarData extends SavedData {
             int spent = advanceSpent(charter) + catalysts;
             advanced.removeIf(entry -> entry.charter().equals(charter));
             advanced.add(new Advanced(charter, spent));
-            return new State(old.derelict(), old.founder(), old.founded(), old.held(), advanced);
+            return old.withAdvanced(advanced);
         });
     }
 
-    /** How many pods the charter has: every pod registered to it, recorded when it was registered or first loaded. */
-    public int podCount(CharterId charter) {
-        return held(charter).size();
+    /** The crafted Mole of {@code player}, if they have one. */
+    public Optional<Slot> slotOf(UUID player) {
+        return state().moles().stream()
+                .filter(slot -> slot.player().equals(player))
+                .findFirst();
+    }
+
+    /** The place that {@code pod} holds, if it holds one. */
+    public Optional<Slot> slotHolding(UUID pod) {
+        return state().moles().stream().filter(slot -> slot.pod().equals(pod)).findFirst();
+    }
+
+    /** Every filed write-off's place, so the tick can settle the ones that are due. */
+    List<Slot> writeOffs() {
+        return state().moles().stream()
+                .filter(slot -> slot.writeOffDue().isPresent())
+                .toList();
+    }
+
+    /** Gives {@code player} their one place, held by {@code pod}. A player with a place already, or a pod that holds one, throws. */
+    void claim(UUID player, UUID pod, boolean wrecked) {
+        if (slotOf(player).isPresent() || slotHolding(pod).isPresent()) {
+            throw new IllegalStateException("player " + player + " or pod " + pod + " holds a Mole place already");
+        }
+        change(old -> {
+            List<Slot> moles = new ArrayList<>(old.moles());
+            moles.add(new Slot(player, pod, wrecked, Optional.empty()));
+            return old.withMoles(moles);
+        });
+    }
+
+    /** Records that the pod holding a place is a wreck, or is not any more. A pod that holds no place changes nothing. */
+    void markWrecked(UUID pod, boolean wrecked) {
+        changeSlot(pod, slot -> slot.withWrecked(wrecked));
+    }
+
+    /** Files a write-off that takes effect at game time {@code due}. A pod that holds no place throws. */
+    void fileWriteOff(UUID pod, long due) {
+        if (slotHolding(pod).isEmpty()) {
+            throw new IllegalStateException("pod " + pod + " holds no Mole place to write off");
+        }
+        changeSlot(pod, slot -> slot.withWriteOffDue(due));
+    }
+
+    /** Frees the place that {@code pod} holds. A pod that holds none changes nothing. */
+    void release(UUID pod) {
+        if (slotHolding(pod).isEmpty()) {
+            return;
+        }
+        change(old -> old.withMoles(
+                old.moles().stream().filter(slot -> !slot.pod().equals(pod)).toList()));
+    }
+
+    private void changeSlot(UUID pod, UnaryOperator<Slot> change) {
+        if (slotHolding(pod).isEmpty()) {
+            return;
+        }
+        change(old -> old.withMoles(old.moles().stream()
+                .map(slot -> slot.pod().equals(pod) ? change.apply(slot) : slot)
+                .toList()));
+    }
+
+    /** Marks a written-off pod that was not loaded: it is destroyed when it loads. */
+    void condemn(UUID pod) {
+        if (isCondemned(pod)) {
+            return;
+        }
+        change(old -> {
+            List<UUID> condemned = new ArrayList<>(old.condemned());
+            condemned.add(pod);
+            return old.withCondemned(condemned);
+        });
+    }
+
+    boolean isCondemned(UUID pod) {
+        return state().condemned().contains(pod);
+    }
+
+    /** Forgets a condemned pod once it is destroyed. */
+    void forgetCondemned(UUID pod) {
+        if (isCondemned(pod)) {
+            change(old -> old.withCondemned(
+                    old.condemned().stream().filter(id -> !id.equals(pod)).toList()));
+        }
     }
 
     /** The pods recorded as the charter's. */
