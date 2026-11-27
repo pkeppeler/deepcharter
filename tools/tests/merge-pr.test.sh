@@ -1045,6 +1045,44 @@ exited "mark-review-passed exits 0" 0
 logged "mark reads head sha and branch in one call" "gh api repos/pkeppeler/deepcharter/pulls/7 --jq .head.sha + \" \" + .head.ref"
 logged "mark comments exact body" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed def456"
 logged "mark adds label" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/labels -f labels[]=review-passed"
+# The player-experience pass (#1555): a gameplay PR numbered PX_REVIEW_FIRST_PR or above needs the px-reviewed label; a lower number is exempt.
+px_first=$(sed -n 's/^PX_REVIEW_FIRST_PR=\([0-9][0-9]*\)$/\1/p' "$tools/lib/pr-body-checks.sh")
+[[ -n $px_first ]] || { echo "cannot read PX_REVIEW_FIRST_PR from tools/lib/pr-body-checks.sh" >&2; exit 1; }
+# px_run <script> <pr> [VAR=value ...]
+px_run() {
+  local s=$1 n=$2
+  shift 2
+  reset
+  rc=0
+  out=$(env STUB_BODY="Closes #12
+No map change: test" "$@" PATH="$work/bin:$PATH" bash "$s" "$n" 2>&1) || rc=$?
+}
+gpl="STUB_LABELS=gameplay
+demo
+review-passed"
+gpx="STUB_LABELS=gameplay
+demo
+review-passed
+px-reviewed"
+for who in mark merge; do
+  if [[ $who == mark ]]; then s=$mark; else s=$script; fi
+  px_run "$s" $((px_first - 1)) "$gpl" "STUB_BRANCH=12-some-slug"
+  if [[ $out == *"px-reviewed"* ]]; then fail "$who: a gameplay PR below PX_REVIEW_FIRST_PR is exempt (out: $out)"; else pass "$who: a gameplay PR below PX_REVIEW_FIRST_PR is exempt"; fi
+  px_run "$s" "$px_first" "$gpl"
+  exited "$who: a gameplay PR at PX_REVIEW_FIRST_PR without the label is refused" 1
+  printed "$who: names the px fix" "lacks the 'px-reviewed' label"
+  px_run "$s" $((px_first + 5)) "$gpl"
+  exited "$who: a gameplay PR above PX_REVIEW_FIRST_PR without the label is refused" 1
+  px_run "$s" "$px_first" "$gpx"
+  if [[ $out == *"px-reviewed"* ]]; then fail "$who: px-reviewed lets a gameplay PR through (out: $out)"; else pass "$who: px-reviewed lets a gameplay PR through"; fi
+  px_run "$s" "$px_first" STUB_LABELS=infra
+  if [[ $out == *"px-reviewed"* ]]; then fail "$who: a non-gameplay PR is unaffected (out: $out)"; else pass "$who: a non-gameplay PR is unaffected"; fi
+done
+px_run "$mark" "$px_first" "$gpl"
+not_logged "mark refuses a gameplay PR without px-reviewed before writing anything" "^gh api -X POST"
+px_run "$mark" "$px_first" "$gpx"
+exited "mark allows a gameplay PR with px-reviewed" 0
+count "the px check reads no comments (no lookup that can fail open)" "comments?per_page" 0
 # merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
 # check_pr_body_and_labels: the two lists must hold the same steps.
 lib=$tools/lib/pr-body-checks.sh
