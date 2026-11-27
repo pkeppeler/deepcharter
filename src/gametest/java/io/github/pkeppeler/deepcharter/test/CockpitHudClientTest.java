@@ -11,11 +11,14 @@ import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodChase;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.client.pod.SeatedHotbar;
+import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.client.ui.PixelDigits;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -113,7 +116,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     /** The GUI scale settings: 0 is Auto. */
     private static final int[] GUI_SCALES = {0, 1, 2, 3, 4};
     /** The width of the altimeter's recess in the ribbon sprite (tools/cockpit_ribbon.py), which its longest reading must fit. */
-    private static final int ALTIMETER_RECESS_WIDTH = 72;
+    private static final int ALTIMETER_RECESS_WIDTH = 44;
 
     private static final String LONGEST_ALTIMETER = "-12,345 ft.";
     /**
@@ -184,6 +187,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
                 expectTheAccountLineIsANote();
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
+                expectTheAltimeterIsSmallPixelDigitsInItsRecessAtGuiScalesTwoAndFour(context);
                 expectEveryPlateMessageIsAPlateCase();
                 expectThePlateHoldsEveryLineClearOfItsBorder(context);
                 expectThePlateStopsAboveTheOffHandSlot(context);
@@ -828,6 +832,60 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     }
 
     /**
+     * The altimeter's readout (#1539) is the cockpit's pixel digits, not the game's font: on the 1920 x 1080 window at GUI scale 2 and at GUI scale 4 (both fit the Ribbon)
+     * it is as wide as the pixel digits make its reading and as tall as a glyph, centred on the screen (so on the band's recess) with its top {@code ribbonAltimeterY}
+     * under the screen's, inside the band, and smaller than the font's line was, so the readout stays inside the status budget. What the HUD keeps clear is that box
+     * grown by the breach's jitter.
+     */
+    private void expectTheAltimeterIsSmallPixelDigitsInItsRecessAtGuiScalesTwoAndFour(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            List<String> found = new ArrayList<>();
+            CockpitLook look = CockpitLook.current();
+            CockpitLook.Layout layout = look.ribbon();
+            String reading = Altimeter.reading(
+                            ClientLight.clientLevel(client),
+                            ClientSession.player(client).getBlockY())
+                    .getString();
+            int width = PixelDigits.width(reading, look.digits());
+            int height = look.digits().height();
+            int jitter = BreachLook.current().jitterPixels();
+            for (int requested : new int[] {2, 4}) {
+                int[] gui = guiSize(1920, 1080, requested);
+                String where = "GUI scale " + requested + " (" + gui[0] + " x " + gui[1] + ")";
+                List<HudKeepClear.Rect> altimeters = HudKeepClear.rects(client, gui[0], gui[1]).stream()
+                        .filter(rect -> rect.what().equals("altimeter"))
+                        .toList();
+                if (altimeters.size() != 1) {
+                    found.add(where + ": the HUD keeps clear " + altimeters.size() + " altimeters, not one");
+                    continue;
+                }
+                HudKeepClear.Rect drawn = altimeters.getFirst().grow(-jitter);
+                int[] size = {drawn.width(), drawn.height()};
+                if (size[0] != width || size[1] != height) {
+                    found.add(where + ": the readout is " + size[0] + " x " + size[1] + ", the pixel digits make \""
+                            + reading + "\" " + width + " x " + height);
+                }
+                if (Math.abs(drawn.x() + drawn.right() - gui[0]) > 1) {
+                    found.add(where + ": the readout is not centred, it spans " + drawn.x() + " to " + drawn.right());
+                }
+                int[] band = box(layout.band(), gui[0], gui[1]);
+                if (drawn.y() != layout.altimeterY() || !inside(box(drawn), band)) {
+                    found.add(where + ": the readout's top is " + drawn.y() + ", not " + layout.altimeterY()
+                            + " inside the band " + Arrays.toString(band));
+                }
+                if (size[0] >= client.font.width(reading) || size[1] >= client.font.lineHeight) {
+                    found.add(where + ": the readout is no smaller than the game's font drew it, "
+                            + client.font.width(reading) + " x " + client.font.lineHeight);
+                }
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The altimeter must be small pixel digits in its recess: " + problems);
+        }
+    }
+
+    /**
      * The plate cases cover every message the plate can show: the lang keys of their lines are the readout's lines ({@link PodStatusHud#KINDS}, less the four the plain HUD
      * shows and the plate shows as its tally instead) and the two tags, so a new readout line is not silently left out of the fit checks.
      */
@@ -964,8 +1022,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             problems.add(where + ": the bezel covers the band");
         }
         problems.addAll(titleProblems(font, look, guiWidth, guiHeight, where, bars, pieces));
-        if (font.width(LONGEST_ALTIMETER) > ALTIMETER_RECESS_WIDTH
-                || layout.altimeterY() + font.lineHeight > layout.band().height()) {
+        if (PixelDigits.width(LONGEST_ALTIMETER, look.digits()) > ALTIMETER_RECESS_WIDTH
+                || layout.altimeterY() + look.digits().height() > layout.band().height()) {
             problems.add(where + ": the altimeter reading does not fit its recess in the band");
         }
         problems.addAll(sinkProblems(font, layout, look, pieces, gauges, guiWidth, guiHeight, where));

@@ -56,8 +56,33 @@ LOAD_LIMIT_SEGMENT = 10
 TITLE_KEYS = {"fuel": "fuel", "hull": "hull", "cargo": "load", "depth": "depth", "heat": "heat"}
 _LANG = json.loads((ROOT / "src/lang/en_us/pod.json").read_text(encoding="utf-8"))
 TITLES = {gauge: _LANG["hud.deepcharter.cockpit." + key] for gauge, key in TITLE_KEYS.items()}
-# The altimeter's recess at the band's middle. The room under it is the altimeter's (#1432 hangs the sink rate there), so no title takes it.
-RECESS_W = 72
+# The altimeter's recess at the band's middle. The room under it is the altimeter's (#1432 hangs the sink rate there), so no title takes it. It holds the longest reading,
+# "-12,345 ft.", drawn in the pixel digits (DIGITS, #1539) with three pixels to spare on each side.
+RECESS_W, RECESS_H, RECESS_Y = 44, 7, 2
+# The altimeter's digits (#1539): a sheet of white glyphs the game tints, drawn at the HUD's pixel scale so they never smooth-scale. WIDE_GLYPHS are DIGIT_W wide and
+# come first in the sheet, then NARROW_GLYPHS, DIGIT_NARROW_W wide; a space is blank and as wide as a narrow glyph, so it takes no room in the sheet. The client reads the
+# same sizes from the theme (digitsW, digitsH, digitsGap, digitsNarrowW) and the glyph order from PixelDigits.
+DIGIT_W, DIGIT_H, DIGIT_GAP, DIGIT_NARROW_W = 3, 5, 1, 1
+WIDE_GLYPHS = "0123456789-ft"
+NARROW_GLYPHS = ",."
+DIGITS_SHEET = ASSETS / "textures/gui/cockpit/digits.png"
+GLYPHS = {
+    "0": ("###", "#.#", "#.#", "#.#", "###"),
+    "1": (".#.", "##.", ".#.", ".#.", "###"),
+    "2": ("###", "..#", "###", "#..", "###"),
+    "3": ("###", "..#", "###", "..#", "###"),
+    "4": ("#.#", "#.#", "###", "..#", "..#"),
+    "5": ("###", "#..", "###", "..#", "###"),
+    "6": ("###", "#..", "###", "#.#", "###"),
+    "7": ("###", "..#", ".#.", ".#.", ".#."),
+    "8": ("###", "#.#", "###", "#.#", "###"),
+    "9": ("###", "#.#", "###", "..#", "###"),
+    "-": ("...", "...", "###", "...", "..."),
+    "f": (".##", "#..", "##.", "#..", "#.."),
+    "t": (".#.", "###", ".#.", ".#.", ".##"),
+    ",": (".", ".", ".", "#", "#"),
+    ".": (".", ".", ".", ".", "#"),
+}
 # The icons, white, tinted by the game in the colour of what they mark, `iconWidth` wide and as tall as the font's capitals. Each gauge's title carries its
 # gauge's icon (GAUGE_ICONS), and so does the plate's tally number of the same thing: hull, fuel and depth. The tally's cargo number is the ore in the bay, not
 # the LOAD gauge's weight, so it carries the cart, which no gauge has. Each reads apart from the others by its shape, not only by its colour, and none reads as
@@ -76,6 +101,7 @@ SHARED = {
     "enabled": 1, "minGuiWidth": MIN_GUI_W, "minGuiHeight": MIN_GUI_H,
     "fuelColor": "#F0A010", "hullColor": "#58B05A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
     "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "plateGap": 1,
+    "digitsW": DIGIT_W, "digitsH": DIGIT_H, "digitsGap": DIGIT_GAP, "digitsNarrowW": DIGIT_NARROW_W,
     "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 3, "titleGap": 1, "titleTextHeight": 7, "iconWidth": 5, "iconGap": 1,
     "cameraInstalled": 0, "cameraStaticPerHull": 4.0, "cameraStaticFallPerTick": 0.03, "cameraStaticDots": 2400, "cameraDotSize": 2,
     "cameraLensHeatPerTick": 0.01, "cameraLensCoolPerTick": 0.02, "cameraLensDead": 1.0, "cameraLensRecover": 0.6,
@@ -191,6 +217,33 @@ def well(img, x, y, w, h):
     img.rect(x, y, w, h, rgb("#050807"))
     img.hline(x - 1, y + h, w + 2, H[5])
     img.vline(x + w, y - 1, h + 2, H[4])
+
+
+def digits_sheet():
+    """The altimeter's glyphs side by side, white where lit: WIDE_GLYPHS, then NARROW_GLYPHS."""
+    img = Img(len(WIDE_GLYPHS) * DIGIT_W + len(NARROW_GLYPHS) * DIGIT_NARROW_W, DIGIT_H)
+    x = 0
+    for glyph in WIDE_GLYPHS + NARROW_GLYPHS:
+        rows = GLYPHS[glyph]
+        width = DIGIT_W if glyph in WIDE_GLYPHS else DIGIT_NARROW_W
+        assert len(rows) == DIGIT_H and all(len(row) == width for row in rows), glyph
+        img.mask(rows, x, 0, rgb("#FFFFFF"))
+        x += width
+    return img
+
+
+def digits_width(text):
+    """The width of `text` in the pixel digits, as PixelDigits works it out: a gap between glyphs, a space as wide as a narrow glyph."""
+    widths = [DIGIT_W if c in WIDE_GLYPHS else DIGIT_NARROW_W for c in text]
+    return sum(widths) + DIGIT_GAP * (len(text) - 1)
+
+
+def draw_digits(img, x, y, text, color):
+    """`text` in the pixel digits at (x, y), for the preview."""
+    for c in text:
+        if c in GLYPHS:
+            img.mask(GLYPHS[c], x, y, color)
+        x += (DIGIT_W if c in WIDE_GLYPHS else DIGIT_NARROW_W) + DIGIT_GAP
 
 
 def text_width(text):
@@ -327,7 +380,7 @@ def ribbon():
         well(band, x, BAR_Y, BAR_W, BAR_H)
         look.gauge(name, "across", place.inner(x, BAR_Y, BAR_W, BAR_H), SEGMENTS)
     look.keys[STYLE + "CargoLimit"] = LOAD_LIMIT_SEGMENT
-    well(band, recess, 2, RECESS_W, 10)  # the altimeter's recess
+    well(band, recess, RECESS_Y, RECESS_W, RECESS_H)  # the altimeter's recess
     lamps_w = lamp_well(band, lamps_x, BAR_Y)
     look.lamps(place.inner(lamps_x, BAR_Y, lamps_w, 5))
     for sx, sy in ((4, 7), (w - 5, 7)):
@@ -353,7 +406,7 @@ def theme_json(look):
 def build() -> dict[Path, bytes]:
     """Every file the generator owns, by path."""
     look = ribbon()
-    files: dict[Path, bytes] = {THEME: (json.dumps(theme_json(look), indent=2) + "\n").encode()}
+    files: dict[Path, bytes] = {THEME: (json.dumps(theme_json(look), indent=2) + "\n").encode(), DIGITS_SHEET: digits_sheet().to_png()}
     for slot, sprite in look.sprites.items():
         path = SPRITES / STYLE / f"{slot}.png"
         files[path] = sprite.img.to_png()
@@ -556,7 +609,7 @@ def preview_look(look, state):
         img.blit(nine_slice(sprites["tab"].img, sprites["tab"].border, right - left, bottom - top), left, top)
         img.mask(ICONS[GAUGE_ICONS[name]], left + inset, top + inset, rgb(SHARED[name + "Color"]))
         img.text(left + inset + SHARED["iconWidth"] + SHARED["iconGap"], top + inset, TITLES[name], rgb(SHARED[name + "Color"]))
-    img.text(SCREEN_W // 2 - text_width("-1,234 ft.") // 2, t[STYLE + "AltimeterY"] + 1, "-1,234 ft.", rgb("#FFFFFF"))
+    draw_digits(img, (SCREEN_W - digits_width("-1,234 ft.")) // 2, t[STYLE + "AltimeterY"], "-1,234 ft.", rgb("#FFFFFF"))
     width, height = plate_size(look, state)
     inset_left, inset_top, _, _ = plate_inset(look)
     plate = Placed(width, height, t[STYLE + "ReadoutAnchorX"], t[STYLE + "ReadoutAnchorY"], t[STYLE + "ReadoutX"], t[STYLE + "ReadoutY"])

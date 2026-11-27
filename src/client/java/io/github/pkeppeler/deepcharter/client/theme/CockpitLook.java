@@ -39,6 +39,7 @@ import net.minecraft.resources.Identifier;
  * @param camera the front camera's feed (#448)
  * @param decay what the signal decay (#502) does to the instruments
  * @param sink the SINK readout (#1432)
+ * @param digits the altimeter's pixel digits (#1539)
  */
 public record CockpitLook(
         boolean enabled,
@@ -66,7 +67,8 @@ public record CockpitLook(
         int iconGap,
         CameraLook camera,
         DecayLook decay,
-        SinkLook sink) {
+        SinkLook sink,
+        Digits digits) {
     /** How a bar fills: segments lit from its start across, or up. */
     public enum Kind {
         ACROSS,
@@ -403,6 +405,25 @@ public record CockpitLook(
         }
     }
 
+    /**
+     * The altimeter's pixel digits (#1539): a sheet of white glyphs under {@code textures/gui/cockpit/digits.png}, drawn a GUI pixel to a texel so they never smooth-scale. The
+     * sheet holds the wide glyphs, then the narrow ones ({@code PixelDigits} names them); the generator, {@code tools/cockpit_ribbon.py}, writes the sheet and these keys together.
+     *
+     * @param width how wide a digit, a minus, an f and a t are
+     * @param height how tall every glyph is
+     * @param gap the space between two glyphs
+     * @param narrowWidth how wide a comma and a full stop are, and a space
+     */
+    public record Digits(int width, int height, int gap, int narrowWidth) {
+        static Digits of(ThemeData d) {
+            return new Digits(
+                    d.integer("digitsW", 1, 16),
+                    d.integer("digitsH", 1, 16),
+                    d.integer("digitsGap", 0, 8),
+                    d.integer("digitsNarrowW", 1, 16));
+        }
+    }
+
     public static CockpitLook current() {
         return UiTheme.current().cockpit();
     }
@@ -439,6 +460,7 @@ public record CockpitLook(
                 d.integer("iconGap", 0, 8),
                 CameraLook.of(d),
                 DecayLook.of(d),
-                SinkLook.of(d));
+                SinkLook.of(d),
+                Digits.of(d));
     }
 }
