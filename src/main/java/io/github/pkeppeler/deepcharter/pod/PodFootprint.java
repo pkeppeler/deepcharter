@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 
 /**
@@ -20,5 +21,13 @@ public record PodFootprint(int lowX, int lowZ, int width, int height, int feetY)
                 width,
                 height,
                 Mth.floor(pod.getY() + EPSILON));
+    }
+
+    /**
+     * The cell an explosive's cube is centred on: the footprint's middle cell on the row the feet are in. A pod 2 wide has no middle
+     * cell, so it is the one on the +x and +z side.
+     */
+    public BlockPos feetMiddle() {
+        return new BlockPos(lowX + width / 2, feetY, lowZ + width / 2);
     }
 }
