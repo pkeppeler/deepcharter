@@ -151,8 +151,7 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
                     at.relative(facing, -1).relative(across, -1),
                     at.relative(facing, 1).relative(across, 1).above(FILL_ABOVE),
                     Blocks.AIR.defaultBlockState());
-            // light-settled-ok: the pilot already rides this pod, so it stays tracked for them as it moves up the same
-            // shaft
+            // light-settled-ok: the pilot already rides this pod, which stays tracked as it moves up the shaft
             moveTo(pod, at);
             return at;
         });
@@ -179,8 +178,7 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
                     lower.relative(facing, -1).relative(across, -1),
                     lower.relative(facing, 1).relative(across, 1),
                     Blocks.AIR.defaultBlockState());
-            // light-settled-ok: the pilot already rides this pod, so it stays tracked for them as it moves one block
-            // down
+            // light-settled-ok: the pilot already rides this pod, which stays tracked as it moves a block down
             moveTo(pod, lower);
         });
     }
