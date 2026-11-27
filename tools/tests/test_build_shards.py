@@ -93,9 +93,9 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("pattern: merged-main-*", aggregate)
         self.assertIn("merge-multiple: true", aggregate)
         self.assertIn('.ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"', aggregate)
-        self.assertIn("main-sha-checks", aggregate)
+        self.assertIn("main-sha-$other", aggregate)
+        self.assertIn("for other in checks compile", aggregate)
         self.assertIn("main-sha-plan", aggregate)
-        self.assertIn("main-sha-compile", aggregate)
         self.assertNotIn("merge-main", aggregate.replace("merged-main", ""), "the aggregate must not merge main itself")
 
     def test_the_aggregate_says_which_tier_ran(self):
@@ -103,7 +103,8 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("::notice title=ci-tier::", aggregate)
         self.assertIn("needs.plan.outputs.server-full", aggregate)
         # A skipped shard job is a pass only when the plan selected none.
-        self.assertIn('[ "$SHARDS" = skipped ] && [ "$COUNT" = 0 ]', aggregate)
+        self.assertIn('shards_skippable=false', aggregate)
+        self.assertIn("::notice title=ci-gradle::skipped", aggregate)
 
     def test_the_plan_merges_main_and_hands_its_sha_to_the_aggregate(self):
         plan = job("plan")
@@ -113,7 +114,20 @@ class BuildShardWorkflowTest(unittest.TestCase):
 
     def test_the_compile_job_hands_its_merged_main_to_the_aggregate_too(self):
         self.assertIn("name: compile\n", job("compile").split("upload-merged-main")[1])
-        self.assertIn("main-sha-compile", job("build-result"))
+        self.assertIn("main-sha-$other", job("build-result"))
+        self.assertIn("for other in checks compile", job("build-result"))
+
+    def test_a_push_that_changes_nothing_gradle_reads_runs_no_gradle_job(self):
+        for key in ("checks", "build"):
+            with self.subTest(key):
+                self.assertIn("needs.plan.outputs.build-needed", WORKFLOW[WORKFLOW.index(f"\n  {key}:"):])
+        self.assertIn("needs.plan.outputs.build-needed == 'true'", job("checks"))
+        self.assertIn("needs.plan.outputs.build-needed == 'true'", job("tool-gates"))
+        # A job without the compile job's output compiles for itself, and the compile job runs only for a full run.
+        self.assertIn("needs.plan.outputs.server-full == 'true'", job("compile"))
+        for key in ("build", "checks", "tool-gates"):
+            with self.subTest(key):
+                self.assertIn("if: needs.compile.result == 'success'", job(key))
 
     def test_no_other_job_is_named_build(self):
         self.assertEqual(re.findall(r"^    name: build$", WORKFLOW, re.M), ["    name: build"])

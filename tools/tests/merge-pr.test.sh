@@ -82,6 +82,11 @@ case "$method $path" in
     id=${path#*check-runs/}
     id=${id%%/*}
     # The ci-tier notice (ADR 0116): STUB_TIER_<id>, else STUB_TIER, else none (CI from before the tiers).
+    # The ci-gradle notice (ADR 0116): STUB_GRADLE=skipped says the push changed nothing a Gradle task reads.
+    if [[ $jq == *'"ci-gradle"'* ]]; then
+      [[ -z ${STUB_GRADLE-} ]] || printf '%s\n' "$STUB_GRADLE"
+      exit
+    fi
     if [[ $jq == *'"ci-tier"'* ]]; then
       var=STUB_TIER_$id
       recorded=${!var-${STUB_TIER-}}
@@ -786,6 +791,17 @@ run_check "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13
 exited "tier: --check accepts a PR-tier build that ran no server shard" 0
 refusal "tier: that PR-tier build is still not landable" "$tier_hint" \
   "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success)" STUB_TIER=pr
+# A push that changes nothing a Gradle task reads (docs, tools) runs no Gradle job: build-checks and the shards are only skipped, and the
+# `build` aggregate's ci-gradle notice says why (ADR 0116). Without the notice the same runs are refused.
+no_gradle_runs=$(runs build:2:success tool-tests:3:success "build-checks:13:skipped")
+run_script "STUB_RUNS=$no_gradle_runs" STUB_GRADLE=skipped STUB_TIER=pr
+exited "gradle skipped: a PR-tier head with no Gradle job is refused only for landing, by its tier" 1
+printed "gradle skipped: the refusal is the tier's" "[pr-tier]"
+run_check "STUB_RUNS=$no_gradle_runs" STUB_GRADLE=skipped STUB_TIER=pr
+exited "gradle skipped: --check accepts it" 0
+printed "gradle skipped: --check says the tier" "ci tier: pr"
+refusal "gradle skipped: no notice, no build-checks, refused" "build-checks did not pass" "STUB_RUNS=$no_gradle_runs"
+refusal "gradle skipped: a notice that says anything else is refused" "build-checks did not pass" "STUB_RUNS=$no_gradle_runs" STUB_GRADLE=ran
 # The build runs as `build-shard <i>` jobs and `build-checks` beside the `build` aggregate (#1327). The gate reads the merged-main
 # notice of each passing shard, of build-checks and of the aggregate, which records the main all of them agreed on.
 bs_specs=("build:2:success" "tool-tests:3:success" "build-shard 1:11:success" "build-shard 2:12:success" "build-checks:13:success")

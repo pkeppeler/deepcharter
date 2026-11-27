@@ -25,6 +25,20 @@ read_ci_tier() {
   printf -v "$2" '%s' "$([[ $ci_tier_note == pr ]] && echo pr || echo full)"
 }
 
+# read_ci_gradle: sets $ci_gradle to `skipped` when the `build` run recorded a `ci-gradle` notice saying so (the push changed nothing a Gradle
+# task reads, so CI ran no Gradle job, ADR 0116), else empty.
+read_ci_gradle() {
+  local run_id note
+  run_id=$(awk -F'\t' '$2 == "build" { print $3 }' <<<"$checks_full")
+  [[ $run_id =~ ^[0-9]+$ ]] || refuse "has no deciding run id for build"
+  gh_list note "repos/$repo/check-runs/$run_id/annotations?per_page=100" \
+    '.[] | select(.title == "ci-gradle") | .message' \
+    || refuse "could not read the annotations of build run $run_id: $gh_list_err"
+  note=${note%%$'\n'*}
+  ci_gradle=
+  [[ $note != skipped ]] || ci_gradle=skipped
+}
+
 # Sets $checks, $checks_full and $run_lines.
 check_ci_gate() {
   build_tier=
@@ -128,9 +142,14 @@ check_ci_gate() {
   # before #1327 ran one `build` job that merged main itself, has no such run, and its notice alone decides. Once any of them ran
   # (even a never-started template one), build-checks and at least one shard must pass and no shard may be only skipped, so an
   # aggregate pass never stands in for jobs that did not run.
-  if grep -qE $'^(build-shard |build-checks\t)' <<<"$run_lines"; then
-    grep -qxF "pass"$'\t'"build-checks" <<<"$checks" \
+  ci_gradle=
+  if grep -qE $'^(build-shard |build-checks\t)' <<<"$run_lines" && ! grep -qxF "pass"$'\t'"build-checks" <<<"$checks"; then
+    # A push that changed nothing Gradle reads runs no Gradle job: the build aggregate says so, and build-checks was only skipped.
+    read_ci_gradle
+    [[ $ci_gradle == skipped ]] \
       || refuse "build ran as shards but build-checks did not pass, so nothing shows the build's checks ran"
+  fi
+  if [[ $ci_gradle != skipped ]] && grep -qE $'^(build-shard |build-checks\t)' <<<"$run_lines"; then
     build_shards=$(awk -F'\t' '$1 == "pass" && $2 ~ /^build-shard / { print $2 }' <<<"$checks")
     # The PR tier can select no server class: no shard runs, and the aggregate's notice records what build-checks and the plan merged.
     if [[ -z $build_shards ]]; then

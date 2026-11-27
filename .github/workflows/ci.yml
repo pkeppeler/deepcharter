@@ -63,6 +63,7 @@ jobs:
       server-classes: ${{ steps.plan.outputs.server-classes }}
       server-count: ${{ steps.plan.outputs.server-count }}
       server-matrix: ${{ steps.plan.outputs.server-matrix }}
+      build-needed: ${{ steps.plan.outputs.build-needed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -83,9 +84,11 @@ jobs:
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          git diff --no-renames --name-only "$MAIN_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
+          # What the PR changed since it left its base branch (main for a PR into main): the same paths as main..merged head.
+          git diff --no-renames --name-only "$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
           tools/py tools/ci_affected.py --head-ref "$HEAD_REF" --labels "$LABELS" \
             --server-shards "$BUILD_SHARDS" --client-shards 1 < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
 
@@ -94,8 +97,10 @@ jobs:
   # later pushes reuse.
   compile:
     name: compile
-    needs: setup
-    if: ${{ !github.event.pull_request.draft }}
+    needs: [setup, plan]
+    # Only for a full run: its shards and checks download one compile instead of each compiling. A PR-tier job compiles for itself,
+    # from the Gradle build cache (ADR 0116), so nothing waits for a compile job in front of it.
+    if: ${{ !github.event.pull_request.draft && needs.plan.outputs.build-needed == 'true' && needs.plan.outputs.server-full == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -139,7 +144,7 @@ jobs:
   build:
     name: build-shard ${{ matrix.shard }}
     needs: [setup, plan, compile]
-    if: ${{ !github.event.pull_request.draft && needs.plan.outputs.server-count != '0' }}
+    if: ${{ always() && !github.event.pull_request.draft && needs.plan.result == 'success' && needs.plan.outputs.server-count != '0' && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
@@ -164,6 +169,7 @@ jobs:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: ${{ matrix.shard }}
       - id: compiled
+        if: needs.compile.result == 'success'
         uses: ./.github/actions/download-compiled
         with:
           name: compiled-ci
@@ -171,7 +177,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
-      # Reads the cache seeded on main (cache-seed.yml); read-only here: the compile job saves what the PR's later pushes reuse.
+      # Reads the cache seeded on main (cache-seed.yml), the Gradle build cache with it: without a compile job's output it compiles
+      # for itself, and a source set it did not change comes from the cache. Read-only: build-checks saves.
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: true
@@ -193,8 +200,8 @@ jobs:
   # same-OS fallback rather than the same-job-id match.
   checks:
     name: build-checks
-    needs: [setup, compile]
-    if: ${{ !github.event.pull_request.draft }}
+    needs: [setup, plan, compile]
+    if: ${{ always() && !github.event.pull_request.draft && needs.plan.result == 'success' && needs.plan.outputs.build-needed == 'true' && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -213,6 +220,7 @@ jobs:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: checks
       - id: compiled
+        if: needs.compile.result == 'success'
         uses: ./.github/actions/download-compiled
         with:
           name: compiled-ci
@@ -221,9 +229,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
+      # The job that compiles for itself on the PR tier, so it saves the Gradle cache (and its build cache) for the PR's later pushes.
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
-          cache-read-only: true
+          cache-read-only: ${{ needs.compile.result == 'success' }}
       - run: tools/ci-gradle-resolve.sh build -x runGameTest ${{ steps.compiled.outputs.skip }}
       # The client run tasks never run on Linux. A dry run with the lock forced on still checks that
       # they serialize into the configuration cache (gradle/clientlock.gradle.kts).
@@ -242,18 +251,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # The server shards are skipped, not failed, when the plan selected no class: that is a pass for the shards only.
+      # A job the plan skipped is a pass: no Gradle job when nothing Gradle reads changed, no compile job for a PR-tier run, no shard when it
+      # selected no class. Anything else must have succeeded.
       - env:
           PLAN: ${{ needs.plan.result }}
           COMPILE: ${{ needs.compile.result }}
           SHARDS: ${{ needs.build.result }}
-          COUNT: ${{ needs.plan.outputs.server-count }}
           CHECKS: ${{ needs.checks.result }}
+          COUNT: ${{ needs.plan.outputs.server-count }}
+          NEEDED: ${{ needs.plan.outputs.build-needed }}
+          FULL: ${{ needs.plan.outputs.server-full }}
         run: |
-          shards_ok=false
-          if [ "$SHARDS" = success ] || { [ "$SHARDS" = skipped ] && [ "$COUNT" = 0 ]; }; then shards_ok=true; fi
-          if [ "$PLAN" != success ] || [ "$COMPILE" != success ] || [ "$shards_ok" != true ] || [ "$CHECKS" != success ]; then
-            echo "::error::plan finished as '$PLAN', compile as '$COMPILE', the build shards as '$SHARDS' ($COUNT selected) and build-checks as '$CHECKS', not all success"
+          ok() { [ "$1" = success ] || { [ "$1" = skipped ] && [ "$2" = true ]; }; }
+          compile_skippable=false
+          if [ "$NEEDED" != true ] || [ "$FULL" != true ]; then compile_skippable=true; fi
+          shards_skippable=false
+          if [ "$COUNT" = 0 ]; then shards_skippable=true; fi
+          checks_skippable=false
+          if [ "$NEEDED" != true ]; then checks_skippable=true; fi
+          if [ "$PLAN" != success ] || ! ok "$COMPILE" $compile_skippable || ! ok "$SHARDS" $shards_skippable || ! ok "$CHECKS" $checks_skippable; then
+            echo "::error::plan finished as '$PLAN', compile as '$COMPILE', the build shards as '$SHARDS' ($COUNT selected) and build-checks as '$CHECKS' (build needed: $NEEDED, full: $FULL)"
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -267,33 +284,35 @@ jobs:
           pattern: merged-main-*
           merge-multiple: true
           path: ${{ runner.temp }}/shard-main
-      # Every shard that ran, build-checks and the plan job merged one main; the notice records it. Main's tools/ci-shard-main.sh counts
-      # the numbered shards; build-checks and the plan job are compared here, and with no shard the notice is theirs.
+      # Every job that ran (the plan job always, build-checks, the compile job and the shards when they did) merged one main; the notice
+      # records it. Main's tools/ci-shard-main.sh counts the numbered shards; the others are compared here.
       - env:
           COUNT: ${{ needs.plan.outputs.server-count }}
           SHARD_KIND: build
         run: |
-          read -r checks < "$RUNNER_TEMP/shard-main/main-sha-checks" || true
           read -r plan < "$RUNNER_TEMP/shard-main/main-sha-plan" || true
-          read -r compile < "$RUNNER_TEMP/shard-main/main-sha-compile" || true
-          if [ -z "$checks" ] || [ "$checks" != "$plan" ] || [ "$checks" != "$compile" ]; then
-            echo "::error::build-checks merged main '$checks', the plan job '$plan' and the compile job '$compile'"
-            exit 1
-          fi
+          [ -n "$plan" ] || { echo "::error::the plan job recorded no merged main"; exit 1; }
+          for other in checks compile; do
+            if [ -f "$RUNNER_TEMP/shard-main/main-sha-$other" ]; then
+              read -r sha < "$RUNNER_TEMP/shard-main/main-sha-$other" || true
+              [ "$sha" = "$plan" ] || { echo "::error::the $other job merged main '$sha' but the plan job merged '$plan'"; exit 1; }
+            fi
+          done
           if [ "$COUNT" = 0 ]; then
-            echo "::notice title=merged-main::$checks"
+            echo "::notice title=merged-main::$plan"
           else
             read -r first < "$RUNNER_TEMP/shard-main/main-sha-1" || true
-            if [ "$checks" != "$first" ]; then
-              echo "::error::build-checks merged main '$checks' but build-shard 1 merged '$first'"
-              exit 1
-            fi
+            [ "$plan" = "$first" ] || { echo "::error::the plan job merged main '$plan' but build-shard 1 merged '$first'"; exit 1; }
             .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"
           fi
-      # What ran, for tools/merge-pr.sh: it lands only a head whose server suite ran whole (ADR 0116).
+      # What ran, for tools/merge-pr.sh (ADR 0116): it lands only a head whose server suite ran whole, and needs no build-checks or
+      # shard from one whose paths no Gradle task reads.
       - env:
           FULL: ${{ needs.plan.outputs.server-full }}
-        run: echo "::notice title=ci-tier::$([ "$FULL" = true ] && echo full || echo pr)"
+          NEEDED: ${{ needs.plan.outputs.build-needed }}
+        run: |
+          echo "::notice title=ci-tier::$([ "$FULL" = true ] && echo full || echo pr)"
+          [ "$NEEDED" = true ] || echo "::notice title=ci-gradle::skipped"
 
   # The tool tests run as parallel jobs: the Python unit tests in three parts, the shell tests in four, and the gate checks
   # on fixtures (Gradle, tool-gates below) in one. tools/ci_tool_parts.py picks each part's files by weight (tools/tests/ci-tool-test-weights.txt).
@@ -355,8 +374,9 @@ jobs:
   # for each shard count, one job each (4:30 together), and every other check (1:30). `tool-tests` below waits for them with the others.
   tool-gates:
     name: tool-tests-gates ${{ matrix.part }}
-    needs: [setup, compile]
-    if: ${{ !github.event.pull_request.draft }}
+    needs: [setup, plan, compile]
+    # The gate checks run Gradle: a push that changes nothing Gradle reads (docs, most of tools/) skips them.
+    if: ${{ always() && !github.event.pull_request.draft && needs.plan.result == 'success' && needs.plan.outputs.build-needed == 'true' && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
@@ -384,6 +404,7 @@ jobs:
           artifact: tool-main-${{ matrix.part }}
           file: ${{ matrix.part }}
       - id: compiled
+        if: needs.compile.result == 'success'
         uses: ./.github/actions/download-compiled
         with:
           name: compiled-ci
@@ -406,7 +427,7 @@ jobs:
   # records that main in its own `merged-main` notice (tools/ci-shard-main.sh, main's copy). It never merges main itself.
   tool-tests:
     name: tool-tests
-    needs: [tool-part, tool-gates]
+    needs: [plan, tool-part, tool-gates]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -414,9 +435,11 @@ jobs:
       - env:
           PARTS: ${{ needs.tool-part.result }}
           GATES: ${{ needs.tool-gates.result }}
+          NEEDED: ${{ needs.plan.outputs.build-needed }}
         run: |
-          if [ "$PARTS" != success ] || [ "$GATES" != success ]; then
-            echo "::error::The tool-test parts finished as '$PARTS' and the gate checks as '$GATES', not both success"
+          # The gate checks run Gradle, so the plan skips them when nothing Gradle reads changed.
+          if [ "$PARTS" != success ] || { [ "$GATES" != success ] && { [ "$GATES" != skipped ] || [ "$NEEDED" = true ]; }; }; then
+            echo "::error::The tool-test parts finished as '$PARTS' and the gate checks as '$GATES' (Gradle needed: $NEEDED)"
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -430,6 +453,8 @@ jobs:
           pattern: tool-main-*
           merge-multiple: true
           path: ${{ runner.temp }}/shard-main
-      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" 10
+      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$PARTS"
         env:
+          # Seven parts, and the three gate-check jobs when the plan ran them.
+          PARTS: ${{ needs.plan.outputs.build-needed == 'true' && '10' || '7' }}
           SHARD_KIND: tool

@@ -34,7 +34,7 @@ class ToolTestPartsTest(unittest.TestCase):
     def test_the_gate_checks_are_the_last_two_parts_in_a_job_of_their_own_with_the_compiled_build(self):
         gates = re.search(r"^  tool-gates:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)
         self.assertIsNotNone(gates, "ci.yml has no tool-gates job")
-        self.assertIn("needs: [setup, compile]\n", gates[1])
+        self.assertIn("needs: [setup, plan, compile]\n", gates[1])
         self.assertIn("name: compiled-ci", gates[1])
         self.assertIn("artifact: tool-main-${{ matrix.part }}", gates[1])
         self.assertIn("tools/tests/gate_checks.py $CHECKS", gates[1])
@@ -62,8 +62,10 @@ class ToolTestPartsTest(unittest.TestCase):
 
     def test_the_aggregate_waits_for_every_part_and_the_gate_checks(self):
         gate_jobs = len(re.findall(r"- \{ part: \d+, checks:", WORKFLOW))
-        self.assertIn(f'ci-shard-main.sh "$RUNNER_TEMP/shard-main" {len(matrix()) + gate_jobs}', WORKFLOW)
-        self.assertIn("needs: [tool-part, tool-gates]", WORKFLOW)
+        self.assertIn('ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$PARTS"', WORKFLOW)
+        # Seven parts always, and the gate-check jobs when the plan ran them (nothing Gradle reads changed: they are skipped).
+        self.assertIn(f"build-needed == 'true' && '{len(matrix()) + gate_jobs}' || '{len(matrix())}'", WORKFLOW)
+        self.assertIn("needs: [plan, tool-part, tool-gates]", WORKFLOW)
         self.assertIn("needs.tool-gates.result", WORKFLOW)
 
     def test_every_test_file_is_in_exactly_one_part_and_no_part_is_empty(self):

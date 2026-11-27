@@ -57,9 +57,11 @@ jobs:
       - id: decide
         env:
           GAMEPLAY_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'gameplay') && '1' || '0' }}
-          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          git diff --no-renames --name-only "$MAIN_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
+          # What the PR changed since it left its base branch (main for a PR into main): the same paths as main..merged head.
+          git diff --no-renames --name-only "$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
           echo "run=$(tools/ci-client-needed.sh "$GAMEPLAY_LABEL" < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
       # Which client classes the change can affect, or the whole suite (tools/ci_affected.py, ADR 0116). Unread when `run` is false.
       - uses: ./.github/actions/setup-python-uv
@@ -76,7 +78,8 @@ jobs:
   compile:
     name: client-compile
     needs: changes
-    if: needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0'
+    # Only for a full run, whose shards download one compile; a PR-tier shard compiles for itself from the Gradle build cache.
+    if: needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0' && needs.changes.outputs.client-full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -114,7 +117,7 @@ jobs:
   client-shard:
     name: client-gametest-shard ${{ matrix.shard }}
     needs: [changes, compile]
-    if: needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0'
+    if: ${{ always() && needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0' && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
     runs-on: ubuntu-latest
     # One shard holds at most gradle/ci-budget.txt's client-shard seconds of tests by measured weight (tools/tests/test_ci_budget.py checks it).
     # The action's own deadline (215 s from the step's start) ends the run with a message before this limit would kill it silently.
@@ -141,6 +144,7 @@ jobs:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: ${{ matrix.shard }}
       - id: compiled
+        if: needs.compile.result == 'success'
         uses: ./.github/actions/download-compiled
         with:
           name: compiled-client
@@ -166,10 +170,11 @@ jobs:
       # With no class selected (the PR tier, ADR 0116) the compile job and the shards are skipped, and that is a pass.
       - env:
           COUNT: ${{ needs.changes.outputs.client-count }}
+          FULL: ${{ needs.changes.outputs.client-full }}
           COMPILE: ${{ needs.compile.result }}
           SHARDS: ${{ needs.client-shard.result }}
         run: |
-          if [ "$COUNT" != 0 ] && { [ "$COMPILE" != success ] || [ "$SHARDS" != success ]; }; then
+          if [ "$COUNT" != 0 ] && { { [ "$COMPILE" != success ] && { [ "$COMPILE" != skipped ] || [ "$FULL" = true ]; }; } || [ "$SHARDS" != success ]; }; then
             echo "::error::client-compile finished as '$COMPILE' and the client shards as '$SHARDS' ($COUNT selected), not both success"
             exit 1
           fi
@@ -206,8 +211,9 @@ jobs:
             echo "::notice title=merged-main::$MAIN_SHA"
           else
             # ci-shard-main.sh counts the numbered shards; the compile job's sha must be the same one.
-            read -r compile < "$RUNNER_TEMP/shard-main/main-sha-compile" || true
             read -r first < "$RUNNER_TEMP/shard-main/main-sha-1" || true
+            compile=$first
+            [ ! -f "$RUNNER_TEMP/shard-main/main-sha-compile" ] || read -r compile < "$RUNNER_TEMP/shard-main/main-sha-compile" || true
             if [ -z "$compile" ] || [ "$compile" != "$first" ]; then
               echo "::error::client-compile merged main '$compile' but client-gametest-shard 1 merged '$first'"
               exit 1

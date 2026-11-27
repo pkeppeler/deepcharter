@@ -1,6 +1,7 @@
 # Seeds the Gradle cache on main, which PR runs can read (a PR's own caches are
 # invisible to other PRs). Main never runs the real CI, so this fires only when a
-# Gradle input changes, or by hand. `classes` resolves dependencies and sets up
+# Gradle input or the sources change, or by hand: it fills the Gradle build cache with the
+# compile of main's sources, which a PR's jobs take the source sets they did not change from (ADR 0116). `classes` resolves dependencies and sets up
 # Minecraft (Loom's download, merge and remap) for every source set, without
 # running any tests.
 name: Cache seed
@@ -13,6 +14,7 @@ on:
       - settings.gradle.kts
       - gradle.properties
       - gradle/**
+      - src/**
   workflow_dispatch:
 
 concurrency:
@@ -46,4 +48,4 @@ jobs:
           cache-read-only: false
       # Restores main's previous entry, so a broken one would otherwise stay broken (#830); also retries a
       # repository that fails to answer (#1358).
-      - run: tools/ci-gradle-resolve.sh classes
+      - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses

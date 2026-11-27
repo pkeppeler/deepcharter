@@ -3,6 +3,7 @@
 The mapping is tested on a small fixture tree (every rule, and the conservative fall-back), then on the real tree for what must hold
 whatever the code is: a docs change runs no GameTest, a batch PR runs everything, a change to a test class runs that class."""
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -126,6 +127,35 @@ class MappingTest(unittest.TestCase):
         self.assertEqual(["AlphaTest", "BetaTest", "DeltaTest", "GammaTest", "InnerTest"], names(result, "server"))
         self.assertEqual("3", result["server-count"])
         self.assertEqual("[1, 2, 3]", result["server-matrix"])
+
+
+class BuildNeededTest(unittest.TestCase):
+    def needed(self, *paths: str, **kwargs: object) -> str:
+        return plan(list(paths), **kwargs)["build-needed"]  # type: ignore[arg-type]
+
+    def test_docs_tools_and_prose_need_no_gradle_job(self):
+        for path in ("docs/a.md", "README.md", "tools/merge-pr.sh", "tools/tests/test_x.py", ".claude/CLAUDE.md", ".papercuts.jsonl", "LICENSE"):
+            with self.subTest(path):
+                self.assertEqual("false", self.needed(path))
+
+    def test_anything_else_needs_one(self):
+        for path in ("src/main/java/io/x/Island.java", "gradle/libs.versions.toml", "build.gradle.kts", "gradle.properties", "extras/new.txt", "src/lang/en_us/pod.json"):
+            with self.subTest(path):
+                self.assertEqual("true", self.needed(path))
+
+    def test_a_tool_a_gradle_gate_runs_needs_one(self):
+        for path in ("tools/TestOnlyGate.java", "tools/tests/gate_checks.py", "tools/tests/room_carver_gate_check.py"):
+            with self.subTest(path):
+                self.assertEqual("true", self.needed(path))
+
+    def test_the_workflows_and_a_batch_need_one(self):
+        self.assertEqual("true", self.needed(".github/workflows/ci.yml"))
+        self.assertEqual("true", self.needed("docs/a.md", head_ref="batch/20261127T101500Z"))
+
+    def test_the_deny_list_is_the_fingerprints(self):
+        script = (REPO / "tools/ci-reuse-compiled.sh").read_text()
+        shell = re.search(r"^DENY=\$'\^\[\^\\t\]\*\\t\((.*)\)'$", script, re.M)[1].replace("\\\\", "\\")
+        self.assertEqual(shell, affected._DENY.pattern[len("^("):-1])
 
 
 class FallBackTest(unittest.TestCase):

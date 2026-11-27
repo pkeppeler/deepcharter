@@ -8,6 +8,7 @@ Decides what CI runs for a pull request (ADR 0116). Reads the changed paths on s
   server-count     how many build shards run: the full count, the shards the affected classes need, or 0
   server-matrix    that count as a JSON list, [1, 2, ...], for the job's matrix
   client-*         the same for the client suite
+  build-needed     `false` when no changed path is one a Gradle task reads (docs, tools, workflows, agent files): then CI runs no Gradle job
 
 Both suites run whole for a batch PR (head ref `batch/*`), for a PR labelled `full-ci`, and for any change that can reach every test: build
 files, workflows and actions, mixins, data and lang resources, or an affected set that outweighs half the suite. Otherwise a class is
@@ -46,6 +47,10 @@ _EVERYTHING = (
     re.compile(r"^src/gametest/resources/"),
     re.compile(r"^src/lang/"),
 )
+# Paths no Gradle task reads, the same list as DENY in tools/ci-reuse-compiled.sh (test_ci_affected.py checks they agree): a push that
+# changes only these runs no Gradle job. A tool the build's gates run (a Java gate, a gate check) is read by Gradle after all.
+_DENY = re.compile(r"^(docs/|tools/|\.github/|\.claude/|\.githooks/|prompts/|\.papercuts\.jsonl$|[^/]*\.md$|LICENSE$)")
+_GRADLE_TOOL = re.compile(r"^tools/([^/]*\.java|tests/(gate_|[^/]*_gate_check\.py))")
 _ASSETS = re.compile(r"^src/(main|client)/resources/assets/")
 _JAVA = re.compile(r"^src/(main|client|gametest)/java/.*/([A-Za-z0-9_-]+)\.java$")
 _PACKAGE_INFO = re.compile(r"/package-info\.java$")
@@ -109,6 +114,7 @@ def plan(
         or any(rx.match(p) for p in changed for rx in _EVERYTHING)
         or any(_SRC.match(p) and not _JAVA.match(p) and not _ASSETS.match(p) for p in changed)
     )
+    build_needed = everything or any(not _DENY.match(p) or _GRADLE_TOOL.match(p) for p in changed)
     assets = [p for p in changed if _ASSETS.match(p)]
     java = {p for p in changed if _JAVA.match(p) and not _PACKAGE_INFO.search(p)}
     reached = affected_files(read_tree(root), java) if java and not everything else set()
@@ -142,6 +148,7 @@ def plan(
             )
         out.update({f"{suite}-full": "false", f"{suite}-classes": ",".join(chosen), f"{suite}-count": str(count)})
         out[f"{suite}-matrix"] = json.dumps(list(range(1, count + 1)))
+    out["build-needed"] = "true" if build_needed else "false"
     return out
 
 
