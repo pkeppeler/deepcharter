@@ -129,8 +129,8 @@ public class TallyTest {
                     for (int y = -1; y <= ARENA_HEIGHT; y++) {
                         boolean shell =
                                 y == -1 || y == ARENA_HEIGHT || Math.abs(u) == HALF + 1 || Math.abs(v) == HALF + 1;
-                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not layer
-                        // rock
+                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not
+                        // layer rock
                         level.setBlock(
                                 origin.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
                     }
@@ -380,9 +380,8 @@ public class TallyTest {
             for (int u = -HALF; u <= HALF; u++) {
                 for (int v = -HALF; v <= HALF; v++) {
                     for (int y = BORE_DEPTH; y < 0; y++) {
-                        // room-carver: the stone under this test's own arena, in the overworld test structure, not
-                        // layer
-                        // rock
+                        // room-carver: the stone under this test's own arena, in the overworld test structure,
+                        // not layer rock
                         level.setBlock(origin.offset(u, y, v), Blocks.STONE.defaultBlockState(), 3);
                     }
                 }

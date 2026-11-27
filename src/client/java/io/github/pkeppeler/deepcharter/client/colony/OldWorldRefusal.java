@@ -38,8 +38,8 @@ public final class OldWorldRefusal {
                 refusal.get().reason());
         worldStem.close();
         access.safeClose();
-        // Vanilla's screen, so the layout gate for the mod's own screens (test_screen_layout_gate.py) has nothing to
-        // check.
+        // Vanilla's screen, so the layout gate for the mod's own screens (test_screen_layout_gate.py) has nothing
+        // to check.
         Screen message = new AlertScreen(
                 onCancel,
                 Component.translatable("deepcharter.world_format.refused.title"),

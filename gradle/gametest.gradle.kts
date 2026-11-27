@@ -64,6 +64,18 @@ object GametestScan {
 	// or the comment line above it.
 	private const val FORCE_MARKER = "// force-ok:"
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
+	// A synchronous chunk load on the server thread (getChunk or getChunkAt, which load or generate the chunk and wait
+	// for it) stalls the one thread that every server GameTest in the batch shares, so a test beside it makes no
+	// progress; the suite spent most of its time there (#1016, #1020). A server test or its support waits with
+	// FarChunks.whenBlocksLoaded or awaitEntityTicking, which load the chunk on the worker threads, or marks the load
+	// with the comment below, with a reason, on its statement or the comment line above it: a load that must happen in
+	// one tick (under a WorldData.with), a chunk of the test's own structure or one an earlier wait loaded, which loads
+	// nothing. A getChunk or getChunkAt call or method reference is flagged; one whose last argument is the literal
+	// false does not load and is exempt. Client tests and evidence (test/evidence) run in a world of their own and are
+	// exempt too.
+	private const val SYNC_LOAD_MARKER = "// sync-load:"
+	private val chunkLoad = Regex("""\bgetChunk(?:At)?\s*\(|::\s*getChunk(?:At)?\b""")
+	private val nonLoadingArgument = Regex(""",\s*false\s*$""")
 	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
 	private val onEachTickCall = Regex("""\bonEachTick\b""")
@@ -122,6 +134,11 @@ object GametestScan {
 	// One step of a method for the light-settled gate, at [at] in the method read; [call] when a call of a same-file method brought it in, so
 	// two steps of one call share [at].
 	private class SettleStep(val kind: SettleKind, val at: Int, val call: Boolean)
+	// FarChunks.Deadline.await does not block (#1071, #1085), so a statement starting with `expect(` (`Failures.` prefix or not), `helper.fail(`,
+	// `helper.assert...(` or `throw` directly after `.await(...);` on a Deadline is flagged; comments between them do not count.
+	// Heuristic: only the direct next statement is seen, so any statement in between defeats it, and an assertion inside a helper method is not seen.
+	private const val AWAIT_MARKER = "// await-ok:"
+	private val expectAfterAwait = Regex("""^(?:(?:Failures\s*\.\s*)?expect\s*\(|helper\s*\.\s*(?:fail|assert\w*)\s*\(|throw\b)""")
 
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
@@ -183,6 +200,11 @@ object GametestScan {
 		return problems
 	}
 
+	// `.await(` on a name the file declares with a `Deadline` type, or on a `[n]` index of one; null when it declares none.
+	private fun namedDeadlineAwait(text: String): Regex? = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
+		.takeIf { it.isNotEmpty() }
+		?.let { names -> Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
+
 	private fun lightWaitProblems(
 		className: String,
 		text: String,
@@ -199,9 +221,7 @@ object GametestScan {
 			val bodyClose = if (bodyOpen < 0) -1 else closing(text, bodyOpen)
 			if (bodyClose < 0) null else bodyOpen..bodyClose
 		}.toList()
-		val deadlineAwait = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
-			.takeIf { it.isNotEmpty() }
-			?.let { names -> Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
+		val deadlineAwait = namedDeadlineAwait(text)
 		val problems = mutableListOf<String>()
 		for (read in lightRead.findAll(text)) {
 			val at = read.range.first
@@ -306,6 +326,29 @@ object GametestScan {
 						problems.add("$className:${line + 1} seats a pod after a RoomCarver carve (line ${lineOf(text, pending.at) + 1}) with no ClientWait.lightSettled between them, so a pod first tracked while the carve's chunk re-send is queued reaches its rider only after the send (#1303, ADR 0092); carve, call ClientWait.lightSettled over the room's chunks, then seat, or mark a seat the carve cannot affect with '$LIGHT_SETTLED_MARKER <reason>'")
 					}
 				}
+			}
+		}
+		return problems
+	}
+
+	private fun awaitThenExpectProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val awaits = (namedDeadlineAwait(text)?.findAll(text)?.toList() ?: emptyList()) + inlineDeadlineAwait.findAll(text).toList()
+		val problems = mutableListOf<String>()
+		for (await in awaits.sortedBy { it.range.first }) {
+			val close = closing(text, await.range.last)
+			if (close < 0) continue
+			val afterCall = text.substring(close + 1).trimStart()
+			if (!afterCall.startsWith(";")) continue
+			val next = afterCall.substring(1).trimStart()
+			if (!expectAfterAwait.containsMatchIn(next)) continue
+			val line = lineOf(text, text.length - next.length)
+			if (!marked(markedNear, rawLines, line, AWAIT_MARKER)) {
+				problems.add("$className:${line + 1} follows Deadline.await directly with an assertion (expect, helper.fail or assert, or a throw), but await does not block: while unsettled it sleeps about 2 ms and returns, so this fails on the first unsettled tick; return while unsettled, then assert once settled: `if (!settled) { ...; return; }` (#1071, #1085), or mark a legitimate case with '$AWAIT_MARKER <reason>'")
 			}
 		}
 		return problems
@@ -504,6 +547,17 @@ object GametestScan {
 					}
 				}
 			}
+			if (!isClientSide && !className.contains(".test.evidence.")) {
+				for (load in chunkLoad.findAll(text)) {
+					val open = load.range.last
+					// A method reference has no argument list, so it has no non-loading form either.
+					val arguments = if (text[open] == '(') text.substring(open + 1, closing(text, open).coerceAtLeast(open + 1)) else ""
+					val line = lineOf(text, load.range.first)
+					if (!nonLoadingArgument.containsMatchIn(arguments) && !marked(markedNear, rawLines, line, SYNC_LOAD_MARKER)) {
+						problems.add("$className:${line + 1} loads a chunk synchronously on the server thread, which stalls every test in the batch; wait for it with FarChunks.whenBlocksLoaded(helper, chunks, body) or FarChunks.awaitEntityTicking(helper, level, pos, body) (test/support), which load it on the worker threads, or mark a load that must be synchronous, or of a chunk that is loaded already, with '$SYNC_LOAD_MARKER <why>'")
+					}
+				}
+			}
 			if (source.name != "DedicatedServerRelease.java") {
 				for (raw in rawCreateServer.findAll(text)) {
 					problems.add("$className:${lineOf(text, raw.range.first) + 1} creates a dedicated server with worldBuilder().createServer, which keeps a watchdog thread holding the stopped server (#914); use DedicatedServerRelease.createServer(context, properties) (test/support)")
@@ -513,6 +567,7 @@ object GametestScan {
 			if (isClientSide) {
 				problems.addAll(lightSettledProblems(className, text, rawLines, markedNear))
 			}
+			problems.addAll(awaitThenExpectProblems(className, text, rawLines, markedNear))
 			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
 				problems.addAll(lightWaitProblems(className, text, rawLines, markedNear))
 			}
@@ -624,7 +679,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -647,6 +702,10 @@ tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
 	val keepClearProblems = project.extra["keepClearProblems"] as (File, File, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
 	val keepClearAdvice = project.extra["keepClearAdvice"] as String
+	// The orphan-comment gate's scan (orphan-comment-gate.gradle.kts), run the same way.
+	@Suppress("UNCHECKED_CAST")
+	val orphanCommentProblems = project.extra["orphanCommentProblems"] as (Iterable<File>, File) -> List<String>
+	val orphanCommentAdvice = project.extra["orphanCommentAdvice"] as String
 	// The null-marked gate's scan (null-marked-gate.gradle.kts), run the same way.
 	@Suppress("UNCHECKED_CAST")
 	val nullMarkedProblems = project.extra["nullMarkedProblems"] as (File, File) -> List<String>
@@ -699,6 +758,15 @@ tasks.register("checkGametestFixtures") {
 					val problems = keepClearProblems(root, root, markedNear)
 					if (problems.isNotEmpty()) {
 						throw GradleException("HUD elements that no popup knows to keep clear of. $keepClearAdvice\n  " + problems.joinToString("\n  "))
+					}
+					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
+					continue
+				}
+				if (c["gate"] == "orphan_comment") {
+					val root = File(c["root"] as String)
+					val problems = orphanCommentProblems(root.walkTopDown().toList(), root)
+					if (problems.isNotEmpty()) {
+						throw GradleException("One-word orphan comment lines. $orphanCommentAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue

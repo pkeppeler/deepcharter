@@ -111,8 +111,8 @@ public final class ColonyBuilder {
 
     /** Chooses the pad and records it, before any block is set. */
     private static ColonySite.Placed begin(MinecraftServer server, ServerLevel overworld, ColonySite site) {
-        // The server's own answer is the default until the first tick; the saved world data is the spawn the world
-        // chose.
+        // The server's own answer is the default until the first tick; the saved world data is the spawn the
+        // world chose.
         LevelData.RespawnData spawn = server.getWorldData().overworldData().getRespawnData();
         BlockPos wanted = new BlockPos(spawn.pos().getX(), 0, spawn.pos().getZ());
         BlockPos centre = findDryGround(overworld, wanted).orElseGet(() -> {

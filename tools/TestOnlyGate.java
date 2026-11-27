@@ -95,7 +95,7 @@ public final class TestOnlyGate {
         String firstTest;
     }
 
-    private record Member(ClassModel owner, String name, String descriptor, boolean field) {
+    record Member(ClassModel owner, String name, String descriptor, boolean field) {
         String refKey() {
             return TestOnlyGate.refKey(owner.thisClass().asInternalName(), name, field, descriptor);
         }
@@ -107,33 +107,35 @@ public final class TestOnlyGate {
         }
     }
 
-    private static String refKey(String owner, String name, boolean field, String descriptor) {
+    static String refKey(String owner, String name, boolean field, String descriptor) {
         return owner + "#" + name + (field ? ":" : "") + descriptor;
     }
 
     /** A source file's lines as code only, and each line's trailing {@code //} comment (null when none). */
-    private record Lexed(List<String> code, List<String> comments) {}
+    record Lexed(List<String> code, List<String> comments) {}
 
     /** A member declaration found in a source file: where, in which class, and its parameter types as written. */
-    private record Declaration(int line, String classPath, String name, boolean field, List<String> parameters) {}
+    record Declaration(
+            int line, String classPath, String name, boolean field, List<String> parameters, List<String> names) {}
 
-    private final Map<String, ClassModel> production = new LinkedHashMap<>();
+    final Map<String, ClassModel> production = new LinkedHashMap<>();
     private final Map<String, ClassModel> tests = new LinkedHashMap<>();
     private final List<ZipFile> jars = new ArrayList<>();
-    private final List<Path> classDirs = new ArrayList<>();
+    final List<Path> classDirs = new ArrayList<>();
     private final Map<String, ClassModel> loaded = new HashMap<>();
     private final Map<String, Refs> refs = new HashMap<>();
-    private final Map<Path, Lexed> lexed = new HashMap<>();
+    final Map<Path, Lexed> lexed = new HashMap<>();
     private final Map<Path, List<Declaration>> declarations = new HashMap<>();
     private final List<Path> sourceRoots;
-    private final Path root;
+    final Path root;
 
-    private TestOnlyGate(List<Path> sourceRoots, Path root) {
+    TestOnlyGate(List<Path> sourceRoots, Path root) {
         this.sourceRoots = sourceRoots;
         this.root = root;
     }
 
-    public static void main(String[] args) throws IOException {
+    /** The command line as {@code --option -> values}. */
+    static Map<String, List<String>> options(String[] args) {
         Map<String, List<String>> options = new HashMap<>();
         String current = null;
         for (String arg : args) {
@@ -144,6 +146,11 @@ public final class TestOnlyGate {
                 options.get(current).add(arg);
             }
         }
+        return options;
+    }
+
+    public static void main(String[] args) throws IOException {
+        Map<String, List<String>> options = options(args);
         for (String required : List.of("--production", "--tests", "--sources")) {
             if (options.getOrDefault(required, List.of()).isEmpty()) {
                 throw new IllegalArgumentException("TestOnlyGate: " + required + " is required");
@@ -176,7 +183,7 @@ public final class TestOnlyGate {
         }
     }
 
-    private void addClasspath(Path entry) throws IOException {
+    void addClasspath(Path entry) throws IOException {
         if (Files.isDirectory(entry)) {
             classDirs.add(entry);
         } else if (Files.isRegularFile(entry) && entry.toString().endsWith(".jar")) {
@@ -207,7 +214,7 @@ public final class TestOnlyGate {
         return findings;
     }
 
-    private static void read(List<Path> dirs, Map<String, ClassModel> into) throws IOException {
+    static void read(List<Path> dirs, Map<String, ClassModel> into) throws IOException {
         for (Path dir : dirs) {
             if (!Files.isDirectory(dir)) {
                 continue;
@@ -222,7 +229,7 @@ public final class TestOnlyGate {
         }
     }
 
-    private ClassModel find(String internalName) {
+    ClassModel find(String internalName) {
         ClassModel known = production.getOrDefault(internalName, tests.get(internalName));
         if (known != null) {
             return known;
@@ -260,7 +267,7 @@ public final class TestOnlyGate {
     }
 
     /** Every supertype of {@code model}. One that cannot be loaded fails the gate: it could declare the method an override implements. */
-    private List<ClassModel> supertypes(ClassModel model) {
+    List<ClassModel> supertypes(ClassModel model) {
         List<ClassModel> out = new ArrayList<>();
         ArrayDeque<String> queue = new ArrayDeque<>();
         Set<String> seen = new HashSet<>();
@@ -281,7 +288,7 @@ public final class TestOnlyGate {
         return out;
     }
 
-    private static void enqueueSupers(ClassModel model, ArrayDeque<String> queue) {
+    static void enqueueSupers(ClassModel model, ArrayDeque<String> queue) {
         model.superclass().ifPresent(parent -> queue.add(parent.asInternalName()));
         model.interfaces().forEach(parent -> queue.add(parent.asInternalName()));
     }
@@ -427,7 +434,7 @@ public final class TestOnlyGate {
         return out;
     }
 
-    private static boolean isLocalOrAnonymous(ClassModel model) {
+    static boolean isLocalOrAnonymous(ClassModel model) {
         String binary = model.thisClass().asInternalName();
         String last = binary.substring(binary.lastIndexOf('/') + 1);
         return Stream.of(last.split("\\$"))
@@ -436,7 +443,7 @@ public final class TestOnlyGate {
     }
 
     /** The methods that a bridge method of {@code model} calls: they implement a generic supertype method under another erasure. */
-    private static Set<String> bridgeTargets(ClassModel model) {
+    static Set<String> bridgeTargets(ClassModel model) {
         Set<String> targets = new HashSet<>();
         String self = model.thisClass().asInternalName();
         for (MethodModel bridge : model.methods()) {
@@ -459,7 +466,7 @@ public final class TestOnlyGate {
         return targets;
     }
 
-    private static boolean overrides(List<ClassModel> parents, String name, String parameters) {
+    static boolean overrides(List<ClassModel> parents, String name, String parameters) {
         return parents.stream()
                 .flatMap(parent -> parent.methods().stream())
                 .anyMatch(method -> method.methodName().stringValue().equals(name)
@@ -469,7 +476,7 @@ public final class TestOnlyGate {
     }
 
     /** The parameter part of a method descriptor, {@code (ILjava/lang/String;)}. */
-    private static String parameters(String descriptor) {
+    static String parameters(String descriptor) {
         return descriptor.substring(0, descriptor.indexOf(')') + 1);
     }
 
@@ -486,7 +493,7 @@ public final class TestOnlyGate {
                                         parent.thisClass().asInternalName()));
     }
 
-    private static Stream<Annotation> annotationsOf(AttributedElement element) {
+    static Stream<Annotation> annotationsOf(AttributedElement element) {
         return Stream.concat(
                 element.findAttribute(Attributes.runtimeVisibleAnnotations()).stream()
                         .flatMap(a -> a.annotations().stream()),
@@ -494,12 +501,12 @@ public final class TestOnlyGate {
                         .flatMap(a -> a.annotations().stream()));
     }
 
-    private static boolean hasSignificantAnnotation(AttributedElement element) {
+    static boolean hasSignificantAnnotation(AttributedElement element) {
         return annotationsOf(element)
                 .anyMatch(annotation -> !NOT_SIGNIFICANT_ANNOTATIONS.contains(simpleName(annotation)));
     }
 
-    private static String simpleName(Annotation annotation) {
+    static String simpleName(Annotation annotation) {
         String descriptor = annotation.className().stringValue();
         return descriptor.substring(
                 Math.max(descriptor.lastIndexOf('/'), descriptor.lastIndexOf('$')) + 1, descriptor.length() - 1);
@@ -511,14 +518,7 @@ public final class TestOnlyGate {
         String classPath = binary.substring(binary.lastIndexOf('/') + 1).replace('$', '.');
         String innermost = classPath.substring(classPath.lastIndexOf('.') + 1);
         boolean constructor = member.name().equals("<init>");
-        String label;
-        if (member.field()) {
-            label = classPath + "." + member.name();
-        } else if (constructor) {
-            label = "new " + classPath + "(" + parameterNames(member.descriptor()) + ")";
-        } else {
-            label = classPath + "." + member.name() + "(" + parameterNames(member.descriptor()) + ")";
-        }
+        String label = labelOf(member, classPath, 0);
         String sourceName = member.owner()
                 .findAttribute(Attributes.sourceFile())
                 .map(a -> a.sourceFile().stringValue())
@@ -529,14 +529,15 @@ public final class TestOnlyGate {
         boolean bare = false;
         if (source != null) {
             where = root.relativize(source.toAbsolutePath().normalize()).toString();
-            Declaration declaration = declarationOf(source, classPath, constructor ? innermost : member.name(), member);
+            Declaration declaration =
+                    declarationOf(source, classPath, constructor ? innermost : member.name(), member, 0);
             if (declaration == null && !constructor) {
                 throw new IllegalStateException(
                         where + ": cannot find the declaration of " + label + "; the gate's parser lost its place");
             }
             if (declaration != null) {
                 line = declaration.line();
-                String marker = markerFor(lexed.get(source), line);
+                String marker = markerFor(lexed.get(source), line, MARKER);
                 if (marker != null && !marker.isBlank()) {
                     return null;
                 }
@@ -551,13 +552,25 @@ public final class TestOnlyGate {
                 + (bare ? "; its '// test-seam:' marker has no reason" : "");
     }
 
-    private static String parameterNames(String descriptor) {
+    /** The member as source names it, without the first {@code skip} descriptor parameters. */
+    static String labelOf(Member member, String classPath, int skip) {
+        if (member.field()) {
+            return classPath + "." + member.name();
+        }
+        String parameters = parameterNames(member.descriptor(), skip);
+        return member.name().equals("<init>")
+                ? "new " + classPath + "(" + parameters + ")"
+                : classPath + "." + member.name() + "(" + parameters + ")";
+    }
+
+    private static String parameterNames(String descriptor, int skip) {
         return MethodTypeDesc.ofDescriptor(descriptor).parameterList().stream()
+                .skip(skip)
                 .map(ClassDesc::displayName)
                 .collect(Collectors.joining(", "));
     }
 
-    private Path locate(String binary, String sourceName) {
+    Path locate(String binary, String sourceName) {
         String directory = binary.contains("/") ? binary.substring(0, binary.lastIndexOf('/') + 1) : "";
         for (Path sourceRoot : sourceRoots) {
             Path candidate = sourceRoot.resolve(directory + sourceName);
@@ -568,12 +581,16 @@ public final class TestOnlyGate {
         return null;
     }
 
-    /** The declaration of {@code member} in {@code source}: same class, name and parameter types, so one overload or nested class never stands for another. */
-    private Declaration declarationOf(Path source, String classPath, String name, Member member) {
+    /**
+     * The declaration of {@code member} in {@code source}: same class, name and parameter types, so one overload or nested class never
+     * stands for another. The first {@code skip} descriptor parameters are ignored: javac added them.
+     */
+    Declaration declarationOf(Path source, String classPath, String name, Member member, int skip) {
         List<Declaration> all = declarations.computeIfAbsent(source, path -> declarationsIn(path));
         List<String> wanted = member.field()
                 ? List.of()
                 : MethodTypeDesc.ofDescriptor(member.descriptor()).parameterList().stream()
+                        .skip(skip)
                         .map(type ->
                                 type.displayName().substring(type.displayName().lastIndexOf('$') + 1))
                         .toList();
@@ -599,12 +616,26 @@ public final class TestOnlyGate {
         return true;
     }
 
+    /** The 1-based line where the class at {@code classPath} (dotted, nested) is declared in {@code source}, or 0 when it is not found. */
+    int classLine(Path source, String classPath) {
+        declarations.computeIfAbsent(source, path -> declarationsIn(path));
+        String innermost = classPath.substring(classPath.lastIndexOf('.') + 1);
+        Pattern declared = Pattern.compile("\\b(?:class|interface|enum|record)\\s+" + Pattern.quote(innermost) + "\\b");
+        List<String> code = lexed.get(source).code();
+        for (int i = 0; i < code.size(); i++) {
+            if (declared.matcher(code.get(i)).find()) {
+                return i + 1;
+            }
+        }
+        return 0;
+    }
+
     /**
-     * The text after {@code // test-seam:} on declaration {@code line} (1-based) or, when that line has none, on a line of the block
+     * The text after {@code // <marker>} on declaration {@code line} (1-based) or, when that line has none, on a line of the block
      * of comment-only lines directly above it.
      */
-    private static String markerFor(Lexed source, int line) {
-        String same = marker(source.comments().get(line - 1));
+    static String markerFor(Lexed source, int line, String marker) {
+        String same = marker(source.comments().get(line - 1), marker);
         if (same != null) {
             return same;
         }
@@ -613,7 +644,7 @@ public final class TestOnlyGate {
                         && source.code().get(above).isBlank()
                         && source.comments().get(above) != null;
                 above--) {
-            String found = marker(source.comments().get(above));
+            String found = marker(source.comments().get(above), marker);
             if (found != null) {
                 return found;
             }
@@ -693,12 +724,12 @@ public final class TestOnlyGate {
     /** A method, constructor or field declared on {@code code}, or null: a type or modifiers before the name, never a statement. */
     private static Declaration memberDeclaration(
             List<String> codeLines, int index, String code, String classPath, String className) {
-        Matcher first = Pattern.compile("[(=;,]").matcher(code);
-        if (!first.find()) {
+        int stop = endOfHead(code);
+        if (stop < 0) {
             return null;
         }
-        boolean method = code.charAt(first.start()) == '(';
-        String head = code.substring(0, first.start())
+        boolean method = code.charAt(stop) == '(';
+        String head = code.substring(0, stop)
                 .replaceAll("@\\w+(?:\\.\\w+)*(?:\\([^)]*\\))?", " ")
                 .replaceAll("<[^<>]*(?:<[^<>]*>[^<>]*)*>", " ")
                 .strip();
@@ -724,13 +755,36 @@ public final class TestOnlyGate {
             return null;
         }
         if (!method) {
-            return new Declaration(index + 1, classPath, name, true, List.of());
+            return new Declaration(index + 1, classPath, name, true, List.of(), List.of());
         }
-        return new Declaration(index + 1, classPath, name, false, parameterTypes(codeLines, index, first.start()));
+        List<String> declared = rawParameters(codeLines, index, stop);
+        return new Declaration(
+                index + 1,
+                classPath,
+                name,
+                false,
+                declared.stream().map(TestOnlyGate::simpleType).toList(),
+                declared.stream().map(TestOnlyGate::parameterName).toList());
     }
 
-    /** The parameter types as written, simple names, generics dropped, varargs as arrays. */
-    private static List<String> parameterTypes(List<String> codeLines, int index, int open) {
+    /** The index of the first {@code (}, {@code =}, {@code ;} or {@code ,} outside angle brackets: a comma in a generic type is not the end of the head. */
+    private static int endOfHead(String code) {
+        int angle = 0;
+        for (int i = 0; i < code.length(); i++) {
+            char c = code.charAt(i);
+            if (c == '<') {
+                angle++;
+            } else if (c == '>') {
+                angle--;
+            } else if (angle <= 0 && "(=;,".indexOf(c) >= 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Each parameter as written, annotations dropped: the text between the declaration's parentheses split at top-level commas. */
+    private static List<String> rawParameters(List<String> codeLines, int index, int open) {
         StringBuilder text = new StringBuilder();
         int depth = 0;
         boolean started = false;
@@ -773,14 +827,19 @@ public final class TestOnlyGate {
                 angle--;
             }
             if (c == ',' && angle == 0) {
-                out.add(simpleType(current.toString()));
+                out.add(current.toString());
                 current.setLength(0);
             } else {
                 current.append(c);
             }
         }
-        out.add(simpleType(current.toString()));
+        out.add(current.toString());
         return out;
+    }
+
+    private static String parameterName(String parameter) {
+        String stripped = parameter.strip();
+        return stripped.substring(stripped.lastIndexOf(' ') + 1);
     }
 
     private static String simpleType(String parameter) {
@@ -884,12 +943,12 @@ public final class TestOnlyGate {
     }
 
     /** The text after {@code // test-seam:} in a line's {@code //} comment (null when it has none), or null when there is no marker. */
-    private static String marker(String comment) {
+    private static String marker(String comment, String marker) {
         if (comment == null) {
             return null;
         }
         Matcher found =
-                Pattern.compile("^//\\s*" + Pattern.quote(MARKER) + "(.*)$").matcher(comment);
+                Pattern.compile("^//\\s*" + Pattern.quote(marker) + "(.*)$").matcher(comment);
         return found.find() ? found.group(1).trim() : null;
     }
 }

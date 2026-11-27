@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -869,17 +870,21 @@ public class TransmissionsTest {
         helper.succeed();
     }
 
-    @GameTest(maxTicks = TRIGGER_TICKS)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + TRIGGER_TICKS)
     public void aBreachCrossingFiresItsTransmissionAndItsBonusForTheCharter(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ServerLevel one = TestLayers.level(server, 1);
         ServerLevel two = TestLayers.level(server, 2);
-        // Generate the arrival area in layer 2 now so the crossing does not wait on it.
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                two.getChunk((int) BREACH_COLUMN / 16 + dx, (int) BREACH_COLUMN / 16 + dz);
-            }
-        }
+        // The crew crosses once the arrival area in layer 2 is loaded, so the crossing does not load it on the
+        // server thread.
+        int arrival = (int) BREACH_COLUMN / 16;
+        FarChunks.whenBlocksLoaded(
+                helper,
+                FarChunks.rect(two, arrival - 2, arrival - 2, arrival + 2, arrival + 2),
+                () -> crossBreach(helper, one));
+    }
+
+    private static void crossBreach(GameTestHelper helper, ServerLevel one) {
         MockPlayer crew = MockPlayers.join(helper, "tx-breach");
         CharterId charter = foundedCharter(helper, crew.player().getUUID());
         crew.player().setPermanentlyInvulnerable(true);
@@ -896,8 +901,8 @@ public class TransmissionsTest {
                 throw helper.assertionException("crossing into layer 2 should send t11, sent %s", delivered);
             }
             // The zone poll may have fired layer 1's zone transmissions on the way down: the account holds each bonus
-            // sent live, once. Founding replayed the repairs other tests fired into the shared world, and a replay pays
-            // nothing.
+            // sent live, once. Founding replayed the repairs other tests fired into the shared world, and a replay
+            // pays nothing.
             long paid = delivered.stream()
                     .map(TransmissionCatalog::require)
                     .filter(transmission -> !transmission.replay())

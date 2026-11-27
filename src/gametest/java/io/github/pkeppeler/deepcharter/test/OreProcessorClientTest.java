@@ -108,8 +108,8 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             });
             require(ore == 0, "the sold ore left the inventory, " + ore + " remain");
 
-            // #313, #363: four spoil in the parked pod's bay become two slag brick in its rack, and the account is not
-            // charged.
+            // #313, #363: four spoil in the parked pod's bay become two slag brick in its rack, and the account is
+            // not charged.
             singleplayer
                     .getServer()
                     .runOnServer(server -> PodLining.modify(parkedPod(server), state -> state.withSpoil(4)));

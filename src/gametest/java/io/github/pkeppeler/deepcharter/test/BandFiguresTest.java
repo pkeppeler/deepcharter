@@ -102,8 +102,8 @@ public class BandFiguresTest {
             if (ready[0] < 3) {
                 return;
             }
-            // The light engine runs behind the carve: the light of the ore the room replaced is read until it catches
-            // up.
+            // The light engine runs behind the carve: the light of the ore the room replaced is read until it
+            // catches up.
             boolean dark = Stream.of(one, two, surface)
                     .allMatch(room -> level.getBrightness(LightLayer.BLOCK, room) < TUNING.litBlockLight());
             deadline.await(helper, level, dark, () -> "the light of the old rock did not leave the rooms");
