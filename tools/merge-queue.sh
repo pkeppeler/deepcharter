@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Usage: tools/merge-queue.sh <pr-number>...
 #
-# Merges the given PRs one at a time, in order, through tools/merge-pr.sh (the gate).
+# Merges the given PRs one at a time, in order, through tools/merge-pr.sh --direct (the gate and GitHub's own squash
+# merge, so each PR shows as merged).
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
 #   - refusal carrying the "[stale-base]" marker (stale base): re-run the whole runs holding the head's
@@ -111,7 +112,7 @@ run_pr() {
     fi
     say "running the gate on PR #$pr"
     rc=0
-    "$merge_pr" "$pr" >"$tmp/out" 2>&1 || rc=$?
+    "$merge_pr" --direct "$pr" >"$tmp/out" 2>&1 || rc=$?
     out=$(cat "$tmp/out")
     if [[ -n $out ]]; then echo "$out"; fi
     state=$(pr_state "$pr")
