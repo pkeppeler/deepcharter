@@ -253,8 +253,6 @@ public class GrainedCrustTest {
         box(level, x + 4, x + 5, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, LayerBlocks.GRAINED_CRUST);
         int waterZ = Z - 6;
         int lavaZ = Z + 6;
-        level.setBlock(new BlockPos(x, FLOOR, waterZ), Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
-        level.setBlock(new BlockPos(x + 2, FLOOR, lavaZ), Blocks.LAVA.defaultBlockState(), Block.UPDATE_ALL);
         Arrival<Boolean> ready = ready(helper, level, x);
         long[] readyAt = {-1};
         int[] stayed = new int[2 * ROOM + 1];
@@ -266,6 +264,9 @@ public class GrainedCrustTest {
             }
             if (readyAt[0] < 0) {
                 readyAt[0] = level.getGameTime();
+                // Poured once the chunk ticks, so the flow runs in a chunk that is ticking (#1089).
+                level.setBlock(new BlockPos(x, FLOOR, waterZ), Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(new BlockPos(x + 2, FLOOR, lavaZ), Blocks.LAVA.defaultBlockState(), Block.UPDATE_ALL);
             }
             for (int z = Z - ROOM; z <= Z + ROOM; z++) {
                 int cell = z - (Z - ROOM);

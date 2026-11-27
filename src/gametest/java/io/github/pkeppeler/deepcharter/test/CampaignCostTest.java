@@ -22,7 +22,6 @@ import io.github.pkeppeler.deepcharter.test.support.BandCost.Ratchet;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Ratio;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Reading;
 import io.github.pkeppeler.deepcharter.test.support.BandCost.Window;
-import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColumnCost;
 import io.github.pkeppeler.deepcharter.test.support.ColumnCost.Measurement;
@@ -32,9 +31,11 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -160,28 +161,45 @@ public class CampaignCostTest {
     /**
      * A window's rows are the campaign world's, so it costs what its band does there: in each of {@link #SAME_ROWS_CHUNKS} and, for a
      * layer with structures, a chunk that holds a site of that layer, every block state and every biome cell of every row of the window, both band
-     * edges among them, are the campaign world's. It loads the chunks on the server thread, so it has a batch of its own.
+     * edges among them, are the campaign world's.
      */
-    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = MAX_TICKS)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void eachWindowHoldsTheCampaignWorldsRows(GameTestHelper helper) {
         ServerLevel campaign = world(helper, CAMPAIGN);
         BlockPos conduit = Colony.plannedAnchor(helper.getLevel().getServer(), ColonyAnchor.CONDUIT)
                 .orElseThrow(() -> failure(helper, "the colony's pad is not chosen, so no site can be found"));
+        Map<Window, Set<ChunkPos>> compared = new LinkedHashMap<>();
+        List<FarChunks.At> toLoad = new ArrayList<>();
         for (Window window : WINDOWS) {
             ServerLevel level = world(helper, window.world());
             Set<ChunkPos> chunks = new LinkedHashSet<>(SAME_ROWS_CHUNKS);
             LayerChain.campaignLayersIn(level).stream()
                     .filter(band -> !StructureKind.inLayer(band.layer()).isEmpty())
                     .forEach(band -> chunks.add(siteChunk(helper, campaign, band, conduit)));
+            compared.put(window, chunks);
             for (ChunkPos chunk : chunks) {
-                expectSameRows(helper, campaign.getChunk(chunk.x(), chunk.z()), level, window.world());
+                toLoad.add(new FarChunks.At(campaign, chunk.x(), chunk.z()));
+                toLoad.add(new FarChunks.At(level, chunk.x(), chunk.z()));
             }
         }
-        helper.succeed();
+        FarChunks.whenBlocksLoaded(helper, toLoad, () -> {
+            compared.forEach((window, chunks) -> {
+                ServerLevel level = world(helper, window.world());
+                for (ChunkPos chunk : chunks) {
+                    expectSameRows(helper, loaded(campaign, chunk), level, window.world());
+                }
+            });
+            helper.succeed();
+        });
+    }
+
+    private static LevelChunk loaded(ServerLevel level, ChunkPos chunk) {
+        return Objects.requireNonNull(
+                level.getChunkSource().getChunkNow(chunk.x(), chunk.z()), "whenBlocksLoaded loaded the chunk");
     }
 
     private static void expectSameRows(GameTestHelper helper, LevelChunk whole, ServerLevel level, String world) {
-        LevelChunk cut = level.getChunk(whole.getPos().x(), whole.getPos().z());
+        LevelChunk cut = loaded(level, whole.getPos());
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         int blocks = 0;
         int biomes = 0;
@@ -274,21 +292,27 @@ public class CampaignCostTest {
     }
 
     /** The windows and the reference put ore in a fresh column, so a band's rows are compared with a fill's (#743). */
-    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, maxTicks = MAX_TICKS)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void theCostWorldsRunTheZoneFill(GameTestHelper helper) {
-        for (String world : FILLED_WORLDS) {
-            ServerLevel level = world(helper, world);
-            // Not the column of the colony or of another test's cell: the middle of the sample, as ColumnCost samples
-            // it.
-            LevelChunk chunk = level.getChunk(CHUNK, CHUNK);
-            boolean ore = false;
-            for (LevelChunkSection section : chunk.getSections()) {
-                ore |= section.maybeHas(
-                        state -> OreRegistry.typeOf(state.getBlock()).isPresent());
-            }
-            expect(helper, ore, "%s has no ore in a fresh column", world);
-        }
-        helper.succeed();
+        // Not the column of the colony or of another test's cell: the middle of the sample, as ColumnCost
+        // samples it.
+        FarChunks.whenBlocksLoaded(
+                helper,
+                FILLED_WORLDS.stream()
+                        .map(world -> new FarChunks.At(world(helper, world), CHUNK, CHUNK))
+                        .toList(),
+                () -> {
+                    for (String world : FILLED_WORLDS) {
+                        LevelChunk chunk = loaded(world(helper, world), new ChunkPos(CHUNK, CHUNK));
+                        boolean ore = false;
+                        for (LevelChunkSection section : chunk.getSections()) {
+                            ore |= section.maybeHas(state ->
+                                    OreRegistry.typeOf(state.getBlock()).isPresent());
+                        }
+                        expect(helper, ore, "%s has no ore in a fresh column", world);
+                    }
+                    helper.succeed();
+                });
     }
 
     /**

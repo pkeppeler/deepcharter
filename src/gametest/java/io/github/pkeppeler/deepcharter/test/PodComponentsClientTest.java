@@ -81,8 +81,8 @@ public class PodComponentsClientTest implements FabricClientGameTest {
                 }
                 require(player.startRiding(pod), "the charter's founder could not mount the pod");
             });
-            // The registration, the parts and the hull reach the client in separate packets: wait for each value read
-            // below.
+            // The registration, the parts and the hull reach the client in separate packets: wait for each value
+            // read below.
             ClientWait.until(
                     context,
                     "the pod with its registration, parts and hull of " + HULL_NOW + "/" + HULL_MAX,

@@ -79,8 +79,8 @@ final class BandCrossing {
             int layer = next(seen.layer(), root.getY());
             if (layer != seen.layer()) {
                 SEEN.put(player.getUUID(), new Seen(level.dimension(), layer));
-                // Players of one vehicle raise one crossing of that vehicle; a player riding alone in the world crosses
-                // alone.
+                // Players of one vehicle raise one crossing of that vehicle; a player riding alone in the world
+                // crosses alone.
                 crossed.putIfAbsent(root, new int[] {seen.layer(), layer});
             }
         }

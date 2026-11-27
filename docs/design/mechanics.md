@@ -2619,6 +2619,25 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Open questions.** Whether the refill should grow with capacity once the canister exists; whether a toxin axis should join the air track or stand alone.
 
+
+## The breach and the cave-in sound like rock, not blasts (#1293, A)
+
+**Problem.** A crossing and a cave-in both played vanilla's explosion, which reads as a cartoon blast, and neither is one. Nothing explodes: a crust gives way under the drill, and a roof falls.
+
+**The breach (`breach.rumble`, `breach/rumble`, about 5.6 s).** Built by `breach_rumble` in `tools/sounds/recipes.py`, in three parts:
+
+1. **Strain** (to 1 s): a low groan (a saw sliding 44 to 74 Hz under a rising band) climbs in volume, with six dry ticks and a few creaks.
+2. **The give** (at 1.05 s): a sub-bass fracture (a sine falling 62 to 26 Hz with a 12 ms soft start) and a muffled thud, so it is felt more than heard. A short dry crackle of small stones (500 to 1,400 Hz) rides it, and nothing is bright.
+3. **The fall-through** (to the end): a dark cave tail (noise under a lowpass sliding 220 to 70 Hz), a trickle of debris that thins out, one faint metallic ping (a bar's inharmonic partials at 640 Hz) at 2.9 s, and a low dissonant tone (55, 58.3 and 77.8 Hz) that swells to a little past 2.5 s and dies. The last second fades to silence, so the layer's drone and the Lamp Hymn (`HymnMoments`, played at the same crossing) have the room.
+
+It plays to the pilot only, as the rumble did, from `BreachEffects.begin`: a crossing moves the pilot, so a sound at the old place would be left behind. Volume 0.7 in `sounds.json` and 0.8 at the call put its peak next to the hymn's.
+
+**The cave-in (`cave_in.collapse`, `layer/cave_in`, about 3.7 s).** `cave_in` in the same file: a muffled thump, a rockfall of stones and heavier blocks that thins over two seconds, two lesser thuds as the big ones land, and a thin trickle of debris. Dull throughout (nothing above 3.5 kHz to speak of). It plays at the collapse, from `CaveIns.fall`, and is encoded mono (`recipes.MONO`), because the game pans and fades only a mono sound: from 15 blocks away it is quieter and comes from the side the rock fell on, so you hear where it fell. The breach stays stereo, as it plays to the pilot and has no place.
+
+**Knobs.** The recipes' constants and seeds (2520, 2521, 2522); each sound's `volume` in `sounds.json`; the call's volume and pitch in `BreachEffects.begin` and `CaveIns.fall`. A skin replaces the OGGs.
+
+**Tests.** `test_soundgen.py` (`BreachSoundTest`: length, no bright transient at the give, the strain rising, the tail ending in near silence; the PCM hash and decode checks cover both recipes; `ChannelTest`: the cave-in OGG is mono and the breach OGG is stereo), `BoltDriverTest` (a collapse plays `cave_in.collapse` near it and no explosion), `BreachFadeHoldClientTest` (a crossing starts `breach.rumble` and not the explosion), `SoundEventsTest`.
+
 ## The Claim: caves, strata and abandoned shafts (#1277, A)
 
 **Problem.** The playtest: "in the initial part of digging down, it seems there are no caves. When it's all solid block on the scanner, it looks like the pod isn't moving." The dig from the colony crossed about 120 rows of solid regolith rock under the surface, and layer 1 was one rock from top to floor, so neither the wall nor the scanner showed progress.

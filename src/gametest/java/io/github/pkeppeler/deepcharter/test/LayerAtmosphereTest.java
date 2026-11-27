@@ -3,7 +3,9 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +20,6 @@ import net.minecraft.world.attribute.BedRule;
 import net.minecraft.world.attribute.EnvironmentAttribute;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 
@@ -44,7 +45,6 @@ public class LayerAtmosphereTest {
         LayerChain.Band band = TestLayers.band(level, layer);
         for (int zone = 0; zone < 3; zone++) {
             BlockPos pos = new BlockPos(0, band.minY() + band.height() * (5 - 2 * zone) / 6, 0);
-            level.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.FULL);
             Holder<Biome> biome = level.getBiome(pos);
             zones.putIfAbsent(biome.unwrapKey().orElseThrow().identifier(), pos);
         }
@@ -52,8 +52,21 @@ public class LayerAtmosphereTest {
         return zones;
     }
 
-    @GameTest
+    /** Chunk (0, 0) of every layer, which {@link #zones} reads the biome of. */
+    private static List<FarChunks.At> originChunks(GameTestHelper helper) {
+        List<FarChunks.At> chunks = new ArrayList<>();
+        for (int layer = 1; layer <= LayerChain.count(helper.getLevel().registryAccess()); layer++) {
+            chunks.add(new FarChunks.At(TestLayers.level(helper, layer), 0, 0));
+        }
+        return chunks;
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void everyZoneBiomeSetsItsLayersFogLightAndBedRules(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(helper, originChunks(helper), () -> everyZoneBiomeSetsItsAtmosphere(helper));
+    }
+
+    private static void everyZoneBiomeSetsItsAtmosphere(GameTestHelper helper) {
         for (int layer = 1; layer <= LayerChain.count(helper.getLevel().registryAccess()); layer++) {
             Atmosphere wanted = Objects.requireNonNull(ATMOSPHERE.get(layer), "a layer has no atmosphere in this test");
             ServerLevel level = TestLayers.level(helper, layer);
@@ -104,8 +117,12 @@ public class LayerAtmosphereTest {
     }
 
     /** The value a player's client and the server read at a place in the layer is the biome's, through the level's attribute system. */
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void theLevelReadsTheBiomeValueAtEachZone(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(helper, originChunks(helper), () -> theLevelReadsTheBiomeValue(helper));
+    }
+
+    private static void theLevelReadsTheBiomeValue(GameTestHelper helper) {
         for (int layer = 1; layer <= LayerChain.count(helper.getLevel().registryAccess()); layer++) {
             Atmosphere wanted = Objects.requireNonNull(ATMOSPHERE.get(layer), "a layer has no atmosphere in this test");
             ServerLevel level = TestLayers.level(helper, layer);

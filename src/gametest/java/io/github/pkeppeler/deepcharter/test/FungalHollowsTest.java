@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.surface.GiantFungusFeature;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -65,7 +66,7 @@ import org.slf4j.LoggerFactory;
 public class FungalHollowsTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(FungalHollowsTest.class);
     private static final String SAMPLE = "deepcharter:campaign_sample";
-    private static final int MAX_TICKS = 6000;
+    private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 6000;
     private static final int LAYER = 3;
     /** The low corner chunk of the sample, a square of {@link #SAMPLE_CHUNKS} chunks a side: no other campaign test generates it. */
     private static final int SAMPLE_CHUNK = 24;
@@ -86,30 +87,32 @@ public class FungalHollowsTest {
 
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theCavernsAreMostlyAir(GameTestHelper helper) {
-        ServerLevel level = TestLayers.level(helper, LAYER);
-        LayerChain.Band band = TestLayers.band(level, LAYER);
-        long[] open = new long[Zones.COUNT];
-        long[] cells = new long[Zones.COUNT];
-        for (BlockPos column : columns()) {
-            for (int y = band.minY(); y < band.minY() + band.height(); y++) {
-                int zone = Zones.index(band.minY(), band.height(), y);
-                cells[zone]++;
-                if (AirFaceLiningFeature.isOpen(state(level, column.atY(y)))) {
-                    open[zone]++;
+        whenSampleLoaded(helper, () -> {
+            ServerLevel level = TestLayers.level(helper, LAYER);
+            LayerChain.Band band = TestLayers.band(level, LAYER);
+            long[] open = new long[Zones.COUNT];
+            long[] cells = new long[Zones.COUNT];
+            for (BlockPos column : columns()) {
+                for (int y = band.minY(); y < band.minY() + band.height(); y++) {
+                    int zone = Zones.index(band.minY(), band.height(), y);
+                    cells[zone]++;
+                    if (AirFaceLiningFeature.isOpen(state(level, column.atY(y)))) {
+                        open[zone]++;
+                    }
                 }
             }
-        }
-        long allOpen = 0;
-        long all = 0;
-        for (int zone = 0; zone < Zones.COUNT; zone++) {
-            LOGGER.info("[fungal-hollows] zone {}: {} of {} cells open", zone, open[zone], cells[zone]);
-            allOpen += open[zone];
-            all += cells[zone];
-            expect(helper, open[zone] > 0, "zone %s of layer 3 has no cavern", zone);
-        }
-        double share = (double) allOpen / all;
-        expect(helper, share > MOSTLY_AIR, "layer 3 is %.2f open, not mostly air", share);
-        helper.succeed();
+            long allOpen = 0;
+            long all = 0;
+            for (int zone = 0; zone < Zones.COUNT; zone++) {
+                LOGGER.info("[fungal-hollows] zone {}: {} of {} cells open", zone, open[zone], cells[zone]);
+                allOpen += open[zone];
+                all += cells[zone];
+                expect(helper, open[zone] > 0, "zone %s of layer 3 has no cavern", zone);
+            }
+            double share = (double) allOpen / all;
+            expect(helper, share > MOSTLY_AIR, "layer 3 is %.2f open, not mostly air", share);
+            helper.succeed();
+        });
     }
 
     /**
@@ -120,38 +123,44 @@ public class FungalHollowsTest {
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void onlyTheFacesOpenToTheCavernsAreLined(GameTestHelper helper) {
-        ServerLevel level = TestLayers.level(helper, LAYER);
-        LayerChain.Band band = TestLayers.band(level, LAYER);
-        int depth = lining().get("depth").getAsInt();
-        int columns = 0;
-        int cores = 0;
-        for (BlockPos column : columns()) {
-            for (int y = band.minY(); y < band.minY() + band.height(); y++) {
-                BlockPos pos = column.atY(y);
-                BlockState state = state(level, pos);
-                if (state.is(LayerBlocks.COLUMNAR_BASALT)) {
-                    columns++;
-                    expect(helper, nearOpen(level, pos, depth), "a column at %s faces no cavern", pos.toShortString());
-                } else if (state.is(Blocks.LAVA)) {
-                    expect(
-                            helper,
-                            !nearOpen(level, pos, depth + AirFaceLiningFeature.SEAL_MARGIN),
-                            "the lava at %s lights a cavern",
-                            pos.toShortString());
-                } else if (state.is(LayerBlocks.BASALT_CORE)) {
-                    cores++;
-                    expect(
-                            helper,
-                            !nearOpen(level, pos, depth),
-                            "the core at %s faces a cavern within %s blocks and is not lined",
-                            pos.toShortString(),
-                            depth);
+        whenSampleLoaded(helper, () -> {
+            ServerLevel level = TestLayers.level(helper, LAYER);
+            LayerChain.Band band = TestLayers.band(level, LAYER);
+            int depth = lining().get("depth").getAsInt();
+            int columns = 0;
+            int cores = 0;
+            for (BlockPos column : columns()) {
+                for (int y = band.minY(); y < band.minY() + band.height(); y++) {
+                    BlockPos pos = column.atY(y);
+                    BlockState state = state(level, pos);
+                    if (state.is(LayerBlocks.COLUMNAR_BASALT)) {
+                        columns++;
+                        expect(
+                                helper,
+                                nearOpen(level, pos, depth),
+                                "a column at %s faces no cavern",
+                                pos.toShortString());
+                    } else if (state.is(Blocks.LAVA)) {
+                        expect(
+                                helper,
+                                !nearOpen(level, pos, depth + AirFaceLiningFeature.SEAL_MARGIN),
+                                "the lava at %s lights a cavern",
+                                pos.toShortString());
+                    } else if (state.is(LayerBlocks.BASALT_CORE)) {
+                        cores++;
+                        expect(
+                                helper,
+                                !nearOpen(level, pos, depth),
+                                "the core at %s faces a cavern within %s blocks and is not lined",
+                                pos.toShortString(),
+                                depth);
+                    }
                 }
             }
-        }
-        LOGGER.info("[fungal-hollows] {} columns and {} core blocks in the sample", columns, cores);
-        expect(helper, columns > 0 && cores > 0, "the sample has %s columns and %s core blocks", columns, cores);
-        helper.succeed();
+            LOGGER.info("[fungal-hollows] {} columns and {} core blocks in the sample", columns, cores);
+            expect(helper, columns > 0 && cores > 0, "the sample has %s columns and %s core blocks", columns, cores);
+            helper.succeed();
+        });
     }
 
     /**
@@ -249,33 +258,35 @@ public class FungalHollowsTest {
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void glowcapsGrowOnTheFloorsMostOfAllInTheGarden(GameTestHelper helper) {
-        ServerLevel level = TestLayers.level(helper, LAYER);
-        LayerChain.Band band = TestLayers.band(level, LAYER);
-        int[] found = new int[Zones.COUNT];
-        for (BlockPos column : grid(GLOWCAP_CHUNKS, 1)) {
-            for (int y = band.minY(); y < band.minY() + band.height(); y++) {
-                BlockPos pos = column.atY(y);
-                if (state(level, pos).is(LayerBlocks.GLOWCAP)) {
-                    found[Zones.index(band.minY(), band.height(), y)]++;
-                    expect(
-                            helper,
-                            state(level, pos).canSurvive(level, pos),
-                            "the glowcap at %s cannot stand on %s",
-                            pos.toShortString(),
-                            state(level, pos.below()));
+        whenGlowcapSampleLoaded(helper, () -> {
+            ServerLevel level = TestLayers.level(helper, LAYER);
+            LayerChain.Band band = TestLayers.band(level, LAYER);
+            int[] found = new int[Zones.COUNT];
+            for (BlockPos column : grid(GLOWCAP_CHUNKS, 1)) {
+                for (int y = band.minY(); y < band.minY() + band.height(); y++) {
+                    BlockPos pos = column.atY(y);
+                    if (state(level, pos).is(LayerBlocks.GLOWCAP)) {
+                        found[Zones.index(band.minY(), band.height(), y)]++;
+                        expect(
+                                helper,
+                                state(level, pos).canSurvive(level, pos),
+                                "the glowcap at %s cannot stand on %s",
+                                pos.toShortString(),
+                                state(level, pos.below()));
+                    }
                 }
             }
-        }
-        LOGGER.info("[fungal-hollows] glowcaps by zone, top first: {} {} {}", found[0], found[1], found[2]);
-        expect(
-                helper,
-                found[0] >= GARDEN_LEAD * found[1] && found[0] >= GARDEN_LEAD * found[2],
-                "the Garden grows %s glowcaps, the Spore Fields %s and the Quiet %s: not " + GARDEN_LEAD
-                        + " times each other zone's",
-                found[0],
-                found[1],
-                found[2]);
-        helper.succeed();
+            LOGGER.info("[fungal-hollows] glowcaps by zone, top first: {} {} {}", found[0], found[1], found[2]);
+            expect(
+                    helper,
+                    found[0] >= GARDEN_LEAD * found[1] && found[0] >= GARDEN_LEAD * found[2],
+                    "the Garden grows %s glowcaps, the Spore Fields %s and the Quiet %s: not " + GARDEN_LEAD
+                            + " times each other zone's",
+                    found[0],
+                    found[1],
+                    found[2]);
+            helper.succeed();
+        });
     }
 
     /**
@@ -286,49 +297,50 @@ public class FungalHollowsTest {
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void everyFeaturePlacesInsideItsOwnChunk(GameTestHelper helper) {
-        ServerLevel level = TestLayers.level(helper, LAYER);
-        Set<PlacedFeature> features = new LinkedHashSet<>();
-        level.registryAccess()
-                .lookupOrThrow(Registries.BIOME)
-                .getTagOrEmpty(FUNGAL_HOLLOWS)
-                .forEach(biome -> biome.value()
-                        .getGenerationSettings()
-                        .features()
-                        .forEach(step -> step.stream().map(Holder::value).forEach(features::add)));
-        expect(helper, !features.isEmpty(), "the zone biomes have no features");
-        int positions = 0;
-        for (int dx = 0; dx < SAMPLE_CHUNKS; dx++) {
-            for (int dz = 0; dz < SAMPLE_CHUNKS; dz++) {
-                ChunkPos chunk = new ChunkPos(SAMPLE_CHUNK + dx, SAMPLE_CHUNK + dz);
-                level.getChunk(chunk.x(), chunk.z());
-                for (PlacedFeature feature : features) {
-                    PlacementContext context =
-                            new PlacementContext(level, level.getChunkSource().getGenerator(), Optional.of(feature));
-                    RandomSource random = RandomSource.create(chunk.pack());
-                    List<BlockPos> picked = List.of(chunk.getWorldPosition());
-                    for (PlacementModifier modifier : feature.placement()) {
-                        List<BlockPos> next = new ArrayList<>();
-                        for (BlockPos pos : picked) {
-                            modifier.modify(context, random, pos, next::add);
+        whenSampleLoaded(helper, () -> {
+            ServerLevel level = TestLayers.level(helper, LAYER);
+            Set<PlacedFeature> features = new LinkedHashSet<>();
+            level.registryAccess()
+                    .lookupOrThrow(Registries.BIOME)
+                    .getTagOrEmpty(FUNGAL_HOLLOWS)
+                    .forEach(biome -> biome.value()
+                            .getGenerationSettings()
+                            .features()
+                            .forEach(step -> step.stream().map(Holder::value).forEach(features::add)));
+            expect(helper, !features.isEmpty(), "the zone biomes have no features");
+            int positions = 0;
+            for (int dx = 0; dx < SAMPLE_CHUNKS; dx++) {
+                for (int dz = 0; dz < SAMPLE_CHUNKS; dz++) {
+                    ChunkPos chunk = new ChunkPos(SAMPLE_CHUNK + dx, SAMPLE_CHUNK + dz);
+                    for (PlacedFeature feature : features) {
+                        PlacementContext context = new PlacementContext(
+                                level, level.getChunkSource().getGenerator(), Optional.of(feature));
+                        RandomSource random = RandomSource.create(chunk.pack());
+                        List<BlockPos> picked = List.of(chunk.getWorldPosition());
+                        for (PlacementModifier modifier : feature.placement()) {
+                            List<BlockPos> next = new ArrayList<>();
+                            for (BlockPos pos : picked) {
+                                modifier.modify(context, random, pos, next::add);
+                            }
+                            for (BlockPos pos : next) {
+                                expect(
+                                        helper,
+                                        ChunkPos.containing(pos).equals(chunk),
+                                        "%s placed for chunk %s picks %s, in chunk %s",
+                                        feature.feature().getRegisteredName(),
+                                        chunk,
+                                        pos.toShortString(),
+                                        ChunkPos.containing(pos));
+                            }
+                            positions += next.size();
+                            picked = next;
                         }
-                        for (BlockPos pos : next) {
-                            expect(
-                                    helper,
-                                    ChunkPos.containing(pos).equals(chunk),
-                                    "%s placed for chunk %s picks %s, in chunk %s",
-                                    feature.feature().getRegisteredName(),
-                                    chunk,
-                                    pos.toShortString(),
-                                    ChunkPos.containing(pos));
-                        }
-                        positions += next.size();
-                        picked = next;
                     }
                 }
             }
-        }
-        expect(helper, positions > 0, "no feature of layer 3 picked a position");
-        helper.succeed();
+            expect(helper, positions > 0, "no feature of layer 3 picked a position");
+            helper.succeed();
+        });
     }
 
     /**
@@ -475,59 +487,61 @@ public class FungalHollowsTest {
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theSporeFieldsHoldTheMostGas(GameTestHelper helper) {
-        ServerLevel level = TestLayers.level(helper, LAYER);
-        LayerChain.Band band = TestLayers.band(level, LAYER);
-        long[] candidates = new long[Zones.COUNT];
-        long[] gas = new long[Zones.COUNT];
-        for (BlockPos column : allColumns()) {
-            // The crust rows at the floor are the material rule's, which the fill never sees.
-            for (int y = band.minY() + LayerTuning.DEFAULT.crustThickness(); y < band.minY() + band.height(); y++) {
-                BlockState state = state(level, column.atY(y));
-                int zone = Zones.index(band.minY(), band.height(), y);
-                if (isCandidate(state)) {
-                    candidates[zone]++;
-                    if (state.is(HazardBlocks.GAS_POCKET)) {
-                        gas[zone]++;
+        whenSampleLoaded(helper, () -> {
+            ServerLevel level = TestLayers.level(helper, LAYER);
+            LayerChain.Band band = TestLayers.band(level, LAYER);
+            long[] candidates = new long[Zones.COUNT];
+            long[] gas = new long[Zones.COUNT];
+            for (BlockPos column : allColumns()) {
+                // The crust rows at the floor are the material rule's, which the fill never sees.
+                for (int y = band.minY() + LayerTuning.DEFAULT.crustThickness(); y < band.minY() + band.height(); y++) {
+                    BlockState state = state(level, column.atY(y));
+                    int zone = Zones.index(band.minY(), band.height(), y);
+                    if (isCandidate(state)) {
+                        candidates[zone]++;
+                        if (state.is(HazardBlocks.GAS_POCKET)) {
+                            gas[zone]++;
+                        }
                     }
                 }
             }
-        }
-        double[] chances = new double[Zones.COUNT];
-        for (int zone = 0; zone < Zones.COUNT; zone++) {
-            JsonObject fill = fill(band, zone);
-            double ores = 0;
-            for (JsonElement ore : fill.getAsJsonArray("ores")) {
-                ores += ore.getAsJsonObject().get("chance").getAsDouble();
+            double[] chances = new double[Zones.COUNT];
+            for (int zone = 0; zone < Zones.COUNT; zone++) {
+                JsonObject fill = fill(band, zone);
+                double ores = 0;
+                for (JsonElement ore : fill.getAsJsonArray("ores")) {
+                    ores += ore.getAsJsonObject().get("chance").getAsDouble();
+                }
+                double chance = (1 - ores) * hazard(fill, "deepcharter:gas_pocket");
+                chances[zone] = chance;
+                double expected = candidates[zone] * chance;
+                double tolerance = 5 * Math.sqrt(candidates[zone] * chance * (1 - chance)) + 1;
+                LOGGER.info(
+                        "[fungal-hollows] zone {}: {} gas pockets in {} candidates, expected {} +- {}",
+                        zone,
+                        gas[zone],
+                        candidates[zone],
+                        Math.round(expected),
+                        Math.round(tolerance));
+                expect(
+                        helper,
+                        Math.abs(gas[zone] - expected) <= tolerance,
+                        "zone %s has %s gas pockets in %s candidates, expected %.0f +- %.0f",
+                        zone,
+                        gas[zone],
+                        candidates[zone],
+                        expected,
+                        tolerance);
             }
-            double chance = (1 - ores) * hazard(fill, "deepcharter:gas_pocket");
-            chances[zone] = chance;
-            double expected = candidates[zone] * chance;
-            double tolerance = 5 * Math.sqrt(candidates[zone] * chance * (1 - chance)) + 1;
-            LOGGER.info(
-                    "[fungal-hollows] zone {}: {} gas pockets in {} candidates, expected {} +- {}",
-                    zone,
-                    gas[zone],
-                    candidates[zone],
-                    Math.round(expected),
-                    Math.round(tolerance));
             expect(
                     helper,
-                    Math.abs(gas[zone] - expected) <= tolerance,
-                    "zone %s has %s gas pockets in %s candidates, expected %.0f +- %.0f",
-                    zone,
-                    gas[zone],
-                    candidates[zone],
-                    expected,
-                    tolerance);
-        }
-        expect(
-                helper,
-                chances[1] > chances[0] && chances[1] > chances[2],
-                "the Spore Fields' gas %s is not the most of the layer: %s and %s",
-                chances[1],
-                chances[0],
-                chances[2]);
-        helper.succeed();
+                    chances[1] > chances[0] && chances[1] > chances[2],
+                    "the Spore Fields' gas %s is not the most of the layer: %s and %s",
+                    chances[1],
+                    chances[0],
+                    chances[2]);
+            helper.succeed();
+        });
     }
 
     private static boolean isCandidate(BlockState state) {
@@ -571,7 +585,33 @@ public class FungalHollowsTest {
         return out;
     }
 
+    /**
+     * The sample and a chunk of margin round it, which the lining reads across a chunk's edge, loaded before
+     * {@code body} runs.
+     */
+    private static void whenSampleLoaded(GameTestHelper helper, Runnable body) {
+        whenLoaded(helper, SAMPLE_CHUNKS, 1, body);
+    }
+
+    /** The {@link #GLOWCAP_CHUNKS} chunks the glowcaps are counted over, loaded before {@code body} runs. */
+    private static void whenGlowcapSampleLoaded(GameTestHelper helper, Runnable body) {
+        whenLoaded(helper, GLOWCAP_CHUNKS, 0, body);
+    }
+
+    private static void whenLoaded(GameTestHelper helper, int chunks, int margin, Runnable body) {
+        FarChunks.whenBlocksLoaded(
+                helper,
+                FarChunks.rect(
+                        TestLayers.level(helper, LAYER),
+                        SAMPLE_CHUNK - margin,
+                        SAMPLE_CHUNK - margin,
+                        SAMPLE_CHUNK + chunks - 1 + margin,
+                        SAMPLE_CHUNK + chunks - 1 + margin),
+                body);
+    }
+
     private static BlockState state(ServerLevel level, BlockPos pos) {
+        // sync-load: every caller waited with whenSampleLoaded or whenGlowcapSampleLoaded
         return level.getChunk(pos).getBlockState(pos);
     }
 
