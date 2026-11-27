@@ -8,6 +8,7 @@
 # PodLoadClientTest: one local run (#1449), 24 s, scaled by CockpitHudClientTest's local-to-CI ratio (48 s to 36); refresh from CI.
 # ContinuityPackClientTest: one CI run (#1377, shard 2), from its START line to the next; refresh from CI.
 # RealInputTypingClientTest: one local run (#1385); refresh from CI.
+# CockpitTitlesClientTest: two local runs (#1436), 15 and 16 s, beside CockpitHudClientTest at 48 and 49 s, scaled by its CI weight (36): 12; refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
 BlockReadoutClientTest 16
@@ -26,6 +27,7 @@ CatalogueToggleClientTest 22
 CavernSkyClientTest 49
 CharterCoreClientTest 26
 CockpitHudClientTest 36
+CockpitTitlesClientTest 12
 ContinuityPackClientTest 101
 ContractTerminalClientTest 12
 CrtTitleCornerClientTest 68

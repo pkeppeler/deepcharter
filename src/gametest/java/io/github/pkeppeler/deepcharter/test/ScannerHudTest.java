@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.client.ui.PixelDigits;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
@@ -365,11 +366,13 @@ public class ScannerHudTest implements FabricClientGameTest {
     }
 
     /**
-     * At the default GUI the panel's left edge stays right of the altimeter. It is centred at 213 and "-12,345 ft." is 66 pixels
-     * wide, so it ends at 246.
+     * At the default GUI the panel's left edge stays right of the altimeter. The longest reading is centred on the GUI in the
+     * cockpit's pixel digits (#1539), so it ends half its width past the middle.
      */
     private static void expectPanelClearsAltimeter() {
-        int altimeterRight = 246;
+        int readingWidth = PixelDigits.width(
+                PixelDigits.LONGEST_READING, CockpitLook.current().digits());
+        int altimeterRight = (427 + readingWidth) / 2;
         for (int tier = 1; tier <= ComponentTrack.SCANNER.maxTier(); tier++) {
             ScanArea area = TUNING.area(tier);
             int panelLeft = ScannerHud.cellLeft(427, 240, area, -area.halfWidth()) - 1;
