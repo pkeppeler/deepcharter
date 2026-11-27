@@ -327,7 +327,7 @@ final class TestSiteTable {
         claim("OreHostTest", 1, 7399, 7408, 3007, 3009);
         claim("OreHostTest", 2, 7399, 7408, 3015, 3017);
         claim("OreHostTest", 3, 7399, 7408, 3023, 3025);
-        claim("OreHostTest", 1, 7024, 7071, 7040, 7087);
+        claim("OreHostTest", 1, 7024, 7135, 7040, 7135);
 
         claim("OrePlacementTest", 1, 7088, 7103, 2992, 3007);
         claim("OrePlacementTest", 1, 7792, 7807, 2992, 3007);
