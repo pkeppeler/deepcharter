@@ -822,12 +822,8 @@ public class GiantFungusTest {
         helper.succeed();
     }
 
-    /**
-     * How far above the test a giant is grown for a collapse, off every neighbour, and how long a collapse may take.
-     */
+    /** How far above the test a giant is grown for a collapse, off every neighbour. */
     private static final int SKY = 60;
-
-    private static final int COLLAPSE_TICKS = 300;
 
     /** Grows {@code layout} with its base at {@code base} on a stone pad, every cell set as the placer sets it. */
     private static void grow(ServerLevel level, GiantLayout layout, BlockPos base) {
@@ -856,10 +852,11 @@ public class GiantFungusTest {
      * and the stem above it comes down with its cap, while the arms beside the break, the flare and the glowcaps
      * stand; break one spire of a cluster and it falls, and the others stand.
      *
-     * <p>The collapse steps on scheduled ticks, which run only in a ticking chunk, and the spires stand 40 blocks off
-     * the test, so both giants are grown once every chunk they span is entity-ticking.
+     * <p>The collapse bursts in the tick of the break, but {@code StalkCollapse.loaded()} counts an unloaded neighbour
+     * as standing, and the spires stand 40 blocks off the test, so both giants are grown once every chunk they span is
+     * entity-ticking.
      */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + COLLAPSE_TICKS + 40)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void aGiantFallsAsAStalkDoes(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos parasolBase = helper.absolutePos(new BlockPos(0, 2, 0)).above(SKY);
@@ -888,7 +885,6 @@ public class GiantFungusTest {
                         throw helper.assertionException("the giants' chunks are not entity-ticking yet");
                     }
                 })
-                .thenIdle(COLLAPSE_TICKS)
                 .thenExecute(() -> {
                     try {
                         parasol.pieces().forEach((cell, piece) -> {
@@ -931,7 +927,7 @@ public class GiantFungusTest {
      * Breaking a parasol's foot flare, on the floor under one of its stem's arms, takes only the flare: the stem stands
      * on its core, so a player scraping the foot does not fell the giant (#1218).
      */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + COLLAPSE_TICKS + 40)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void aBrokenFlareLeavesTheParasolStanding(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos base = helper.absolutePos(new BlockPos(0, 2, 0)).above(SKY);
@@ -955,7 +951,6 @@ public class GiantFungusTest {
                         throw helper.assertionException("the parasol's chunks are not entity-ticking yet");
                     }
                 })
-                .thenIdle(COLLAPSE_TICKS)
                 .thenExecute(() -> {
                     try {
                         parasol.pieces().forEach((cell, piece) -> {
