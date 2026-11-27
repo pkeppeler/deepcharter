@@ -114,6 +114,22 @@ else:
     echo "(could not fetch PRs)"
   fi
   echo
+  # One line when playtest-feedback issues exist past the marker the player-experience skill has learned from.
+  skill=.claude/skills/player-experience/SKILL.md
+  marker=$(sed -n 's/^Learned through playtest-feedback issue: #\([0-9][0-9]*\).*/\1/p' "$skill" 2>/dev/null | head -1)
+  if [ -z "$marker" ]; then
+    echo "(could not read the playtest marker in $skill)"
+  elif fresh=$(t gh api "repos/$R/issues?labels=playtest-feedback&state=all&sort=created&direction=desc&per_page=100" \
+    --jq "[.[] | select(has(\"pull_request\") | not) | select(.number > $marker)] | length"); then
+    case ${fresh:-0} in
+      0) ;;
+      1) echo "1 new playtest issue: run /refresh-player-experience" ;;
+      *) echo "$fresh new playtest issues: run /refresh-player-experience" ;;
+    esac
+  else
+    echo "(could not check for new playtest issues)"
+  fi
+  echo
   echo "## Local-only state (not on GitHub)"
   git status --porcelain | sed 's/^/uncommitted: /'
   # A worktree-agent-* branch still checked out in a worktree is live: the worktree line lists it.

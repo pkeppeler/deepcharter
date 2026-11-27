@@ -9,6 +9,7 @@ The user is hands-off on this project except for top-level calls. They don't rea
   - `reviewer` cycle 1, with fixes made
   - `simplifier`
   - `reviewer` cycle 2 passed
+  - on a `gameplay` PR, `player-experience-reviewer` runs beside `reviewer` in cycle 1 and cycle 2, and its Critical and Warning findings are fixed too. `/refresh-player-experience` keeps its checklist current from `playtest-feedback` issues.
 - **No cap on review cycles.** If a Critical survives cycle 2, fix it and run the gate again until it passes. Never park a PR for the user because of a failed review cycle.
 - **Merge only when all checks are green.** GitHub does not enforce this: every session acts as the repo admin, and roadmap and papercut commits go straight to `main`, so required checks would block those or be bypassed. A ruleset (`protect-main`) blocks force-push and deletion of `main`. Merge only through `tools/merge-batch.sh <n>...` for two or more PRs (one CI run on an integration branch, landed by a fast-forward push; the PRs show as closed, not merged, [ADR 0106](../docs/adr/0106-reviewed-prs-merge-in-batches-on-an-integration-branch-with-one-ci-run.md)), `tools/merge-pr.sh <n>` for one, or `tools/merge-queue.sh <n>...` to merge them one at a time, also when a PR must show GitHub's merged state (it waits for CI, re-runs a stale base, and cleans up worktrees). All refuse and give the reason.
 - **Code, test, evidence-scenario or tool work loads the `deepcharter-conventions` skill first.** It holds the code layout, the M2 rules, the test and evidence rules and the toolchain commands.
@@ -44,6 +45,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
   - the pinned **Orchestrator handoff** issue (label `handoff`), with a one-line warning when it breaks the rules below
   - derived facts: the next free ADR number on `origin/main` and the last 15 merged PRs
   - open PRs with their pipeline stage
+  - one line when `playtest-feedback` issues exist past the player-experience marker
   - local-only git state (`worktree-agent-*` branches with no upstream collapse to one count)
 
   Resume in-flight work first, then the open milestone's issues in priority order.
