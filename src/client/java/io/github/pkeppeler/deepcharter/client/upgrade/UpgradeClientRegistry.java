@@ -4,13 +4,17 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItem;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
+import io.github.pkeppeler.deepcharter.upgrade.PartLift;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.minecraft.network.chat.Component;
 
-/** Registers the upgrade terminal's online screen and the tooltip of a part that has no label. */
+/** Registers the upgrade terminal's online screen the tooltip of a part that has no label and the lift line of an engine part. */
 public final class UpgradeClientRegistry {
     /** The tooltip lines come after the item's name. */
     private static final int AFTER_NAME = 1;
+
+    /** A label's two lines, tier and serial, come before the lift. */
+    private static final int AFTER_LABEL = 3;
 
     private UpgradeClientRegistry() {}
 
@@ -22,5 +26,7 @@ public final class UpgradeClientRegistry {
                 lines.add(AFTER_NAME, Component.translatable("item.deepcharter.part.unlabelled"));
             }
         });
+        ItemTooltipCallback.EVENT.register((stack, context, flag, lines) ->
+                PartLift.line(stack).ifPresent(line -> lines.add(Math.min(AFTER_LABEL, lines.size()), line)));
     }
 }
