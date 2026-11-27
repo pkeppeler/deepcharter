@@ -35,7 +35,7 @@ class ToolTestPartsTest(unittest.TestCase):
     def test_the_gate_checks_are_the_last_two_parts_in_a_job_of_their_own_with_the_compiled_build(self):
         gates = re.search(r"^  tool-gates:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)
         self.assertIsNotNone(gates, "ci.yml has no tool-gates job")
-        self.assertIn("needs: compile\n", gates[1])
+        self.assertIn("needs: [setup, compile]\n", gates[1])
         self.assertIn("name: compiled-ci", gates[1])
         self.assertIn("artifact: tool-main-${{ matrix.part }}", gates[1])
         self.assertIn("tools/tests/gate_checks.py $CHECKS", gates[1])

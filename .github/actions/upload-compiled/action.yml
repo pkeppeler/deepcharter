@@ -1,8 +1,9 @@
 # Hands the compile job's work to the jobs that need it (#1574): the project's `build/` (classes, resources, generated launch files)
 # and `.gradle/` (task history and configuration cache), so a job that downloads them (.github/actions/download-compiled) finds
-# every compile task up to date instead of recompiling for a minute or two. Gradle compares input hashes, not times, and every
-# runner checks out to the same path, so the history is valid there; if main moved between the jobs' merges, Gradle just
-# recompiles what changed. The artifact is named by the caller's workflow, so ci.yml and client-tests.yml do not collide.
+# the compile tasks skippable (`-x`, see tools/ci-reuse-compiled.sh, which also says why Gradle's own up-to-date check does not do it)
+# instead of recompiling for a minute and a half. The caller records the compile inputs' fingerprint with
+# `tools/ci-reuse-compiled.sh record` before it uploads. The artifact is named by the caller's workflow, so ci.yml, client-tests.yml
+# and record-evidence.yml do not collide.
 name: Upload the compile output
 description: Upload build/ and .gradle/ as the artifact named by `name`, for download-compiled.
 

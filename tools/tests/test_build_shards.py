@@ -50,7 +50,7 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("name: compiled-ci", job("compile"))
         for key in ("build", "checks"):
             with self.subTest(key):
-                self.assertIn("needs: compile\n", job(key))
+                self.assertRegex(job(key), r"needs: \[setup, compile\]\n")
                 self.assertIn("name: compiled-ci", job(key))
 
     def test_the_shards_run_at_most_6_at_once_so_a_full_run_leaves_runners_for_other_prs(self):
@@ -85,7 +85,12 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("merge-multiple: true", aggregate)
         self.assertIn('.ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$BUILD_SHARDS"', aggregate)
         self.assertIn("main-sha-checks", aggregate)
+        self.assertIn("main-sha-compile", aggregate)
         self.assertNotIn("merge-main", aggregate.replace("merged-main", ""), "the aggregate must not merge main itself")
+
+    def test_the_compile_job_hands_its_merged_main_to_the_aggregate_too(self):
+        self.assertIn("name: compile\n", job("compile").split("upload-merged-main")[1])
+        self.assertIn("main-sha-compile", job("build-result"))
 
     def test_no_other_job_is_named_build(self):
         self.assertEqual(re.findall(r"^    name: build$", WORKFLOW, re.M), ["    name: build"])

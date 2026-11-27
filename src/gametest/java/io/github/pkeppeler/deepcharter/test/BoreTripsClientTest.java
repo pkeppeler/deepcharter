@@ -46,7 +46,12 @@ import org.slf4j.LoggerFactory;
  */
 public class BoreTripsClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger("BoreTripsClientTest");
-    private static final int TRIPS = 10;
+    /**
+     * Trips made. Ten took about 125 s, more than a CI shard may hold (#1574); {@link #expectSteady} compares the last trip with the first
+     * and the second, so any count from three up shows a count that grows, and a leak of one object a trip shows after six as it did
+     * after ten.
+     */
+    private static final int TRIPS = 6;
     /**
      * The longest the last trip's settle waits. A settle takes about 4 s (the first, while the area generates, up to
      * 20 s, and keeps the default wait); the last starts some 120 s into the class's 180 s ({@code ClientTestWatchdog}),

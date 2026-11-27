@@ -130,6 +130,12 @@ jobs:
           evidence-scenario: ${{ steps.resolve.outputs.scenario }}
           client-tests: ${{ steps.resolve.outputs.class }}
           gradle-cache-read-only: "true"
+      # The capture is one job of five minutes: about 80 s of them are setup and start-up, so a scenario has to finish in about 2 minutes. When
+      # it does not, the client action ends the run at its own deadline and nothing is published; this says what to do where the PR author
+      # reads it, instead of leaving a bare red job.
+      - if: failure()
+        run: |
+          echo "::error::The capture failed or ran out of its 5 minutes. A scenario that needs more than about 2 minutes of client time cannot be recorded here: run tools/record-evidence.sh on the Mac, which has no time limit."
       - uses: ./.github/actions/setup-python-uv
       - uses: ./.github/actions/install-ffmpeg
       # Reuses the Mac script's assembly (--no-run): MP4, GIF, GIF_MAX_BYTES. A GIF over

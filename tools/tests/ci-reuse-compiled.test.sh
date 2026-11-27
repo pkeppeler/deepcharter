@@ -16,13 +16,17 @@ failures=0
 check() { if [[ $2 == "$3" ]]; then echo "ok   $1"; else failures=$((failures + 1)); echo "FAIL $1 (got '$2', wanted '$3')"; fi; }
 
 repo=$work/repo
-mkdir -p "$repo/src/main/java" "$repo/gradle" "$repo/docs"
+mkdir -p "$repo/src/main/java" "$repo/gradle" "$repo/docs" "$repo/tools" "$repo/.github/workflows" "$repo/extras"
 cd "$repo"
 git init -q -b main .
 echo "class A {}" >src/main/java/A.java
 echo "x" >gradle/libs.versions.toml
 echo "plugins {}" >build.gradle.kts
 echo "roadmap" >docs/ROADMAP.md
+echo "tool" >tools/t.sh
+echo "wf" >.github/workflows/w.yml
+echo "readme" >README.md
+echo "ex" >extras/e.txt
 echo "build/" >.gitignore
 git add -A && git commit -q -m base
 
@@ -42,10 +46,21 @@ run check
 check "same tree: exit 0" "$rc" 0
 check "same tree: the compile tasks are skipped" "$output" "skip=$SKIP"
 
-echo "more roadmap" >>docs/ROADMAP.md
-git commit -q -am "roadmap moves"
+
+for denied in docs/ROADMAP.md tools/t.sh .github/workflows/w.yml README.md .papercuts.jsonl; do
+  echo "more" >>"$denied"
+  git add -A && git commit -q -m "touch $denied"
+  run check
+  check "main moved by $denied only: still skipped" "$output" "skip=$SKIP"
+done
+
+echo "more" >>extras/e.txt
+git commit -q -am "an extra top-level path"
 run check
-check "main moved by docs only: the compile tasks are still skipped" "$output" "skip=$SKIP"
+check "a path outside the deny list: nothing is skipped (fails closed)" "$output" "skip="
+git revert --no-edit HEAD >/dev/null
+run check
+check "that path reverted: skipped again" "$output" "skip=$SKIP"
 
 echo "class B {}" >src/main/java/B.java
 git add -A && git commit -q -m "a source change"
