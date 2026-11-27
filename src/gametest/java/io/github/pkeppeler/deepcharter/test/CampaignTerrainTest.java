@@ -481,8 +481,7 @@ public class CampaignTerrainTest {
             expectedAnchors.add(layer.minY());
             expectedAnchors.add(layer.minY() + crust);
         }
-        // The rows under layer 3's top that basalt_top_strata.json interbeds (#1551): its transition and the noise's
-        // reach.
+        // The rows basalt_top_strata.json interbeds under layer 3's top (#1551) and the noise's reach.
         expectedAnchors.add(CampaignBands.LAYER_3.topExclusive() - 29);
         expect(helper, anchors.equals(expectedAnchors), "rule anchors %s, expected %s", anchors, expectedAnchors);
 
