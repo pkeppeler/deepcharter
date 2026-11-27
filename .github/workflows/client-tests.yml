@@ -62,7 +62,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
-    # One shard is ~1/5 of the suite by measured weight (gradle/client-test-weights.txt): about 11 minutes of tests, with 3 minutes of setup before it.
+    # One shard is ~1/5 of the suite by measured weight (gradle/client-test-weights.txt): about 12-16 minutes of tests measured on the first five-shard run (#1554), with 3 minutes of setup before it.
     # The action's own deadline is 20 minutes of test time; this leaves room for setup and the post steps.
     timeout-minutes: 30
     strategy:

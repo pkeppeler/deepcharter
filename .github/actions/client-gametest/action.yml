@@ -100,8 +100,8 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
-        # One shard of four runs a quarter of the suite: the tests took about 44 minutes whole under load (run
-        # 45590213665), so a shard takes about 11 minutes of tests plus 3 of build and client start-up, all inside
+        # One shard runs its share of the suite: the tests took about 44 minutes whole under load (run
+        # 45590213665), so a shard takes about 11-14 minutes of tests plus 3 of build and client start-up, all inside
         # this deadline. $SECONDS starts after the dependency resolve; the job limits (30 minutes for a shard, 60
         # for a whole-suite run) leave room for setup, the post steps and the stop. Raise only together with
         # the job limits.
