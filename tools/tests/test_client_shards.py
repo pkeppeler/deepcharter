@@ -24,7 +24,7 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIsNotNone(count, "no CLIENT_SHARDS")
         shards = [int(n) for n in matrix[1].split(",")]
         self.assertEqual(shards, list(range(1, int(count[1]) + 1)))
-        self.assertEqual(len(shards), 5, "#1553: four shards ran 13-14 minutes of tests in a 20-minute budget, and a slow runner timed one out")
+        self.assertEqual(len(shards), 6, "#1553: four shards timed out on a slow runner and five ran 12-16 minutes of a 20-minute budget")
 
     def test_the_job_hands_its_shard_and_the_count_to_the_action(self):
         self.assertIn("client-shard: ${{ matrix.shard }}/${{ env.CLIENT_SHARDS }}", self.shard_job())
