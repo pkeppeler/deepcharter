@@ -214,8 +214,7 @@ public class ScannerTiersTest {
         if (spread != 2 || ScannerTuning.DEFAULT.lavaSpread(Chassis.PROSPECTOR) != 2) {
             throw failure(
                     helper,
-                    "the thermal tier should reach 2 blocks either side of the plane for the Mole and the Prospector"
-                            + " (a bore of 2 or 3 and a block of margin), got %d",
+                    "the thermal tier should reach 2 blocks either side of the plane for the Mole and the Prospector (a bore of 2 or 3 and a block of margin), got %d",
                     spread);
         }
         // Perpendicular to an east-facing plane is the Z axis. Each column ahead holds lava at one offset from

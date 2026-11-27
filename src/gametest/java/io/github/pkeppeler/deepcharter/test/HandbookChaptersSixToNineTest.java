@@ -118,37 +118,27 @@ public class HandbookChaptersSixToNineTest {
         CANON.put(base + "seeing_below.title", "Seeing Below");
         CANON.put(
                 base + "seeing_below.text.1",
-                "Your scanner shows a slice of the ground around your pod, so you can find ore before you dig for it."
-                    + " Better scanners see farther and show more. Hazards that can't be seen with the eye will show"
-                    + " on higher-tier scanners.");
+                "Your scanner shows a slice of the ground around your pod, so you can find ore before you dig for it. Better scanners see farther and show more. Hazards that can't be seen with the eye will show on higher-tier scanners.");
         CANON.put(base + "seeing_below.margin", "If a shape on the scanner moves, it isn't ore. —R.");
         CANON.put("deepcharter.handbook.directive.seeing_below.install_scanner", "Install a scanner.");
         CANON.put("deepcharter.handbook.directive.seeing_below.find_ore", "Find ore with the scanner.");
         CANON.put(base + "staying_safe.title", "Staying Safe on the Claim");
         CANON.put(
                 base + "staying_safe.text.1",
-                "The Claim is the friendliest ground we have, but it isn't harmless. Watch for undiggable rock, lava"
-                    + " you can see, gas pockets you can't, and hard landings. Your hull takes the damage, so repair"
-                    + " it at the colony. Accidents happen! The Continuity Plan returns you to work at no cost to"
-                    + " you.");
+                "The Claim is the friendliest ground we have, but it isn't harmless. Watch for undiggable rock, lava you can see, gas pockets you can't, and hard landings. Your hull takes the damage, so repair it at the colony. Accidents happen! The Continuity Plan returns you to work at no cost to you.");
         CANON.put(base + "staying_safe.margin", "Not listed: what's in the Workings. —R.");
         CANON.put("deepcharter.handbook.directive.staying_safe.repair_hull", "Repair your hull at the colony.");
         CANON.put("deepcharter.handbook.directive.staying_safe.reach_deep_claim", "Reach the Deep Claim.");
         CANON.put(base + "first_breach.title", "Your First Breach");
         CANON.put(
                 base + "first_breach.text.1",
-                "At the floor of the Claim you'll meet a breach: a hard crust between layers. Any drill can get"
-                    + " through, slowly, and it's hard on the hull and the heat. Top up your fuel and repair your hull"
-                    + " first. On the other side are the Old Workings, Prosperity's original mine levels and a proud"
-                    + " part of our heritage.");
+                "At the floor of the Claim you'll meet a breach: a hard crust between layers. Any drill can get through, slowly, and it's hard on the hull and the heat. Top up your fuel and repair your hull first. On the other side are the Old Workings, Prosperity's original mine levels and a proud part of our heritage.");
         CANON.put(base + "first_breach.margin", "Every breach is a door. We didn't put the doors there. —R.");
         CANON.put("deepcharter.handbook.directive.first_breach.breach_workings", "Breach into the Old Workings.");
         CANON.put(base + "company_property.title", "Recovering Company Property");
         CANON.put(
                 base + "company_property.text.1",
-                "Somewhere in the Old Workings lies the Prospector, a two-seat pod that went missing some years ago."
-                    + " Find her, tow her home and restore her, and she's yours to fly. She has a navigator's seat, so"
-                    + " bring a friend! Then take her down to the floor of the Workings. You've earned it.");
+                "Somewhere in the Old Workings lies the Prospector, a two-seat pod that went missing some years ago. Find her, tow her home and restore her, and she's yours to fly. She has a navigator's seat, so bring a friend! Then take her down to the floor of the Workings. You've earned it.");
         CANON.put(base + "company_property.text.1.margin", "If you hear the song and there's no radio, leave. —R.");
         CANON.put(
                 base + "company_property.margin",
@@ -248,10 +238,9 @@ public class HandbookChaptersSixToNineTest {
             falseConditions.add("no ServerPlayer passenger on the tower");
         }
         throw helper.assertionException(
-                "polling the towed Prospector credited nobody. False conditions: %s. Towed at %s before the poll and"
-                    + " %s after it (the poll runs follow too), in %s (isTowed=%s), pad centre %s (half %s, ground %s,"
-                    + " clear height %s), tower at %s (seen by the world=%s, on a ticking chunk=%s), riders %s, pilot"
-                    + " alive=%s in %s",
+                "polling the towed Prospector credited nobody. False conditions: %s. Towed at %s before the poll and %s after it (the poll runs follow too), in %s (isTowed=%s), "
+                        + "pad centre %s (half %s, ground %s, clear height %s), tower at %s (seen by the world=%s, "
+                        + "on a ticking chunk=%s), riders %s, pilot alive=%s in %s",
                 falseConditions.isEmpty()
                         ? "none of the three (so the listener did not run, or ran earlier)"
                         : falseConditions,

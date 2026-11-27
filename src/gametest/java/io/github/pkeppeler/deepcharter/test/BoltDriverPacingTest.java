@@ -154,8 +154,8 @@ public class BoltDriverPacingTest {
             Run layerTwo = layerTwoRun();
             double perRun = RETAINED_PER_RUN * fight / layerTwo.net();
             LOGGER.info(
-                    "[bolt-pacing] measured: {} bolts a Retained, {} a Tally; modelled: a Retained fight ${}, {} of"
-                            + " them a layer 2 run (${}) cost {}",
+                    "[bolt-pacing] measured: {} bolts a Retained, {} a Tally; modelled: a Retained fight ${}, {} of them a layer 2 run"
+                            + " (${}) cost {}",
                     retainedShots,
                     tallyShots,
                     fight,
@@ -255,8 +255,8 @@ public class BoltDriverPacingTest {
             Run layerTwo = layerTwoRun();
             double share = cost / layerTwo.net();
             LOGGER.info(
-                    "[bolt-pacing] measured: one roof bolt every {} blocks ({} in a {} block tunnel); modelled: 100"
-                            + " blocks cost {} bolts, ${}, {} of a layer 2 run (${})",
+                    "[bolt-pacing] measured: one roof bolt every {} blocks ({} in a {} block tunnel); modelled: 100 blocks cost {} bolts,"
+                            + " ${}, {} of a layer 2 run (${})",
                     spacing,
                     placed[0],
                     TUNNEL,
@@ -335,8 +335,8 @@ public class BoltDriverPacingTest {
             }
             Fallen fallen = fallenRoof(level, middle, half);
             LOGGER.info(
-                    "[cave-in-pacing] measured: the first rock fell {} ticks after the blast ({} warns); {} roof cells"
-                            + " fell, as far as {} cells from the person ({} is the stretch)",
+                    "[cave-in-pacing] measured: the first rock fell {} ticks after the blast ({} warns); {} roof cells fell, as far as {} cells from"
+                            + " the person ({} is the stretch)",
                     firstFall[0],
                     CAVE_IN.warnTicks(),
                     fallen.cells,
@@ -389,8 +389,7 @@ public class BoltDriverPacingTest {
         double driver = Consumable.BOLT_DRIVER.price() / layerTwo.net();
         double pack = Consumable.BOLT.price() / layerTwo.net();
         LOGGER.info(
-                "[bolt-pacing] modelled: the driver ${} is {} of a layer 2 run, a pack of {} bolts ${} is {} (a layer"
-                        + " 1 run nets ${})",
+                "[bolt-pacing] modelled: the driver ${} is {} of a layer 2 run, a pack of {} bolts ${} is {} (a layer 1 run nets ${})",
                 Consumable.BOLT_DRIVER.price(),
                 driver,
                 Consumable.BOLT.perPurchase(),

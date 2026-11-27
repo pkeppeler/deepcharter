@@ -222,8 +222,7 @@ public class RetainedTest {
                     } else if (waited > APPROACH_BUDGET_TICKS) {
                         throw failure(
                                 helper,
-                                "the figure had not grabbed the dark pod %d ticks after it was placed 10 blocks away"
-                                        + " (it stands at %s, the pod at %s)",
+                                "the figure had not grabbed the dark pod %d ticks after it was placed 10 blocks away (it stands at %s, the pod at %s)",
                                 waited,
                                 arena.figure.position(),
                                 arena.pod.position());
@@ -316,8 +315,7 @@ public class RetainedTest {
         if (!arena.figure.isClinging() || !arena.figure.isAlive()) {
             throw failure(
                     helper,
-                    "the figure let go %d ticks after the grab, with no one to answer it (clinging %s, alive %s, fuel"
-                            + " %s)",
+                    "the figure let go %d ticks after the grab, with no one to answer it (clinging %s, alive %s, fuel %s)",
                     ticks,
                     arena.figure.isClinging(),
                     arena.figure.isAlive(),
@@ -381,8 +379,7 @@ public class RetainedTest {
         if (grabbed != 1 || warned != 1) {
             throw failure(
                     helper,
-                    "the pilot should be told once that the figure came and once that it grabbed (came: %d times,"
-                            + " grabbed: %d times): %s",
+                    "the pilot should be told once that the figure came and once that it grabbed (came: %d times, grabbed: %d times): %s",
                     warned,
                     grabbed,
                     arena.pilot.actionBarMessages());
@@ -810,8 +807,7 @@ public class RetainedTest {
             expect(
                     helper,
                     arena.figure.isClinging() && arena.figure.isAlive(),
-                    "the figure let go of a pod its pilot left, %d ticks after (clinging %s, alive %s, removed %s, pod"
-                            + " removed %s, fuel %s)",
+                    "the figure let go of a pod its pilot left, %d ticks after (clinging %s, alive %s, removed %s, pod removed %s, fuel %s)",
                     arena.age(helper) - leftAt[0],
                     arena.figure.isClinging(),
                     arena.figure.isAlive(),
@@ -1261,8 +1257,7 @@ public class RetainedTest {
                         entry.get("weight").getAsInt() == 1
                                 && entry.get("count").getAsInt() == 1
                                 && spawns.getAsJsonArray("monster").size() == 1,
-                        "%s lists the figure as more than one at a time, or with weight over 1, or beside another"
-                                + " monster",
+                        "%s lists the figure as more than one at a time, or with weight over 1, or beside another monster",
                         biome);
             }
         }
