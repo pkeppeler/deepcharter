@@ -112,9 +112,8 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
             ItemStack incoming = switch (input) {
                 case PICKUP -> getCarried();
                 case SWAP -> player.getInventory().getItem(button);
-                // enum-default: only a pickup or a swap puts a stack into this slot; every other input moves nothing
-                // into
-                // it (a quick move is judged below), so they share the no-stack outcome
+                // enum-default: only a pickup or a swap puts a stack into this slot;
+                // every other input moves nothing into it (a quick move is judged below)
                 default -> ItemStack.EMPTY;
             };
             return incoming.isEmpty() ? Optional.empty() : typed.rule().refusal(incoming);
