@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests tools/ci-shard-main.sh: the sha every client shard merged, or a failure.
+# Tests tools/ci-shard-main.sh: the sha every shard merged, or a failure.
 # Usage: tools/tests/ci-shard-main.test.sh
 set -euo pipefail
 
@@ -52,6 +52,20 @@ has "fewer files than shards: names the shard" "shard 3"
 
 run 1 $A
 check "one shard: exit 0" "$rc" 0
+
+has "the shards are client shards by default" "Every client shard merged"
+
+rc=0
+out=$(SHARD_KIND=build GITHUB_OUTPUT="$work/output" bash "$script" "$work/d" 1 2>&1) || rc=$?
+check "build shards: exit 0" "$rc" 0
+has "build shards: named in the message" "Every build shard merged"
+run 2 $A $B
+rc=0
+out=$(SHARD_KIND=build bash "$script" "$work/d" 2 2>&1) || rc=$?
+has "build shards disagree: named in the error" "The build shards merged different mains"
+rc=0
+out=$(SHARD_KIND='a b' bash "$script" "$work/d" 1 2>&1) || rc=$?
+check "a SHARD_KIND that is not a word: exit 2" "$rc" 2
 
 rc=0
 out=$(bash "$script" 2>&1) || rc=$?

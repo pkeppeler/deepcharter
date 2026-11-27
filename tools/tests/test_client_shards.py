@@ -5,6 +5,8 @@ import re
 import unittest
 from pathlib import Path
 
+from test_build_shards import UPLOAD
+
 REPO = Path(__file__).resolve().parents[2]
 WORKFLOW = (REPO / ".github/workflows/client-tests.yml").read_text()
 ACTION = (REPO / ".github/actions/client-gametest/action.yml").read_text()
@@ -44,12 +46,8 @@ class ClientShardWorkflowTest(unittest.TestCase):
         return re.search(r"^  client-gametest:\n(.*)", WORKFLOW, re.M | re.S)[1]
 
     def test_each_shard_uploads_the_main_sha_it_merged(self):
-        job = self.shard_job()
-        self.assertIn("main-sha-${{ matrix.shard }}", job)
-        self.assertIn("name: merged-main-${{ matrix.shard }}", job)
-        self.assertIn("MAIN_SHA: ${{ steps.merge.outputs.main-sha }}", job)
-        # upload-artifact v4+ rejects a name already used in the run, so a re-run shard would fail before its tests.
-        self.assertIn("overwrite: true", job)
+        # The action itself is tested in test_build_shards.py.
+        self.assertIn(UPLOAD.format("${{ matrix.shard }}"), self.shard_job())
 
     def test_the_aggregate_records_the_shards_agreed_main_sha_without_merging(self):
         job = self.aggregate_job()
