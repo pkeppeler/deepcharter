@@ -6,11 +6,14 @@ repo's Gradle wrapper on JDK 25, like client_filter_gate_check.py.
 Usage: tools/py tools/tests/gate_checks.py server_shard
 """
 import re
+import sys
 import unittest
 
-import ci_shards
 import gate_batch
 from gate_batch import REPO, Case
+
+sys.path.insert(0, str(REPO / "tools"))
+import ci_shards  # noqa: E402
 
 PREFIX = "io.github.pkeppeler.deepcharter.test."
 REAL_TREE = REPO / "src/gametest/java"

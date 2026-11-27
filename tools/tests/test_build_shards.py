@@ -22,17 +22,25 @@ def job(key: str) -> str:
 
 
 class BuildShardWorkflowTest(unittest.TestCase):
-    def test_the_matrix_is_every_shard_from_one_to_the_count(self):
-        matrix = re.search(r"^\s+shard: \[([\d, ]+)\]", job("build"), re.M)
-        count = re.search(r"^\s+BUILD_SHARDS: (\d+)\s*$", WORKFLOW, re.M)
-        self.assertIsNotNone(matrix, "no shard matrix")
-        self.assertIsNotNone(count, "no BUILD_SHARDS")
-        self.assertEqual([int(n) for n in matrix[1].split(",")], list(range(1, int(count[1]) + 1)))
+    def test_the_matrix_is_the_plans_and_the_plan_gets_the_full_count(self):
+        # The plan job (tools/ci_affected.py) lists the shards a run takes: every shard from one to BUILD_SHARDS for a full run, fewer for
+        # the PR tier. test_ci_budget.py checks BUILD_SHARDS against the weights.
+        self.assertIn("shard: ${{ fromJSON(needs.plan.outputs.server-matrix) }}", job("build"))
+        self.assertIn('--server-shards "$BUILD_SHARDS"', job("plan"))
+        self.assertRegex(WORKFLOW, r"(?m)^\s+BUILD_SHARDS: \d+\s*$")
+
+    def test_a_shard_takes_the_plans_count_and_classes_and_runs_only_when_there_are_some(self):
+        shard = job("build")
+        self.assertIn("needs: [plan, compile]", shard)
+        self.assertIn("needs.plan.outputs.server-count != '0'", shard)
+        self.assertIn("SHARD: ${{ matrix.shard }}/${{ needs.plan.outputs.server-count }}", shard)
+        self.assertIn('-PgametestClasses=$CLASSES', shard)
 
     def test_each_shard_runs_its_share_of_the_server_suite_only(self):
         shard = job("build")
         self.assertIn("name: build-shard ${{ matrix.shard }}\n", shard)
-        self.assertIn('runGameTest "-PgametestShard=${{ matrix.shard }}/${{ env.BUILD_SHARDS }}"', shard)
+        self.assertIn('tools/ci-gradle-resolve.sh runGameTest "${args[@]}"', shard)
+        self.assertIn('args=("-PgametestShard=$SHARD")', shard)
         self.assertIn("fail-fast: false", shard)
 
     def test_the_checks_job_runs_the_rest_of_the_build(self):
@@ -50,7 +58,7 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("name: compiled-ci", job("compile"))
         for key in ("build", "checks"):
             with self.subTest(key):
-                self.assertIn("needs: compile\n", job(key))
+                self.assertRegex(job(key), r"needs: (compile|\[plan, compile\])\n")
                 self.assertIn("name: compiled-ci", job(key))
 
     def test_the_shards_run_at_most_6_at_once_so_a_full_run_leaves_runners_for_other_prs(self):
@@ -72,7 +80,8 @@ class BuildShardWorkflowTest(unittest.TestCase):
     def test_the_aggregate_is_build_needs_every_job_and_runs_after_a_failure(self):
         aggregate = job("build-result")
         self.assertIn("name: build\n", aggregate)
-        self.assertIn("needs: [compile, build, checks]", aggregate)
+        self.assertIn("needs: [plan, compile, build, checks]", aggregate)
+        self.assertIn("needs.plan.result", aggregate)
         self.assertIn("always()", aggregate)
         self.assertIn("needs.compile.result", aggregate)
         self.assertIn("needs.build.result", aggregate)
@@ -82,9 +91,22 @@ class BuildShardWorkflowTest(unittest.TestCase):
         aggregate = job("build-result")
         self.assertIn("pattern: merged-main-*", aggregate)
         self.assertIn("merge-multiple: true", aggregate)
-        self.assertIn('.ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$BUILD_SHARDS"', aggregate)
-        self.assertIn("main-sha-checks", aggregate)
+        self.assertIn('.ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"', aggregate)
+        self.assertIn("SHARD_ALSO: checks plan", aggregate)
         self.assertNotIn("merge-main", aggregate.replace("merged-main", ""), "the aggregate must not merge main itself")
+
+    def test_the_aggregate_says_which_tier_ran(self):
+        aggregate = job("build-result")
+        self.assertIn("::notice title=ci-tier::", aggregate)
+        self.assertIn("needs.plan.outputs.server-full", aggregate)
+        # A skipped shard job is a pass only when the plan selected none.
+        self.assertIn('[ "$SHARDS" = skipped ] && [ "$COUNT" = 0 ]', aggregate)
+
+    def test_the_plan_merges_main_and_hands_its_sha_to_the_aggregate(self):
+        plan = job("plan")
+        self.assertIn("name: ci-plan\n", plan)
+        self.assertIn("name: plan\n", plan)
+        self.assertIn("tools/ci_affected.py", plan)
 
     def test_no_other_job_is_named_build(self):
         self.assertEqual(re.findall(r"^    name: build$", WORKFLOW, re.M), ["    name: build"])

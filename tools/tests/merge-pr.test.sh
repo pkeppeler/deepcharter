@@ -81,6 +81,13 @@ case "$method $path" in
     if [[ -n ${STUB_FIXTURE_ANNOTATIONS-} ]]; then gh_fixture_jq "$STUB_FIXTURE_ANNOTATIONS" "$jq"; exit; fi
     id=${path#*check-runs/}
     id=${id%%/*}
+    # The ci-tier notice (ADR 0114): STUB_TIER_<id>, else STUB_TIER, else none (CI from before the tiers).
+    if [[ $jq == *'"ci-tier"'* ]]; then
+      var=STUB_TIER_$id
+      recorded=${!var-${STUB_TIER-}}
+      [[ -z $recorded ]] || printf '%s\n' "$recorded"
+      exit
+    fi
     var=STUB_MERGED_MAIN_$id
     recorded=${!var-${STUB_MERGED_MAIN-$MAIN_SHA}}
     [[ -z $recorded ]] || printf '%s\n' "$recorded" ;;
@@ -729,8 +736,8 @@ refusal "annotations failing on a later page refuse" "could not read the annotat
   STUB_ANN_FAILS=3 "STUB_ANN_PAGE1=$MAIN_SHA" "STUB_ANN_ERR=gh: Server Error (HTTP 503)"
 run_script STUB_ANN_FAILS=1
 exited "annotations read after a 502 merge" 0
-# build and tool-tests share run id 2 in the default runs: two reads, plus the retry.
-count "the failed annotations listing was read again" "/check-runs/2/annotations" 3
+# build and tool-tests share run id 2 in the default runs: two reads, plus the retry, plus the read of the build run's ci-tier notice.
+count "the failed annotations listing was read again" "/check-runs/2/annotations" 4
 refusal "only a client shard merged an older main" "client-gametest-shard 2 run 6 merged main" "STUB_MERGED_MAIN_6=$OLD_MAIN" "STUB_DIFF=src/A.java"
 not_logged "with passing shards the aggregate's annotations are not read" "check-runs/3/annotations"
 refusal "only tool-tests merged an older main" "tool-tests run 4 merged main" "STUB_DIFF=src/A.java" \
@@ -749,6 +756,36 @@ refusal "another docs file moving is not neutral" "$stale_hint" "STUB_MERGED_MAI
 refusal "code beside the roadmap is not neutral" "tools/merge-pr.sh" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=docs/ROADMAP.md${nl}tools/merge-pr.sh"
 refusal "nested papercuts lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/.papercuts.jsonl"
 refusal "nested roadmap lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/docs/ROADMAP.md"
+# Two tiers (ADR 0114): the `build` and `client-gametest` aggregates record a `ci-tier` notice. Landing a PR, and a batch PR's CI
+# verdict (--ci), need `full`; --check takes `pr` and says so; no notice is CI from before the tiers, which ran everything.
+tier_hint="[pr-tier] has CI of the PR tier only"
+run_script STUB_TIER=full
+exited "tier: a full-tier head merges" 0
+run_script STUB_TIER=
+exited "tier: a head with no ci-tier notice (before the tiers) merges" 0
+refusal "tier: a PR-tier head is refused" "$tier_hint" STUB_TIER=pr
+refusal "tier: the refusal names the way to land it" "tools/merge-batch.sh 7" STUB_TIER=pr
+refusal "tier: a PR-tier server suite alone is refused" "server suite pr, client suite full" STUB_TIER_2=pr
+run_check STUB_TIER=pr
+exited "tier: --check accepts a PR-tier head" 0
+printed "tier: --check says which tier ran" "ci tier: pr (server suite: pr, client suite: pr)"
+run_check STUB_TIER=full
+printed "tier: --check says a full tier" "ci tier: full (server suite: full, client suite: full)"
+reset
+rc=0
+out=$(env STUB_TIER=pr PATH="$work/bin:$PATH" bash "$script" --ci 7 2>&1) || rc=$?
+if [[ $rc -ne 0 && $out == *"$tier_hint"* ]]; then pass "tier: --ci (a batch PR's CI) refuses a PR-tier head"; else fail "tier: --ci refuses a PR-tier head (rc=$rc out=$out)"; fi
+reset
+rc=0
+out=$(env STUB_TIER=full PATH="$work/bin:$PATH" bash "$script" --ci 7 2>&1) || rc=$?
+exited "tier: --ci takes a full-tier head" 0
+# A PR-tier run that selected no server class has no build-shard job: the aggregate's notice is the record, and `build` passing is enough.
+refusal "tier: no shard passed and the build ran the full tier" "no build-shard run passed" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success)" STUB_TIER=full
+run_check "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success)" STUB_TIER=pr
+exited "tier: --check accepts a PR-tier build that ran no server shard" 0
+refusal "tier: that PR-tier build is still not landable" "$tier_hint" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success)" STUB_TIER=pr
 # The build runs as `build-shard <i>` jobs and `build-checks` beside the `build` aggregate (#1327). The gate reads the merged-main
 # notice of each passing shard, of build-checks and of the aggregate, which records the main all of them agreed on.
 bs_specs=("build:2:success" "tool-tests:3:success" "build-shard 1:11:success" "build-shard 2:12:success" "build-checks:13:success")

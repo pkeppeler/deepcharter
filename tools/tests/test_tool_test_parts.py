@@ -6,10 +6,9 @@ import sys
 import unittest
 from pathlib import Path
 
-import ci_shards as shards
-
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "tools"))
+import ci_shards as shards  # noqa: E402
 import ci_tool_parts as parts  # noqa: E402
 
 WORKFLOW = (REPO / ".github/workflows/ci.yml").read_text()

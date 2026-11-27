@@ -18,18 +18,19 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIsNotNone(match, "client-tests.yml has no client-shard job")
         return match[1]
 
-    def test_the_matrix_is_every_shard_from_one_to_the_count(self):
+    def test_the_matrix_is_the_plans_and_the_plan_gets_the_full_count(self):
+        # The changes job (tools/ci_affected.py) lists the shards a run takes: every shard from one to CLIENT_SHARDS for a full run, fewer
+        # for the PR tier. test_ci_budget.py checks CLIENT_SHARDS against the weights.
+        self.assertIn("shard: ${{ fromJSON(needs.changes.outputs.client-matrix) }}", self.shard_job())
+        self.assertIn('--client-shards "$CLIENT_SHARDS"', WORKFLOW)
+        self.assertRegex(WORKFLOW, r"(?m)^\s+CLIENT_SHARDS: \d+\s*$")
+
+    def test_a_shard_runs_only_when_the_plan_selected_some_and_takes_its_classes(self):
         job = self.shard_job()
-        matrix = re.search(r"^\s+shard: \[([\d, ]+)\]", job, re.M)
-        count = re.search(r"^\s+CLIENT_SHARDS: (\d+)\s*$", WORKFLOW, re.M)
-        self.assertIsNotNone(matrix, "no shard matrix")
-        self.assertIsNotNone(count, "no CLIENT_SHARDS")
-        shards = [int(n) for n in matrix[1].split(",")]
-        self.assertEqual(shards, list(range(1, int(count[1]) + 1)))
-        # That the count is enough for the weights, and no larger, is test_ci_budget.py's.
+        self.assertIn("needs.changes.outputs.client-count != '0'", job)
 
     def test_the_job_hands_its_shard_and_the_count_to_the_action(self):
-        self.assertIn("client-shard: ${{ matrix.shard }}/${{ env.CLIENT_SHARDS }}", self.shard_job())
+        self.assertIn("client-shard: ${{ matrix.shard }}/${{ needs.changes.outputs.client-count }}", self.shard_job())
 
     def test_a_failed_shard_does_not_cancel_the_others(self):
         self.assertIn("fail-fast: false", self.shard_job())
@@ -55,7 +56,8 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIn("pattern: merged-main-*", job)
         self.assertIn("merge-multiple: true", job)
         self.assertIn("tools/ci-shard-main.sh", job)
-        self.assertIn("CLIENT_SHARDS", job)
+        self.assertIn("needs.changes.outputs.client-count", job)
+        self.assertIn("::notice title=ci-tier::", job)
         self.assertNotIn("merge-main", job.replace("merged-main", ""), "the aggregate must not merge main itself")
 
     def test_each_shard_uploads_its_own_screenshots(self):

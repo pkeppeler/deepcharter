@@ -102,7 +102,8 @@ STUB
 
 # Gate stub. `--preflight N` refuses when $ST/pre_fail.N exists. `--ci B` reads call K from $ST/ci.K (first line the exit
 # code, the rest its output), else is red when a commit on the batch's branch is for a PR listed in $ST/bad, else green.
-# `N` (the single-PR fallback) refuses when $ST/single_fail.N exists, else marks N merged.
+# `N` (the single-PR fallback) refuses when $ST/single_fail.N exists, refuses with [pr-tier] when $ST/single_pr_tier.N exists
+# (its own CI ran the PR tier, ADR 0114), else marks N merged.
 cat >"$work/gate" <<'STUB'
 #!/usr/bin/env bash
 echo "merge-pr $*" >>"$LOG"
@@ -133,6 +134,7 @@ case $1 in
       exit 1
     fi
     if [[ -e $ST/single_fail.$1 ]]; then echo "REFUSED: PR #$1 is not mergeable"; exit 1; fi
+    if [[ -e $ST/single_pr_tier.$1 ]]; then echo "REFUSED: PR #$1 [pr-tier] has CI of the PR tier only (ADR 0114)"; exit 1; fi
     echo MERGED >"$ST/state.$1"
     echo "Merged PR #$1" ;;
 esac
@@ -319,6 +321,30 @@ exited "single: exit 0" 0
 logged "single: merge-pr runs on the PR" "merge-pr 1"
 count "single: no batch PR opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 0
 printed "single: merged" "merged:  #1"
+
+# --- a single PR whose own CI ran the PR tier lands as a batch of one (ADR 0114) ---
+reset
+mkpr 1
+: >"$ST/single_pr_tier.1"
+run_b 1
+exited "single, PR tier: exit 0" 0
+logged "single, PR tier: the gate is asked about the PR first" "merge-pr 1"
+count "single, PR tier: one batch PR is opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
+logged "single, PR tier: the batch PR's CI is read" "merge-pr --ci 100"
+printed "single, PR tier: it says why it batches" "has CI of the PR tier only: landing it as a batch of one"
+printed "single, PR tier: merged" "merged:  #1"
+if [[ $(main_subjects) == "Title 1 (#1)|" ]]; then pass "single, PR tier: its squash is on main"; else fail "single, PR tier: $(main_subjects)"; fi
+count "single, PR tier: the gate is not asked about the PR again" "merge-pr 1" 1
+
+# A batch of one that is red has nothing to split: the PR is refused, and the tool does not loop.
+reset
+mkpr 1
+: >"$ST/single_pr_tier.1"
+echo 1 >"$ST/bad"
+run_b 1
+exited "single, PR tier, red: exit 1" 1
+printed "single, PR tier, red: refused with the reason" "refused: #1 (red as a batch of one:"
+count "single, PR tier, red: one batch PR is opened, not a loop of them" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
 
 # --- a group that shrinks to one after a drop falls back too ---
 reset

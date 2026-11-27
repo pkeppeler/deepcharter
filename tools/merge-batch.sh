@@ -332,7 +332,8 @@ finish_originals() {
   done
 }
 
-# merge_single <pr>: a group of one goes through the gate alone, with the queue's stale-base handling.
+# merge_single <pr>: a group of one goes through the gate alone, with the queue's stale-base handling. Returns 3, recording nothing, when
+# the gate refuses with [pr-tier]: the PR's CI ran the PR tier only, so it must land as a batch of one.
 merge_single() {
   local n=$1 branch sha out rc state reason stale_n=0
   if [[ -n ${chain_prev[$n]:-} ]]; then
@@ -362,6 +363,8 @@ merge_single() {
     fi
     reason=$(grep -m1 -E '^(REFUSED|ERROR):' <<<"$out" || true)
     [[ -n $reason ]] || reason="the gate exited $rc: $(tail -n 1 <<<"$out")"
+    # The PR's own CI ran the PR tier (ADR 0114): it lands with the full suites, as a batch of one, which the caller opens.
+    if [[ $out == *"[pr-tier]"* ]]; then return 3; fi
     if [[ $out == *"[stale-base]"* ]]; then
       if ((stale_n >= stale_max)); then
         refused+=("#$n ($reason; still stale after $stale_max reruns)")
@@ -383,14 +386,17 @@ merge_single() {
 
 # process_group <pr>...: merge them as one batch, or split on red. Sets $stopped when the tool must stop.
 process_group() {
-  local prs=("$@") stale_n=0 client_n=0 pending_n=0 half out rc sha verdict reason push_out
+  local prs=("$@") stale_n=0 client_n=0 pending_n=0 half out rc sha verdict reason push_out solo=0
   if [[ -n $stopped ]]; then
     not_attempted+=("${prs[@]/#/#}")
     return 0
   fi
   if ((${#prs[@]} == 1)); then
-    merge_single "${prs[0]}"
-    return 0
+    rc=0
+    merge_single "${prs[0]}" || rc=$?
+    ((rc == 3)) || return 0
+    say "PR #${prs[0]} has CI of the PR tier only: landing it as a batch of one"
+    solo=1
   fi
   while true; do
     build_batch "${prs[@]}" || return 0
@@ -399,10 +405,14 @@ process_group() {
       discard_local_branch "$b_branch"
       return 0
     fi
-    if ((${#prs[@]} == 1)); then
+    if ((${#prs[@]} == 1 && solo == 0)); then
       discard_local_branch "$b_branch"
-      merge_single "${prs[0]}"
-      return 0
+      rc=0
+      merge_single "${prs[0]}" || rc=$?
+      ((rc == 3)) || return 0
+      say "PR #${prs[0]} has CI of the PR tier only: landing it as a batch of one"
+      solo=1
+      continue
     fi
     say "batch $b_branch holds ${prs[*]/#/#}"
     open_batch_pr "${prs[@]}" || return 0
@@ -492,6 +502,12 @@ process_group() {
         ;;
       red)
         say "CI is red on batch PR #$bpr (${reason:-no reason read}); splitting ${#prs[@]} PRs"
+        if ((${#prs[@]} == 1)); then
+          # A batch of one that is red has nothing to split: the PR itself fails the full suites.
+          retire_batch "$bpr" "$b_branch" "CI is red: this batch holds one PR, which fails the full suites."
+          refused+=("#${prs[0]} (red as a batch of one: ${reason:-no reason read})")
+          return 0
+        fi
         retire_batch "$bpr" "$b_branch" "CI is red: splitting this batch in two."
         half=$(((${#prs[@]} + 1) / 2))
         process_group "${prs[@]:0:half}"

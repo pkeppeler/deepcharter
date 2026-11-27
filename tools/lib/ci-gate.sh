@@ -2,13 +2,33 @@
 # client suite). merge-pr.sh runs it for a PR in the merge and, as `--ci <n>`, for a batch PR whose branch is not
 # <issue>-<slug> (tools/merge-batch.sh). The caller sets $repo, $pr, $sha and $gate_only (1 prints each state), and
 # sources tools/lib/pr-body-checks.sh (refuse, load_labels, has_label) first. Each failed check calls refuse.
+#
+# Two tiers (ADR 0114): a PR push runs only the GameTest classes its change can affect, a batch PR or a change that can reach every test
+# the full suites. Each aggregate (`build`, `client-gametest`) records which in a `ci-tier` notice, `full` or `pr`; one with no notice is
+# from before the tiers and ran everything. The caller sets $require_full_tier to 1 to land a PR or to read a batch PR's CI, and to 0 for
+# --check: a head whose CI ran the PR tier is then refused with the marker [pr-tier], which tools/merge-batch.sh reads.
 
 # Job names (ci.yml) that run on every PR; the path-gated client job (client-tests.yml) is not listed. `build` is the aggregate of
 # the `build-shard <i>` jobs and `build-checks` (#1327), which the stale-base rule below also reads.
 REQUIRED_CHECKS=(build tool-tests)
 
+# read_ci_tier <check name> <variable>: sets the variable to `pr` when the deciding run of that check recorded a `ci-tier` notice saying
+# so, else `full` (a notice that says full, or none: CI from before the tiers). Needs $checks_full.
+read_ci_tier() {
+  local run_id
+  run_id=$(awk -F'\t' -v n="$1" '$2 == n { print $3 }' <<<"$checks_full")
+  [[ $run_id =~ ^[0-9]+$ ]] || refuse "has no deciding run id for $1"
+  gh_list ci_tier_note "repos/$repo/check-runs/$run_id/annotations?per_page=100" \
+    '.[] | select(.title == "ci-tier") | .message' \
+    || refuse "could not read the annotations of $1 run $run_id: $gh_list_err"
+  ci_tier_note=${ci_tier_note%%$'\n'*}
+  printf -v "$2" '%s' "$([[ $ci_tier_note == pr ]] && echo pr || echo full)"
+}
+
 # Sets $checks, $checks_full and $run_lines.
 check_ci_gate() {
+  build_tier=
+  client_tier=
   # Checks come from the check-runs API, not `gh pr checks`: workflows that run on
   # label events add a skipped run under the same name as an earlier real one, and
   # the default (latest per name) view would let that skipped run hide a failure.
@@ -91,7 +111,9 @@ check_ci_gate() {
     # client-gametest-shard run of any kind (even a never-started template one), so the sharded aggregate's notice
     # never stands in for shards that did not pass.
     if [[ -z $shard_names ]]; then
-      if grep -q '^client-gametest-shard ' <<<"$run_lines"; then
+      # The PR tier can select no client class: no shard runs, and the aggregate's own notice is the record.
+      read_ci_tier client-gametest client_tier
+      if [[ $client_tier != pr ]] && grep -q '^client-gametest-shard ' <<<"$run_lines"; then
         refuse "client-gametest passed but no client-gametest-shard run did, so nothing shows what the suite ran"
       fi
       based_names+=(client-gametest)
@@ -110,12 +132,16 @@ check_ci_gate() {
     grep -qxF "pass"$'\t'"build-checks" <<<"$checks" \
       || refuse "build ran as shards but build-checks did not pass, so nothing shows the build's checks ran"
     build_shards=$(awk -F'\t' '$1 == "pass" && $2 ~ /^build-shard / { print $2 }' <<<"$checks")
-    [[ -n $build_shards ]] || refuse "build ran as shards but no build-shard run passed, so nothing shows what the server suite ran"
+    # The PR tier can select no server class: no shard runs, and the aggregate's notice records what build-checks and the plan merged.
+    if [[ -z $build_shards ]]; then
+      read_ci_tier build build_tier
+      [[ $build_tier == pr ]] || refuse "build ran as shards but no build-shard run passed, so nothing shows what the server suite ran"
+    fi
     skipped_shard=$(awk -F'\t' '$1 != "pass" && $2 ~ /^build-shard / { print $2; exit }' <<<"$checks")
     [[ -z $skipped_shard ]] || refuse "has a build shard that was only skipped: $skipped_shard"
     based_names+=(build-checks)
     while IFS= read -r shard; do
-      based_names+=("$shard")
+      [[ -z $shard ]] || based_names+=("$shard")
     done <<<"$build_shards"
   fi
   for based in "${based_names[@]}"; do
@@ -150,6 +176,18 @@ check_ci_gate() {
       refuse "$based run $run_id merged main ${recorded:0:9} but origin/main is ${main_sha:0:9}: ${shown// /, }$more changed since: $stale_fix"
     fi
   done
+
+  # The tier the head's CI ran: only the full suites let a PR land (ADR 0114). A suite that did not run counts as full.
+  [[ -n $build_tier ]] || read_ci_tier build build_tier
+  if [[ -z $client_tier ]]; then
+    if grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then read_ci_tier client-gametest client_tier; else client_tier=full; fi
+  fi
+  ci_tier=full
+  [[ $build_tier == full && $client_tier == full ]] || ci_tier=pr
+  [[ $gate_only -eq 0 ]] || echo "ci tier: $ci_tier (server suite: $build_tier, client suite: $client_tier)"
+  if [[ ${require_full_tier:-0} -eq 1 && $ci_tier == pr ]]; then
+    refuse "[pr-tier] has CI of the PR tier only (the GameTest classes its change can affect: server suite $build_tier, client suite $client_tier), and landing needs the full suites: land it with tools/merge-batch.sh $pr (a batch PR runs them), or label it full-ci and push again"
+  fi
 }
 
 # Needs $pr_files, $labels, $checks (check_ci_gate) and $sha.
