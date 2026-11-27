@@ -33,6 +33,7 @@ import net.minecraft.resources.Identifier;
  * page fits the default window and the smallest GUI. The Mole's cockpit sheet names each gauge by its title (#1436).
  */
 public class HandbookControlsClientTest implements FabricClientGameTest {
+    // no-world-ok: the pages are built from steps with no item targets, so no item stack is drawn.
     private static final int WIDTH = 427;
     private static final int HEIGHT = 240;
     private static final int SMALL_WIDTH = 213;
