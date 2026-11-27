@@ -59,13 +59,39 @@ class CommittedSoundsTest(unittest.TestCase):
             self.assertLess(error / energy, 0.25, f"{name}: the OGG is not the sound its recipe makes")
 
 
+SOUND_TUNING = Path(__file__).resolve().parents[2] / "src/main/java/io/github/pkeppeler/deepcharter/sound/SoundTuning.java"
+
+
+def ticks_played(name):
+    """How long the recipe's sound plays, in ticks, rounded up."""
+    return math.ceil(len(recipes.render(name).left) / recipes.RATE * 20)
+
+
+def tuning(field):
+    """A number in SoundTuning.DEFAULT, by the record component's name."""
+    java = SOUND_TUNING.read_text()
+    fields = re.search(r"record SoundTuning\((.*?)\)\s*\{", java, re.S).group(1)
+    names = [part.split()[-1] for part in re.split(r",(?![^<]*>)", fields)]
+    values = re.split(r",(?![^(]*\))", re.search(r"new SoundTuning\((.*?)\);", java, re.S).group(1))
+    return int(values[names.index(field)])
+
+
 class HymnLengthTest(unittest.TestCase):
     def test_the_game_knows_how_long_each_hymn_plays(self):
         # HymnMoments does not start a hymn on top of the player's last one; it counts SoundTuning.hymnTicks, which must match the files.
-        java = (Path(__file__).resolve().parents[2] / "src/main/java/io/github/pkeppeler/deepcharter/sound/SoundTuning.java").read_text()
-        ticks = [int(n) for n in re.search(r"hymnTicks\b.*?List\.of\(([\d, ]+)\)", java, re.S).group(1).split(",")]
-        made = [math.ceil(len(recipes.render(f"hymn/{name}").left) / recipes.RATE * 20) for name in ("colony", "layer_1", "layer_2")]
+        ticks = [int(n) for n in re.search(r"hymnTicks\b.*?List\.of\(([\d, ]+)\)", SOUND_TUNING.read_text(), re.S).group(1).split(",")]
+        made = [ticks_played(f"hymn/{name}") for name in ("colony", "layer_1", "layer_2")]
         self.assertEqual(made, ticks)
+
+    def test_the_game_knows_how_long_the_chapter_phrase_plays(self):
+        # The chapter phrase follows the hymns' rule (#1267): HymnMoments counts SoundTuning.chapterPhraseTicks, which must match the file.
+        ticks = tuning("chapterPhraseTicks")
+        self.assertEqual(ticks_played("hymn/chapter"), ticks)
+        self.assertTrue(3 * 20 <= ticks <= 5 * 20, f"the phrase lasts {ticks} ticks, not 3 to 5 seconds")
+
+    def test_the_game_knows_how_long_the_online_chord_plays(self):
+        # No chapter phrase starts while a machine's chord rings (#1267): HymnMoments holds them for SoundTuning.terminalOnlineTicks.
+        self.assertEqual(ticks_played("terminal/online"), tuning("terminalOnlineTicks"))
 
 
 class GateTest(unittest.TestCase):
@@ -119,8 +145,28 @@ class GateTest(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertIn("missing", err)
 
+    @unittest.skipUnless(first_sounds.has_libvorbis(), "only libvorbis writes mono Vorbis")
+    def test_a_world_sound_written_as_stereo_fails_the_check(self):
+        self.build("continuity/lamp_out")
+        ogg = self.out / "continuity" / "lamp_out.ogg"
+        self.assertEqual(1, first_sounds.ogg_channels(ogg))
+        soundgen._encode(recipes.render("continuity/lamp_out"), ogg, False)
+        manifest = json.loads(self.manifest.read_text())
+        manifest["continuity/lamp_out"]["ogg_sha256"] = soundgen._sha256(ogg)
+        self.manifest.write_text(json.dumps(manifest))
+        code, _, err = run("--check", "--out", str(self.out), "--manifest", str(self.manifest), "continuity/lamp_out")
+        self.assertEqual(1, code)
+        self.assertIn("not mono", err)
+
 
 class RecipeTest(unittest.TestCase):
+    def test_a_world_sound_is_mono(self):
+        # The engine pans and attenuates mono sounds only; a stereo sound at a place is heard at full volume everywhere.
+        for name in recipes.MONO:
+            clip = recipes.render(name)
+            self.assertEqual(clip.left, clip.right, f"{name}: a mono recipe's channels differ")
+            self.assertEqual(1, first_sounds.ogg_channels(soundgen.OUT / f"{name}.ogg"), f"{name}: the committed OGG is not mono")
+
     def test_a_recipe_makes_the_same_sound_twice(self):
         self.assertEqual(recipes.render("ambient/layer_1_knock").sha256(), recipes.RECIPES["ambient/layer_1_knock"]().sha256())
 

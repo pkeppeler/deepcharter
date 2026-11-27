@@ -56,6 +56,7 @@
 	"ui.refused": { "sounds": [{ "name": "deepcharter:ui/refused" }] },
 
 	"terminal.power_on": { "sounds": [{ "name": "deepcharter:terminal/power_on" }] },
+	"terminal.online": { "sounds": [{ "name": "deepcharter:terminal/online" }] },
 	"terminal.teleport": { "sounds": [{ "name": "minecraft:entity.enderman.teleport", "type": "event" }] },
 
 	"transmission.incoming": { "sounds": [{ "name": "minecraft:block.note_block.bit", "type": "event" }] },
@@ -83,6 +84,7 @@
 	"hymn.colony": { "sounds": [{ "name": "deepcharter:hymn/colony", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
 	"hymn.layer_1": { "sounds": [{ "name": "deepcharter:hymn/layer_1", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
 	"hymn.layer_2": { "sounds": [{ "name": "deepcharter:hymn/layer_2", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
+	"hymn.chapter": { "sounds": [{ "name": "deepcharter:hymn/chapter", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
 	"phonograph.gamme_de_la_voix": { "sounds": [{ "name": "deepcharter:phonograph/gamme_de_la_voix", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
 	"phonograph.jeune_jouvencelle": { "sounds": [{ "name": "deepcharter:phonograph/jeune_jouvencelle", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
 	"phonograph.othello": { "sounds": [{ "name": "deepcharter:phonograph/othello", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
@@ -148,5 +150,9 @@
 	"ambience.horn.test_voices": { "sounds": [{ "name": "deepcharter:ambience/worn/test_voices", "volume": 0.8, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
 	"ambience.horn.barometer": { "sounds": [{ "name": "deepcharter:ambience/worn/barometer", "volume": 0.8, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
 	"song.wreck": { "sounds": [{ "name": "deepcharter:song/wreck", "stream": true, "volume": 0.9, "attenuation_distance": 16 }], "subtitle": "subtitles.deepcharter.song.wreck" },
-	"song.dark": { "sounds": [{ "name": "deepcharter:song/dark", "attenuation_distance": 40 }], "subtitle": "subtitles.deepcharter.song.dark" }
+	"song.dark": { "sounds": [{ "name": "deepcharter:song/dark", "attenuation_distance": 40 }], "subtitle": "subtitles.deepcharter.song.dark" },
+
+	"continuity.laugh": { "sounds": [{ "name": "deepcharter:continuity/laugh" }], "subtitle": "subtitles.deepcharter.continuity.laugh" },
+	"continuity.needle": { "sounds": [{ "name": "deepcharter:continuity/needle" }], "subtitle": "subtitles.deepcharter.continuity.needle" },
+	"continuity.lamp_out": { "sounds": [{ "name": "deepcharter:continuity/lamp_out", "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.continuity.lamp_out" }
 }

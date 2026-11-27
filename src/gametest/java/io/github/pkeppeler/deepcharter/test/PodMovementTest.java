@@ -1,9 +1,14 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK_LEFT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_BACK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.LEFT;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.RIGHT;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodMovement;
@@ -17,7 +22,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.entity.player.Input;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -30,15 +35,16 @@ public class PodMovementTest {
     private static final float SOUTH = 0f;
     private static final float WEST = 90f;
 
-    private static final Input FORWARD_RIGHT = new Input(true, false, false, true, false, false, false);
-    private static final Input RIGHT = new Input(false, false, false, true, false, false, false);
+    /** Where the pilot looks: never the pod's facing, because the pilot's view does not steer a pod. */
+    private static final float PILOT_LOOKS = 137f;
 
-    /** A pod standing on a small stone floor, with a mock pilot seated and looking along {@code yaw}. */
+    /** A pod standing on a small stone floor and facing {@code yaw}, with a mock pilot seated and looking elsewhere. */
     private record Rig(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
         static Rig build(GameTestHelper helper, double height, float yaw) {
             PodEntity pod = buildEmpty(helper, height);
             MockPlayer pilot = MockPlayers.join(helper, "pod-pilot");
-            pilot.teleportTo(helper.getLevel(), pod.position(), yaw, 0f);
+            pod.setYRot(yaw);
+            pilot.teleportTo(helper.getLevel(), pod.position(), PILOT_LOOKS, 0f);
             if (!pilot.player().startRiding(pod)) {
                 throw failure(helper, "the pilot could not mount the pod");
             }
@@ -72,16 +78,22 @@ public class PodMovementTest {
     }
 
     @GameTest
-    public void forwardDrivesTheCameraAxis(GameTestHelper helper) {
+    public void forwardDrivesAlongThePodsFacingNotThePilotsView(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, WEST);
         Vec3 start = rig.pod.position();
         rig.pilot.setInput(FORWARD);
-        helper.runAfterDelay(10, () -> {
+        // Five ticks keep the pod on the small floor at the cruise speed.
+        helper.runAfterDelay(5, () -> {
             try {
                 Vec3 moved = rig.pod.position().subtract(start);
                 if (moved.x > -1.0 || Math.abs(moved.z) > EPSILON) {
                     throw failure(
-                            helper, "facing west, forward should drive the pod west along x only, moved %s", moved);
+                            helper,
+                            "the pod faces west, so forward drives it west along x only, whatever the pilot looks at; moved %s",
+                            moved);
+                }
+                if (rig.pod.getYRot() != WEST) {
+                    throw failure(helper, "driving forward must not turn the pod, its yaw is %s", rig.pod.getYRot());
                 }
                 helper.succeed();
             } finally {
@@ -91,17 +103,26 @@ public class PodMovementTest {
     }
 
     @GameTest
-    public void diagonalInputMovesAlongOneAxisOnly(GameTestHelper helper) {
+    public void backReversesSlowlyWithoutTurning(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);
         Vec3 start = rig.pod.position();
-        rig.pilot.setInput(FORWARD_RIGHT);
+        rig.pilot.setInput(BACK);
         helper.runAfterDelay(10, () -> {
             try {
                 Vec3 moved = rig.pod.position().subtract(start);
-                boolean alongX = Math.abs(moved.x) > 1.0 && Math.abs(moved.z) < EPSILON;
-                boolean alongZ = Math.abs(moved.z) > 1.0 && Math.abs(moved.x) < EPSILON;
-                if (!alongX && !alongZ) {
-                    throw failure(helper, "forward and right together must move along one axis, moved %s", moved);
+                double topSpeed = PodTuning.DEFAULT.movement().horizontalSpeed() * 10;
+                if (moved.z > -0.5 || Math.abs(moved.x) > EPSILON) {
+                    throw failure(helper, "the pod faces south, so back drives it north along z only, moved %s", moved);
+                }
+                if (-moved.z > topSpeed * 0.6) {
+                    throw failure(
+                            helper,
+                            "reversing is slower than driving forward (%s in 10 ticks), moved %s",
+                            topSpeed,
+                            moved);
+                }
+                if (rig.pod.getYRot() != SOUTH) {
+                    throw failure(helper, "reversing must not turn the pod, its yaw is %s", rig.pod.getYRot());
                 }
                 helper.succeed();
             } finally {
@@ -110,25 +131,143 @@ public class PodMovementTest {
         });
     }
 
-    @GameTest
-    public void switchingAxisLeavesNoDiagonalDrift(GameTestHelper helper) {
+    @GameTest(maxTicks = 100)
+    public void leftAndRightSteerTheYawLikeABoat(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);
-        rig.pilot.setInput(FORWARD);
-        helper.runAfterDelay(5, () -> {
-            Vec3 mid = rig.pod.position();
+        rig.pilot.setInput(LEFT);
+        helper.runAfterDelay(10, () -> {
+            float left = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
             rig.pilot.setInput(RIGHT);
-            helper.runAfterDelay(5, () -> {
+            helper.runAfterDelay(20, () -> {
                 try {
-                    Vec3 moved = rig.pod.position().subtract(mid);
-                    if (Math.abs(moved.z) > EPSILON || Math.abs(moved.x) < 0.5) {
+                    float right = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+                    if (left > -10f || left < -90f) {
                         throw failure(
-                                helper, "after switching to strafe the pod should move along x only, moved %s", moved);
+                                helper, "ten ticks of A should turn the pod left (a lower yaw), yaw change %s", left);
+                    }
+                    if (right <= left + 20f) {
+                        throw failure(
+                                helper,
+                                "D should turn the pod back and on, yaw change %s after A gave %s",
+                                right,
+                                left);
                     }
                     helper.succeed();
                 } finally {
                     rig.finish();
                 }
             });
+        });
+    }
+
+    @GameTest(maxTicks = 100)
+    public void steeringSpeedsUpToTheBoatsTurnRate(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        rig.pilot.setInput(RIGHT);
+        float[] last = {SOUTH};
+        float[] first = {0f};
+        int[] ticks = {0};
+        TestTicks.each(helper, () -> {
+            float turned = Mth.wrapDegrees(rig.pod.getYRot() - last[0]);
+            last[0] = rig.pod.getYRot();
+            if (++ticks[0] == 3) {
+                first[0] = turned;
+            }
+            if (ticks[0] < 50) {
+                return;
+            }
+            try {
+                // Vanilla's boat adds 1 degree a tick of turn rate and keeps 0.9 of it: it settles at 10 degrees a
+                // tick.
+                if (first[0] > 4f || turned < 8f || turned > 10.5f) {
+                    throw failure(
+                            helper,
+                            "the turn rate should build up (%s on the third tick) to about 10 degrees a tick, it is %s",
+                            first[0],
+                            turned);
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    @GameTest
+    public void drivingFollowsTheHeadingAfterATurn(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        // A bare D turns the pod while it creeps, so the pod stays on the small floor at the cruise speed.
+        rig.pilot.setInput(RIGHT);
+        helper.runAfterDelay(6, () -> {
+            rig.pilot.setInput(FORWARD);
+            helper.runAfterDelay(2, () -> {
+                Vec3 before = rig.pod.position();
+                helper.runAfterDelay(2, () -> {
+                    try {
+                        float turned = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+                        Vec3 step = rig.pod.position().subtract(before).multiply(1, 0, 1);
+                        Vec3 facing = Vec3.directionFromRotation(0, rig.pod.getYRot());
+                        if (turned < 10f || step.normalize().dot(facing) < 0.99) {
+                            throw failure(
+                                    helper,
+                                    "after turning right (%s degrees) the pod drives along its new facing %s, it moved %s",
+                                    turned,
+                                    facing,
+                                    step);
+                        }
+                        helper.succeed();
+                    } finally {
+                        rig.finish();
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * The boat reverses with S whatever A or D do, and turns while it does: so does the pod (unlike W with S, which
+     * cancels).
+     */
+    @GameTest(maxTicks = 100)
+    public void backWithLeftReversesWhileTurning(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        Vec3 start = rig.pod.position();
+        rig.pilot.setInput(BACK_LEFT);
+        helper.runAfterDelay(10, () -> {
+            try {
+                Vec3 moved = rig.pod.position().subtract(start);
+                float turned = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+                if (moved.z > -0.2 || turned > -10f) {
+                    throw failure(
+                            helper,
+                            "S with A backs the pod up (north) and turns it left, moved %s, turned %s",
+                            moved,
+                            turned);
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    @GameTest
+    public void forwardAndBackTogetherCancel(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        Vec3 start = rig.pod.position();
+        rig.pilot.setInput(FORWARD_BACK);
+        helper.runAfterDelay(10, () -> {
+            try {
+                if (rig.pod.position().distanceTo(start) > EPSILON) {
+                    throw failure(
+                            helper,
+                            "W with S is no throttle, the pod moved %s",
+                            rig.pod.position().subtract(start));
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
         });
     }
 

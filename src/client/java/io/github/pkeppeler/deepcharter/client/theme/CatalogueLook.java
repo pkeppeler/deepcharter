@@ -1,11 +1,14 @@
 package io.github.pkeppeler.deepcharter.client.theme;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
+import net.minecraft.resources.Identifier;
 
 /**
  * The size, place and hardware of the parts catalogue and its recipe panel ({@code theme/catalogue.json}, #846), in GUI pixels. The
  * glass is lit in the colony terminals' colours, {@code crt.json} and {@code panel.json}; the casing round it, the lip, vents, rivets,
- * knobs and switches are drawn from the numbers and colours here ({@link Casing}).
+ * knobs and switches are drawn from the numbers and colours here ({@link Casing}). The favourite's star is a pair of white GUI sprites,
+ * {@link #STAR} and {@link #STAR_HOLLOW}, tinted in the CRT's colours, which a resource pack replaces as it does any vanilla sprite.
  *
  * @param maxPanelWidth the widest a console gets, beside the inventory
  * @param minPanelWidth the narrowest a console draws at; room for less hides the panels
@@ -115,6 +118,12 @@ public record CatalogueLook(
         int buttonRows,
         int ghostColor,
         int missingColor) {
+    /** The star of a favourite, filled: {@code textures/gui/sprites/catalogue/star.png}, white, drawn a line high and tinted. */
+    public static final Identifier STAR = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "catalogue/star");
+    /** The star of any other item, its outline only: {@code textures/gui/sprites/catalogue/star_hollow.png}. */
+    public static final Identifier STAR_HOLLOW =
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "catalogue/star_hollow");
+
     /**
      * The casing round a glass and the hardware on it, drawn in the pack's metal greens.
      *

@@ -50,6 +50,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.ToIntFunction;
@@ -68,16 +69,26 @@ import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.InputQuirks;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.RecipeBookType;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeBookCategories;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
+import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.sdl.SDLKeyboard;
@@ -99,6 +110,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     private static final Bench TABLE = new Bench(RecipeBookType.CRAFTING, 3, 3);
 
     private static final Bench POCKET = new Bench(RecipeBookType.CRAFTING, 2, 2);
+    /** Past the fixtures' ids (they start at 100,000), so the tag fixture never takes one's place. */
+    private static final int TAG_FIXTURE_ID = 200_000;
+
     /** The narrowest GUI the panels draw at, and one pixel under it. */
     private static final int NARROWEST = 425;
 
@@ -161,6 +175,58 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                                 .getNamespace()
                                 .equals(DeepCharter.MOD_ID)),
                 "Company parts come first, got " + catalogue.items());
+    }
+
+    /**
+     * A tag ingredient lists only the items the campaign world yields (#1263, ADR 0093): "any planks" shows oak, which
+     * salvage crates drop, and not jungle or pale oak, which the world has none of. Resolved with the world's tags, as
+     * the real catalogue is.
+     */
+    private static void aTagIngredientListsOnlyObtainableItems(Minecraft client) {
+        ClientLevel level = Objects.requireNonNull(client.level, "a world is loaded");
+        ContextMap context = SlotDisplayContext.fromLevel(level);
+        RecipeDisplayEntry chest = new RecipeDisplayEntry(
+                new RecipeDisplayId(TAG_FIXTURE_ID),
+                new ShapelessCraftingRecipeDisplay(
+                        List.of(new SlotDisplay.TagSlotDisplay(level.registryAccess()
+                                .lookupOrThrow(Registries.ITEM)
+                                .getOrThrow(ItemTags.PLANKS))),
+                        new SlotDisplay.ItemSlotDisplay(Items.CHEST),
+                        new SlotDisplay.ItemSlotDisplay(Items.CRAFTING_TABLE)),
+                OptionalInt.empty(),
+                RecipeBookCategories.CRAFTING_MISC,
+                Optional.empty());
+        Set<Item> planks = KnownRecipe.of(chest, context).ingredientItems();
+        require(planks.contains(Items.OAK_PLANKS), "any planks lists oak planks, got " + planks);
+        require(
+                !planks.contains(Items.JUNGLE_PLANKS) && !planks.contains(Items.PALE_OAK_PLANKS),
+                "any planks lists no wood the world lacks, got " + planks);
+        List<Item> listed = PartsCatalogue.of(List.of(chest), context).items();
+        require(
+                !listed.contains(Items.JUNGLE_PLANKS) && listed.contains(Items.OAK_PLANKS),
+                "the catalogue lists oak planks and not jungle planks, got " + listed);
+    }
+
+    /**
+     * The creative tabs, built as the creative screen builds them, hold no vanilla item the world lacks, and keep one
+     * it yields.
+     */
+    private static void theCreativeTabsShowOnlyObtainableItems(Minecraft client) {
+        ClientLevel level = Objects.requireNonNull(client.level, "a world is loaded");
+        CreativeModeTab.ItemDisplayParameters parameters =
+                new CreativeModeTab.ItemDisplayParameters(level.enabledFeatures(), true, level.registryAccess());
+        Set<Item> shown = new HashSet<>();
+        for (CreativeModeTab tab : CreativeModeTabs.allTabs()) {
+            if (tab.getType() == CreativeModeTab.Type.CATEGORY) {
+                tab.buildContents(parameters);
+                tab.getDisplayItems().forEach(stack -> shown.add(stack.getItem()));
+                tab.getSearchTabDisplayItems().forEach(stack -> shown.add(stack.getItem()));
+            }
+        }
+        require(shown.contains(Items.OAK_PLANKS), "the creative tabs show oak planks");
+        require(
+                !shown.contains(Items.JUNGLE_PLANKS) && !shown.contains(Items.DIAMOND),
+                "the creative tabs show no jungle planks and no diamond");
     }
 
     private static void theSearchMatchesNamesIdsAndNamespaces() {
@@ -656,6 +722,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             // Item components are bound only once a world is loaded ("Components not bound yet" before it, #1124).
             context.runOnClient(client -> {
                 onlyTheKnownAreListed();
+                aTagIngredientListsOnlyObtainableItems(client);
+                theCreativeTabsShowOnlyObtainableItems(client);
                 theSearchMatchesNamesIdsAndNamespaces();
                 craftableNowNeedsTheIngredientsInHand();
                 craftableNowMeansCraftableOnThisScreen();
@@ -830,6 +898,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                     layout.shelf().counter()));
             plates.add(layout.card().spec());
             plates.add(layout.card().fill());
+            plates.add(layout.card().back());
             for (Drawn text : drawn) {
                 Rect box = new Rect(
                         text.box().x(),
@@ -869,6 +938,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 require(
                         labelInside(drawn, "SPEC SHEET", layout.card().spec()),
                         "the spec sheet label lies inside its button " + when);
+                require(
+                        labelInside(drawn, "<", layout.card().back()),
+                        "the back knob's arrow lies inside the knob " + when);
                 KnownRecipe shownRecipe = panel.state().shownRecipe(panel.catalogue());
                 if (shownRecipe != null) {
                     require(
@@ -1341,7 +1413,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 List.of(new HandbookChapter.Entry(
                         directive,
                         Component.literal("Make a drill head."),
-                        List.of(new HandbookChapter.Need(BuiltInRegistries.ITEM.getKey(DRILL), 1)))));
+                        List.of(new HandbookChapter.Target(BuiltInRegistries.ITEM.getKey(DRILL), 1)))));
         List<HandbookPage> pages = HandbookPages.of(Map.of(chapterId, chapter), Set.of());
         HandbookScreen[] opened = new HandbookScreen[1];
         context.setScreen(() -> {

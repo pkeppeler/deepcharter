@@ -5,7 +5,6 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
-import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BlockReadoutHud;
 import io.github.pkeppeler.deepcharter.client.layer.BreachHud;
 import io.github.pkeppeler.deepcharter.client.market.AccountHud;
@@ -25,6 +24,7 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionHud;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
@@ -478,13 +478,14 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                 widest = Math.max(widest, font.width(readout.hint().get()));
             }
             double scale = look.scale();
+            int boxHeight = (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale);
             hud.put(
                     "block readout",
                     new Box(
                             (width - (int) Math.ceil(widest * scale)) / 2,
-                            height / 2 + look.offsetY(),
+                            look.blockTop(height, font.lineHeight),
                             (int) Math.ceil(widest * scale),
-                            (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale)));
+                            boxHeight));
         });
         if (TransmissionOverlay.active()) {
             TransmissionLook look = TransmissionLook.current();

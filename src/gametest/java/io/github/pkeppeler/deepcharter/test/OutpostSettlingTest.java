@@ -271,11 +271,16 @@ public class OutpostSettlingTest {
                     // The shipped rates: a visit never takes more than the cap, and the take is the same however it is
                     // counted.
                     dark.storage().clearContent();
-                    SettlingRooms.stock(dark, Items.COAL, 1728);
-                    Ledger shipped = settle(dark, dark.ledger(), 200, SettlingTuning.DEFAULT);
+                    // The same property as before the stacks became 16: every visit takes the cap, never the share. It
+                    // was 1,728 coal (27 stacks of 64) over 200 windows, about 20 visits and 320 coal. A barrel holds
+                    // 432 now, so 100 windows (about 10 visits, 160 coal) leave the stock above the 64 under which a
+                    // quarter of it is less than the cap.
+                    int full = dark.storage().getContainerSize() * Items.COAL.getDefaultMaxStackSize();
+                    SettlingRooms.stock(dark, Items.COAL, full);
+                    Ledger shipped = settle(dark, dark.ledger(), 100, SettlingTuning.DEFAULT);
                     int visits = shipped.unread().visits();
-                    int taken = 1728 - SettlingRooms.count(dark.storage(), Items.COAL);
-                    expect(helper, visits > 0, "200 windows at 2 a day should bring a visit");
+                    int taken = full - SettlingRooms.count(dark.storage(), Items.COAL);
+                    expect(helper, visits > 0, "100 windows at 2 a day should bring a visit");
                     expect(
                             helper,
                             taken == visits * SettlingTuning.DEFAULT.maxFuelItemsPerVisit(),
@@ -388,7 +393,7 @@ public class OutpostSettlingTest {
         room.level().setBlock(heapAt, WreckRegistry.HEAP.defaultBlockState(), 3);
         room.level().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
         Container heap = SettlingRooms.containerAt(room.level(), heapAt);
-        heap.setItem(0, new ItemStack(Items.COAL, 64));
+        heap.setItem(0, new ItemStack(Items.COAL, Items.COAL.getDefaultMaxStackSize()));
         PodEntity pod = TestEntities.create(PodRegistry.POD, room.level());
         pod.setPos(Vec3.atBottomCenterOf(room.floor().offset(0, 1, -2)));
         room.level().addFreshEntity(pod);
@@ -418,8 +423,8 @@ public class OutpostSettlingTest {
                             drained);
                     expect(
                             helper,
-                            SettlingRooms.count(heap, Items.COAL) == 64,
-                            "the heap keeps its 64 coal, it holds %s",
+                            SettlingRooms.count(heap, Items.COAL) == Items.COAL.getDefaultMaxStackSize(),
+                            "the heap keeps its stack of coal, it holds %s",
                             SettlingRooms.count(heap, Items.COAL));
                     expect(
                             helper,

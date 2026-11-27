@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.GrainedCrust;
@@ -26,8 +27,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Pod drilling (SPEC section 7): sprint bores down, pushing into a wall bores sideways, never up. The bore is the
- * pod's footprint, one slab at a time.
+ * Pod drilling (SPEC section 7): sprint bores down, driving forward into a wall bores sideways, never up. The bore is
+ * the pod's footprint, one slab at a time, and the pod turns square to the compass first so the bore stays straight
+ * (ADR 0095).
  */
 public final class PodDrill {
     private static final double ALIGNED = 1e-6;
@@ -53,6 +55,15 @@ public final class PodDrill {
     static void tick(PodEntity pod, PodStats stats) {
         Direction wanted = PodEvents.isPowered(pod) && !PodLining.working(pod) ? wantedDirection(pod) : null;
         if (wanted == null) {
+            stop(pod);
+            return;
+        }
+        if (EngineSoot.launchRefused(pod)) {
+            // A pod in limp mode does not leave a colony whose repair station works: it is serviced there first
+            // (#1280).
+            if (pod.getControllingPassenger() instanceof ServerPlayer pilot && pod.tickCount % 40 == 0) {
+                pilot.sendOverlayMessage(Component.translatable("deepcharter.fuel.launch_refused"));
+            }
             stop(pod);
             return;
         }
@@ -89,8 +100,13 @@ public final class PodDrill {
             return;
         }
         pod.setDrilling(true);
+        // The drill sets the pace from its first tick: a sprint that drove the pod into the rock ends here.
+        PodSprint.stop(pod);
         pod.setDrillDirection(wanted);
-        if (!centred) {
+        // The turn to the grid and the slide to the centre both finish before the first tick of the slab counts.
+        boolean squared =
+                PodSteering.align(pod, wanted.getAxis().isHorizontal() ? wanted : PodSteering.nearestCardinal(pod));
+        if (!centred || !squared) {
             return;
         }
         if (slab.hasCompanyRock()) {
@@ -114,15 +130,20 @@ public final class PodDrill {
         pod.setDrillProgress(null);
     }
 
-    /** Down on sprint, a horizontal direction on a push into a wall; null when the pod is not on the ground or is not asked to drill. */
+    /**
+     * Down on sprint with no direction key held; a horizontal direction on W pressed against rock, the compass
+     * direction the pod faces nearest. S, A and D alone never drill. Null when the pod is not on the ground or is not
+     * asked to drill.
+     */
     private static @Nullable Direction wantedDirection(PodEntity pod) {
         if (!pod.onGround() || !(pod.getControllingPassenger() instanceof ServerPlayer pilot)) {
             return null;
         }
         Input input = pilot.getLastClientInput();
-        Direction drive = PodMovement.driveDirection(input, pilot.getYRot());
-        if (drive != null) {
-            return pod.horizontalCollision ? drive : null;
+        if (input.forward() || input.backward() || input.left() || input.right()) {
+            Direction facing = PodSteering.nearestCardinal(pod);
+            boolean pushing = input.forward() && !input.backward() && pod.horizontalCollision;
+            return pushing && PodSteering.pressedAgainstRock(pod, facing) ? facing : null;
         }
         return input.sprint() ? Direction.DOWN : null;
     }
@@ -206,8 +227,7 @@ public final class PodDrill {
                         return false;
                     }
                 } else if (breakable(state)
-                        && (state.getDestroySpeed(level, pos) < 0
-                                || (state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn(pos)))) {
+                        && (state.getDestroySpeed(level, pos) < 0 || (isCrust(state) && !crustLeadsOn(pos)))) {
                     return false;
                 }
             }
@@ -271,13 +291,19 @@ public final class PodDrill {
             return new LoadedBlocks(level);
         }
 
+        /** The breach crust, or the grained crust that takes its place at a seam or a decoy: a floor either way. */
+        private static boolean isCrust(BlockState state) {
+            return state.is(LayerBlocks.BREACH_CRUST) || state.is(LayerBlocks.GRAINED_CRUST);
+        }
+
         private static boolean breakable(BlockState state) {
             return !state.isAir() && !(state.getBlock() instanceof LiquidBlock);
         }
 
         /**
-         * The last layer's crust has nothing under it: a hole would only drop the pod into the void. The layer is the band at the crust's Y,
-         * so layer 2's floor crust in the campaign world is refused too, with unbuilt depth below it.
+         * The last layer's crust, grained or not, has nothing under it: a hole would only drop the pod into the void,
+         * so the last floor's layer data never decides it. The layer is the band at the crust's Y, so the floor crust
+         * of the last built layer in the campaign world is refused, with unbuilt depth below it.
          */
         private boolean crustLeadsOn(BlockPos crust) {
             Optional<Band> band = LayerChain.layerAt(level, crust.getY());

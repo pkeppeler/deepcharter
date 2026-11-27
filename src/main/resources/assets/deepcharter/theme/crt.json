@@ -11,6 +11,7 @@
   "dimColor": "#2E7A45",
   "hoverFillColor": "#123D20",
   "refusalColor": "#FFB000",
+  "ghostVeilColor": "#A8050A06",
   "padding": 6,
   "lineSpacing": 2,
   "buttonLabelOffset": 1,

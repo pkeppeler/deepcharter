@@ -145,7 +145,8 @@ public class PodStatsTest {
         MockPlayer pilot = seatPilot(helper, pod);
         Vec3 start = pod.position();
         pilot.setInput(FORWARD);
-        int ticks = 10;
+        // Five ticks keep the pod on the small floor at twice the cruise speed.
+        int ticks = 5;
         helper.runAfterDelay(ticks, () -> {
             try {
                 double moved = pod.position().subtract(start).horizontalDistance();
@@ -402,8 +403,9 @@ public class PodStatsTest {
     @GameTest
     public void theBuiltInFuelsAreInTheTableToo(GameTestHelper helper) {
         for (var fuel : List.of(Items.COAL, Items.CHARCOAL)) {
-            if (PodFuelItems.litresOf(new ItemStack(fuel)).orElse(0) != 2.0) {
-                throw helper.assertionException("%s should give 2 litres from the data table", fuel);
+            double expected = fuel == Items.COAL ? 2.0 : 1.0;
+            if (PodFuelItems.litresOf(new ItemStack(fuel)).orElse(0) != expected) {
+                throw helper.assertionException("%s should give %s litres from the data table", fuel, expected);
             }
         }
         if (PodFuelItems.litresOf(new ItemStack(Items.STICK)).isPresent()) {
