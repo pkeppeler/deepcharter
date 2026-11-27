@@ -12,7 +12,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
-import io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen;
+import io.github.pkeppeler.deepcharter.client.pod.PodScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.RepairScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
@@ -946,7 +946,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
         // ------------------------------------------------------------------------------------------------ HUDs
 
-        /** The pod's cargo screen, opened as a player does: sneak and use the pod. */
+        /** The pod screen with a full hold, opened as a player does: sneak and use the pod. */
         private void cargoScreen() {
             Vec3 stage = stage();
             view(0, stage.add(0, EYE, -3), stage.add(2, 1, -3), 20);
@@ -960,7 +960,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 UseEntity.on(player, player.level(), InteractionHand.MAIN_HAND, pod);
                 player.setShiftKeyDown(false);
             });
-            ClientWait.screen(ctx, OreCargoScreen.class);
+            ClientWait.screen(ctx, PodScreen.class);
             ctx.waitTicks(10);
             still("screen-pod-cargo");
             ctx.setScreen(() -> null);

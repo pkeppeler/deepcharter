@@ -35,12 +35,16 @@ public final class ScanSlice {
 
     private final int tier;
     private final ScanArea area;
+    private final BlockPos origin;
+    private final Direction facing;
     private final Cell[] cells;
     private final BlockState[] states;
 
-    private ScanSlice(int tier, ScanArea area, Cell[] cells, BlockState[] states) {
+    private ScanSlice(int tier, ScanArea area, BlockPos origin, Direction facing, Cell[] cells, BlockState[] states) {
         this.tier = tier;
         this.area = area;
+        this.origin = origin;
+        this.facing = facing;
         this.cells = cells;
         this.states = states;
     }
@@ -100,7 +104,7 @@ public final class ScanSlice {
                 states[index] = state;
             }
         }
-        return new ScanSlice(tier, area, cells, states);
+        return new ScanSlice(tier, area, origin.immutable(), facing, cells, states);
     }
 
     public int tier() {
@@ -109,6 +113,22 @@ public final class ScanSlice {
 
     public ScanArea area() {
         return area;
+    }
+
+    /** The block the slice is centred on: the pod's feet when it was read. */
+    public BlockPos origin() {
+        return origin;
+    }
+
+    /**
+     * The world position of the cell ({@code ahead}, {@code up}), as {@link BlockPos#asLong}: the client's rock grain
+     * reads it for every cell on every rescan, so it allocates no position.
+     */
+    public long posLong(int ahead, int up) {
+        return BlockPos.asLong(
+                origin.getX() + facing.getStepX() * ahead,
+                origin.getY() + up,
+                origin.getZ() + facing.getStepZ() * ahead);
     }
 
     public Cell cell(int ahead, int up) {

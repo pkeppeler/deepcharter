@@ -28,6 +28,7 @@
     "CardinalLightingMixin",
     "ClientGameTestImplMixin",
     "ClientPacketListenerMixin",
+    "DrifterRendererMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudMixin",

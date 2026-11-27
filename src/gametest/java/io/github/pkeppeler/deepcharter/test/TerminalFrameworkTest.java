@@ -703,7 +703,7 @@ public class TerminalFrameworkTest {
                         state.getDestroySpeed(level, pos),
                         state.getDestroyProgress(player, level, pos));
             }
-            if (state.getBlock().getExplosionResistance() < 3_600_000F) {
+            if (state.getBlock().getExplosionResistance() < Blocks.BEDROCK.getExplosionResistance()) {
                 throw failure(
                         helper,
                         "%s must survive explosions, resistance %s",

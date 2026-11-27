@@ -31,6 +31,8 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
@@ -259,6 +261,18 @@ public class PodBraceTest {
                     "a pod that is not at rest waits, it is %s",
                     PodBrace.status(pod, false).patching());
         }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aHoldOfGearAndNoOreSaysThereIsNoOre(GameTestHelper helper) {
+        ServerLevel one = TestLayers.level(helper, 1);
+        PodEntity pod = pod(helper, one, 1, 10, 5f, true);
+        pod.cargo().setAt(pod, 0, new ItemStack(Items.TORCH, 8));
+        tick(pod, 1);
+        expectPatching(helper, pod, PodBrace.Patching.NO_ORE, "for a hold of torches and no ore");
+        ore(helper, pod, OreType.GOLDIUM);
+        expectPatching(helper, pod, PodBrace.Patching.NO_CHEAP_ORE, "for torches and dear ore");
         helper.succeed();
     }
 

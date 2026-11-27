@@ -2,16 +2,13 @@ package io.github.pkeppeler.deepcharter.surface;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.StateDefinition;
 
 /**
  * A block of a giant fungus, which drops one fungal stalk like every stalk block: a great stalk's full-cube trunk or
  * cap, and the class every parasol and spire block extends with its own shape ({@link GiantFungusBlocks}). Breaking one
- * brings down what it holds up ({@link StalkCollapse}).
+ * brings down what it holds up at once ({@link StalkCollapse}).
  */
 class GreatStalkBlock extends Block {
     private final boolean cap;
@@ -20,12 +17,6 @@ class GreatStalkBlock extends Block {
     GreatStalkBlock(Properties properties, boolean cap) {
         super(properties);
         this.cap = cap;
-        registerDefaultState(defaultBlockState().setValue(StalkCollapse.FALLING, false));
-    }
-
-    @Override
-    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(StalkCollapse.FALLING);
     }
 
     /** Whether this is a cap block. */
@@ -38,18 +29,5 @@ class GreatStalkBlock extends Block {
             BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
         super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
         StalkCollapse.removed(level, pos, state);
-    }
-
-    @Override
-    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
-        super.onPlace(state, level, pos, oldState, movedByPiston);
-        if (level instanceof ServerLevel server) {
-            StalkCollapse.placed(server, pos, state);
-        }
-    }
-
-    @Override
-    protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        StalkCollapse.step(level, pos);
     }
 }
