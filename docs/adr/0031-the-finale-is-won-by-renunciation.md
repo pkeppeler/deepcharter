@@ -4,6 +4,8 @@ status: accepted
 
 # The finale is won by renunciation
 
+**Amended by [ADR 0096](0096-renunciation-needs-the-whole-online-crew-signing-stays-the-directors.md):** renunciation now needs every online charter member to let go together, not one thrower. Signing is unchanged.
+
 The final fight breaks the boss but cannot kill him. It ends in a choice, and only giving everything up wins. The boss offers the charter a Controlling Interest in the employer. If anyone in the charter throws it into the Furnace (renunciation), the boss dies, the charter loses its whole account, and every crew member gets an Unnumbered Lamp. If the Director signs it, the decision is final: he becomes the Chairman with a payout, a dividend and a suit lamp that never works again, and the epilogue is grim.
 
 We chose this because the user wants the story's darkness in the manner of Tolkien and Lewis: evil is hollow and finite, and it is beaten by refusing it, not by firepower alone. The wrong choice has to be genuinely tempting, or the choice is inert, so signing pays well and costs in ways that embody the theme. Lore: [LORE.md section 12](../LORE.md#12-the-finale).

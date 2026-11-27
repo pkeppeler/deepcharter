@@ -338,11 +338,11 @@ A transmission repeated once a day by a wreck's beacon, carrying a dead crew's l
 _Avoid_: echo, recording
 
 **Controlling Interest**:
-The deed the final boss offers the charter. Signing it or burning it ends the charter's story.
+The deed the final boss offers the charter. The Director alone can sign it; the whole online crew together can burn it. Either ends the charter's story.
 _Avoid_: contract (means the Employment Contract)
 
 **Renunciation**:
-Throwing the Controlling Interest into the Furnace. The true ending: it kills the final boss and costs the charter its whole account.
+Burning the Controlling Interest in the Furnace, which takes it only when every online charter member lets go together. The true ending: it kills the final boss and costs the charter its whole account.
 _Avoid_: good ending, sacrifice
 
 **Unnumbered Lamp**:

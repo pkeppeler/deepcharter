@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
-import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -15,6 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.level.storage.LevelData;
@@ -22,12 +22,15 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the cargo is left behind
- * as item entities where the pod was. Nothing mined teleports.
+ * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the whole hold is left
+ * behind as item entities where the pod was. Nothing mined teleports.
  */
 final class Teleports {
     /** How many random spots a scattering teleporter tries before it falls back to the exact column. */
     private static final int SCATTER_TRIES = 5;
+
+    /** Chunks out from the landing chunk that its arrival ticket loads: 2 makes the landing chunk tick entities. */
+    private static final int ARRIVAL_RADIUS = 2;
 
     private Teleports() {}
 
@@ -63,22 +66,24 @@ final class Teleports {
             return Consumables.refusal("teleport_blocked");
         }
         Vec3 landing = spot.get();
-        List<PodCargo.Entry> held = cargo.entries();
         Vec3 departure = pod.position();
         Entity arrived = pod.teleport(new TeleportTransition(
                 to, landing, Vec3.ZERO, pod.getYRot(), pod.getXRot(), TeleportTransition.DO_NOTHING));
         if (arrived == null) {
             return Consumables.refusal("teleport_blocked");
         }
+        // The look-up loaded the landing chunk with a ticket that lapses next tick, and the pilot's own tickets follow
+        // only once its client answers the teleport: hold the chunk until then, as a tow holds a towed pod's (#1353).
+        to.getChunkSource()
+                .addTicketWithRadius(RepairRegistry.TELEPORT_ARRIVAL, arrived.chunkPosition(), ARRIVAL_RADIUS);
         arrived.getPassengersAndSelf().forEach(Entity::resetFallDistance);
-        // The ore is spilled first, so that a failure after it loses nothing: the bay is emptied last.
-        for (PodCargo.Entry entry : held) {
-            from.addFreshEntity(new ItemEntity(
-                    from, departure.x, departure.y, departure.z, entry.stack().copy()));
-        }
-        // The saved cargo travelled with the pod (a crossing is a new entity): empty the arriving bay.
+        // The whole hold spills, not only the ore (SPEC section 11: you drop your cargo, and nothing mined teleports).
+        // The saved hold travelled with the pod (a crossing is a new entity), so it is the arriving pod's that empties.
+        // The fuel slot is fuel, not cargo, and stays, as the tank's fuel does.
         if (arrived instanceof PodEntity moved) {
-            moved.cargo().dump(moved);
+            for (ItemStack stack : moved.cargo().takeAll(moved)) {
+                from.addFreshEntity(new ItemEntity(from, departure.x, departure.y, departure.z, stack));
+            }
         }
         from.playSound(
                 null, departure.x, departure.y, departure.z, DeepSound.TERMINAL_TELEPORT.event(), SoundSource.PLAYERS);
