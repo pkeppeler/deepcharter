@@ -249,9 +249,7 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
             }
             List<BlockPos> cells = ChargeUse.packRound(player, pod, radius);
             // The blast's cube: centred on the feet row and the footprint's middle cell.
-            PodFootprint foot = PodFootprint.of(pod);
-            BlockPos middle =
-                    new BlockPos(foot.lowX() + foot.width() / 2, foot.feetY(), foot.lowZ() + foot.width() / 2);
+            BlockPos middle = PodFootprint.of(pod).feetMiddle();
             List<BlockPos> inside = cells.stream()
                     .filter(cell -> Math.abs(cell.getX() - middle.getX()) <= radius
                             && Math.abs(cell.getY() - middle.getY()) <= radius
@@ -259,8 +257,8 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
                     .toList();
             List<BlockPos> outside =
                     cells.stream().filter(cell -> !inside.contains(cell)).toList();
-            BlockPos reach =
-                    BlockPos.containing(pod.getBoundingBox().getCenter()).offset(radius + 1, 0, 0);
+            // One past the cube on the +x side, on the row its middle is in.
+            BlockPos reach = middle.offset(radius + 1, 0, 0);
             player.level().setBlock(reach, Blocks.STONE.defaultBlockState(), 3);
             return List.of(inside, outside, List.of(reach));
         });
