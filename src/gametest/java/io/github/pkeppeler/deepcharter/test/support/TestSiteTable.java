@@ -80,12 +80,6 @@ final class TestSiteTable {
         claim("ColonyTest", 0, 9484, 9516, 9484, 9516);
         claim("ColonyTest", 0, 8910, 9090, 8910, 9090);
 
-        row("CompanyRecoveryTest", 1, 11997, 12003, 100, 4, 11997, 12003);
-        claim("CompanyRecoveryTest", 1, 12347, 12353, 11997, 12003);
-        claim("CompanyRecoveryTest", 1, 12377, 12383, 11997, 12003);
-        row("CompanyRecoveryTest", 1, 12397, 12403, 50, 9, 11997, 12003);
-        claim("CompanyRecoveryTest", 2, 12247, 12253, 11997, 12003);
-
         row("CompanyRockBiteTest", 1, 4391, 4409, 64, 5, 5591, 5609);
 
         claim("CompanyRockLookTest", 1, 7499, 7501, 3007, 3009);
@@ -394,6 +388,7 @@ final class TestSiteTable {
         claim("PodDrillTest", 1, 3509, 3515, 2997, 3003);
         claim("PodDrillTest", 2, 3509, 3515, 2997, 3003);
         claim("PodDrillTest", LAST, 3573, 3579, 2997, 3003);
+        claim("PodDrillTest", LAST, 4213, 4219, 2997, 3003);
         claim("PodDrillTest", UNBUILT, 3123, 3134, 2995, 3005);
         claim("PodDrillTest", UNBUILT, 3187, 3198, 2995, 3005);
         row("PodDrillTest", 1, 9295, 9306, 64, 5, 2995, 3005);
@@ -424,6 +419,7 @@ final class TestSiteTable {
 
         claim("PodHardLandingTest", 1, 2398, 2402, 2398, 2402);
         row("PodHardLandingTest", 1, 2498, 2502, 50, 5, 2398, 2402);
+        row("PodHardLandingTest", 1, 2798, 2802, 50, 4, 2398, 2402);
 
         row("PodHazardCuesTest", 1, 9793, 9807, 48, 4, 9793, 9807);
 
