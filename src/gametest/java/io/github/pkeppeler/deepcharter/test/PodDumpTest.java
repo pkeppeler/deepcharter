@@ -121,9 +121,13 @@ public class PodDumpTest {
         return pod.level().getEntitiesOfClass(ItemEntity.class, box);
     }
 
-    /** Puts the player on the first item lying under the pod, which is picked up on the player's next tick. */
-    private static void standOnALyingItem(MockPlayer mock, PodEntity pod) {
-        mock.teleportTo((ServerLevel) pod.level(), itemsUnder(pod).getFirst().position(), 0f, 0f);
+    /** Puts the player on the first dumped ore lying under the pod, which is picked up on the player's next tick. */
+    private static void standOnALyingOre(MockPlayer mock, PodEntity pod) {
+        ItemEntity ore = itemsUnder(pod).stream()
+                .filter(item -> OreRegistry.typeOf(item.getItem()).isPresent())
+                .findFirst()
+                .orElseThrow();
+        mock.teleportTo((ServerLevel) pod.level(), ore.position(), 0f, 0f);
     }
 
     private static int oreLying(PodEntity pod) {
@@ -273,14 +277,14 @@ public class PodDumpTest {
             scene.pilot().stopRiding();
             onFoot[0] = true;
         });
-        // The dump scatters the items out of reach of one spot: stand on a lying one each tick until none lies.
+        // The dump scatters the items out of reach of one spot: stand on a lying ore each tick until none lies.
         helper.startSequence()
                 .thenWaitUntil(() -> {
                     if (!onFoot[0]) {
                         throw helper.assertionException("the pilot is still seated");
                     }
                     if (oreLying(pod) > 0) {
-                        standOnALyingItem(scene.mock(), pod);
+                        standOnALyingOre(scene.mock(), pod);
                         throw helper.assertionException(
                                 "on foot the pilot picks the dumped ore up, holds %s, %s still lying",
                                 oreHeld(scene.pilot()), oreLying(pod));
