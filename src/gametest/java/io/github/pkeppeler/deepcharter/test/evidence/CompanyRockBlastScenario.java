@@ -37,15 +37,25 @@ import net.minecraft.world.phys.Vec3;
 public class CompanyRockBlastScenario extends EvidenceScenario {
     private static final int X = 5600;
     private static final int Z = 5100;
-    private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int TICKS_PER_FRAME = 2;
     private static final int SETTLE_TICKS = 40;
     private static final int LAMP = 12;
-    /** Where the camera stands: on the trench floor, four blocks from the slab's face and level with its middle. */
-    private static final Vec3 EYE = new Vec3(X, FLOOR_Y - 2, Z + 4.5);
+    /**
+     * The room's floor in {@code layer}: the same height above the layer's own floor in each, since a layer is a band of the
+     * campaign level and a world Y belongs to one layer only (#1372). Only a room height in layer 2: there it sits inside the
+     * signal decay, which this scenario does not show (the HUD is hidden).
+     */
+    private static int floorY(int layer) {
+        return TestLayers.worldY(layer, LIVE_GAUGES_LOCAL_Y);
+    }
 
-    private static BlockPos slabCell() {
-        return new BlockPos(X, FLOOR_Y - 1, Z);
+    /** Where the camera stands: on the trench floor, four blocks from the slab's face and level with its middle. */
+    private static Vec3 eye(int layer) {
+        return TestLayers.vec(layer, X, LIVE_GAUGES_LOCAL_Y - 2, Z + 4.5);
+    }
+
+    private static BlockPos slabCell(int layer) {
+        return TestLayers.pos(layer, X, LIVE_GAUGES_LOCAL_Y - 1, Z);
     }
 
     @Override
@@ -73,7 +83,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
             build(level, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
-            watch(level, player);
+            watch(level, layer, player);
         });
         ClientWait.until(
                 context,
@@ -81,7 +91,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
                 client -> client.player != null
                         && TestLayers.clientIsIn(client, layer)
                         && ClientLight.clientLevel(client)
-                                .getBlockState(slabCell())
+                                .getBlockState(slabCell(layer))
                                 .is(HazardBlocks.COMPANY_ROCK));
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         context.waitTicks(SETTLE_TICKS);
@@ -96,9 +106,9 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
             ServerLevel level = TestLayers.level(server, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
-            pod.setPos(X, FLOOR_Y, Z);
+            pod.setPos(X, floorY(layer), Z);
             level.addFreshEntity(pod);
-            player.teleportTo(level, X, FLOOR_Y, Z, Set.of(), 0, 0, true);
+            player.teleportTo(level, X, floorY(layer), Z, Set.of(), 0, 0, true);
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod");
             }
@@ -125,16 +135,16 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
                 throw new AssertionError("the charge should be set from the seat");
             }
             player.stopRiding();
-            watch(level, player);
+            watch(level, layer, player);
         });
         for (int step = 1; step <= CompanyRockBlock.MAX_CRACK; step++) {
             int wanted = step;
-            while (crack(context) < wanted) {
+            while (crack(context, layer) < wanted) {
                 if (recording) {
                     frame(context);
                 }
                 context.waitTicks(TICKS_PER_FRAME);
-                if (crack(context) < 0) {
+                if (crack(context, layer) < 0) {
                     throw new AssertionError("the slab was cleared before step " + wanted);
                 }
             }
@@ -142,7 +152,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
             context.waitTicks(TICKS_PER_FRAME * 2);
             screenshot(context, "l%d-step%d".formatted(layer, step));
         }
-        while (crack(context) >= 0) {
+        while (crack(context, layer) >= 0) {
             if (recording) {
                 frame(context);
             }
@@ -158,16 +168,17 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
     }
 
     /** The slab's crack on the client, or -1 once the rock is gone from it. */
-    private static int crack(ClientGameTestContext context) {
+    private static int crack(ClientGameTestContext context, int layer) {
         return context.computeOnClient(client -> {
-            BlockState state = ClientLight.clientLevel(client).getBlockState(slabCell());
+            BlockState state = ClientLight.clientLevel(client).getBlockState(slabCell(layer));
             return state.is(HazardBlocks.COMPANY_ROCK) ? state.getValue(CompanyRockBlock.CRACK) : -1;
         });
     }
 
     /** Puts the player on the trench floor, looking north at the slab's face. */
-    private static void watch(ServerLevel level, ServerPlayer player) {
-        player.teleportTo(level, EYE.x, EYE.y, EYE.z, Set.of(), 180f, 0f, true);
+    private static void watch(ServerLevel level, int layer, ServerPlayer player) {
+        Vec3 eye = eye(layer);
+        player.teleportTo(level, eye.x, eye.y, eye.z, Set.of(), 180f, 0f, true);
     }
 
     /**
@@ -176,32 +187,33 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
      */
     private static void build(ServerLevel level, int layer) {
         Block ground = layer == 1 ? LayerBlocks.PACKED_SHALE : LayerBlocks.GREEN_SHALE;
-        RoomCarver.carve(level, X - 9, X + 9, FLOOR_Y - 9, FLOOR_Y + 10, Z - 13, Z + 13, ground);
+        int floor = floorY(layer);
+        RoomCarver.carve(level, X - 9, X + 9, floor - 9, floor + 10, Z - 13, Z + 13, ground);
         RoomCarver.carve(
                 level,
-                new BlockPos(X - 8, FLOOR_Y, Z - 12),
-                new BlockPos(X + 8, FLOOR_Y + 8, Z + 12),
+                new BlockPos(X - 8, floor, Z - 12),
+                new BlockPos(X + 8, floor + 8, Z + 12),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
         BlockState rock = ((CompanyRockBlock) HazardBlocks.COMPANY_ROCK).in(ground.defaultBlockState());
         for (int dx = -3; dx <= 2; dx++) {
             for (int dz = -1; dz <= 0; dz++) {
                 for (int dy = -2; dy <= -1; dy++) {
-                    level.setBlock(new BlockPos(X + dx, FLOOR_Y + dy, Z + dz), rock, Block.UPDATE_ALL);
+                    level.setBlock(new BlockPos(X + dx, floor + dy, Z + dz), rock, Block.UPDATE_ALL);
                 }
             }
         }
         // The trench: the rows of the slab, from its face out to the camera.
         RoomCarver.carve(
                 level,
-                new BlockPos(X - 4, FLOOR_Y - 2, Z + 1),
-                new BlockPos(X + 3, FLOOR_Y - 1, Z + 8),
+                new BlockPos(X - 4, floor - 2, Z + 1),
+                new BlockPos(X + 3, floor - 1, Z + 8),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
         // Two pairs of lamps, one over each half of the slab's face, so that the face is lit evenly from end to end.
         for (int lampX : new int[] {X - 2, X + 1}) {
-            level.setBlock(new BlockPos(lampX, FLOOR_Y, Z + 3), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
-            level.setBlock(new BlockPos(lampX, FLOOR_Y - 2, Z + 2), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
+            level.setBlock(new BlockPos(lampX, floor, Z + 3), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
+            level.setBlock(new BlockPos(lampX, floor - 2, Z + 2), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
         }
     }
 }

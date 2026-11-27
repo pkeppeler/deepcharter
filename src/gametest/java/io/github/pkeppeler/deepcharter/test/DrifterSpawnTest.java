@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.Drifter;
 import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
 import io.github.pkeppeler.deepcharter.creature.DrifterTuning;
+import io.github.pkeppeler.deepcharter.creature.DrifterVariant;
 import io.github.pkeppeler.deepcharter.creature.Drifters;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Zones;
@@ -24,6 +25,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
@@ -35,6 +37,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +58,9 @@ public class DrifterSpawnTest {
 
     private static final Identifier HOLLOWS_TEST_BIOME = Identifier.fromNamespaceAndPath("deepcharter-test", "hollows");
     private static final Identifier DRONE = Identifier.fromNamespaceAndPath("deepcharter", "creature.alarm_drone");
+    /** Placements a run of forms is drawn over. */
+    private static final int VARIANT_DRAWS = 60;
+
     /** The long room of the spawn test: 47 blocks along x (four chunks), 13 across and 19 high, so that a place 18 to 36 blocks from its middle is in it. */
     private static final int CX = 25_032;
 
@@ -475,6 +481,152 @@ public class DrifterSpawnTest {
             helper.succeed();
         });
         FarChunks.awaitEntityTicking(helper, level, columns, index -> ready[0]++);
+    }
+
+    /**
+     * A placement picks the drifter's form with the source of chance it is given ({@link Drifters#seed} installs one
+     * for the tick): the same seed makes the same run of forms, another seed another, and a run of {@link
+     * #VARIANT_DRAWS} placements meets all three about as often as the equal weights say. Layer 1's middle zone, which
+     * no other test fills.
+     */
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    public void aPlacementPicksItsFormFromTheSeed(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        CampaignBands.Band one = CampaignBands.LAYER_1;
+        int y = topY(one.minY(), one.height(), 1);
+        List<BlockPos> columns = columns(y);
+        int[] ready = {0};
+        boolean[] done = {false};
+        TestTicks.each(helper, () -> {
+            if (ready[0] < columns.size() || done[0]) {
+                return;
+            }
+            done[0] = true;
+            room(level, y);
+            hollows(level, y);
+            List<DrifterVariant> first = placedForms(helper, level, middle(y), SEED);
+            List<DrifterVariant> again = placedForms(helper, level, middle(y), SEED);
+            List<DrifterVariant> other = placedForms(helper, level, middle(y), SEED + 1);
+            expect(helper, first.equals(again), "the same seed placed %s, then %s", first, again);
+            expect(helper, !first.equals(other), "another seed placed the same forms: %s", first);
+            for (DrifterVariant variant : DrifterVariant.values()) {
+                long count = first.stream().filter(variant::equals).count();
+                LOGGER.info("[drifter] {} of {} placements are a {}", count, VARIANT_DRAWS, variant);
+                expect(
+                        helper,
+                        count >= VARIANT_DRAWS / 6,
+                        "%d of %d placements were a %s: the weights are equal thirds",
+                        count,
+                        VARIANT_DRAWS,
+                        variant);
+            }
+            helper.succeed();
+        });
+        FarChunks.awaitEntityTicking(helper, level, columns, index -> ready[0]++);
+    }
+
+    /**
+     * The form's roll comes after the placement's, so the weights never move where a drifter appears: the same seed
+     * puts it at the same place under equal weights and under a skewed list, and the roll that picks its form is the
+     * last draw of the call, not the first.
+     */
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    public void theFormWeightsNeverMoveWhereADrifterIsPlaced(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        CampaignBands.Band one = CampaignBands.LAYER_1;
+        int y = topY(one.minY(), one.height(), 1);
+        List<BlockPos> columns = columns(y);
+        int[] ready = {0};
+        boolean[] done = {false};
+        TestTicks.each(helper, () -> {
+            if (ready[0] < columns.size() || done[0]) {
+                return;
+            }
+            done[0] = true;
+            room(level, y);
+            hollows(level, y);
+            Drifters.Source source = middle(y);
+            DrifterTuning.Spawn base = TUNING.spawn();
+            DrifterTuning.Spawn skewed = new DrifterTuning.Spawn(
+                    base.checkTicks(),
+                    base.perMinute(),
+                    base.zoneCap(),
+                    base.perSource(),
+                    base.minBlocks(),
+                    base.maxBlocks(),
+                    base.tries(),
+                    List.of(1.0, 5.0, 0.5));
+            for (long seed = SEED; seed < SEED + 20; seed++) {
+                Vec3 equal = placedAt(level, source, seed, base);
+                Vec3 other = placedAt(level, source, seed, skewed);
+                expect(
+                        helper,
+                        equal.equals(other),
+                        "seed %d placed at %s, and at %s under other weights",
+                        seed,
+                        equal,
+                        other);
+                double[] last = {Double.NaN};
+                RandomSource recording = new LegacyRandomSource(seed) {
+                    @Override
+                    public double nextDouble() {
+                        last[0] = super.nextDouble();
+                        return last[0];
+                    }
+                };
+                Drifter drifter = placed(level, source, recording, skewed);
+                RandomSource replay = new LegacyRandomSource(0) {
+                    @Override
+                    public double nextDouble() {
+                        return last[0];
+                    }
+                };
+                expect(
+                        helper,
+                        drifter.variant() == DrifterVariant.pick(replay, skewed.variantWeights()),
+                        "seed %d: the form was not rolled by the last draw of the call",
+                        seed);
+                drifter.discard();
+            }
+            helper.succeed();
+        });
+        FarChunks.awaitEntityTicking(helper, level, columns, index -> ready[0]++);
+    }
+
+    private static Vec3 placedAt(ServerLevel level, Drifters.Source source, long seed, DrifterTuning.Spawn tuning) {
+        Drifter drifter = placed(level, source, new LegacyRandomSource(seed), tuning);
+        Vec3 at = drifter.position();
+        drifter.discard();
+        return at;
+    }
+
+    private static Drifter placed(
+            ServerLevel level, Drifters.Source source, RandomSource random, DrifterTuning.Spawn tuning) {
+        for (int i = 0; i < ATTEMPTS; i++) {
+            Optional<Drifter> spawned = Drifters.spawnFor(level, source, 1, random, tuning);
+            if (spawned.isPresent()) {
+                return spawned.get();
+            }
+        }
+        throw new IllegalStateException("no drifter was placed in " + ATTEMPTS + " calls");
+    }
+
+    /**
+     * The forms of the next {@link #VARIANT_DRAWS} placements for {@code source} drawn from a source of chance made
+     * from {@code seed}.
+     */
+    private static List<DrifterVariant> placedForms(
+            GameTestHelper helper, ServerLevel level, Drifters.Source source, long seed) {
+        RandomSource random = RandomSource.create(seed);
+        List<DrifterVariant> forms = new ArrayList<>();
+        for (int i = 0; i < VARIANT_DRAWS * ATTEMPTS && forms.size() < VARIANT_DRAWS; i++) {
+            Drifters.spawnFor(level, source, 1, random).ifPresent(drifter -> {
+                forms.add(drifter.variant());
+                drifter.discard();
+            });
+        }
+        expect(helper, forms.size() == VARIANT_DRAWS, "only %d placements in the calls made", forms.size());
+        return forms;
     }
 
     /**

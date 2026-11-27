@@ -696,6 +696,10 @@ public final class CataloguePanel {
             state.back();
             return true;
         }
+        if (CatalogueKeys.MATERIALS.matches(event) && showsRecipePanel()) {
+            state.toggleMaterials(catalogue());
+            return true;
+        }
         Item item = hoveredItem();
         if (item == null) {
             return false;
@@ -829,7 +833,7 @@ public final class CataloguePanel {
         return taken;
     }
 
-    /** The wheel over the catalogue turns its pages, over the favourites row scrolls it and over the recipe panel steps through the recipes. */
+    /** The wheel over the catalogue turns its pages, over the favourites row scrolls it and over the recipe panel steps through the recipes or scrolls the total materials. */
     boolean mouseScrolled(double x, double y, double vertical) {
         CatalogueLayout now = layout;
         if (now == null || vertical == 0) {
@@ -852,7 +856,7 @@ public final class CataloguePanel {
             return true;
         }
         if (showsRecipePanel() && now.recipe().contains(x, y)) {
-            state.step(catalogue(), direction);
+            console.scroll(direction);
             return true;
         }
         return false;

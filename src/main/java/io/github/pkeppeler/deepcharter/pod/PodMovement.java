@@ -41,7 +41,7 @@ public final class PodMovement {
         double vx = facing.x * throttle;
         double vz = facing.z * throttle;
 
-        float lift = Math.max(0f, stats.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
+        float lift = PodLoad.of(pod, stats).lift();
         boolean thrusting = input.jump() && lift > 0f;
         double vy = pod.getDeltaMovement().y;
         if (thrusting) {

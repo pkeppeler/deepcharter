@@ -6,7 +6,6 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK_LEFT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_BACK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
-import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_RIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.LEFT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.RIGHT;
@@ -83,7 +82,8 @@ public class PodMovementTest {
         Rig rig = Rig.build(helper, 0, WEST);
         Vec3 start = rig.pod.position();
         rig.pilot.setInput(FORWARD);
-        helper.runAfterDelay(10, () -> {
+        // Five ticks keep the pod on the small floor at the cruise speed.
+        helper.runAfterDelay(5, () -> {
             try {
                 Vec3 moved = rig.pod.position().subtract(start);
                 if (moved.x > -1.0 || Math.abs(moved.z) > EPSILON) {
@@ -196,10 +196,11 @@ public class PodMovementTest {
     @GameTest
     public void drivingFollowsTheHeadingAfterATurn(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);
-        rig.pilot.setInput(FORWARD_RIGHT);
-        helper.runAfterDelay(8, () -> {
+        // A bare D turns the pod while it creeps, so the pod stays on the small floor at the cruise speed.
+        rig.pilot.setInput(RIGHT);
+        helper.runAfterDelay(6, () -> {
             rig.pilot.setInput(FORWARD);
-            helper.runAfterDelay(4, () -> {
+            helper.runAfterDelay(2, () -> {
                 Vec3 before = rig.pod.position();
                 helper.runAfterDelay(2, () -> {
                     try {

@@ -340,13 +340,17 @@ public final class PodTowing {
                                         .isPresent());
     }
 
+    /**
+     * The cable's base mass and the towed pod's whole weight: its bay and its own extra mass (a rider's pack, its lining). A towed pod
+     * tows nothing (the guard below, and {@link #refusal}), so its own extra mass has no tow in it and this never recurses further.
+     */
     private static float towedMass(PodEntity tower) {
         if (isTowed(tower)) {
             return 0f;
         }
         float mass = 0f;
         for (PodEntity towed : towedBy(tower, TowTuning.DEFAULT)) {
-            mass += TowTuning.DEFAULT.baseMass() + towed.cargoMass();
+            mass += TowTuning.DEFAULT.baseMass() + towed.cargoMass() + PodEvents.extraMass(towed);
         }
         return mass;
     }

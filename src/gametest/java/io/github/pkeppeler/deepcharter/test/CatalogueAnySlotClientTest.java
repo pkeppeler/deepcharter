@@ -33,7 +33,6 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.tooltip.TooltipRenderUtil;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -371,15 +370,7 @@ public class CatalogueAnySlotClientTest implements FabricClientGameTest {
             ClientWait.until(context, "the creative search tab", client -> creative.isInputCaptured());
             // The search tab lays the hotbar out where it likes: the iron's cell is found again.
             hoverIron(context, creative);
-            // R as the window sends it: the key goes down, its text follows, the key comes up.
-            context.runOnClient(client -> {
-                long window = client.getWindow().handle();
-                KeyEvent r = new KeyEvent(InputConstants.KEY_R, 0, 0);
-                client.keyboardHandler.keyPress(window, InputConstants.PRESS, r);
-                client.keyboardHandler.textInput(window, "r");
-                client.keyboardHandler.keyPress(window, InputConstants.RELEASE, r);
-            });
-            context.waitTicks(1);
+            RealInput.type(context, "r");
             require(
                     context.computeOnClient(client -> client.gui.screen()) == creative,
                     "R typed in the creative search over the hotbar's iron opens no console");

@@ -25,6 +25,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -398,9 +399,16 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 : podOnTheFloor(server);
     }
 
-    /** The one pod of the room, when the player is out of it. */
+    /**
+     * The one pod of the room, when the player is out of it. Asked of the room, not of the level: layer 1 is a band of the
+     * overworld, which also holds the colony's derelict Mole, a wreck nobody can mount (#1373).
+     */
     private static PodEntity podOnTheFloor(MinecraftServer server) {
-        return level(server).getEntities(PodRegistry.POD, pod -> true).getFirst();
+        AABB room = new AABB(
+                ROOM_WEST, FLOOR_Y - 1, Z - HALF_WIDTH, ROOM_EAST + 1, FLOOR_Y + HEIGHT + 1, Z + HALF_WIDTH + 1);
+        return level(server).getEntitiesOfClass(PodEntity.class, room).stream()
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no pod in the grained-crust room"));
     }
 
     /** True while the cell against the wall, at the end of the water's channel, holds a fluid. */
