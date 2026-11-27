@@ -2716,13 +2716,13 @@ The air rows are the same numbers: the rotor does not change the drive speed. Be
 
 ## The pod screen's fuel slot and hold (#1270, A)
 
-**Problem.** Fitting a part was a blind right-click, nothing showed what was fitted, and fuel and the hold could not be seen from the pod (user playtest 4, [#1270](https://github.com/pkeppeler/deepcharter/issues/1270)). A hold the crew can use as a chest opens two cheeses: ore moved into the pack rides weightless for the pod and past the cargo bay's size, and skips the spill of a Company recovery.
+**Problem.** Fitting a part was a blind right-click, nothing showed what was fitted, and fuel and the hold could not be seen from the pod (user playtest 4, [#1270](https://github.com/pkeppeler/deepcharter/issues/1270)). A hold the crew can use as a chest opens two cheeses: ore moved into the pack rides weightless for the pod and past the cargo bay's size, and skips the spill of a teleport.
 
 **What it is.** One screen per pod ([ADR 0102](../adr/0102-the-pod-screen-holds-any-item-keeps-ore-until-a-terminal-and-feeds-the-tank-from-a-fuel-slot.md)): a slot for every part track, a fuel slot with a gauge, and the hold.
 
 - **Fitting is for good.** A part's serial and charter stamp make it company property; a fitted part never comes back out, so parts cannot move between pods or be stripped from a wreck. A better part still replaces it at the upgrade terminal, which hands back the old one.
 - **The fuel slot is a hopper, not a tank.** It holds one stack (16 of solid fuel) and feeds the tank a piece at a time, only when the tank has room for the whole piece, so nothing burns off the top. It weighs what its fuel weighs. It is a reserve a pilot loads at the colony, paid for in lift, not free litres: 16 coal in the slot is 32 L of range and their full weight on the rotor.
-- **The hold is a chest for everything but ore.** Tools, bricks, food and fuel go in and out freely, up to the cargo bay's size, and weigh as they would in a pack. Ore goes in but stays until the ore processor takes it (sale or withdrawal), so the bay's size stays the haul's limit. A teleport or a Company recovery spills the whole hold, kit and all (SPEC section 11: nothing mined teleports, and outpost materials and hand-mined stone are mined too); salvaging a wreck takes the whole hold too.
+- **The hold is a chest for everything but ore.** Tools, bricks, food and fuel go in and out freely, up to the cargo bay's size, and weigh as they would in a pack. Ore goes in but stays until the ore processor takes it (sale or withdrawal), so the bay's size stays the haul's limit. A teleport spills the whole hold, kit and all (SPEC section 11: nothing mined teleports, and outpost materials and hand-mined stone are mined too); salvaging a wreck takes the whole hold too.
 
 **Trade-offs.** Every slot of stowed gear is a slot not hauling ore, and fuel in the slot or the hold cuts lift as ore does. Kit in the hold is lost to the spill of a teleport or a recovery; kit in the pack is not, but the pack is small. The cargo bay's tiers now buy room for kit as well as ore.
 
