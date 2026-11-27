@@ -1,7 +1,8 @@
 # Runs on every PR. Label events are deliberately not triggers here (they live in
 # client-tests.yml), so adding a label never re-runs or cancels the build.
-# The job names below are the REQUIRED_CHECKS in tools/merge-pr.sh; renaming one
-# means changing both. The weekly dependency audit lives in audit.yml.
+# The job names `build` (the aggregate of the build shards) and `tool-tests` are the REQUIRED_CHECKS in
+# tools/merge-pr.sh, which also reads `build-shard <i>` and `build-checks`; renaming one means changing both.
+# The weekly dependency audit lives in audit.yml.
 name: CI
 
 on:
@@ -15,33 +16,79 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  BUILD_SHARDS: 4
+
 jobs:
+  # The server GameTest suite runs as BUILD_SHARDS parallel jobs (#1327, ADR 0111). Each takes the shard `i/n` of the server
+  # classes that gradle/gametest.gradle.kts picks by weight (-PgametestShard; gradle/server-test-weights.txt), so every class runs
+  # in exactly one shard, and classes that share a campaign environment share a shard. The matrix and BUILD_SHARDS must agree:
+  # tools/tests/test_build_shards.py checks it. The job id stays `build` for the Gradle cache (cache-seed.yml says why).
   build:
-    name: build
+    name: build-shard ${{ matrix.shard }}
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45 # green runs took 17-29 min on 2026-11-25; cutting the server suite's time is #1327
+    # One shard is ~1/4 of the suite by weight: 6 to 8 minutes of tests on 2026-11-26's runners, with 3 to 4 minutes of setup before it.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: ${{ matrix.shard }}
+      - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: 25
+      # Reads the cache seeded on main (cache-seed.yml); writable so later pushes to the same PR also reuse what this run built.
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: false
+      # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
+      # if a repository fails to answer (#1358).
+      - run: tools/ci-gradle-resolve.sh runGameTest "-PgametestShard=${{ matrix.shard }}/${{ env.BUILD_SHARDS }}"
+
+  # Everything `./gradlew build` does but the server GameTests (compile, jars, check and its gates), the gate checks on fixtures
+  # and the client run tasks' dry run: one job, beside the shards. Its job id is not the seeded `build`, so setup-gradle restores
+  # cache-seed.yml's entry through its same-OS fallback rather than the same-job-id match.
+  checks:
+    name: build-checks
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: checks
       - uses: ./.github/actions/setup-python-uv
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: 25
-      # Reads the cache seeded on main (cache-seed.yml); writable so later pushes to
-      # the same PR also reuse what this run built.
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: false
-      # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
-      # if a repository fails to answer (#1358).
-      - run: tools/ci-gradle-resolve.sh build
+      - run: tools/ci-gradle-resolve.sh build -x runGameTest
       - name: gate checks on fixtures
         run: tools/py tools/tests/gate_checks.py
       # The client run tasks never run on Linux. A dry run with the lock forced on still checks that
@@ -49,6 +96,48 @@ jobs:
       - run: ./gradlew runClient runClientGameTest runPlay --dry-run --configuration-cache
         env:
           DEEPCHARTER_CLIENT_LOCK: "1"
+
+  # The one name tools/merge-pr.sh requires for the build (REQUIRED_CHECKS). Succeeds only when every shard and the checks job did,
+  # and they merged the same main; then it records that main in its own `merged-main` notice (tools/ci-shard-main.sh, main's
+  # copy). The gate also reads each shard's and the checks job's own notice. It never merges main itself (that could record a sha
+  # the jobs did not test).
+  build-result:
+    name: build
+    needs: [build, checks]
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          SHARDS: ${{ needs.build.result }}
+          CHECKS: ${{ needs.checks.result }}
+        run: |
+          if [ "$SHARDS" != success ] || [ "$CHECKS" != success ]; then
+            echo "::error::The build shards finished as '$SHARDS' and build-checks as '$CHECKS', not both success"
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: .ci-main
+          sparse-checkout: tools/ci-shard-main.sh
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: merged-main-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/shard-main
+      # ci-shard-main.sh counts the numbered shards; the checks job's sha must be the same one.
+      - run: |
+          read -r checks < "$RUNNER_TEMP/shard-main/main-sha-checks" || true
+          read -r first < "$RUNNER_TEMP/shard-main/main-sha-1" || true
+          if [ -z "$checks" ] || [ "$checks" != "$first" ]; then
+            echo "::error::build-checks merged main '$checks' but build-shard 1 merged '$first'"
+            exit 1
+          fi
+      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$BUILD_SHARDS"
+        env:
+          SHARD_KIND: build
 
   tool-tests:
     name: tool-tests

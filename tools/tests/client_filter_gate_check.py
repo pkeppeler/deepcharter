@@ -1,7 +1,7 @@
 """Tests the -PclientTests filter in gradle/gametest.gradle.kts: it narrows the client entrypoint list and fails on a term that matches nothing.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
-repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build-checks CI job and the pre-push hook run it.
 Usage: tools/py tools/tests/gate_checks.py client_filter
 """
 import json
@@ -55,10 +55,7 @@ CASES = {
 
 
 def real_weights() -> dict[str, int]:
-    """The checked-in weights, so the real-tree shards are the ones CI runs."""
-    lines = (REPO / "gradle/client-test-weights.txt").read_text().splitlines()
-    pairs = [line.split("#")[0].split() for line in lines if line.split("#")[0].strip()]
-    return {name: int(seconds) for name, seconds in pairs}
+    return gate_batch.checked_in_weights("client-test-weights.txt")
 
 
 WEIGHTS = {"AlphaClientTest": 100}
