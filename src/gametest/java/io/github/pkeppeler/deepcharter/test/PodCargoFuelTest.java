@@ -584,7 +584,8 @@ public class PodCargoFuelTest {
                     if (Math.abs(burned - expected) > expected * 0.25f) {
                         throw failure(
                                 helper,
-                                "the pod with a pilot aboard should burn the idle rate, about %s over %s ticks, burned %s",
+                                "the pod with a pilot aboard should burn the idle rate, about %s over %s ticks, burned"
+                                        + " %s",
                                 expected,
                                 aboard,
                                 burned);
@@ -624,7 +625,8 @@ public class PodCargoFuelTest {
                 if (Math.abs(burned - expected) > expected * 0.25f) {
                     throw failure(
                             helper,
-                            "a pod with only a passenger aboard should burn the idle rate, about %s over %s ticks, burned %s",
+                            "a pod with only a passenger aboard should burn the idle rate, about %s over %s ticks,"
+                                    + " burned %s",
                             expected,
                             ticks,
                             burned);

@@ -226,8 +226,8 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
         }
         require(
                 changed > 0,
-                "one block down through uniform rock, the scanner's picture should change, but every pixel of the map is the same:"
-                        + " the descent does not show");
+                "one block down through uniform rock, the scanner's picture should change, but every pixel of the map"
+                        + " is the same: the descent does not show");
     }
 
     /**

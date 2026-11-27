@@ -921,7 +921,8 @@ public class WreckTest {
                     .consumesAction()) {
                 throw failure(
                         helper,
-                        "using an empty wreck is still handled, so that the player is not seated or refuelled by accident");
+                        "using an empty wreck is still handled, so that the player is not seated or refuelled by"
+                                + " accident");
             }
             helper.succeed();
         } finally {
@@ -1126,7 +1127,8 @@ public class WreckTest {
                 if (!bed.equals(respawned[0].getRespawnConfig())) {
                     throw failure(
                             helper,
-                            "the redirect changes no player data: the bed should still be set, but the respawn point is %s",
+                            "the redirect changes no player data: the bed should still be set, but the respawn point"
+                                    + " is %s",
                             respawned[0].getRespawnConfig());
                 }
             });
