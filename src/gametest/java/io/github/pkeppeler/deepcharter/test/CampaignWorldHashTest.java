@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,7 +15,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -89,7 +90,7 @@ public class CampaignWorldHashTest {
         }
         Files.writeString(Path.of(OUTPUT), String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
         if (lines.size() != expected) {
-            throw helper.assertionException(Component.literal("wrote " + lines.size() + " lines"));
+            throw failure(helper, "wrote %s lines", lines.size());
         }
         helper.succeed();
     }
