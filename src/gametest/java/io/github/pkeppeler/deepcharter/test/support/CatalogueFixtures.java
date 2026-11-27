@@ -112,6 +112,22 @@ public final class CatalogueFixtures {
                         Ingredient.of(Items.IRON_INGOT))));
     }
 
+    /**
+     * A sixth recipe, kept out of {@link #entries()} too: a ladder from seven different things none of the fixtures make, so its total
+     * materials are more rows than the recipe console has room for.
+     */
+    public static RecipeDisplayEntry sundries() {
+        List<Item> items = List.of(
+                Items.COAL, Items.COBBLESTONE, Items.DIRT, Items.OAK_LOG, Items.STICK, Items.TORCH, Items.REDSTONE);
+        return new RecipeDisplayEntry(
+                new RecipeDisplayId(FIRST_ID + 11),
+                new ShapelessCraftingRecipeDisplay(
+                        items.stream().map(CatalogueFixtures::item).toList(), item(Items.LADDER), TABLE),
+                java.util.OptionalInt.empty(),
+                RecipeBookCategories.CRAFTING_MISC,
+                Optional.of(items.stream().map(Ingredient::of).toList()));
+    }
+
     /** Every item the fixtures name: what the catalogue lists when it knows these and nothing else. */
     public static List<Item> items() {
         return List.of(

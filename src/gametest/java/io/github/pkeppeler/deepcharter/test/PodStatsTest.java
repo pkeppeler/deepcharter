@@ -161,7 +161,8 @@ public class PodStatsTest {
         MockPlayer pilot = seatPilot(helper, pod);
         Vec3 start = pod.position();
         pilot.setInput(FORWARD);
-        int ticks = 10;
+        // Five ticks keep the pod on the small floor at twice the cruise speed.
+        int ticks = 5;
         helper.runAfterDelay(ticks, () -> {
             try {
                 double moved = pod.position().subtract(start).horizontalDistance();
@@ -431,8 +432,8 @@ public class PodStatsTest {
 
     @GameTest
     public void aTaggedItemWithNoLitresEntryOrABadFileIsLoggedAndNotFuel(GameTestHelper helper) {
-        // This test's data tags the feather (no file) and the flint (a file with negative litres), next to the blaze
-        // rod.
+        // This test's data tags the feather (no file) and the flint (a file with negative litres), next to the
+        // blaze rod.
         List<Item> missing = PodFuelItems.checkLitresFor(
                 List.of(Items.COAL, Items.STICK, Items.FEATHER, Items.FLINT, Items.BLAZE_ROD));
         if (!missing.equals(List.of(Items.STICK, Items.FEATHER, Items.FLINT))) {
@@ -656,8 +657,8 @@ public class PodStatsTest {
 
     @GameTest(maxTicks = FAR_TICKS)
     public void aCrustBoreThatTakesTheLastHullFiresHullDepleted(GameTestHelper helper) {
-        // Since #67 a pod at hull 0 is a wreck: the drill stops with the power and the pilot dies, so the pod does not
-        // cross.
+        // Since #67 a pod at hull 0 is a wreck: the drill stops with the power and the pilot dies, so the pod does
+        // not cross.
         int x = 4128;
         ServerLevel one = TestLayers.level(helper, 1);
         int floor = TestLayers.band(one, 1).minY();

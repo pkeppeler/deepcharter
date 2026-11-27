@@ -10,17 +10,23 @@ import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "block-readout" (#859): the name, and where there is one the hint, that appears under the crosshair. A stone platform stands in
- * the sky above the player and one block at a time is set three blocks in front of them: a plain block (name only), a contract terminal, breach
- * crust and Company rock (name and hint). A last still looks at nothing.
+ * Evidence scenario "block-readout" (#859): the name, and where there is one the hint, that appears above the hotbar. A
+ * stone platform stands in the sky above the player and one block at a time is set three blocks in front of them: a
+ * plain block (name only), a contract terminal, breach crust and Company rock (name and hint). A still with an item
+ * just taken in hand shows the readout above vanilla's held-item name, then a last still looks at nothing.
  */
 public class BlockReadoutScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 6;
     private static final int TICKS_PER_FRAME = 3;
+    /** Ticks for the held item's name to come up after the hand changes, well inside the two seconds it shows for. */
+    private static final int HELD_NAME_TICKS = 4;
 
     /** A block to look at and the still's name. */
     private record Subject(String still, Block block) {}
@@ -57,6 +63,21 @@ public class BlockReadoutScenario extends EvidenceScenario {
                 hold(context);
                 screenshot(context, subject.still());
             }
+            // The readout beside vanilla's held-item name, which shows for two seconds after the hand changes.
+            singleplayer.getServer().runOnServer(server -> {
+                BlockReadoutStage.place(
+                        server, spot, ContractTerminal.TYPE.block().defaultBlockState());
+                Inventory inventory =
+                        server.getPlayerList().getPlayers().getFirst().getInventory();
+                inventory.setItem(inventory.getSelectedSlot(), new ItemStack(Items.IRON_PICKAXE));
+            });
+            ClientWait.until(
+                    context,
+                    "the held item's name up",
+                    client -> client.player != null
+                            && client.player.getMainHandItem().is(Items.IRON_PICKAXE));
+            context.waitTicks(HELD_NAME_TICKS); // tick-wait: the name fades in on client ticks
+            screenshot(context, "held-item-name");
             singleplayer
                     .getServer()
                     .runOnServer(server -> BlockReadoutStage.place(server, spot, Blocks.AIR.defaultBlockState()));

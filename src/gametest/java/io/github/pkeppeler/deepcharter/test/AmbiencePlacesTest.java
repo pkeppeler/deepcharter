@@ -102,8 +102,8 @@ public class AmbiencePlacesTest {
                 "the world's hour is %s",
                 hour);
         ClockCaller caller = new ClockCaller(ClockTuning.DEFAULT, new SplittableRandom(1));
-        // Away from the clock, or with no hour, for far longer than any gap: nothing is called and the timer does not
-        // run.
+        // Away from the clock, or with no hour, for far longer than any gap: nothing is called and the timer does
+        // not run.
         for (int tick = 0; tick < 500_000; tick++) {
             expect(helper, PunchClock.tick(caller, away, hour, false).isEmpty(), "called away from the clock");
             expect(
@@ -111,8 +111,8 @@ public class AmbiencePlacesTest {
                     PunchClock.tick(caller, near, OptionalInt.empty(), false).isEmpty(),
                     "called with no hour");
         }
-        // Then near: the first call is not before the floor, comes from the clock and strikes the world's hour or
-        // another.
+        // Then near: the first call is not before the floor, comes from the clock and strikes the world's hour
+        // or another.
         for (int tick = 0; tick < ClockTuning.DEFAULT.firstMinTicks() - 1; tick++) {
             expect(
                     helper,

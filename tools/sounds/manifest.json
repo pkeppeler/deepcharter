@@ -55,6 +55,10 @@
     "ogg_sha256": "4769b8d799fd675940ebd73f02ab8b9ef5b0bccf8259f706939803b13f5f9fb0",
     "pcm_sha256": "389f3b2cb78421e548beffb352f8b9f53157e4ef55bae647b88e3f79d433b39f"
   },
+  "hymn/chapter": {
+    "ogg_sha256": "3c547d76919a1512c06bf0d1160bfcfb81c951bb78c462be05f221fde00d477f",
+    "pcm_sha256": "42adab6df3709098e8533c4c75e6dc3fabb385676ce29b35ad89a30ca91201e6"
+  },
   "hymn/colony": {
     "ogg_sha256": "8675848775f37414c46e1ec2413919dbb20b49ccef657177a5ec0ffff727cc02",
     "pcm_sha256": "5b5ecf18aaaa5c6155225de9aeb204c9f75da8db4c01566c9b5cc18e5930b045"
@@ -94,6 +98,10 @@
   "terminal/hum_loop": {
     "ogg_sha256": "64c6c38d093760581afedf6b9fce716348da71cbff195020304bc09dfd89f465",
     "pcm_sha256": "21b0470b9051f93f7fb0fc76d90e6946aa3127ab98dbb245fddf46b24f9c609f"
+  },
+  "terminal/online": {
+    "ogg_sha256": "d2acb40493d52bf624212e08f54d2114a204fd20cd85c8fa29b936f7923b61ec",
+    "pcm_sha256": "14606975155d7eec061c212cad485906c48e64dab10fb5c162b5534f5bc2de45"
   },
   "terminal/power_on": {
     "ogg_sha256": "229cfc972da246771e4ca98dfc230ce619e165ff51a7abc9dc76e9622bf00610",

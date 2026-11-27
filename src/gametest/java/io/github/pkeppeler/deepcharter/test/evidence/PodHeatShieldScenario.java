@@ -73,8 +73,8 @@ public class PodHeatShieldScenario extends EvidenceScenario {
                 ClientSession.player(client).setXRot(LOOK_DOWN);
             });
             context.waitTicks(30);
-            // Founding the charter queued the employer's transmission; it would cover the HUD lines this scenario
-            // shows.
+            // Founding the charter queued the employer's transmission; it would cover the HUD lines this
+            // scenario shows.
             context.runOnClient(client -> TransmissionOverlay.reset());
             for (int i = 0; i < 6; i++) {
                 frame(context);

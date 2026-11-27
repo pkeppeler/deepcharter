@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -20,8 +21,6 @@ import java.util.WeakHashMap;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
-import net.fabricmc.fabric.api.event.Event;
-import net.fabricmc.fabric.api.event.EventFactory;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.core.BlockPos;
@@ -48,6 +47,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The tether (#986): a line from a person on foot to the winch of their pod. A person uses a {@link TetherItem} on a pod their charter
@@ -61,9 +61,11 @@ import net.minecraft.world.phys.Vec3;
  * as rock does, and a haul that closes less than {@link TetherTuning#stallProgress} blocks on the pod in {@link TetherTuning#stallTicks}
  * ticks (a person stuck on something the line's ray missed) counts as snagged. A line snaps too when it is stretched past
  * {@link TetherTuning#snapMargin}, and a snapped tether cannot be clipped on again for {@link TetherTuning#snapCooldownTicks}. Unhooking
- * a line that is snagged or taut, or stopping a snagged winch, costs the same cooldown, so the price of jamming a winch cannot be dodged. The pull is a velocity the client moves itself
- * by, with its own collision, so it is a push along clear air and never a teleport. A winch is loud while it hauls: it reports to
- * {@link #NOISE} every {@link TetherTuning#noiseInterval} ticks, which is where creatures that listen for a drawing noise attach.
+ * a line that is snagged or taut, or stopping a snagged winch, costs the same cooldown, so the price of jamming a winch
+ * cannot be dodged. The pull is a velocity the client moves itself by, with its own collision, so it is a push along
+ * clear air and never a teleport. A winch is loud while it hauls: it sounds a decoy at the pod in {@link DrawSources},
+ * renewed every {@link TetherTuning#noiseInterval} ticks and silenced the moment the winch stops, so a creature drawn
+ * to the drill hears it.
  *
  * <p>Using the tether on a second pod while clipped hooks that pod to the first one with the tow cable's own rules ({@link PodTowing}),
  * so a person on foot can tow a wreck.
@@ -145,35 +147,11 @@ public final class PodTether {
         }
     }
 
-    /** A loud winch. Fired on the server thread, from the tick that hauls. */
-    public interface Noise {
-        /**
-         * A winch is hauling.
-         *
-         * @param level  the level the winch is in
-         * @param at     the winch's place
-         * @param radius blocks the noise carries
-         */
-        void onNoise(ServerLevel level, Vec3 at, double radius);
-    }
-
-    /**
-     * The hook for what listens to a winch (CREATURES section 6, the Hush: the winch is loud). A creature feature registers here to
-     * draw things to {@code at}; the tether does not know who listens. Fabric events cannot be unregistered, so a listener acts only
-     * on what it marks.
-     *
-     * <p>Temporary: once #990's {@code DrawSources} is on main, {@code loud} registers a decoy there and this event goes
-     * (#1027).
-     */
-    public static final Event<Noise> NOISE =
-            EventFactory.createArrayBacked(Noise.class, listeners -> (level, at, radius) -> {
-                for (Noise listener : listeners) {
-                    listener.onNoise(level, at, radius);
-                }
-            });
-
     /** Server only, not saved: how long each person's line has been snagged and how long its winch has hauled. Weak, so a person who leaves keeps nothing. */
     private static final Map<ServerPlayer, Strain> STRAINS = Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** Ticks a winch's decoy outlasts its renewal interval by, so the noise has no gap between clanks. */
+    private static final int DECOY_MARGIN = 2;
 
     private static final double EPSILON = 1e-7;
     /** Blocks past the length that a taut line is pulled back by on top of the overshoot, so a person at the end of the line is not left at rest on the edge of it. */
@@ -196,7 +174,13 @@ public final class PodTether {
         double mark;
         /** The last window closed on the pod by less than the tuned progress. */
         boolean stalled;
+        /** This winch's decoy in {@link DrawSources}, until it is renewed or silenced. */
+        @Nullable
+        Decoy decoy;
     }
+
+    /** A decoy's place and the level it sounds in: the person may have changed level since. */
+    private record Decoy(ServerLevel level, Vec3 at) {}
 
     private PodTether() {}
 
@@ -279,7 +263,7 @@ public final class PodTether {
             throw new IllegalStateException(
                     "person " + person.getUUID() + " cannot clip to pod " + pod.getUUID() + ": " + refusal.get());
         }
-        STRAINS.remove(person);
+        silence(STRAINS.remove(person));
         person.setAttached(STATE, Versioned.of(new State(Optional.of(pod.getUUID()), false)));
     }
 
@@ -293,7 +277,7 @@ public final class PodTether {
         }
         boolean jammed = cause == Unclipped.UNHOOKED && isJammed(person);
         person.removeAttached(STATE);
-        STRAINS.remove(person);
+        silence(STRAINS.remove(person));
         DeepCharter.LOGGER.debug("[tether] {} unclipped: {}", person.getName().getString(), cause);
         if (cause.snaps || jammed) {
             person.getCooldowns()
@@ -324,7 +308,7 @@ public final class PodTether {
             }
         }
         if (state.winching() != winching) {
-            STRAINS.remove(person);
+            silence(STRAINS.remove(person));
             person.setAttached(STATE, Versioned.of(new State(state.pod(), winching)));
         }
         return winching;
@@ -525,12 +509,46 @@ public final class PodTether {
         person.resetFallDistance();
     }
 
+    /**
+     * Sounds the winch in {@link DrawSources} until the next clank is due. The pod may have moved, so the old decoy
+     * goes first: one entry per winch.
+     */
     private static void loud(ServerLevel level, PodEntity pod, Strain strain, TetherTuning tuning) {
         if (strain.hauled++ % tuning.noiseInterval() == 0) {
             Vec3 at = anchor(pod);
             // PLACEHOLDER sound until the sound pass.
             level.playSound(null, at.x, at.y, at.z, SoundEvents.GRINDSTONE_USE, SoundSource.NEUTRAL, 1.2F, 0.6F);
-            NOISE.invoker().onNoise(level, at, tuning.noiseRadius());
+            removeOwnDecoy(strain);
+            DrawSources.addDecoy(
+                    level, at, tuning.noiseRadius(), level.getGameTime() + tuning.noiseInterval() + DECOY_MARGIN);
+            strain.decoy = new Decoy(level, at);
+        }
+    }
+
+    /**
+     * Ends the winch's decoy, if it has one. People clipped to one pod share its anchor and
+     * {@link DrawSources#removeDecoy} removes every decoy there, so the decoy stays while another winch still hauls at
+     * it. A person who disconnects is not unclipped: their decoy lapses within {@code noiseInterval + DECOY_MARGIN}
+     * ticks.
+     */
+    private static void silence(@Nullable Strain strain) {
+        if (strain == null || strain.decoy == null) {
+            return;
+        }
+        Decoy decoy = strain.decoy;
+        boolean shared;
+        synchronized (STRAINS) {
+            shared = STRAINS.values().stream().anyMatch(other -> other != strain && decoy.equals(other.decoy));
+        }
+        if (!shared) {
+            removeOwnDecoy(strain);
+        }
+        strain.decoy = null;
+    }
+
+    private static void removeOwnDecoy(Strain strain) {
+        if (strain.decoy != null) {
+            DrawSources.removeDecoy(strain.decoy.level(), strain.decoy.at());
         }
     }
 

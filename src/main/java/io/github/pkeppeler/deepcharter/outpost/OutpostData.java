@@ -89,8 +89,8 @@ public final class OutpostData extends SavedData {
 
     /** The codec of the saved data, which never fails to decode. */
     public static final Codec<OutpostData> CODEC = VERSIONED_CODEC.xmap(OutpostData::new, OutpostData::versioned);
-    // Datafixer type: as for RepairState, vanilla's fixers find nothing of theirs in a file that carries our own
-    // version.
+    // Datafixer type: as for RepairState, vanilla's fixers find nothing of theirs in a file that carries our
+    // own version.
     public static final SavedDataType<OutpostData> TYPE =
             new SavedDataType<>(ID, OutpostData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
