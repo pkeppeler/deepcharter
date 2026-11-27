@@ -79,7 +79,10 @@ public class PartLiftTooltipTest {
         helper.succeed();
     }
 
-    /** The tiers no chassis takes yet cannot be fitted, so they are held to the formula the pod's climb limit is. */
+    /**
+     * The tiers no chassis takes yet cannot be fitted to any pod, so the formula is worked again here by hand: the engine's power times what
+     * thrust leaves over gravity.
+     */
     @GameTest
     public void theTiersNoPodTakesShowWhatThrustPaysAgainstGravity(GameTestHelper helper) {
         PodTuning.Movement movement = PodTuning.DEFAULT.movement();

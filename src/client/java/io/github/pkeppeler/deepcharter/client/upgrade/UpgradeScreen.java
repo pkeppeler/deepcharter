@@ -19,9 +19,9 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.function.Function;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
@@ -169,27 +169,36 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
             // to be fitted.
             boolean crafted = tier == 1;
             boolean needsFirst = selected.needsFirstTier() && tier > 1 && !counts;
-            String capped = tier > pod.cap()
-                    ? Component.translatable("screen.deepcharter.upgrade.capped", pod.cap())
-                            .getString()
-                    : "";
-            Function<String, MutableComponent> worded = suffix -> here && held.installed() == offered
-                    ? Component.translatable("screen.deepcharter.upgrade.installed", offered)
-                            .append(suffix)
-                    : crafted
-                            ? Component.translatable("screen.deepcharter.upgrade.crafted", offered)
-                            : needsFirst
-                                    ? Component.translatable("screen.deepcharter.upgrade.needs_first", offered, price)
-                                    : Component.translatable("screen.deepcharter.upgrade.buy", offered, price, suffix);
-            MutableComponent label = worded.apply(capped);
-            if (selected == ComponentTrack.ENGINE) {
-                // What the pod gets from it: a tier above the cap works as the cap's.
-                Component lifts = Component.translatable(
-                        "screen.deepcharter.upgrade.lifts", PodLoad.shownEngineLift(Math.min(offered, pod.cap())));
-                label = worded.apply(capped).append(lifts);
-                if (CrtText.width(font, label.getString()) > tierWidth - LABEL_ROOM) {
-                    // The lift is what the row is for, and a capped tier's is the cap's: the cap's own note makes way.
-                    label = worded.apply("").append(lifts);
+            // The cap note, longest first; an engine row gives up the long note, then any note, to keep its lift in the
+            // button.
+            List<String> notes = tier > pod.cap()
+                    ? List.of(
+                            Component.translatable("screen.deepcharter.upgrade.capped", pod.cap())
+                                    .getString(),
+                            Component.translatable("screen.deepcharter.upgrade.capped_short", pod.cap())
+                                    .getString(),
+                            "")
+                    : List.of("");
+            MutableComponent label = Component.empty();
+            for (String note : notes) {
+                label = here && held.installed() == offered
+                        ? Component.translatable("screen.deepcharter.upgrade.installed", offered)
+                                .append(note)
+                        : crafted
+                                ? Component.translatable("screen.deepcharter.upgrade.crafted", offered)
+                                : needsFirst
+                                        ? Component.translatable(
+                                                "screen.deepcharter.upgrade.needs_first", offered, price)
+                                        : Component.translatable(
+                                                "screen.deepcharter.upgrade.buy", offered, price, note);
+                if (selected == ComponentTrack.ENGINE) {
+                    // What the pod gets from it: a tier above the cap works as the cap's.
+                    label = label.append(Component.translatable(
+                            "screen.deepcharter.upgrade.lifts", PodLoad.shownEngineLift(Math.min(offered, pod.cap()))));
+                }
+                if (selected != ComponentTrack.ENGINE
+                        || CrtText.width(font, label.getString()) <= tierWidth - LABEL_ROOM) {
+                    break;
                 }
             }
             CrtButton button = addRenderableWidget(new CrtButton(

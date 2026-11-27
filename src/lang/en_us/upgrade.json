@@ -61,6 +61,7 @@
   "message.deepcharter.upgrade.fitting.refusal.serials_unreadable": "This world has serial data from another version of the mod",
   "screen.deepcharter.upgrade.buy": "BUY TIER %s  $%s%s",
   "screen.deepcharter.upgrade.capped": "  (WORKS AS TIER %s)",
+  "screen.deepcharter.upgrade.capped_short": "  (AS T%s)",
   "screen.deepcharter.upgrade.crafted": "TIER %s  CRAFTED, NOT SOLD",
   "screen.deepcharter.upgrade.foreign_pod": "THE POD PARKED HERE BELONGS TO ANOTHER CHARTER.",
   "screen.deepcharter.upgrade.installed": "TIER %s  INSTALLED",

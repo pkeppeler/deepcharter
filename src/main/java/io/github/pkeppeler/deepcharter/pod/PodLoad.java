@@ -91,19 +91,25 @@ public record PodLoad(float load, float limit, float climbLimit) {
     }
 
     /**
-     * What an engine part of {@code tier} lifts (#1541): the climb limit of a stock pod that works that engine, under the pod's own
-     * gravity. It runs the same {@link PodComponents#withPart part} and the same climb limit a fitted pod's {@link #of} does, so the
-     * figure on a part and the pod's LOAD gauge cannot drift apart. The chassis does not change it: it only caps the tier a part
-     * works at ({@link Chassis#tierCap}), and neither the thrust nor the gravity depend on it.
+     * What an engine part of {@code tier} lifts (#1541): the climb limit of a stock pod that works that engine, under {@code gravity}. It
+     * runs the same {@link PodComponents#withPart part} and the same climb limit a fitted pod's {@link #of} does, so the figure on a part
+     * and the pod's LOAD gauge cannot drift apart. A caller with a pod passes {@code pod.gravityPull(...)}, as {@link #of} does, and one
+     * with none (an item's tooltip) passes {@link #standardGravity}. The chassis does not change it: it only caps the tier a part works at
+     * ({@link Chassis#tierCap}), and thrust does not depend on it.
      */
-    public static float engineLift(int tier) {
+    public static float engineLift(int tier, double gravity) {
         PodStats fitted = PodComponents.withPart(PodStats.base(), ComponentTrack.ENGINE, tier);
-        return climbLimit(fitted, PodTuning.DEFAULT.movement().gravity());
+        return climbLimit(fitted, gravity);
     }
 
-    /** {@link #engineLift} as the player reads it: written as {@link OreEncumbrance#shown} writes an ore's mass, to a tenth. */
+    /** The gravity a pod with gravity feels: the tuning's. */
+    public static double standardGravity() {
+        return PodTuning.DEFAULT.movement().gravity();
+    }
+
+    /** {@link #engineLift} under standard gravity as the player reads it: written as {@link OreEncumbrance#shown} writes an ore's mass, to a tenth. */
     public static String shownEngineLift(int tier) {
-        return OreEncumbrance.shown(OreEncumbrance.tenths(engineLift(tier)));
+        return OreEncumbrance.shown(OreEncumbrance.tenths(engineLift(tier, standardGravity())));
     }
 
     /** Whether the held rotor cannot climb: the load is at or over the climb limit. The cockpit's OVERLOADED. */
