@@ -45,10 +45,14 @@ public class StrataPrefillTest {
         int top = CampaignBands.SURFACE.minY() + 32;
         int bottom = CampaignBands.LAYER_2.minY();
         for (ChunkPos pos : CHUNKS) {
+            // sync-load: the case counts the writes of one chunk's generation (SurfaceWrites.watch), which must
+            // run on this thread inside the watch; the test has the sync-chunk-load batch to itself
             LevelChunk control = sample.getChunk(pos.x(), pos.z());
             LevelChunk prefilled;
             SurfaceWrites.watch(pos);
             try {
+                // sync-load: this load is the generation the watch counts, so it runs here, in the
+                // sync-chunk-load batch
                 prefilled = full.getChunk(pos.x(), pos.z());
                 // Layer 1 holds about 49,000 blocks a chunk, most of them rock the guess gets right.
                 long skipped = SurfaceWrites.watchedSkips();

@@ -96,7 +96,10 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
         switch (kind) {
             case THROWN_DECOY -> sound(level);
             case THROWN_CHARGE -> burn(level);
-            default -> discard();
+            case THROWN_FLARE -> discard();
+            // enum-default: the three thrown kinds have arms; a kind that lands without one has no landed behaviour,
+            // and the throw is the refusal
+            default -> throw new IllegalStateException(kind + " has no landed behaviour");
         }
         ticksLanded++;
     }
@@ -160,6 +163,8 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
                             Mth.ceil(tuning.charge().fuseTicks() / (double) TICKS_PER_SECOND)));
                 }
             }
+            // enum-default: the three thrown kinds have arms; any other member is a kit that is not thrown, and the
+            // throw is the refusal
             default -> throw new IllegalStateException(kind + " is not thrown");
         }
     }

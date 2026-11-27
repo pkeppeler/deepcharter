@@ -60,7 +60,7 @@ public final class OutpostBuilder {
     /** The ceiling stays as it was this many blocks out from the middle (5 by 5), so any shaft up to 3 wide that the click lies in stays open. */
     private static final int HATCH = 2;
     /** The layer where the kit works: the floor of the first layer is the start of the second. */
-    private static final int LAYER = 1;
+    static final int LAYER = 1;
     /** How many cells further out than the wall the overflow looks for a place to lie. */
     private static final int SEARCH = 4;
     /** Blocks set tell the clients and wake nothing, as a layer carve does. */
@@ -94,7 +94,7 @@ public final class OutpostBuilder {
         if (data.of(charter.get().id(), LAYER).isPresent()) {
             return refusal("has_one");
         }
-        if (data.overlapping(LAYER, clicked).isPresent()) {
+        if (data.overlapping(clicked).isPresent()) {
             return refusal("overlaps");
         }
         BlockPos shellMin = clicked.offset(-EDGE, 0, -EDGE);
@@ -103,8 +103,8 @@ public final class OutpostBuilder {
             return refusal("no_room_above");
         }
         AABB shell = shellOf(clicked);
-        // entity-query: the hall is cut with whatever stands in it, so anything but a sweepable item or orb refuses the
-        // kit
+        // entity-query: the hall is cut with whatever stands in it, so anything but a sweepable item or orb refuses
+        // the kit
         List<Entity> inShell = level.getEntities(player, shell);
         for (Entity entity : inShell) {
             Optional<Component> blocked = blockedBy(server, charter.get(), entity);

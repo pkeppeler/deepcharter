@@ -89,8 +89,8 @@ public final class OutpostData extends SavedData {
 
     /** The codec of the saved data, which never fails to decode. */
     public static final Codec<OutpostData> CODEC = VERSIONED_CODEC.xmap(OutpostData::new, OutpostData::versioned);
-    // Datafixer type: as for RepairState, vanilla's fixers find nothing of theirs in a file that carries our own
-    // version.
+    // Datafixer type: as for RepairState, vanilla's fixers find nothing of theirs in a file that carries our
+    // own version.
     public static final SavedDataType<OutpostData> TYPE =
             new SavedDataType<>(ID, OutpostData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
@@ -145,12 +145,12 @@ public final class OutpostData extends SavedData {
     }
 
     /**
-     * The first outpost in {@code layer}, of any charter, whose hall a hall with its floor middle at {@code centre} would touch: the
-     * middles are within two edges of each other, level by level, in both x and z.
+     * The first outpost in {@link OutpostBuilder#LAYER}, of any charter, whose hall a hall with its floor middle at
+     * {@code centre} would touch: the middles are within two edges of each other, level by level, in both x and z.
      */
-    public Optional<Outpost> overlapping(int layer, BlockPos centre) {
+    public Optional<Outpost> overlapping(BlockPos centre) {
         return state.orThrow().stream()
-                .filter(outpost -> outpost.layer() == layer)
+                .filter(outpost -> outpost.layer() == OutpostBuilder.LAYER)
                 .filter(outpost -> Math.max(
                                 Math.abs(outpost.centre().getX() - centre.getX()),
                                 Math.abs(outpost.centre().getZ() - centre.getZ()))
