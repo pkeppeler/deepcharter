@@ -159,7 +159,14 @@ cat >"$work/bin/git" <<'STUB'
 echo "git $*" >>"$LOG"
 case "$1" in
   fetch) [[ ${STUB_FETCH_FAIL-0} == 1 ]] && exit 1 ;;
-  rev-parse) [[ ${STUB_REVPARSE_FAIL-0} == 1 ]] && exit 1; echo "${STUB_MAIN_SHA-$MAIN_SHA}" ;;
+  rev-parse)
+    [[ ${STUB_REVPARSE_FAIL-0} == 1 ]] && exit 1
+    # The pass carry reads the fetched head and a commit's tree (#1568).
+    [[ $* != *FETCH_HEAD* ]] || { echo "${STUB_FETCH_HEAD-}"; exit 0; }
+    [[ $* != *'^{tree}'* ]] || { echo "${STUB_TREE-}"; exit 0; }
+    echo "${STUB_MAIN_SHA-$MAIN_SHA}" ;;
+  rev-list) printf '%s\n' "${STUB_REVLIST-}" ;; # the head's "<sha> <parent>..." line
+  merge-tree) printf '%s\n' "${STUB_MTREE-}"; exit "${STUB_MTREE_RC:-0}" ;; # the tree git makes of the merge, or a conflict
   merge-base) exit "${STUB_MERGE_BASE_RC:-0}" ;; # a recorded sha that is (0) or is not (1) on origin/main
   diff) [[ ${STUB_DIFF_FAIL-0} == 1 ]] && exit 1; printf '%s' "${STUB_DIFF-}" ;; # files changed on main since the recorded sha
   ls-tree)
@@ -251,11 +258,14 @@ fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
 reset() { rm -f "$LOG" "$LOG".{merged,push,body,message,title,RUNS,ANN,FILES}; : >"$LOG"; }
 
-# run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
+# run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh, as --direct: the merge through GitHub's endpoint, #1567)
+# on PR 7 with stub env overrides.
 run_script() {
+  local flag=(--direct)
   reset
   rc=0
-  out=$(env "$@" PATH="$work/bin:$PATH" bash "${SCRIPT:-$script}" 7 2>&1) || rc=$?
+  [[ ${SCRIPT-} != "$mark" ]] || flag=()
+  out=$(env "$@" PATH="$work/bin:$PATH" bash "${SCRIPT:-$script}" ${flag[@]+"${flag[@]}"} 7 2>&1) || rc=$?
 }
 
 # The pattern is one log line: grep -F splits a multi-line pattern into several, and an empty one matches any blank line.
@@ -686,7 +696,7 @@ refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/e
 # A relative $0 (./merge-pr.sh from tools/) must still find tools/lib/adr.sh after the script's cd.
 reset
 rc=0
-out=$(cd "$tools" && env PATH="$work/bin:$PATH" ./merge-pr.sh 7 2>&1) || rc=$?
+out=$(cd "$tools" && env PATH="$work/bin:$PATH" ./merge-pr.sh --direct 7 2>&1) || rc=$?
 exited "runs as ./merge-pr.sh from tools/" 0
 
 # Required checks: a copy of the script with the array filled in (the production
@@ -994,6 +1004,70 @@ exited "push rejected twice fails" 1
 printed "push rejected twice says merged" "is MERGED, but the roadmap regeneration FAILED"
 count "no third push" "push origin HEAD:main" 2
 
+# --- a review pass carried across a clean merge of origin/main (#1568; the rules over real git: pass-carry.test.sh) ---
+carried_p=$(printf 'c%.0s' {1..40})
+carried_m=$(printf 'd%.0s' {1..40})
+carry_env=("STUB_COMMENT=review-passed $carried_p" STUB_FETCH_HEAD=abc123 "STUB_REVLIST=abc123 $carried_p $carried_m" STUB_MTREE=tree1 STUB_TREE=tree1)
+run_check "${carry_env[@]}"
+exited "carry: a clean merge of main on a passed head passes the gate" 0
+printed "carry: the check says where the pass came from" "review-passed: yes (carried from ccccccccc across a clean merge of origin/main)"
+run_script "${carry_env[@]}"
+exited "carry: the merge goes ahead" 0
+merged_via_rest "carry: merged through the pinned sha"
+refusal "carry voided: a conflicted merge (merge-tree exits 1)" "has no 'review-passed abc123' comment" "${carry_env[@]}" STUB_MTREE_RC=1
+refusal "carry voided: a tree that merge-tree does not reproduce" "has no 'review-passed abc123' comment" "${carry_env[@]}" STUB_TREE=tree2
+refusal "carry voided: a head that is not a merge" "has no 'review-passed abc123' comment" "${carry_env[@]}" "STUB_REVLIST=abc123 $carried_p"
+refusal "carry voided: an octopus merge" "has no 'review-passed abc123' comment" "${carry_env[@]}" "STUB_REVLIST=abc123 $carried_p $carried_m $carried_m"
+refusal "carry voided: a second parent that is not on origin/main" "has no 'review-passed abc123' comment" "${carry_env[@]}" STUB_MERGE_BASE_RC=1
+refusal "carry voided: a fetched head that is not the PR's head" "has no 'review-passed abc123' comment" "${carry_env[@]}" STUB_FETCH_HEAD=999999
+refusal "carry voided: the pass is for another commit" "has no 'review-passed abc123' comment" "${carry_env[@]}" "STUB_COMMENT=review-passed $carried_m"
+
+# mark --carry re-pins the pass to the head, and only when it carries.
+run_carry_mark() {
+  reset
+  rc=0
+  out=$(env "$@" PATH="$work/bin:$PATH" bash "$mark" --carry 7 2>&1) || rc=$?
+}
+run_carry_mark "${carry_env[@]}"
+exited "mark --carry: a carriable head is marked" 0
+printed "mark --carry: names the carried pass" "Carrying the pass of ccccccccc to abc123"
+logged "mark --carry: comments the head's own pass" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed abc123"
+run_carry_mark "${carry_env[@]}" STUB_MTREE_RC=1
+exited "mark --carry: a conflicted merge is refused" 1
+printed "mark --carry: says it needs a review" "cannot carry a review pass to abc123"
+not_logged "mark --carry: a refused carry writes nothing" "^gh api -X POST"
+reset
+rc=0
+out=$(PATH="$work/bin:$PATH" bash "$mark" --carry 2>&1) || rc=$?
+exited "mark --carry without a PR is a usage error" 2
+
+# Without a flag the PR merges as a batch of one (#1567): the script hands the PR to the batch tool and touches neither
+# GitHub nor git itself. MERGE_BATCH is the test seam.
+cat >"$work/batch" <<'STUB'
+#!/usr/bin/env bash
+echo "batch $*" >>"$LOG"
+exit "${STUB_BATCH_RC:-0}"
+STUB
+chmod +x "$work/batch"
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" 7 2>&1) || rc=$?
+exited "no flag: merges as a batch of one" 0
+logged "no flag: the batch tool gets the PR" "batch 7"
+not_logged "no flag: the script itself calls neither gh nor git" "^gh\|^git"
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" STUB_BATCH_RC=1 PATH="$work/bin:$PATH" bash "$script" 7 2>&1) || rc=$?
+exited "no flag: the batch tool's refusal is the exit status" 1
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --direct 7 2>&1) || rc=$?
+not_logged "--direct never reaches the batch tool" "^batch"
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --check 7 2>&1) || rc=$?
+not_logged "--check never reaches the batch tool" "^batch"
+
 # Argument validation: exit 2, and gh is never called.
 check_args() { # <name> <args...>
   local name=$1
@@ -1081,12 +1155,13 @@ px_first=$(sed -n 's/^PX_REVIEW_FIRST_PR=\([0-9][0-9]*\)$/\1/p' "$tools/lib/pr-b
 [[ -n $px_first ]] || { echo "cannot read PX_REVIEW_FIRST_PR from tools/lib/pr-body-checks.sh" >&2; exit 1; }
 # px_run <script> <pr> [VAR=value ...]
 px_run() {
-  local s=$1 n=$2
+  local s=$1 n=$2 flag=(--direct)
   shift 2
   reset
   rc=0
+  [[ $s == "$script" ]] || flag=() # the merge is the direct one (#1567); mark takes no flag
   out=$(env STUB_BODY="Closes #12
-No map change: test" "$@" PATH="$work/bin:$PATH" bash "$s" "$n" 2>&1) || rc=$?
+No map change: test" "$@" PATH="$work/bin:$PATH" bash "$s" ${flag[@]+"${flag[@]}"} "$n" 2>&1) || rc=$?
 }
 gpl="STUB_LABELS=gameplay
 demo
