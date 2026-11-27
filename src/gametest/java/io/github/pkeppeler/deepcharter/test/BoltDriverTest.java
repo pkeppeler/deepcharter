@@ -26,6 +26,8 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.BoltDriverTuning;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.BoltRoom.Corridor;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -58,6 +60,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -95,6 +98,13 @@ public class BoltDriverTest {
     private static final int ROCK_SETTLES_TICKS = 40;
 
     private static final Identifier CREAK = SoundEvents.CREAKING_TWITCH.location();
+    private static final Identifier CAVE_IN_SOUND =
+            DeepSound.CAVE_IN_COLLAPSE.event().location();
+    private static final Identifier EXPLOSION =
+            SoundEvents.GENERIC_EXPLODE.value().location();
+
+    /** How far from the collapse a sound still counts as the collapse's: the stretch is a few blocks wide. */
+    private static final double COLLAPSE_EARSHOT = 4.0;
 
     @GameTest
     public void theIdsArePermanentAndTheDriverIsKeptNotSpent(GameTestHelper helper) {
@@ -200,8 +210,8 @@ public class BoltDriverTest {
         Corridor corridor = corridor(helper, LENGTH, 2);
         MockPlayer shooter = walker(helper, corridor, "bolt-range", 0, EAST);
         arm(shooter.player(), 2);
-        // The corridor is 14 long, so the target stands in a second, longer one: the range itself is what is under
-        // test.
+        // The corridor is 14 long, so the target stands in a second, longer one: the range itself is what is
+        // under test.
         int far = (int) Math.ceil(DRIVER.range()) + 4;
         int y = corridor.floor(0).getY();
         int z = corridor.floor(0).getZ();
@@ -333,8 +343,8 @@ public class BoltDriverTest {
                         "the target was never hittable, so no bolt was tried: %s",
                         state(target, shooter.player(), corridor.level()));
             }
-            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a pack
-            // holds.
+            // Two bolts a try, and a full pack each try: the retry window below is ticks, not however many bolts a
+            // pack holds.
             arm(shooter.player(), 2);
             // A full stomach heals: keep it low, so a loss is the bolt's.
             target.getFoodData().setFoodLevel(6);
@@ -608,6 +618,17 @@ public class BoltDriverTest {
                 if (lying == 0) {
                     throw failure(helper, "the roof fell as rock, which lies where it landed: none lies in the tunnel");
                 }
+                Vec3 collapse = Vec3.atCenterOf(corridor.floor(7));
+                List<Identifier> heard = under.soundsHeardAtPlaces().stream()
+                        .filter(sound -> sound.at().distanceTo(collapse) < COLLAPSE_EARSHOT)
+                        .map(MockPlayer.PlacedSound::id)
+                        .toList();
+                expect(
+                        helper,
+                        heard.contains(CAVE_IN_SOUND) && !heard.contains(EXPLOSION),
+                        "the fall sounds as %s and not as an explosion, the person under it heard %s",
+                        CAVE_IN_SOUND,
+                        heard);
                 helper.succeed();
             }
         });
@@ -733,7 +754,7 @@ public class BoltDriverTest {
                 withPvp(
                         helper.getLevel().getServer(),
                         true,
-                        () -> CaveIns.blasted(level, corridor.stand(5).add(0, 1, 0), Optional.empty()));
+                        () -> CaveIns.blasted(level, point(corridor.stand(5).add(0, 1, 0)), Optional.empty()));
                 startedAt[0] = now;
                 return;
             }
@@ -747,6 +768,64 @@ public class BoltDriverTest {
                 helper.succeed();
             }
         });
+    }
+
+    /**
+     * The shake's reach is counted from the edge of the rock the blast broke, not from its middle (#1458): a plastic explosives blast shakes a
+     * person who is more than {@code shakeReach} from its middle but within it of its edge, and not one beyond it of its edge.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aBiggerBlastShakesFartherBecauseTheReachIsCountedFromItsEdge(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, 20, 44);
+        int radius = RepairTuning.DEFAULT.plasticRadius();
+        int near = 2 + radius + (int) CAVE_IN.shakeReach() - 2;
+        int far = near + 4;
+        walker(helper, corridor, "bolt-edge-near", near, EAST);
+        walker(helper, corridor, "bolt-edge-far", far, EAST);
+        BlockPos middle = corridor.floor(1).above();
+        AABB blast = new AABB(
+                middle.getX() - radius,
+                middle.getY() - radius,
+                middle.getZ() - radius,
+                middle.getX() + radius + 1,
+                middle.getY() + radius + 1,
+                middle.getZ() + radius + 1);
+        if (blast.getCenter().distanceTo(corridor.stand(near)) <= CAVE_IN.shakeReach()) {
+            throw failure(
+                    helper,
+                    "the near person must stand beyond the reach of the blast's middle, or this proves nothing");
+        }
+        long[] startedAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            ServerLevel level = corridor.level();
+            long now = level.getGameTime();
+            if (startedAt[0] < 0) {
+                withPvp(helper.getLevel().getServer(), true, () -> CaveIns.blasted(level, blast, Optional.empty()));
+                startedAt[0] = now;
+                return;
+            }
+            if (now - startedAt[0] == CAVE_IN.warnTicks() + 3) {
+                expect(
+                        helper,
+                        !corridor.standing(near),
+                        "a person within %.0f blocks of a blast's edge is shaken, though farther from its middle",
+                        CAVE_IN.shakeReach());
+                expect(
+                        helper,
+                        corridor.standing(far),
+                        "a person more than %.0f blocks from a blast's edge is not shaken",
+                        CAVE_IN.shakeReach());
+                helper.succeed();
+            }
+        });
+    }
+
+    /** A blast that broke no rock: a point, as a test that only cares where the blast was passes it. */
+    private static AABB point(Vec3 at) {
+        return new AABB(at, at);
     }
 
     @GameTest(maxTicks = MAX_TICKS)
@@ -922,7 +1001,7 @@ public class BoltDriverTest {
                         server,
                         false,
                         () -> CaveIns.blasted(
-                                corridor.level(), corridor.stand(7).add(0, 1, 0), Optional.of(mine)));
+                                corridor.level(), point(corridor.stand(7).add(0, 1, 0)), Optional.of(mine)));
                 startedAt[0] = now;
                 return;
             }
@@ -958,7 +1037,7 @@ public class BoltDriverTest {
                         server,
                         true,
                         () -> CaveIns.blasted(
-                                corridor.level(), corridor.stand(7).add(0, 1, 0), Optional.of(mine)));
+                                corridor.level(), point(corridor.stand(7).add(0, 1, 0)), Optional.of(mine)));
                 startedAt[0] = now;
                 return;
             }

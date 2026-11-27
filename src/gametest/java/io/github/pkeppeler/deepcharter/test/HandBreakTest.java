@@ -55,7 +55,7 @@ import net.minecraft.world.phys.Vec3;
  * Server GameTests for brute-forcing pod-only blocks with a hand tool (#858, ADR 0069): the one predicate, the constant
  * 60 s break time for every tool in every layer, the durability a block costs (half a diamond or better tool, the
  * whole of a lesser one, which is destroyed as the block goes; Unbreaking and Mending change neither), no drops, and
- * creative players left alone. The three kinds of pod-only block are the breach crust, Company
+ * creative players left alone. The kinds of pod-only block are the breach crust, the grained crust (#1022), Company
  * rock and {@code deep_rock} below layer 1. Every test has its own column.
  *
  * <p>A test that breaks a block in one call uses {@code gameMode.destroyBlock}, which pays the whole cost at once;
@@ -115,10 +115,14 @@ public class HandBreakTest {
 
     private static List<Kind> kinds() {
         BlockState stone = Blocks.STONE.defaultBlockState();
+        BlockState grained = LayerBlocks.GRAINED_CRUST.defaultBlockState();
         return List.of(
                 new Kind("crust in layer 1", 1, LayerBlocks.BREACH_CRUST.defaultBlockState(), Items.DIAMOND_PICKAXE),
                 new Kind("crust in layer 2", 2, LayerBlocks.BREACH_CRUST.defaultBlockState(), Items.NETHERITE_PICKAXE),
                 new Kind("crust in layer 3", 3, LayerBlocks.BREACH_CRUST.defaultBlockState(), Items.NETHERITE_PICKAXE),
+                new Kind("grained crust in layer 1", 1, grained, Items.DIAMOND_PICKAXE),
+                new Kind("grained crust in layer 2", 2, grained, Items.NETHERITE_PICKAXE),
+                new Kind("grained crust in layer 3", 3, grained, Items.NETHERITE_PICKAXE),
                 new Kind(
                         "Company rock in layer 1",
                         1,
@@ -237,7 +241,7 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    /** One predicate for all three kinds: each is governed, each is slow for any tool and zero for a bare hand. */
+    /** One predicate for all four kinds: each is governed, each is slow for any tool and zero for a bare hand. */
     @GameTest
     public void eachKindOfPodOnlyBlockFollowsTheSameRule(GameTestHelper helper) {
         List<Kind> kinds = kinds();
@@ -275,6 +279,7 @@ public class HandBreakTest {
                 new ItemStack(Items.SHEARS));
         List<BlockState> states = List.of(
                 LayerBlocks.BREACH_CRUST.defaultBlockState(),
+                LayerBlocks.GRAINED_CRUST.defaultBlockState(),
                 HazardBlocks.COMPANY_ROCK.defaultBlockState(),
                 Blocks.STONE.defaultBlockState());
         for (Rig rig : List.of(one, two)) {
@@ -319,7 +324,9 @@ public class HandBreakTest {
             Rig rig = rig(helper, layer, X_ANY_TOOL + layer, "hb-anytool-" + layer);
             BlockPos pos = rig.cell(2);
             List<BlockState> states = new ArrayList<>(List.of(
-                    LayerBlocks.BREACH_CRUST.defaultBlockState(), HazardBlocks.COMPANY_ROCK.defaultBlockState()));
+                    LayerBlocks.BREACH_CRUST.defaultBlockState(),
+                    LayerBlocks.GRAINED_CRUST.defaultBlockState(),
+                    HazardBlocks.COMPANY_ROCK.defaultBlockState()));
             if (layer > 1) {
                 states.add(Blocks.STONE.defaultBlockState());
             }
@@ -524,15 +531,21 @@ public class HandBreakTest {
             Item tool = LESSER_PICKS.get(i);
             Rig rig = rig(helper, 2, X_DESTROYED + 20 * i, "hb-destroyed-" + i);
             BlockPos pos = rig.cell(0);
-            rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
-            hold(rig.player(), new ItemStack(tool));
-            if (!rig.player().gameMode.destroyBlock(pos)
-                    || !rig.level.getBlockState(pos).isAir()) {
-                throw failure(helper, "%s did not break the block", tool);
-            }
-            if (!rig.player().getMainHandItem().isEmpty()) {
-                throw failure(
-                        helper, "%s was not destroyed: %s", tool, rig.player().getMainHandItem());
+            for (BlockState state :
+                    List.of(Blocks.STONE.defaultBlockState(), LayerBlocks.GRAINED_CRUST.defaultBlockState())) {
+                rig.level.setBlock(pos, state, 3);
+                hold(rig.player(), new ItemStack(tool));
+                if (!rig.player().gameMode.destroyBlock(pos)
+                        || !rig.level.getBlockState(pos).isAir()) {
+                    throw failure(helper, "%s did not break %s", tool, state);
+                }
+                if (!rig.player().getMainHandItem().isEmpty()) {
+                    throw failure(
+                            helper,
+                            "%s was not destroyed: %s",
+                            tool,
+                            rig.player().getMainHandItem());
+                }
             }
         }
         helper.succeed();

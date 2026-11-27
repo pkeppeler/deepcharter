@@ -821,8 +821,8 @@ public class HandbookChaptersSixToNineTest {
                     completed(server, drifter));
             drifter.player().stopRiding();
 
-            // A scanner that another charter stamped does nothing on the member's pod, so the member finds no ore with
-            // it.
+            // A scanner that another charter stamped does nothing on the member's pod, so the member finds no ore
+            // with it.
             rival.player().setGameMode(GameType.SURVIVAL);
             PodEntity foreign = helper.spawn(PodRegistry.POD, 4, 1, 4);
             foreignParts = foreign;

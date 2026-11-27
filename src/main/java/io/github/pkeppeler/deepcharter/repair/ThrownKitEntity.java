@@ -40,7 +40,7 @@ import net.minecraft.world.phys.Vec3;
  *       gone; one that finds no room to stand (water, a solid block, an unloaded neighbour) drowns and is given back to the thrower;
  *   <li>a <b>decoy</b> lies there and sounds every {@code pulseTicks} for {@code noiseTicks}, a source in {@link DrawSources}, then is gone;
  *   <li>a <b>charge</b> lies there with a fuse, sparking, and blasts as the pod's blasting charge does ({@link PodCharge}): the 3 x 3 column under it,
- *       {@code chargeDepth} rows deep, clears Company rock and natural rock (only where the volume holds Company rock, the pod's own rule), and hurts
+ *       {@code depth} rows deep (smaller than a seated charge's), clears Company rock and natural rock (only where the volume holds Company rock, the pod's own rule), and hurts
  *       a pod in reach by distance. A person in reach is hurt too, but never killed. Friendly fire is deliberate: the thrower and their own charter's
  *       crew are hurt (the fuse and the GET CLEAR bar warn them), anyone else only where the server allows PvP; a pod of another charter is never hurt.
  * </ul>
@@ -96,7 +96,10 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
         switch (kind) {
             case THROWN_DECOY -> sound(level);
             case THROWN_CHARGE -> burn(level);
-            default -> discard();
+            case THROWN_FLARE -> discard();
+            // enum-default: the three thrown kinds have arms; a kind that lands without one has no landed behaviour,
+            // and the throw is the refusal
+            default -> throw new IllegalStateException(kind + " has no landed behaviour");
         }
         ticksLanded++;
     }
@@ -160,6 +163,8 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
                             Mth.ceil(tuning.charge().fuseTicks() / (double) TICKS_PER_SECOND)));
                 }
             }
+            // enum-default: the three thrown kinds have arms; any other member is a kit that is not thrown, and the
+            // throw is the refusal
             default -> throw new IllegalStateException(kind + " is not thrown");
         }
     }
@@ -237,7 +242,7 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
     private void blast(ServerLevel level) {
         RepairTuning repair = RepairTuning.DEFAULT;
         int radius = tuning.charge().blastRadius();
-        BlockPos low = cell.offset(-radius, -repair.chargeDepth(), -radius);
+        BlockPos low = cell.offset(-radius, -tuning.charge().depth(), -radius);
         BlockPos high = cell.offset(radius, -1, radius);
         Optional<Charter> charter = throwerCharter(level);
         PodCharge.detonate(

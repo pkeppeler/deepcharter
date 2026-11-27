@@ -2,8 +2,8 @@ package io.github.pkeppeler.deepcharter.repair;
 
 /**
  * Tunables for the thrown kit (#985), read as {@code ThrownKitTuning.DEFAULT.thing()}: the flares, decoys and charges a person on foot throws by hand
- * (CREATURES section 8). Prices live in {@link Consumable}; the blast's depth, damage to pods and reach are {@link RepairTuning}'s, because a thrown
- * charge blasts as the pod's does.
+ * (CREATURES section 8). Prices live in {@link Consumable}; the blast's damage to pods and reach are {@link RepairTuning}'s, because a thrown
+ * charge blasts as the pod's does. Its volume is its own, and smaller than a seated charge's (#1458).
  *
  * <p>A throw carries the tuning it was made with, so a test can shorten a duration without touching the shipped numbers.
  *
@@ -62,13 +62,15 @@ public record ThrownKitTuning(float throwSpeed, Flare flare, Decoy decoy, Charge
      *
      * @param fuseTicks    ticks from landing to the blast
      * @param blastRadius  blocks each side of the charge, so 1 is a 3 x 3 column, as wide as a bore
+     * @param depth        rows under the charge that the blast clears: 1, so a throw clears 9 cells, under the 16 of a Mole's seated
+     *                     charge ({@code RepairTuning.chargeDepth} rows of its 2 x 2 bore); a throw is a fighting round, not the shaft tool
      * @param personDamage health a person at the blast takes, less with distance; it never kills (it leaves a person at half a heart at worst)
      */
-    public record Charge(int fuseTicks, int blastRadius, float personDamage) {
-        public static final Charge DEFAULT = new Charge(60, 1, 8f);
+    public record Charge(int fuseTicks, int blastRadius, int depth, float personDamage) {
+        public static final Charge DEFAULT = new Charge(60, 1, 1, 8f);
 
         public Charge {
-            if (fuseTicks < 1 || blastRadius < 0 || personDamage < 0) {
+            if (fuseTicks < 1 || blastRadius < 0 || depth < 1 || personDamage < 0) {
                 throw new IllegalArgumentException("charge tuning out of range: " + this);
             }
         }

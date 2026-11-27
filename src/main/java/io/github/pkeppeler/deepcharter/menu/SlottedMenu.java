@@ -64,10 +64,10 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         return slot;
     }
 
-    /** Adds the player's inventory with its top left at {@code x}, {@code y}: the rows, then the hotbar under them. */
-    protected final void addPlayerInventory(Inventory inventory, int x, int y) {
+    /** Adds the player's inventory with its top left {@link #FRAME} from the left and {@code y} down: the rows, then the hotbar under them. */
+    protected final void addPlayerInventory(Inventory inventory, int y) {
         inventoryStart = slots.size();
-        addStandardInventorySlots(inventory, x, y);
+        addStandardInventorySlots(inventory, FRAME, y);
     }
 
     /** The typed slots, in the order they were added. */
@@ -87,6 +87,30 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
 
     /** Called on both sides once {@code stack} is in {@code slot}. The server's menu commits it here. */
     protected void placed(RuleSlot slot, ItemStack stack) {}
+
+    /**
+     * Whether a shift-click from the inventory tries {@code slot} for {@code stack}: by default, every slot the stack
+     * {@link SlotRule#fits fits}. A menu whose plain slots take anything narrows this, so a stack meant for a typed
+     * slot is refused with that slot's reason instead of landing in a plain one.
+     */
+    protected boolean routes(RuleSlot slot, ItemStack stack) {
+        return slot.rule().fits().test(stack);
+    }
+
+    /**
+     * Why {@code slot} gives back nothing of what it holds now, or empty when it gives it back: a menu keeps some
+     * stacks in an unlocked slot this way. A slot whose rule locks keeps what it holds whatever this says.
+     */
+    protected Optional<Component> keeps(RuleSlot slot) {
+        return Optional.empty();
+    }
+
+    /**
+     * Whether {@code slot} is there now: an inactive slot is not drawn and takes no click. Every slot is, by default.
+     */
+    protected boolean active(RuleSlot slot) {
+        return true;
+    }
 
     @Override
     public void clicked(int index, int button, ContainerInput input, Player player) {
@@ -109,9 +133,17 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         }
         Slot slot = slots.get(index);
         if (slot instanceof RuleSlot typed) {
+            if (typed.hasItem() && takes(input)) {
+                Optional<Component> kept = keeps(typed);
+                if (kept.isPresent()) {
+                    return kept;
+                }
+            }
             ItemStack incoming = switch (input) {
                 case PICKUP -> getCarried();
                 case SWAP -> player.getInventory().getItem(button);
+                // enum-default: only a pickup or a swap puts a stack into this slot;
+                // every other input moves nothing into it (a quick move is judged below)
                 default -> ItemStack.EMPTY;
             };
             return incoming.isEmpty() ? Optional.empty() : typed.rule().refusal(incoming);
@@ -123,13 +155,25 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
     }
 
     /**
+     * Whether a click of {@code input} on a filled slot would take from it, so a slot that keeps its stack refuses it.
+     */
+    private boolean takes(ContainerInput input) {
+        return switch (input) {
+            case PICKUP -> getCarried().isEmpty();
+            case QUICK_MOVE, THROW, SWAP -> true;
+            // enum-default: every other input takes nothing from a filled slot
+            default -> false;
+        };
+    }
+
+    /**
      * Why no typed slot takes {@code stack} by shift-click: the refusal of the first slot it fits, or the first slot's
      * reason it fits none. Empty when a slot takes it, or when every slot it fits is merely full.
      */
     private Optional<Component> quickMoveRefusal(ItemStack stack) {
         Optional<Component> fitting = Optional.empty();
         for (RuleSlot slot : ruleSlots) {
-            if (!slot.rule().fits().test(stack)) {
+            if (!routes(slot, stack)) {
                 continue;
             }
             Optional<Component> why = slot.rule().check().apply(stack);
@@ -153,7 +197,7 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot slot = slots.get(index);
-        if (!slot.hasItem()) {
+        if (!slot.hasItem() || !slot.mayPickup(player)) {
             return ItemStack.EMPTY;
         }
         ItemStack stack = slot.getItem();
@@ -181,7 +225,7 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
             if (stack.isEmpty()) {
                 break;
             }
-            if (slot.rule().fits().test(stack)) {
+            if (routes(slot, stack)) {
                 moved |= moveItemStackTo(stack, slot.index, slot.index + 1, false);
             }
         }
@@ -207,8 +251,13 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         }
 
         @Override
+        public boolean isActive() {
+            return active(this);
+        }
+
+        @Override
         public boolean mayPickup(Player player) {
-            return !(rule.locks() && hasItem());
+            return !(hasItem() && (rule.locks() || keeps(this).isPresent()));
         }
 
         @Override

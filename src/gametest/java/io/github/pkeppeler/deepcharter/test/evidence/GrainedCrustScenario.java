@@ -61,6 +61,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
     private static final float FOOT_PITCH = 12f;
     private static final float LOOK_DOWN = 18f;
 
+    private int podId;
+
     @Override
     protected String name() {
         return "grained-crust";
@@ -76,10 +78,16 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X - 4, FLOOR_Y, Z + 0.5, Set.of(), EAST, LOOK_DOWN, true);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + 1, Z, 8);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X - 4, FLOOR_Y, Z + 0.5);
                 pod.setYRot(EAST);
                 one.addFreshEntity(pod);
+                podId = pod.getId();
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the player could not mount the pod");
                 }
@@ -290,8 +298,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
                     "a stopped pod should lose " + 2 * squeezeHull + " in two pulses, it lost " + lostStopped);
         }
 
-        // Driven west across the pad (forward, turned to face west) from 20 ticks before a pulse, the same pod takes
-        // nothing.
+        // Driven west across the pad (forward, turned to face west) from 20 ticks before a pulse, the same pod
+        // takes nothing.
         singleplayer.getServer().runOnServer(server -> pod(server).setPos(WALL_X - 3, FLOOR_Y, Z + 0.5));
         int waited = 0;
         while (singleplayer.getServer().computeOnServer(server -> PulseClock.ticksToPulse(level(server))) != 20) {
@@ -392,15 +400,15 @@ public class GrainedCrustScenario extends EvidenceScenario {
         return TestLayers.level(server, 1);
     }
 
-    private static PodEntity pod(MinecraftServer server) {
+    private PodEntity pod(MinecraftServer server) {
         return server.getPlayerList().getPlayers().getFirst().getVehicle() instanceof PodEntity pod
                 ? pod
                 : podOnTheFloor(server);
     }
 
-    /** The one pod of the room, when the player is out of it. */
-    private static PodEntity podOnTheFloor(MinecraftServer server) {
-        return level(server).getEntities(PodRegistry.POD, pod -> true).getFirst();
+    /** The scenario's own pod, when the player is out of it; the colony's wreck pod shares the level (#1417). */
+    private PodEntity podOnTheFloor(MinecraftServer server) {
+        return TestEntities.require(level(server), podId, PodEntity.class);
     }
 
     /** True while the cell against the wall, at the end of the water's channel, holds a fluid. */
@@ -412,7 +420,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
                         .isEmpty());
     }
 
-    private static float refill(TestSingleplayerContext singleplayer) {
+    private float refill(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
             PodEntity pod = pod(server);
             pod.setHull(pod.maxHull());
@@ -421,11 +429,11 @@ public class GrainedCrustScenario extends EvidenceScenario {
         });
     }
 
-    private static float podHull(TestSingleplayerContext singleplayer) {
+    private float podHull(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> pod(server).hull());
     }
 
-    private static double podX(TestSingleplayerContext singleplayer) {
+    private double podX(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> pod(server).getX());
     }
 

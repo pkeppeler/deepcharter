@@ -131,15 +131,15 @@ public class M2SliceTest {
         ServerLevel one = TestLayers.level(server, 1);
         ServerLevel two = TestLayers.level(server, 2);
         AtomicInteger ready = new AtomicInteger();
-        // The colony's chunk too: a pod there is found by its UUID, which a cable needs, only once the chunk ticks
-        // entities.
+        // The colony's chunk too: a pod there is found by its UUID, which a cable needs, only once the chunk
+        // ticks entities.
         List<Awaited> awaited = List.of(
                 new Awaited(one, BlockPos.containing(X, zoneY(one, 1, 2), Z)),
                 new Awaited(two, BlockPos.containing(X, zoneY(two, 2, 2), Z)),
                 new Awaited(
                         server.overworld(), Colony.placed(server).orElseThrow().center()),
-                // The Host's chunk, whose displays the end state inspects: the colony's centre is in it, and this names
-                // it.
+                // The Host's chunk, whose displays the end state inspects: the colony's centre is in it, and this
+                // names it.
                 new Awaited(
                         server.overworld(),
                         Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow()));
@@ -339,8 +339,8 @@ public class M2SliceTest {
                                 helper,
                                 Terminals.act(first, terminal, RepairStation.REPAIR_TOTAL, new CompoundTag()),
                                 "repairing the hull");
-                        // The descent starts in the surface band of the campaign level and passes into layer 1 in
-                        // place.
+                        // The descent starts in the surface band of the campaign level and passes into layer 1
+                        // in place.
                         director.teleportTo(
                                 one,
                                 new Vec3(

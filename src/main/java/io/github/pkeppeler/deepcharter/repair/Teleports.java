@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
-import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -15,6 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.level.storage.LevelData;
@@ -22,12 +22,22 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the cargo is left behind
- * as item entities where the pod was. Nothing mined teleports.
+ * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the whole hold is left
+ * behind as item entities where the pod was. Nothing mined teleports.
  */
 final class Teleports {
     /** How many random spots a scattering teleporter tries before it falls back to the exact column. */
     private static final int SCATTER_TRIES = 5;
+
+    /** Chunks out from the landing chunk that its arrival ticket loads: 2 makes the landing chunk tick entities. */
+    private static final int ARRIVAL_RADIUS = 2;
+
+    /**
+     * The most wall-clock time a teleport spends running the landing level's queued chunk tasks before the pod moves:
+     * 2 ms at most was measured (#1364), so 20 ms leaves room on a loaded server and still under half a tick. Past it
+     * the pod moves anyway, and its rider's client loses it for a tick, as before #1364.
+     */
+    private static final long SETTLE_BUDGET_NANOS = 20_000_000L;
 
     private Teleports() {}
 
@@ -35,25 +45,18 @@ final class Teleports {
      * Where the teleporters take a pod: the colony's respawn point, or the world spawn while the colony is not built or its
      * data is unreadable.
      */
-    static GlobalPos destination(MinecraftServer server) {
-        return Colony.respawnPoint(server).orElseGet(() -> worldSpawn(server));
+    private static GlobalPos destination(MinecraftServer server) {
+        return Colony.respawnPoint(server).orElseGet(() -> {
+            LevelData.RespawnData spawn = server.overworld().getRespawnData();
+            return GlobalPos.of(spawn.dimension(), spawn.pos());
+        });
     }
 
     /** Sends {@code pod}, at most {@code scatter} blocks from the destination. Empty when it went, or the reason it did not. */
     static Optional<Component> send(PodEntity pod, double scatter) {
-        return send(pod, scatter, destination(((ServerLevel) pod.level()).getServer()), SpillLife.VANILLA);
-    }
-
-    /** The world spawn, where a transit goes when the colony's column is blocked. */
-    static GlobalPos worldSpawn(MinecraftServer server) {
-        LevelData.RespawnData spawn = server.overworld().getRespawnData();
-        return GlobalPos.of(spawn.dimension(), spawn.pos());
-    }
-
-    /** As {@link #send(PodEntity, double)}, to {@code target}, with the spilled ore lying for {@code spill}. */
-    static Optional<Component> send(PodEntity pod, double scatter, GlobalPos target, SpillLife spill) {
         ServerLevel from = (ServerLevel) pod.level();
         MinecraftServer server = from.getServer();
+        GlobalPos target = destination(server);
         ServerLevel to = server.getLevel(target.dimension());
         if (to == null || !pod.canUsePortal(true) || !pod.canTeleport(from, to)) {
             return Consumables.refusal("teleport_blocked");
@@ -63,38 +66,57 @@ final class Teleports {
             // The bay cannot be emptied, and nothing mined may travel.
             return Consumables.refusal("cargo_unreadable");
         }
-        // Everything that can refuse comes before the first change: a refused teleport moves nothing and keeps the
-        // item.
+        // Everything that can refuse comes before the first change: a refused teleport moves nothing and keeps
+        // the item.
         Optional<Vec3> spot = safeLanding(to, pod, target.pos(), scatter);
         if (spot.isEmpty()) {
             return Consumables.refusal("teleport_blocked");
         }
         Vec3 landing = spot.get();
-        List<PodCargo.Entry> held = cargo.entries();
         Vec3 departure = pod.position();
+        settle(to);
         Entity arrived = pod.teleport(new TeleportTransition(
                 to, landing, Vec3.ZERO, pod.getYRot(), pod.getXRot(), TeleportTransition.DO_NOTHING));
         if (arrived == null) {
             return Consumables.refusal("teleport_blocked");
         }
+        // The look-up loaded the landing chunk with a ticket that lapses next tick, and the pilot's own tickets follow
+        // only once its client answers the teleport: hold the chunk until then, as a tow holds a towed pod's (#1353).
+        to.getChunkSource()
+                .addTicketWithRadius(RepairRegistry.TELEPORT_ARRIVAL, arrived.chunkPosition(), ARRIVAL_RADIUS);
         arrived.getPassengersAndSelf().forEach(Entity::resetFallDistance);
-        // The ore is spilled first, so that a failure after it loses nothing: the bay is emptied last.
-        for (PodCargo.Entry entry : held) {
-            ItemEntity drop = new ItemEntity(
-                    from, departure.x, departure.y, departure.z, entry.stack().copy());
-            if (spill == SpillLife.EXTENDED) {
-                drop.setExtendedLifetime();
-            }
-            from.addFreshEntity(drop);
-        }
-        // The saved cargo travelled with the pod (a crossing is a new entity): empty the arriving bay.
+        // The whole hold spills, not only the ore (SPEC section 11: you drop your cargo, and nothing mined teleports).
+        // The saved hold travelled with the pod (a crossing is a new entity), so it is the arriving pod's that empties.
+        // The fuel slot is fuel, not cargo, and stays, as the tank's fuel does.
         if (arrived instanceof PodEntity moved) {
-            moved.cargo().dump(moved);
+            for (ItemStack stack : moved.cargo().takeAll(moved)) {
+                from.addFreshEntity(new ItemEntity(from, departure.x, departure.y, departure.z, stack));
+            }
         }
         from.playSound(
                 null, departure.x, departure.y, departure.z, DeepSound.TERMINAL_TELEPORT.event(), SoundSource.PLAYERS);
         to.playSound(null, landing.x, landing.y, landing.z, DeepSound.TERMINAL_TELEPORT.event(), SoundSource.PLAYERS);
         return Optional.empty();
+    }
+
+    /**
+     * Runs {@code level}'s queued chunk tasks, as a blocking chunk load on the server thread does, until none is left or
+     * {@link #SETTLE_BUDGET_NANOS} has passed (#1364). The landing look-up loads a cold chunk to full, but the task that
+     * tells the entity manager so is still queued, so the chunk's entity sections are hidden. A pod moved into a hidden
+     * section stops being tracked: every client, its own pilot's included, is sent a remove-entity, and the pod comes back
+     * with a fresh add on the next tick. Once that task has run, the section is tracked and the pod stays tracked across
+     * the move.
+     *
+     * <p>The drain runs whatever the level's chunk executor holds, not only the landing chunk's task: other chunks'
+     * status promotions, with their {@code CHUNK_LOAD}, {@code BLOCK_ENTITY_LOAD} and {@code ENTITY_LOAD} listeners. A
+     * blocking chunk load on the server thread runs the same tasks, so call this only where such a load would be safe
+     * too, never from inside one of those listeners.
+     */
+    private static void settle(ServerLevel level) {
+        long deadline = System.nanoTime() + SETTLE_BUDGET_NANOS;
+        while (System.nanoTime() - deadline < 0 && level.getChunkSource().pollTask()) {
+            // pollTask ran one task.
+        }
     }
 
     /**
@@ -122,8 +144,8 @@ final class Teleports {
     }
 
     private static Optional<Vec3> fit(ServerLevel level, PodEntity pod, double x, double z, int nearY) {
-        // An unloaded chunk answers every height with the bottom of the world, so load what the pod will stand on
-        // first.
+        // An unloaded chunk answers every height with the bottom of the world, so load what the pod will stand
+        // on first.
         AABB reach = pod.getDimensions(pod.getPose())
                 .makeBoundingBox(new Vec3(x, nearY, z))
                 .inflate(1.0);

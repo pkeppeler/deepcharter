@@ -865,8 +865,8 @@ public class HandbookChaptersOneToFiveTest {
                         expectCompleted(helper, server, "chapter 3", both, through(3));
                         expectRoadAt(helper, server, first, 3);
 
-                        // Chapter 4: fuel, flight, a ten block bore, and home again. Returning counts only after the
-                        // bore.
+                        // Chapter 4: fuel, flight, a ten block bore, and home again. Returning counts only after
+                        // the bore.
                         first.stopRiding();
                         stand(helper, director, terminal);
                         helper.getLevel()

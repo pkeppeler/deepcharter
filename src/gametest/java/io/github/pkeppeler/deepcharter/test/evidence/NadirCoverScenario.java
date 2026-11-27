@@ -115,8 +115,8 @@ public class NadirCoverScenario extends EvidenceScenario {
             ClientLight.Box held,
             String still) {
         ShaftViews.stand(context, server, level, eye, target, held, still);
-        // tick-wait: the fog colour is computed per frame, and a few frames must pass after the last chunk section is
-        // built
+        // tick-wait: the fog colour is computed per frame, and a few frames must pass after the last chunk section
+        // is built
         context.waitTicks(10);
         screenshot(context, still);
         frame(context);

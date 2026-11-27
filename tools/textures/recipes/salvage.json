@@ -102,16 +102,21 @@
       ".........hlmmdk",
       "..........kkkk"]}},
     "item/salvage_cloth": {"template": "sprite", "args": {"legend": {
-      "h": "tarp.4", "l": "tarp.3", "m": "tarp.2", "d": "tarp.1", "s": "enamel.1", "r": "company.2", "k": "tarp.0"}, "rows": [
+      "h": "tarp.4", "l": "tarp.3", "m": "tarp.2", "d": "tarp.1", "k": "tarp.0", "s": "enamel.1", "r": "rust.2", "R": "rust.3"}, "rows": [
       "", "",
-      "..hhhhhhhhhh",
-      ".hllllllllmhh",
-      ".hlssssssslmd",
-      ".hlllllllllmd",
-      ".hmmmrrrmmmmd",
-      ".hmmmmmmmmmdd",
-      ".hmmmmmmmmddk",
-      "..dmmmmmmdddk",
-      "...ddddddddk"]}}
+      ".hhhhhhhhhhhhhh",
+      ".dsdsdsdsdsdsds",
+      ".lmdkhlmdkhlmmd",
+      ".lmdkhlmdkhlmmd",
+      ".lmdkhlmmdkrrmd",
+      ".lmmdkhlmdkRRrd",
+      ".lmmdkhlmdkhrmd",
+      ".lmmdkhlmdkhlmd",
+      ".lmmdkhlmmdkhld",
+      ".dmmdkhddmdkhld",
+      "..ddmdd..ddkhd",
+      "..m.dd...mddd",
+      "....mm....m.m",
+      "....d.....d"]}}
   }
 }

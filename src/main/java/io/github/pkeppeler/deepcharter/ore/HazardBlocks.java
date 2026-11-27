@@ -11,6 +11,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
@@ -33,7 +34,7 @@ public final class HazardBlocks {
             id("company_rock"),
             key -> new CompanyRockBlock(BlockBehaviour.Properties.of()
                     .setId(key)
-                    .strength(-1.0F, 3600000.0F)
+                    .strength(-1.0F, Blocks.BEDROCK.getExplosionResistance())
                     .sound(SoundType.STONE)
                     .noLootTable()));
 

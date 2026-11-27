@@ -687,13 +687,17 @@ public final class CataloguePanel {
             return true;
         }
         if (event.isEscape() && showsRecipePanel()) {
-            // Before the screen sees it: Escape puts the recipe panel away first and closes the inventory the next
-            // time.
+            // Before the screen sees it: Escape puts the recipe panel away first and closes the inventory the
+            // next time.
             state.clear();
             return true;
         }
         if (CatalogueKeys.BACK.matches(event) && showsRecipePanel()) {
             state.back();
+            return true;
+        }
+        if (CatalogueKeys.MATERIALS.matches(event) && showsRecipePanel()) {
+            state.toggleMaterials(catalogue());
             return true;
         }
         Item item = hoveredItem();
@@ -829,7 +833,7 @@ public final class CataloguePanel {
         return taken;
     }
 
-    /** The wheel over the catalogue turns its pages, over the favourites row scrolls it and over the recipe panel steps through the recipes. */
+    /** The wheel over the catalogue turns its pages, over the favourites row scrolls it and over the recipe panel steps through the recipes or scrolls the total materials. */
     boolean mouseScrolled(double x, double y, double vertical) {
         CatalogueLayout now = layout;
         if (now == null || vertical == 0) {
@@ -852,7 +856,7 @@ public final class CataloguePanel {
             return true;
         }
         if (showsRecipePanel() && now.recipe().contains(x, y)) {
-            state.step(catalogue(), direction);
+            console.scroll(direction);
             return true;
         }
         return false;
@@ -1065,8 +1069,8 @@ public final class CataloguePanel {
             textX += termWidth(tail);
         }
         if (caretOn) {
-            // A solid bar at least as thick as the scanline spacing, so a scanline over it never turns it into dashes
-            // ("=").
+            // A solid bar at least as thick as the scanline spacing, so a scanline over it never turns it into
+            // dashes ("=").
             int baseline = textY + font.lineHeight - look.caretHeight();
             graphics.fill(textX, baseline, textX + caretWidth, baseline + look.caretHeight(), crt.phosphorColor());
         }

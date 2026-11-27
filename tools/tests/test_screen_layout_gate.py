@@ -167,7 +167,7 @@ class ScreenLayoutGateTest(unittest.TestCase):
 
     def test_finds_the_screens_of_the_repo(self):
         found = screen_classes(client_sources())
-        self.assertTrue({"HangarScreen", "UpgradeScreen", "HandbookScreen", "OreCargoScreen", "TerminalScreen"} <= found, found)
+        self.assertTrue({"HangarScreen", "UpgradeScreen", "HandbookScreen", "PodScreen", "TerminalScreen"} <= found, found)
 
     def test_the_allow_list_holds_only_screens_that_exist(self):
         self.assertTrue(set(ALLOWED) <= screen_classes(client_sources()), ALLOWED)

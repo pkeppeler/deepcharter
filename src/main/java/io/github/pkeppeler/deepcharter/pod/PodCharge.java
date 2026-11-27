@@ -22,6 +22,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -32,15 +33,19 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>The shaped charge (#526) is the same set-up with a directed blast: in each column of the bore square it clears the Company rock from the slab under the
  * pod down to the first block that is not Company rock, at most {@code shapedDepth} rows, and nothing else (stone is the drill's). It will not be set when a
- * column's run ends on lava, because the jet would open it; the blasting charge, whose hole is shallow and wide, still can. Counterplay for the rest of what
+ * column's run ends on lava, because the jet would open it; the blasting charge, whose hole is {@code chargeDepth} rows deep and no wider than
+ * the bore, still can, and lets the lava flow as a bore does. Counterplay for the rest of what
  * it may open is the pilot's: a gas pocket under the run is not cleared (the sounder is the answer), and a cavern under it is a drop.
  *
  * <p>Rules: only blocks of {@link HazardBlocks#UNDIGGABLE} and {@link HazardBlocks#NATURAL_ROCK} go (so bricks, lining,
  * liner rings, structures, bedrock, crust and every fluid stay), and only in loaded chunks. A gas pocket in the volume
  * goes with the blast and vents no more, as in a gas blast. Lava next to the hole is not touched; the hole lets it
  * flow, as a bore does. Every pod within {@code chargeReach} of the volume takes {@code chargeDamage} less its distance share, the setter's too
- * unless it climbs clear (a wreck takes nothing; another charter's pod in reach is hurt, the risk of a shared shaft). A pod with no more hull
- * than {@code chargeDamage} cannot set a charge.
+ * unless it climbs clear (a wreck takes nothing; another charter's pod in reach is hurt, the risk of a shared shaft). A charge is never a suicide
+ * button: a pod cannot set one with no more hull than {@code chargeDamage} plus the hard landing of a free fall to the bottom of the hole it
+ * opens ({@link #dropRows}), since a pod left sitting on its charge takes the blast and then drops into the hole (a cavern already below the hole is a
+ * drop of its own, as under the drill's last slab). A pilot who holds the rotor
+ * hovers through both.
  * The fuse belongs to the pod and is neither saved nor synced: a pod that is discarded or unloaded before the blast loses it.
  */
 public final class PodCharge {
@@ -93,9 +98,6 @@ public final class PodCharge {
         if (!pod.onGround()) {
             return refusal("charge_not_resting");
         }
-        if (pod.hull() <= tuning.chargeDamage()) {
-            return refusal("charge_hull_low");
-        }
         PodFootprint foot = PodFootprint.of(pod);
         int top = Mth.ceil(pod.getY() - PodFootprint.EPSILON) - 1;
         int depth = kind == Kind.SHAPED ? tuning.shapedDepth() : tuning.chargeDepth();
@@ -111,6 +113,9 @@ public final class PodCharge {
         } else if (!hasCompanyRock(level, low, high)) {
             return refusal("charge_no_company_rock");
         }
+        if (pod.hull() <= wreckingHull(pod, tuning, dropRows(level, blocks, kind, low, high))) {
+            return refusal("charge_hull_low");
+        }
         Fuse fuse = new Fuse(
                 kind,
                 low,
@@ -125,6 +130,31 @@ public final class PodCharge {
                 null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.DRILL_DYNAMITE.event(), SoundSource.PLAYERS);
         count(pod, fuse, "charge_set");
         return Optional.empty();
+    }
+
+    /**
+     * The hull a pod sitting on its own charge loses: the whole blast, then the unbraked fall of {@code dropRows} into the hole, landing as
+     * {@link HardLanding} counts it with the pod's own stats. A pod with this much hull or less would be wrecked.
+     */
+    public static float wreckingHull(PodEntity pod, RepairTuning tuning, int dropRows) {
+        return tuning.chargeDamage() + HardLanding.freeFallDamage(PodStats.of(pod), dropRows);
+    }
+
+    /**
+     * The rows a pod sitting on the charge drops once it blows: a blasting charge's whole depth, or a shaped charge's deepest column run. Both
+     * count the deepest the hole may be: a shallower column may hold the pod sooner, but the refusal must never let a charge wreck the pod.
+     */
+    private static int dropRows(ServerLevel level, LoadedBlocks blocks, Kind kind, BlockPos low, BlockPos high) {
+        if (kind == Kind.BLASTING) {
+            return high.getY() - low.getY() + 1;
+        }
+        int deepest = 0;
+        for (int x = low.getX(); x <= high.getX(); x++) {
+            for (int z = low.getZ(); z <= high.getZ(); z++) {
+                deepest = Math.max(deepest, runLength(level, blocks, x, z, high.getY(), low.getY()));
+            }
+        }
+        return deepest;
     }
 
     /** Refuses a shaped charge that has no Company rock to start in, or that would open onto lava: some column's run must start under the pod and none may end on lava. */
@@ -262,8 +292,8 @@ public final class PodCharge {
     private static void blast(ServerLevel level, Fuse fuse, boolean clearRock, Predicate<PodEntity> hurts) {
         AABB volume = fuse.volume();
         Vec3 middle = volume.getCenter();
-        // entity-query: the blast reaches chargeReach round a charge that a ticking pod set, so its chunks are
-        // entity-ticking
+        // entity-query: the blast reaches chargeReach round a charge that a ticking pod set, so its chunks
+        // are entity-ticking
         for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, volume.inflate(fuse.reach()))) {
             if (Wrecks.isWreck(pod) || !hurts.test(pod)) {
                 continue;
@@ -273,15 +303,16 @@ public final class PodCharge {
                 pod.damageHull((float) (fuse.damage() * share));
             }
         }
-        if (clearRock) {
-            for (BlockPos cell : cleared(level, new LoadedBlocks(level), fuse)) {
-                level.destroyBlock(cell, false);
-            }
+        List<BlockPos> cells = clearRock ? cleared(level, new LoadedBlocks(level), fuse) : List.of();
+        for (BlockPos cell : cells) {
+            level.destroyBlock(cell, false);
         }
         level.sendParticles(ParticleTypes.EXPLOSION, middle.x, middle.y, middle.z, 6, 1.0, 0.5, 1.0, 0.0);
         level.playSound(null, middle.x, middle.y, middle.z, DeepSound.DRILL_PLASTIC.event(), SoundSource.PLAYERS);
-        // The blast shakes the roof over anyone on foot near it (#987).
-        CaveIns.blasted(level, middle, fuse.blaster());
+        // The blast shakes the roof over anyone on foot near the rock it broke (#987, #1458); a blast that broke none
+        // shakes from its volume.
+        CaveIns.blasted(
+                level, BoundingBox.encapsulatingPositions(cells).map(AABB::of).orElse(volume), fuse.blaster());
     }
 
     /** The cells this fuse's blast clears: a shaped charge's runs of Company rock, or a blasting charge's volume of rock that may go. */

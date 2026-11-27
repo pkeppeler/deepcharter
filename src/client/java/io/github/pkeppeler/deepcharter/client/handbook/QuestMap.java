@@ -110,6 +110,8 @@ final class QuestMap {
      * of steps when that row is partial (the empty columns beside it hold the note). The redaction bars with their
      * stamp and the note always stay. Nothing is scaled.
      */
+    // const-param: the screen passes font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font);
+    // the parameter keeps the layout tied to the font
     static Layout layout(int mapWidth, int availableHeight, Model model, int lineHeight, int noteLines) {
         Layout below = Objects.requireNonNull(
                 layoutOrNull(mapWidth, model, lineHeight, noteLines, false), "the plain layout always exists");
@@ -130,7 +132,7 @@ final class QuestMap {
         int columns =
                 Math.max(1, Math.min(q.stepColumns(), (mapWidth + q.stepGap()) / (q.stepMinWidth() + q.stepGap())));
         int boxWidth = (mapWidth - q.stepGap() * (columns - 1)) / columns;
-        List<Rect> main = grid(model.main().chapter().directives().size(), 0, columns, boxWidth);
+        List<Rect> main = grid(model.main().chapter().directives().size(), columns, boxWidth);
         int bottom = main.getLast().bottom();
         int noteY = 0;
         if (beside) {
@@ -163,21 +165,20 @@ final class QuestMap {
         return new Layout(columns, boxWidth, main, List.copyOf(bars), noteY, mapWidth, height);
     }
 
-    private static List<Rect> grid(int count, int top, int columns, int boxWidth) {
+    private static List<Rect> grid(int count, int columns, int boxWidth) {
         QuestMapTuning q = QuestMapTuning.current();
         List<Rect> boxes = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             boxes.add(new Rect(
-                    i % columns * (boxWidth + q.stepGap()),
-                    top + i / columns * q.stepPitch(),
-                    boxWidth,
-                    q.stepHeight()));
+                    i % columns * (boxWidth + q.stepGap()), i / columns * q.stepPitch(), boxWidth, q.stepHeight()));
         }
         return List.copyOf(boxes);
     }
 
     /**
-     * Draws the flowchart with its origin at ({@code originX}, {@code originY}), clipped to {@code clip}, in screen pixels.
+     * Draws the flowchart with its origin at ({@code originX}, {@code originY}), clipped to {@code clip}, in screen
+     * pixels. When {@code clickable}, a click picks a step, so each carries the {@link ClickCue}; step {@code hovered}
+     * (-1 for none) is the one under the mouse.
      */
     static void drawChart(
             GuiGraphicsExtractor graphics,
@@ -188,7 +189,9 @@ final class QuestMap {
             int originY,
             Rect clip,
             @Nullable Component note,
-            Component classified) {
+            Component classified,
+            boolean clickable,
+            int hovered) {
         HandbookScreenTuning t = HandbookScreenTuning.current();
         QuestMapTuning q = QuestMapTuning.current();
         graphics.enableScissor(clip.x(), clip.y(), clip.right(), clip.bottom());
@@ -207,7 +210,7 @@ final class QuestMap {
                                     step.text())
                             .getString()
                     : step.text().getString();
-            stepBox(graphics, font, layout.main().get(i), text, ink);
+            stepBox(graphics, font, layout.main().get(i), text, ink, clickable, i == hovered);
         }
         connect(graphics, layout.main(), layout.columns(), ink);
         HandbookChapter.Entry current = full ? current(model.main()) : null;
@@ -263,12 +266,27 @@ final class QuestMap {
                 t.stampColor());
     }
 
-    /** A step: a one-pixel box in {@code color} with its text, cut with dots after {@link QuestMapTuning#stepMaxLines()} lines. */
-    private static void stepBox(GuiGraphicsExtractor graphics, Font font, Rect box, String text, int color) {
+    /**
+     * A step: a one-pixel box in {@code color} with its text, cut with dots after {@link
+     * QuestMapTuning#stepMaxLines()} lines. A {@code clickable} step carries the {@link ClickCue}, lit when {@code
+     * hovered}, and its text leaves the cue room.
+     */
+    private static void stepBox(
+            GuiGraphicsExtractor graphics,
+            Font font,
+            Rect box,
+            String text,
+            int color,
+            boolean clickable,
+            boolean hovered) {
         QuestMapTuning q = QuestMapTuning.current();
+        if (clickable) {
+            ClickCue.draw(graphics, box.x(), box.y(), box.right(), box.bottom(), hovered);
+        }
         PaperDraw.border(graphics, box.x(), box.y(), box.right(), box.bottom(), Colors.opaque(color));
         int y = box.y() + 2;
-        for (String line : clip(font, text, box.w() - 2 * q.stepTextInset(), q.stepMaxLines())) {
+        int textWidth = box.w() - 2 * q.stepTextInset() - (clickable ? ClickCue.width() : 0);
+        for (String line : clip(font, text, textWidth, q.stepMaxLines())) {
             graphics.text(
                     font,
                     PaperDraw.ink(Component.literal(line), color),

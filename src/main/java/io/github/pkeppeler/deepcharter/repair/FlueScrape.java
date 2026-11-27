@@ -32,8 +32,7 @@ import net.minecraft.server.level.ServerPlayer;
  * It then leaves {@link FuelTuning.Soot#scrapeLeavesLitres} of soot: under the limp limit, so the pod launches, and
  * still slow, so the paid service stays the way to a clean engine. It stops, clearing nothing, when that player walks
  * out of the station's reach or leaves the game, when the pod leaves its parking place, flies or drills, or when the
- * engine is no longer limp (a paid service came first). The server alone decides, on the pod's tick, as {@link
- * CompanyRecovery}'s wait does.
+ * engine is no longer limp (a paid service came first). The server alone decides, on the pod's tick.
  *
  * <p>The state is session only (no {@code persistent}), as {@code DrifterAlarm}'s is: a scrape needs its player at
  * the station, so a reload ends it, and no save holds one. It is synced, so the station's row counts down.
