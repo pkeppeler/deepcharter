@@ -109,7 +109,7 @@ jobs:
     if: needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0'
     runs-on: ubuntu-latest
     # One shard holds at most gradle/ci-budget.txt's client-shard seconds of tests by measured weight (tools/tests/test_ci_budget.py checks it).
-    # The action's own deadline (200 s of test time) ends the run with a message before this limit would kill it silently.
+    # The action's own deadline (250 s from the step's start) ends the run with a message before this limit would kill it silently.
     timeout-minutes: 5
     strategy:
       fail-fast: false

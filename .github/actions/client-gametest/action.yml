@@ -115,11 +115,12 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 120))
-        # A shard of the compiled build (download-compiled) is about 65 s of setup before this step, then Minecraft's start-up and its
+        # A shard of the compiled build (download-compiled) is about 10 to 25 s of setup before this step; the step then resolves (20 to 30 s),
+        # starts Minecraft (about 40 s) and runs its
         # share of the suite, at most gradle/ci-budget.txt's seconds by weight. The job stops at 5 minutes with no message, so this
         # deadline ends the run first, with one. $SECONDS starts after the dependency resolve. Raise only together with the job limit.
         # The whole-suite branch (no client-shard) is record-evidence.yml's one scenario: the same limit.
-        max_seconds=200
+        max_seconds=250
         warn_seconds=$((max_seconds * 8 / 10))
         warned=
         while kill -0 "$gradle_pid" 2>/dev/null; do
