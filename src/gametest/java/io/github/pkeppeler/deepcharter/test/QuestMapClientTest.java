@@ -447,7 +447,8 @@ public class QuestMapClientTest implements FabricClientGameTest {
             context.setScreen(() -> null);
             clicked++;
         }
-        require(clicked >= 7, "chapter 1 has at least seven item steps, clicked " + clicked);
+        int chapterOne = HandbookChaptersOneToFiveTest.chapterOne().size();
+        require(clicked >= chapterOne, "chapter 1 has at least " + chapterOne + " item steps, clicked " + clicked);
     }
 
     /**
@@ -649,7 +650,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
         return done;
     }
 
-    /** The nine chapters with the step counts they ship with (chapter 1 has seven), under their real ids so their margin notes are real. */
+    /** The nine chapters with the step counts they ship with, under their real ids so their margin notes are real. */
     private static Map<Identifier, HandbookChapter> shippedLike() {
         List<String> ids = List.of(
                 "welcome",
@@ -661,11 +662,10 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 "staying_safe",
                 "first_breach",
                 "company_property");
-        int[] steps = {7, 3, 2, 4, 3, 2, 2, 1, 4};
         Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
         for (int chapter = 1; chapter <= ids.size(); chapter++) {
             List<HandbookChapter.Entry> entries = new ArrayList<>();
-            for (int n = 1; n <= steps[chapter - 1]; n++) {
+            for (int n = 1; n <= HandbookChaptersOneToFiveTest.shippedSteps(ids.get(chapter - 1)); n++) {
                 entries.add(new HandbookChapter.Entry(
                         directive(chapter, n),
                         Component.literal("Do thing " + chapter + "." + n + " in a line long enough to need two lines"),

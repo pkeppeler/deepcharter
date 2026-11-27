@@ -535,13 +535,10 @@ public class SalvageBootstrapTest {
                             drops(level, block("salvage_crate"), crate + 1).forEach(bag::add);
                         }
                         Set<String> done = new LinkedHashSet<>();
-                        List<String> chapterOne = Objects.requireNonNull(
-                                HandbookChaptersOneToFiveTest.PINNED.get("deepcharter:welcome"),
-                                "the welcome chapter is pinned");
 
                         // Wood: a crate's planks complete the first directive on their own.
                         HandbookChaptersOneToFiveTest.give(player, Items.OAK_PLANKS);
-                        done.add(chapterOne.get(0));
+                        done.add(HandbookChaptersOneToFiveTest.directive("welcome", "gather_wood"));
                         HandbookChaptersOneToFiveTest.expectCompleted(
                                 helper, server, "a crate's planks", List.of(player), done);
 
@@ -563,7 +560,7 @@ public class SalvageBootstrapTest {
                                 item("stalk_planks"),
                                 item("stalk_planks"));
                         HandbookChaptersOneToFiveTest.give(player, Items.CRAFTING_TABLE);
-                        done.add(chapterOne.get(1));
+                        done.add(HandbookChaptersOneToFiveTest.directive("welcome", "craft_crafting_table"));
 
                         Item rock = item("regolith_rock");
                         Item stick = Items.STICK;
@@ -598,27 +595,31 @@ public class SalvageBootstrapTest {
                             }
                         }
                         HandbookChaptersOneToFiveTest.give(player, Items.STONE_PICKAXE);
-                        done.add(chapterOne.get(2));
+                        done.add(HandbookChaptersOneToFiveTest.directive("welcome", "craft_stone_tools"));
 
                         bag.craft(helper, "a furnace", 3, 3, rock, rock, rock, rock, Items.AIR, rock, rock, rock, rock);
 
-                        // Scrap: the crates' metal, melted down. The first goals ask for 5 iron and 4 copper.
-                        HandbookChaptersOneToFiveTest.give(player, item("scrap_iron"));
-                        done.add(chapterOne.get(3));
-                        bag.smelt(helper, "melting scrap iron", item("scrap_iron"), IRON_FOR_FIRST_GOALS);
-                        bag.smelt(helper, "melting scrap copper", item("scrap_copper"), COPPER_FOR_FIRST_GOALS);
-                        HandbookChaptersOneToFiveTest.give(player, Items.IRON_INGOT);
-                        done.add(chapterOne.get(4));
-                        HandbookChaptersOneToFiveTest.expectCompleted(
-                                helper, server, "chapter 1 from salvage and stalks", List.of(player), done);
-
-                        // Light: a stalk, burnt to charcoal, makes a torch; the iron makes a lantern round it.
+                        // Charcoal: a stalk, burnt in the furnace. It lights the torch below.
                         bag.smelt(helper, "charring a stalk", item("fungal_stalk"), 1);
                         if (bag.count(Items.CHARCOAL) != 1) {
                             throw helper.assertionException(
                                     "a charred stalk should be one charcoal, the bag holds %s",
                                     bag.count(Items.CHARCOAL));
                         }
+                        HandbookChaptersOneToFiveTest.give(player, Items.CHARCOAL);
+                        done.add(HandbookChaptersOneToFiveTest.directive("welcome", "smelt_charcoal"));
+
+                        // Scrap: the crates' metal, melted down. The first goals ask for 5 iron and 4 copper.
+                        HandbookChaptersOneToFiveTest.give(player, item("scrap_iron"));
+                        done.add(HandbookChaptersOneToFiveTest.directive("welcome", "gather_scrap"));
+                        bag.smelt(helper, "melting scrap iron", item("scrap_iron"), IRON_FOR_FIRST_GOALS);
+                        bag.smelt(helper, "melting scrap copper", item("scrap_copper"), COPPER_FOR_FIRST_GOALS);
+                        HandbookChaptersOneToFiveTest.give(player, Items.IRON_INGOT);
+                        done.add(HandbookChaptersOneToFiveTest.directive("welcome", "smelt_iron"));
+                        HandbookChaptersOneToFiveTest.expectCompleted(
+                                helper, server, "chapter 1 from salvage and stalks", List.of(player), done);
+
+                        // Light: the charcoal makes a torch; the iron makes a lantern round it.
                         bag.craft(helper, "a torch", 1, 2, Items.CHARCOAL, stick);
                         bag.craft(helper, "iron nuggets", 1, 1, Items.IRON_INGOT);
                         bag.craft(
@@ -641,7 +642,7 @@ public class SalvageBootstrapTest {
                                     "the path should end in one lantern, the bag holds %s", bag.count(Items.LANTERN));
                         }
                         HandbookChaptersOneToFiveTest.give(player, Items.LANTERN);
-                        done.add(chapterOne.get(6));
+                        done.add(HandbookChaptersOneToFiveTest.directive("welcome", "make_light"));
                         HandbookChaptersOneToFiveTest.expectCompleted(
                                 helper, server, "a lantern from a stalk and iron", List.of(player), done);
 

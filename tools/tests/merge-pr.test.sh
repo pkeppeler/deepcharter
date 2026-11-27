@@ -749,6 +749,60 @@ refusal "another docs file moving is not neutral" "$stale_hint" "STUB_MERGED_MAI
 refusal "code beside the roadmap is not neutral" "tools/merge-pr.sh" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=docs/ROADMAP.md${nl}tools/merge-pr.sh"
 refusal "nested papercuts lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/.papercuts.jsonl"
 refusal "nested roadmap lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/docs/ROADMAP.md"
+# The build runs as `build-shard <i>` jobs and `build-checks` beside the `build` aggregate (#1327). The gate reads the merged-main
+# notice of each passing shard, of build-checks and of the aggregate, which records the main all of them agreed on.
+bs_specs=("build:2:success" "tool-tests:3:success" "build-shard 1:11:success" "build-shard 2:12:success" "build-checks:13:success")
+annotations_of() { echo "gh api repos/pkeppeler/deepcharter/check-runs/$1/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"; }
+run_script "STUB_RUNS=$(runs "${bs_specs[@]}")"
+exited "build shards: all passed and merged the current main merges" 0
+logged "build shards: the aggregate's annotations read" "$(annotations_of 2)"
+logged "build shards: shard 1's annotations read" "$(annotations_of 11)"
+logged "build shards: shard 2's annotations read" "$(annotations_of 12)"
+logged "build shards: build-checks's annotations read" "$(annotations_of 13)"
+refusal "build shards: one shard failed" "build-shard 2 (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 2:14:failure")"
+# A newer skipped run (a re-run whose matrix never started) does not hide the older failed one.
+refusal "build shards: a skipped run over a failed shard" "build-shard 2 (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 2:14:failure" "build-shard 2:15:skipped")"
+refusal "build shards: one shard cancelled" "build-shard 1 (newest non-skipped run: cancelled)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 1:14:cancelled")"
+refusal "build shards: one shard still running" "build-shard 1 (newest non-skipped run: in_progress)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 1:14:in_progress")"
+refusal "build shards: build-checks failed" "build-checks (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-checks:14:failure")"
+refusal "build shards: one shard merged an older main" "build-shard 2 run 12 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_12=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: a shard merging an older main is stale-base" "$stale_hint" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_12=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: build-checks merged an older main" "build-checks run 13 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_13=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: a shard with no record" "build-shard 1 run 11 recorded no merged main sha" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_11="
+refusal "build shards: the aggregate's stale notice still refuses" "build run 2 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_2=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: a shard only skipped" "has a build shard that was only skipped: build-shard 3" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 3:14:skipped")"
+refusal "build shards: shards passed but build-checks never ran" "build-checks did not pass" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success "build-shard 1:11:success")"
+refusal "build shards: build-checks only skipped" "build-checks did not pass" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-checks:14:skipped" | grep -v $'^build-checks\t[^\t]*\t13\t')"
+refusal "build shards: build-checks passed but no shard did" "no build-shard run passed" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success)"
+# shellcheck disable=SC2016 # a literal template, not an expansion
+refusal "build shards: only a never-started template shard beside the aggregate" "no build-shard run passed" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success 'build-shard ${{ matrix.shard }}:14:cancelled')"
+# shellcheck disable=SC2016 # a literal template, not an expansion
+run_script "STUB_RUNS=$(runs "${bs_specs[@]}" 'build-shard ${{ matrix.shard }}:14:cancelled')"
+exited "build shards: passing shards beside a never-started template shard merge" 0
+refusal "build shards: shards passed but the aggregate never ran" "lacks required check: build" \
+  "STUB_RUNS=$(runs tool-tests:3:success "build-shard 1:11:success" build-checks:13:success)"
+refusal "build shards: shards passed but the aggregate failed" "build (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" build:14:failure)"
+# CI from before #1327: one `build` job, no shard run, its own notice decides (the default runs are this shape).
+run_script "STUB_RUNS=$(runs build:2:success tool-tests:3:success)"
+exited "legacy single build job merges" 0
+refusal "legacy single build job merged an older main" "build run 2 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success)" "STUB_MERGED_MAIN_2=$OLD_MAIN" "STUB_DIFF=src/A.java"
 if command -v jq >/dev/null; then
   # The recorded annotations of a real run (fixtures/gh-rest/README.md): the script's own filter reads its sha.
   run_script STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.json" "STUB_MAIN_SHA=$(gh_fixture_jq "$FIXTURES/check-run-annotations.json" '.[] | select(.title == "merged-main") | .message')"
@@ -961,6 +1015,44 @@ exited "mark-review-passed exits 0" 0
 logged "mark reads head sha and branch in one call" "gh api repos/pkeppeler/deepcharter/pulls/7 --jq .head.sha + \" \" + .head.ref"
 logged "mark comments exact body" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed def456"
 logged "mark adds label" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/labels -f labels[]=review-passed"
+# The player-experience pass (#1555): a gameplay PR numbered PX_REVIEW_FIRST_PR or above needs the px-reviewed label; a lower number is exempt.
+px_first=$(sed -n 's/^PX_REVIEW_FIRST_PR=\([0-9][0-9]*\)$/\1/p' "$tools/lib/pr-body-checks.sh")
+[[ -n $px_first ]] || { echo "cannot read PX_REVIEW_FIRST_PR from tools/lib/pr-body-checks.sh" >&2; exit 1; }
+# px_run <script> <pr> [VAR=value ...]
+px_run() {
+  local s=$1 n=$2
+  shift 2
+  reset
+  rc=0
+  out=$(env STUB_BODY="Closes #12
+No map change: test" "$@" PATH="$work/bin:$PATH" bash "$s" "$n" 2>&1) || rc=$?
+}
+gpl="STUB_LABELS=gameplay
+demo
+review-passed"
+gpx="STUB_LABELS=gameplay
+demo
+review-passed
+px-reviewed"
+for who in mark merge; do
+  if [[ $who == mark ]]; then s=$mark; else s=$script; fi
+  px_run "$s" $((px_first - 1)) "$gpl" "STUB_BRANCH=12-some-slug"
+  if [[ $out == *"px-reviewed"* ]]; then fail "$who: a gameplay PR below PX_REVIEW_FIRST_PR is exempt (out: $out)"; else pass "$who: a gameplay PR below PX_REVIEW_FIRST_PR is exempt"; fi
+  px_run "$s" "$px_first" "$gpl"
+  exited "$who: a gameplay PR at PX_REVIEW_FIRST_PR without the label is refused" 1
+  printed "$who: names the px fix" "lacks the 'px-reviewed' label"
+  px_run "$s" $((px_first + 5)) "$gpl"
+  exited "$who: a gameplay PR above PX_REVIEW_FIRST_PR without the label is refused" 1
+  px_run "$s" "$px_first" "$gpx"
+  if [[ $out == *"px-reviewed"* ]]; then fail "$who: px-reviewed lets a gameplay PR through (out: $out)"; else pass "$who: px-reviewed lets a gameplay PR through"; fi
+  px_run "$s" "$px_first" STUB_LABELS=infra
+  if [[ $out == *"px-reviewed"* ]]; then fail "$who: a non-gameplay PR is unaffected (out: $out)"; else pass "$who: a non-gameplay PR is unaffected"; fi
+done
+px_run "$mark" "$px_first" "$gpl"
+not_logged "mark refuses a gameplay PR without px-reviewed before writing anything" "^gh api -X POST"
+px_run "$mark" "$px_first" "$gpx"
+exited "mark allows a gameplay PR with px-reviewed" 0
+count "the px check reads no comments (no lookup that can fail open)" "comments?per_page" 0
 # merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
 # check_pr_body_and_labels: the two lists must hold the same steps.
 lib=$tools/lib/pr-body-checks.sh

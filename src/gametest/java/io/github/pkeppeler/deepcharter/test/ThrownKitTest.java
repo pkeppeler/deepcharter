@@ -60,6 +60,8 @@ import org.jspecify.annotations.Nullable;
 public class ThrownKitTest {
     private static final ThrownKitTuning DEFAULT = ThrownKitTuning.DEFAULT;
     private static final RepairTuning REPAIR = RepairTuning.DEFAULT;
+    /** The lowest row a thrown charge clears, under the cell it lies in. */
+    private static final int BOTTOM = -DEFAULT.charge().depth();
     /** Ticks a throw may take to land: a flat throw is in the air about 12 ticks; the rest is a margin for a loaded runner. */
     private static final int LAND_BUDGET_TICKS = 80;
     /** Ticks either side of a scheduled end at which the end is checked: a scheduled block tick is not exact to the tick. */
@@ -613,17 +615,17 @@ public class ThrownKitTest {
                 CLEARS_X,
                 room -> {
                     set(room, 0, -1, 0, HazardBlocks.COMPANY_ROCK);
-                    set(room, -1, -2, -1, HazardBlocks.COMPANY_ROCK); // a corner of the volume
-                    set(room, 2, -2, 0, HazardBlocks.COMPANY_ROCK); // just outside it
+                    set(room, -1, BOTTOM, -1, HazardBlocks.COMPANY_ROCK); // a corner of the volume
+                    set(room, -2, BOTTOM, 0, HazardBlocks.COMPANY_ROCK); // just outside it
                     set(room, 1, -1, 1, Blocks.STONE); // natural rock inside it
                     set(room, 2, -1, 0, Blocks.STONE); // stone just outside it
-                    set(room, 0, -3, 0, Blocks.STONE); // one row under it
+                    set(room, 0, BOTTOM - 1, 0, Blocks.STONE); // one row under it
                 },
                 room -> room.cell(0, -1, 0),
                 (helper2, room) -> {
                     for (int dx = -1; dx <= 1; dx++) {
                         for (int dz = -1; dz <= 1; dz++) {
-                            for (int dy = -REPAIR.chargeDepth(); dy <= -1; dy++) {
+                            for (int dy = BOTTOM; dy <= -1; dy++) {
                                 expectAir(helper2, room, room.cell(dx, dy, dz), "inside the volume");
                             }
                         }
@@ -631,13 +633,13 @@ public class ThrownKitTest {
                     ChargeUse.expectBlock(
                             helper2,
                             room.level(),
-                            room.cell(2, -2, 0),
+                            room.cell(-2, BOTTOM, 0),
                             HazardBlocks.COMPANY_ROCK,
                             "Company rock beside the volume");
                     ChargeUse.expectBlock(
                             helper2, room.level(), room.cell(2, -1, 0), Blocks.STONE, "stone beside the volume");
                     ChargeUse.expectBlock(
-                            helper2, room.level(), room.cell(0, -3, 0), Blocks.STONE, "stone under the volume");
+                            helper2, room.level(), room.cell(0, BOTTOM - 1, 0), Blocks.STONE, "stone under the volume");
                 });
     }
 
@@ -648,35 +650,36 @@ public class ThrownKitTest {
                 SPARES_X,
                 room -> {
                     set(room, 0, 0 - 1, 0, HazardBlocks.COMPANY_ROCK);
-                    set(room, -1, -2, -1, Blocks.OAK_PLANKS);
+                    set(room, -1, BOTTOM, -1, Blocks.OAK_PLANKS);
                     set(room, -1, -1, 0, SlagBrick.BLOCK);
                     set(room, 0, -1, -1, Blocks.BEDROCK);
+                    set(room, 1, BOTTOM, -1, Blocks.LAVA);
+                    set(room, 1, BOTTOM, 1, HazardBlocks.GAS_POCKET);
+                    set(room, 2, BOTTOM, 1, Blocks.STONE);
                     // Not beside the lava: the grained crust absorbs a fluid that touches it.
-                    set(room, 1, -1, 1, LayerBlocks.BREACH_CRUST);
-                    set(room, 1, -2, 1, LayerBlocks.GRAINED_CRUST);
-                    set(room, 0, -2, -1, Blocks.LAVA);
-                    set(room, 0, -2, 0, HazardBlocks.GAS_POCKET);
-                    set(room, 2, -2, 0, Blocks.STONE);
+                    set(room, -1, BOTTOM, 1, LayerBlocks.BREACH_CRUST);
+                    set(room, 0, BOTTOM, 1, LayerBlocks.GRAINED_CRUST);
                 },
                 room -> room.cell(0, -1, 0),
                 (helper2, room) -> {
-                    ChargeUse.expectBlock(helper2, room.level(), room.cell(-1, -2, -1), Blocks.OAK_PLANKS, "planks");
+                    ChargeUse.expectBlock(
+                            helper2, room.level(), room.cell(-1, BOTTOM, -1), Blocks.OAK_PLANKS, "planks");
                     ChargeUse.expectBlock(helper2, room.level(), room.cell(-1, -1, 0), SlagBrick.BLOCK, "a slag brick");
                     ChargeUse.expectBlock(helper2, room.level(), room.cell(0, -1, -1), Blocks.BEDROCK, "bedrock");
+                    ChargeUse.expectBlock(helper2, room.level(), room.cell(1, BOTTOM, -1), Blocks.LAVA, "lava");
+                    expectAir(helper2, room, room.cell(1, BOTTOM, 1), "the gas pocket goes with the blast");
                     ChargeUse.expectBlock(
-                            helper2, room.level(), room.cell(1, -1, 1), LayerBlocks.BREACH_CRUST, "breach crust");
+                            helper2, room.level(), room.cell(-1, BOTTOM, 1), LayerBlocks.BREACH_CRUST, "breach crust");
                     ChargeUse.expectBlock(
                             helper2,
                             room.level(),
-                            room.cell(1, -2, 1),
+                            room.cell(0, BOTTOM, 1),
                             LayerBlocks.GRAINED_CRUST,
                             "grained crust (#1022)");
-                    ChargeUse.expectBlock(helper2, room.level(), room.cell(0, -2, -1), Blocks.LAVA, "lava");
-                    expectAir(helper2, room, room.cell(0, -2, 0), "the gas pocket goes with the blast");
                     ChargeUse.expectBlock(
                             helper2,
                             room.level(),
-                            room.cell(2, -2, 0),
+                            room.cell(2, BOTTOM, 1),
                             Blocks.STONE,
                             "a pocket in the blast vents no more");
                 });
