@@ -25,7 +25,9 @@ public final class OreItem extends Item {
     }
 
     /**
-     * The mass line: what {@link OreEncumbrance#massOf} counts for this stack (its {@link DrilledMass} when it has one), shown as
+     * The mass line, written here and not by {@link OreWeight}: that component is one unit value every ore shares, and a tooltip
+     * provider is handed only components, which do not say which ore the stack is or what mass it was drilled at. The item knows both.
+     * It shows what {@link OreEncumbrance#massOf} counts for this stack (its {@link DrilledMass} when it has one), shown as
      * {@link OreEncumbrance#shown} rounds it, which is also how the pod screen shows the hold. Ore never stacks, so this is one item's mass.
      */
     @Override
@@ -37,7 +39,8 @@ public final class OreItem extends Item {
             TooltipFlag flag) {
         super.appendHoverText(stack, context, display, consumer, flag);
         consumer.accept(Component.translatable(
-                        "deepcharter.ore.tooltip.mass", OreEncumbrance.shown(OreEncumbrance.massOf(stack)))
+                        "deepcharter.ore.tooltip.mass",
+                        OreEncumbrance.shown(OreEncumbrance.tenths(OreEncumbrance.massOf(stack))))
                 .withStyle(ChatFormatting.GRAY));
     }
 }
