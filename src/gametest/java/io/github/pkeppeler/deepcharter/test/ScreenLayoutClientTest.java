@@ -262,7 +262,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         });
         require(
                 drawn.size() == 2,
-                "the text fixture should give 2 problems (one string leaves the screen, one under a button; the button's own label and the string inside the screen are fine), got "
+                "the text fixture should give 2 problems (one string leaves the screen, one under a button; the"
+                        + " button's own label and the string inside the screen are fine), got "
                         + drawn);
         require(
                 drawn.get(0).contains("text fixture")
@@ -311,7 +312,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                 scrolled.size() == 1
                         && scrolled.getFirst().contains("'OUT'")
                         && scrolled.getFirst().contains("20 px past the right edge"),
-                "past the edge inside the scroll region passes, outside it fails: expected one problem, about 'OUT', got "
+                "past the edge inside the scroll region passes, outside it fails: expected one problem, about 'OUT',"
+                        + " got "
                         + scrolled);
     }
 

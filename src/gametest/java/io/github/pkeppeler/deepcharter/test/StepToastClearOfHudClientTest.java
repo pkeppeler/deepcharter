@@ -87,8 +87,8 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
 
     static final String SHORT_STEP = "Reach the Deep Claim.";
     static final String LONG_STEP =
-            "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
-                    + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
+            "Carry the whole of a very long instruction through the hatch, past the second sump pump and the old tally"
+                    + " board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
     private static final String CHARTER = "Toast Charter";
 
     @Override
