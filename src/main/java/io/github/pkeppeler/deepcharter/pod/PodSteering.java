@@ -8,43 +8,27 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Steering a pod as a boat is steered (ADR 0095): W drives along the pod's facing, S backs up without turning, A and D
- * turn the pod's yaw, and the pilot's view does not steer. Where it differs from a boat is the grid: the drill and a
- * bore as wide as the pod turn it square to the compass, so tunnels stay straight. Server only; all state is the pod's
- * own yaw and its turn rate.
+ * Steering a pod with tank controls (ADR 0095): W drives along the pod's facing, S backs up without turning, A and D
+ * turn the pod's yaw at a steady rate while held and not at all once let go, a bare A or D turns it in place, and the
+ * pilot's view does not steer. The grid overrides it: the drill and a bore as wide as the pod turn it square to the
+ * compass, so tunnels stay straight. Server only; all state is the pod's own yaw and its turn rate.
  */
 final class PodSteering {
     private PodSteering() {}
 
-    /**
-     * The speed along the pod's facing the keys ask for: forward, a slower reverse, the creep of a bare A or D, or
-     * none.
-     */
+    /** The speed along the pod's facing the keys ask for: forward, a slower reverse, or none. */
     static double throttle(Input input, PodStats stats) {
-        PodSteeringTuning tuning = PodSteeringTuning.DEFAULT;
         double top = stats.horizontalSpeed();
-        if (input.forward() != input.backward()) {
-            return input.forward() ? top : -top * tuning.reverseShare();
+        if (input.forward() == input.backward()) {
+            return 0;
         }
-        if (!input.forward() && input.left() != input.right()) {
-            return top * tuning.creepShare();
-        }
-        return 0;
+        return input.forward() ? top : -top * PodSteeringTuning.DEFAULT.reverseShare();
     }
 
-    /**
-     * Turns the pod by one tick of the boat's steering: A and D build up the turn rate, and the rate lingers after the
-     * key is let go.
-     */
+    /** Turns the pod by one tick of tank steering: the turn speed while A or D is held, nothing once let go. */
     static void steer(PodEntity pod, Input input) {
-        PodSteeringTuning tuning = PodSteeringTuning.DEFAULT;
-        float turn = pod.turnRate() * tuning.turnDamping();
-        if (input.left()) {
-            turn -= tuning.turnAcceleration();
-        }
-        if (input.right()) {
-            turn += tuning.turnAcceleration();
-        }
+        float speed = PodSteeringTuning.DEFAULT.turnSpeed();
+        float turn = input.left() == input.right() ? 0f : input.right() ? speed : -speed;
         pod.setTurnRate(turn);
         pod.setYRot(Mth.wrapDegrees(pod.getYRot() + turn));
     }
@@ -82,10 +66,7 @@ final class PodSteering {
         pod.setTurnKeyHeld(input.left() != input.right());
     }
 
-    /**
-     * Stops the turn: an unpiloted or unpowered pod keeps its yaw, and a pod the grid holds drops the rate it had
-     * built up.
-     */
+    /** Stops the turn: an unpiloted or unpowered pod, and a pod the grid holds, keep no turn rate. */
     static void stopTurning(PodEntity pod) {
         pod.setTurnRate(0f);
     }

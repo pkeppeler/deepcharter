@@ -14,7 +14,7 @@ The user grants creative liberty over dig mechanics, hazards, pod upgrades and c
 
 ## Copy what is already solved
 
-When a system has an established precedent in vanilla or a major mod (vanilla boats for vehicles, EMI or JEI for recipe viewing, GTNH or BetterQuesting for quests), copy its behaviour and controls, read the source to do it, and deviate only where our mechanics require it. Say each deviation and its reason in the PR and the design doc. Don't re-derive solved UX: players already know it, and the user has twice had to ask for it back (#1281 and the questbook).
+When a system has an established precedent in vanilla or a major mod (vanilla boats for vehicles on water, tank controls for the pod's ground steering (ADR 0095, #1442), EMI or JEI for recipe viewing, GTNH or BetterQuesting for quests), copy its behaviour and controls, read the source to do it, and deviate only where our mechanics require it. Say each deviation and its reason in the PR and the design doc. Don't re-derive solved UX: players already know it, and the user has twice had to ask for it back (#1281 and the questbook).
 
 ## What makes a mechanic good here
 

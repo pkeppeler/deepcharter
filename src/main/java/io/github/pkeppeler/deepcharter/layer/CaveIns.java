@@ -29,7 +29,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * The cave-in (#987, ADR 0081): the roof of natural rock over a person on foot comes down {@link CaveInTuning#warnTicks()} after a creak,
@@ -68,16 +67,17 @@ public final class CaveIns {
     }
 
     /**
-     * A blast went off at {@code centre}: the roof over each person on foot within {@link CaveInTuning#shakeReach()} of it is shaken, if the
-     * server allows PvP or the person is on the charter that set it off ({@code blaster}), so no charter is griefed by another's blast. A
-     * person in a pod is not shaken: the pod's own hull is what the roof falls on.
+     * A blast went off over {@code blast} (for a charge, the box round the cells it cleared; for dynamite and plastic, their cube): the roof over each person on foot within {@link CaveInTuning#shakeReach()} of that
+     * volume's edge is shaken, so a bigger blast shakes farther (#1458). Only if the server allows PvP or the person is on the charter that set
+     * it off ({@code blaster}), so no charter is griefed by another's blast. A person in a pod is not shaken: the pod's own hull is what the
+     * roof falls on.
      */
-    public static void blasted(ServerLevel level, Vec3 centre, Optional<CharterId> blaster) {
+    public static void blasted(ServerLevel level, AABB blast, Optional<CharterId> blaster) {
         double reach = CaveInTuning.DEFAULT.shakeReach();
         boolean pvp = level.getGameRules().get(GameRules.PVP);
         for (ServerPlayer player : level.players()) {
             if (onFoot(player)
-                    && player.position().distanceToSqr(centre) <= reach * reach
+                    && blast.distanceToSqr(player.position()) <= reach * reach
                     && (pvp || onCharter(level, player, blaster))) {
                 shake(level, player.blockPosition());
             }
@@ -124,6 +124,11 @@ public final class CaveIns {
         return read(level, feet).loose();
     }
 
+    /** Air, or the moss film (#974): a film of moss on a face is no roof, and does not fill the cell under one. */
+    private static boolean open(BlockState state) {
+        return state.isAir() || state.is(LayerBlocks.OVERGROWTH_VENEER);
+    }
+
     /** Never loads a chunk: a block in one that is not loaded is not read. */
     private static Roof read(ServerLevel level, BlockPos feet) {
         CaveInTuning tuning = CaveInTuning.DEFAULT;
@@ -142,11 +147,10 @@ public final class CaveIns {
                         break;
                     }
                     BlockState state = level.getBlockState(at);
-                    if (state.isAir() || !state.getFluidState().isEmpty()) {
+                    if (open(state) || !state.getFluidState().isEmpty()) {
                         continue;
                     }
-                    if (state.is(HazardBlocks.NATURAL_ROCK)
-                            && level.getBlockState(at.below()).isAir()) {
+                    if (state.is(HazardBlocks.NATURAL_ROCK) && open(level.getBlockState(at.below()))) {
                         if (holds(bolts, at)) {
                             bolted++;
                         } else {
@@ -282,9 +286,10 @@ public final class CaveIns {
     }
 
     /**
-     * A falling block settles in the cell of any entity under it, so rock that landed on a person would leave them inside it. Rock about to
-     * reach a person on foot shatters on them instead: it hurts by the blocks it fell to their feet, up to {@link
-     * CaveInTuning#fallDamageMax()}, never to their last health, and leaves no block. Returns whether it shattered.
+     * A falling block settles in the cell of any entity under it, so rock that landed on a person would leave them
+     * inside it. Rock about to reach a person on foot shatters on them instead: it hurts by the blocks it fell to their
+     * feet, up to {@link CaveInTuning#fallDamageMax()}, never to their last health, and leaves no block. Returns
+     * whether it shattered.
      */
     private static boolean shatterOnPerson(ServerLevel level, FallingBlockEntity rock) {
         AABB reach = rock.getBoundingBox().expandTowards(0, rock.getDeltaMovement().y - STEP_DOWN, 0);
@@ -325,7 +330,7 @@ public final class CaveIns {
         if (!level.getBlockState(roof).is(HazardBlocks.NATURAL_ROCK)) {
             return Optional.of("bolt_not_rock");
         }
-        if (!level.getBlockState(cell).isAir()) {
+        if (!open(level.getBlockState(cell))) {
             return Optional.of("bolt_no_room");
         }
         if (boltNear(level, cell, spacing)) {
