@@ -48,9 +48,9 @@ public final class PodFuel {
         return fuelPercent <= PodTuning.DEFAULT.fuel().lowFuelPercent();
     }
 
-    /** Called every pod tick, on the server only; a pod without power burns no fuel. */
+    /** Called every pod tick, on the server only; a pod burns fuel only while powered with a player aboard (#1434). */
     static void tick(PodEntity pod, PodStats stats) {
-        if (!PodEvents.isPowered(pod)) {
+        if (!PodEvents.isPowered(pod) || !pod.hasPassenger(Player.class::isInstance)) {
             return;
         }
         // A fouled engine burns more, and so does a sprint (#1276); what the engine burns is what leaves soot (#1280).
