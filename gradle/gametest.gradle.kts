@@ -20,7 +20,7 @@ tasks.named("runGameTest") { dependsOn(deleteGameTestWorld) }
 // Shard: -PclientShard=i/n keeps the i-th of n shards of what is left, so CI runs the suite in parallel jobs (weights: gradle/client-test-weights.txt).
 // -PgametestShard=i/n does the same for the server list (weights: gradle/server-test-weights.txt), keeping together every class that
 // runs a test in the same campaign environment, so that environment's batches are the ones a whole run makes (ADR 0111), except a group heavier
-// than an even shard, which is broken into its classes (#1574).
+// than a server shard may be (gradle/ci-budget.txt), which is broken into its classes (#1574).
 // Order: classes are listed sorted by name. The suite must not depend on that order: -PgametestOrder=reverse
 // lists them in reverse name order, to catch a test that leaks world state into a later one.
 //
@@ -428,10 +428,10 @@ object GametestScan {
 	 * Shard `i/n` (1-based) of [units], each a list of classes that must share a shard: longest-processing-time-first onto the lightest shard,
 	 * by [weights] (fully qualified or simple class name to seconds; the full name wins; a unit weighs the sum of its classes). Every shard
 	 * computes the same partition from the same list, and each unit lands in exactly one, so the union of the n shards is the whole list.
-	 * A unit heavier than an even shard is broken into its classes first.
+	 * A unit heavier than [maxUnit] seconds is broken into its classes first.
 	 * [property] and [kind] name the option and the list in a refusal.
 	 */
-	fun shardOf(units: List<List<String>>, shard: String, weights: Map<String, Int>, defaultWeight: Int, property: String, kind: String): List<String> {
+	fun shardOf(units: List<List<String>>, shard: String, weights: Map<String, Int>, defaultWeight: Int, property: String, kind: String, maxUnit: Int = Int.MAX_VALUE): List<String> {
 		val match = Regex("""(\d+)/(\d+)""").matchEntire(shard)
 		val index = match?.groupValues?.get(1)?.toInt() ?: 0
 		val count = match?.groupValues?.get(2)?.toInt() ?: 0
@@ -443,10 +443,9 @@ object GametestScan {
 			return weights[name] ?: weights[simple] ?: if (simple.endsWith("Scenario")) SCENARIO_CLIENT_WEIGHT else defaultWeight
 		}
 		fun weight(unit: List<String>) = unit.sumOf { weight(it) }
-		// A unit heavier than an even shard (the campaign classes of an environment kept together) cannot be balanced whole, so it is
+		// A unit heavier than [maxUnit] (the campaign classes of an environment kept together) cannot fit a shard whole, so it is
 		// broken into its classes: those runs of the environment's batches cost a little more start-up, which the weights absorb.
-		val even = units.sumOf { weight(it) } / count
-		val parts = units.flatMap { unit -> if (unit.size > 1 && weight(unit) > even) unit.map { listOf(it) } else listOf(unit) }
+		val parts = units.flatMap { unit -> if (unit.size > 1 && weight(unit) > maxUnit) unit.map { listOf(it) } else listOf(unit) }
 		val loads = IntArray(count)
 		val mine = mutableListOf<String>()
 		for (unit in parts.map { it.sorted() }.sortedWith(compareBy({ -weight(it) }, { it.first() }))) {
@@ -496,6 +495,17 @@ object GametestScan {
 		return weights
 	}
 
+	/** The number on the line `<name> <number>` of gradle/ci-budget.txt (comments and blank lines skipped). */
+	fun parseBudget(file: File, name: String): Int {
+		for (raw in file.readLines()) {
+			val parts = raw.substringBefore("#").trim().split(Regex("\\s+"))
+			if (parts.size == 2 && parts[0] == name) {
+				return parts[1].toDouble().toInt()
+			}
+		}
+		throw GradleException("${file.name} has no '$name' line")
+	}
+
 	/**
 	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [mainSources] and
 	 * [guardSource] are the files WorldDataGuard must list every saved-data record of the mod in, or it misses a swap of a new one.
@@ -507,6 +517,7 @@ object GametestScan {
 		clientWeights: Map<String, Int>,
 		serverShard: String?,
 		serverWeights: Map<String, Int>,
+		serverUnitLimit: Int,
 		order: String,
 		mainSources: Collection<File>,
 		guardSource: File,
@@ -672,7 +683,7 @@ object GametestScan {
 			client = shardOf(client.map { listOf(it) }, clientShard, clientWeights, DEFAULT_CLIENT_WEIGHT, "-PclientShard", "client class").toMutableList()
 		}
 		if (serverShard != null) {
-			server = shardOf(campaignUnits(server, serverEnvironments), serverShard, serverWeights, DEFAULT_SERVER_WEIGHT, "-PgametestShard", "server GameTest class").toMutableList()
+			server = shardOf(campaignUnits(server, serverEnvironments), serverShard, serverWeights, DEFAULT_SERVER_WEIGHT, "-PgametestShard", "server GameTest class", serverUnitLimit).toMutableList()
 		}
 
 		fun ordered(names: List<String>): List<String> = if (order == "reverse") names.sorted().reversed() else names.sorted()
@@ -710,6 +721,9 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	inputs.property("gametestShard", serverShard).optional(true)
 	val serverWeightsFile = file("gradle/server-test-weights.txt")
 	inputs.file(serverWeightsFile).withPropertyName("serverWeights")
+	// A campaign group heavier than a server shard may be is broken into its classes (gradle/ci-budget.txt).
+	val budgetFile = file("gradle/ci-budget.txt")
+	inputs.file(budgetFile).withPropertyName("ciBudget")
 	val outputFile = generatedGametestResources.map { it.file("fabric.mod.json") }
 	val sources = fileTree(javaRoot) { include("**/*.java") }
 	inputs.files(sources).withPropertyName("gametestSources")
@@ -717,7 +731,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
 	doLast {
-		val found = GametestScan.scan(javaRoot, clientFilter, clientShard, GametestScan.parseWeights(weightsFile), serverShard, GametestScan.parseWeights(serverWeightsFile), order, mainSources.files, guardSource, blankLiterals, markedNear)
+		val found = GametestScan.scan(javaRoot, clientFilter, clientShard, GametestScan.parseWeights(weightsFile), serverShard, GametestScan.parseWeights(serverWeightsFile), GametestScan.parseBudget(budgetFile, "server-shard-seconds"), order, mainSources.files, guardSource, blankLiterals, markedNear)
 		var json = template.readText()
 		mapOf("SERVER_TESTS" to found.server, "CLIENT_TESTS" to found.client).forEach { (token, names) ->
 			val placeholder = "\"@$token@\""
@@ -730,7 +744,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "serverShard" and "serverWeights" (the same for the server list), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "serverShard" and "serverWeights" (the same for the server list), "serverUnitLimit" (optional seconds above which a campaign group is broken into its classes), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -837,7 +851,7 @@ tasks.register("checkGametestFixtures") {
 					continue
 				}
 				fun weights(key: String) = (c[key] as Map<*, *>? ?: emptyMap<String, Int>()).entries.associate { it.key as String to (it.value as Number).toInt() }
-				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, c["clientShard"] as String?, weights("clientWeights"), c["serverShard"] as String?, weights("serverWeights"), "name", mainSources.files, guardSource, blankLiterals, markedNear)
+				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, c["clientShard"] as String?, weights("clientWeights"), c["serverShard"] as String?, weights("serverWeights"), (c["serverUnitLimit"] as Number?)?.toInt() ?: Int.MAX_VALUE, "name", mainSources.files, guardSource, blankLiterals, markedNear)
 				report[name] = linkedMapOf("ok" to true, "message" to "", "server" to found.server, "client" to found.client)
 			} catch (e: GradleException) {
 				report[name] = linkedMapOf("ok" to false, "message" to e.message!!, "server" to emptyList<String>(), "client" to emptyList<String>())

@@ -5,13 +5,14 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.HandBreakChecks;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /** A bare hand and a diamond pick on the crust of layer 1 ({@link HandBreakCases}). */
-public class HandBreakClientTest extends HandBreakCases {
+public class HandBreakClientTest extends HandBreakCases implements FabricClientGameTest {
     @Override
     void cases(ClientGameTestContext context, TwoPlayerServer two) {
         BlockPos target = prepare(two, 1, X);

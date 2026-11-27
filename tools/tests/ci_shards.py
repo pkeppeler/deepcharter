@@ -70,14 +70,16 @@ def campaign_units(classes: list[str], environments: dict[str, set[str]]) -> lis
     return [sorted(u[1]) for u in units]
 
 
-def shards(units: list[list[str]], count: int, weights: dict[str, int], default: int) -> list[list[str]]:
-    """Longest-processing-time-first, as shardOf: the heaviest unit onto the lightest shard, ties by first class name. A unit heavier than an even shard is broken into its classes first."""
+def shards(
+    units: list[list[str]], count: int, weights: dict[str, int], default: int, max_unit: float = float("inf")
+) -> list[list[str]]:
+    """Longest-processing-time-first, as shardOf: the heaviest unit onto the lightest shard, ties by first class name. A unit heavier
+    than `max_unit` seconds is broken into its classes first."""
 
     def weight(unit: list[str]) -> int:
         return sum(weight_of(c, weights, default) for c in unit)
 
-    even = sum(weight(u) for u in units) // count
-    parts = [p for u in units for p in ([[c] for c in u] if len(u) > 1 and weight(u) > even else [u])]
+    parts = [p for u in units for p in ([[c] for c in u] if len(u) > 1 and weight(u) > max_unit else [u])]
     loads = [0] * count
     out: list[list[str]] = [[] for _ in range(count)]
     for unit in sorted((sorted(u) for u in parts), key=lambda u: (-weight(u), u[0])):

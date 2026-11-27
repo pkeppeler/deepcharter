@@ -143,7 +143,7 @@ class ShardsFitTheBudgetTest(unittest.TestCase):
     def test_the_build_shards_are_each_under_the_budget(self):
         count = env_count("ci.yml", "BUILD_SHARDS")
         units = shards.campaign_units(self.server, self.environments)
-        parts = shards.shards(units, count, self.server_weights, shards.DEFAULT_SERVER_WEIGHT)
+        parts = shards.shards(units, count, self.server_weights, shards.DEFAULT_SERVER_WEIGHT, self.budget["server-shard-seconds"])
         loads = shards.loads(parts, self.server_weights, shards.DEFAULT_SERVER_WEIGHT)
         self.assertLessEqual(
             max(loads),
@@ -165,7 +165,8 @@ class ShardsFitTheBudgetTest(unittest.TestCase):
                 else:
                     units = shards.campaign_units(self.server, self.environments)
                     weights, default = self.server_weights, shards.DEFAULT_SERVER_WEIGHT
-                fewer = shards.loads(shards.shards(units, count - 1, weights, default), weights, default)
+                limit = self.budget["server-shard-seconds"] if name == "server" else float("inf")
+                fewer = shards.loads(shards.shards(units, count - 1, weights, default, limit), weights, default)
                 self.assertGreater(
                     max(fewer),
                     self.budget[suite],

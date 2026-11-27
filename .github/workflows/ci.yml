@@ -218,10 +218,10 @@ jobs:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: tool-${{ matrix.part }}
       - uses: ./.github/actions/setup-python-uv
-      # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
+      # build-audio-pack.test.sh and the Python tests that encode need ffmpeg. They make their own synthetic tones; CI never
       # has, reads or needs the original game audio.
       - uses: ./.github/actions/install-ffmpeg
-        if: matrix.kind == 'shell'
+        if: matrix.kind != 'gates'
       - name: Python unit tests
         if: matrix.kind == 'python'
         run: tools/ci-tool-tests.sh python ${{ matrix.slice }}

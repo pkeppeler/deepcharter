@@ -4,13 +4,14 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /** An iron pick on the crust of layer 2, which the block destroys ({@link HandBreakCases}). */
-public class HandBreakIronClientTest extends HandBreakCases {
+public class HandBreakIronClientTest extends HandBreakCases implements FabricClientGameTest {
     @Override
     void cases(ClientGameTestContext context, TwoPlayerServer two) {
         // An iron pick is destroyed by the block, but not before it: the client goes on mining while the server

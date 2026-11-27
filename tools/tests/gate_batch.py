@@ -27,6 +27,8 @@ class Case:
     client_weights: Mapping[str, int] | None = None
     server_shard: str | None = None
     server_weights: Mapping[str, int] | None = None
+    # Seconds above which a campaign group is broken into its classes (gradle/ci-budget.txt's server-shard-seconds for the real tree).
+    server_unit_limit: int | None = None
 
 
 def checked_in_weights(file_name: str) -> dict[str, int]:
@@ -90,7 +92,7 @@ def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
                     path = root / PACKAGE / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(body)
-            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "clientShard": case.client_shard, "clientWeights": case.client_weights, "serverShard": case.server_shard, "serverWeights": case.server_weights, "gate": case.gate})
+            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "clientShard": case.client_shard, "clientWeights": case.client_weights, "serverShard": case.server_shard, "serverWeights": case.server_weights, "serverUnitLimit": case.server_unit_limit, "gate": case.gate})
         # Fixed paths: the properties are inputs of Gradle's configuration cache, so a new path each run would add a cache entry each run.
         cases_file = EXCHANGE / "cases.json"
         results_file = EXCHANGE / "results.json"
