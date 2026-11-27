@@ -216,8 +216,7 @@ public class FirstTierPartsCostTest {
                 if (ore && !HAZARDS.contains(track)) {
                     throw failure(
                             helper,
-                            "the %s unit asks for ore: only a hazard answer may, the first six units are made on the"
-                                    + " surface from the crates",
+                            "the %s unit asks for ore: only a hazard answer may, the first six units are made on the surface from the crates",
                             track);
                 }
             }
@@ -339,8 +338,7 @@ public class FirstTierPartsCostTest {
             total = total.plus(unit);
             Spread now = BootstrapCost.crates(level, total);
             LOGGER.info(
-                    "[first-tier] + {} unit ({} iron, {} copper, {} redstone, ${} of ore): crates for the kit and the"
-                            + " units so far {}; this unit adds {} on average",
+                    "[first-tier] + {} unit ({} iron, {} copper, {} redstone, ${} of ore): crates for the kit and the units so far {}; this unit adds {} on average",
                     track.id(),
                     unit.iron(),
                     unit.copper(),
@@ -351,8 +349,7 @@ public class FirstTierPartsCostTest {
             last = now;
         }
         LOGGER.info(
-                "[first-tier] the kit and all {} units: {} iron, {} copper, {} redstone, ${} of ore; {} of the {}"
-                        + " crates of a 12-chunk survey",
+                "[first-tier] the kit and all {} units: {} iron, {} copper, {} redstone, ${} of ore; {} of the {} crates of a 12-chunk survey",
                 ALL.size(),
                 total.iron(),
                 total.copper(),
@@ -464,8 +461,7 @@ public class FirstTierPartsCostTest {
             double minutes = metal + oreMinutes;
             double oldMinutes = pace.minutesFor(oldPrice(track));
             LOGGER.info(
-                    "[first-tier] {} unit: {} min ({} of crates, furnace and bench, {} of ${} ore); its old ${} took"
-                            + " {} min of runs (share {})",
+                    "[first-tier] {} unit: {} min ({} of crates, furnace and bench, {} of ${} ore); its old ${} took {} min of runs (share {})",
                     track.id(),
                     String.format("%.1f", minutes),
                     String.format("%.1f", metal),
@@ -497,8 +493,7 @@ public class FirstTierPartsCostTest {
         PodStats tierOne = EarlyRunModel.mole(1, 1, 1);
         Run tierOneRun = EarlyRunModel.run(zone, tierOne, 0);
         LOGGER.info(
-                "[first-tier] the kit takes {} min; the first full layer 1 run of a stock Mole: {} s, ${} net, {}"
-                        + " slabs, {} L",
+                "[first-tier] the kit takes {} min; the first full layer 1 run of a stock Mole: {} s, ${} net, {} slabs, {} L",
                 String.format("%.1f", kitMinutes),
                 String.format("%.0f", stockSeconds),
                 Math.round(stockRun.net()),
@@ -510,9 +505,7 @@ public class FirstTierPartsCostTest {
                 Math.round(tierOneRun.net()),
                 tierOneRun.slabs());
         LOGGER.info(
-                "[first-tier] before: {} layer 1 runs ({} min) and ${} spent to buy the first six; after: {} min of"
-                        + " crates, furnace and bench ({} with the kit's leftovers) and $0 spent; the six old prices at"
-                        + " the stock run's pace: {} min",
+                "[first-tier] before: {} layer 1 runs ({} min) and ${} spent to buy the first six; after: {} min of crates, furnace and bench ({} with the kit's leftovers) and $0 spent; the six old prices at the stock run's pace: {} min",
                 beforeRuns,
                 String.format("%.1f", beforeMinutes),
                 spent,
@@ -529,8 +522,7 @@ public class FirstTierPartsCostTest {
         if (setShare < SET_SHARE_MIN || setShare > SET_SHARE_MAX) {
             throw failure(
                     helper,
-                    "the six units take %.1f minutes against the %.1f minutes of runs that bought them (share %.2f);"
-                            + " %.2f to %.2f are allowed",
+                    "the six units take %.1f minutes against the %.1f minutes of runs that bought them (share %.2f); %.2f to %.2f are allowed",
                     afterMinutes,
                     beforeMinutes,
                     setShare,
