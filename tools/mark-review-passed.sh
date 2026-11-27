@@ -6,7 +6,7 @@
 # `review-passed <sha>` and adds the `review-passed` label. First runs the merge gate's
 # closing-reference, demo and feature-map checks (tools/lib/pr-body-checks.sh) and refuses, naming
 # the fix; it does not wait for CI. Refuses when GitHub's head sha differs from origin's branch tip.
-# tools/merge-pr.sh refuses if the head has moved since.
+# tools/merge-pr.sh refuses if the head has moved since, except across a clean merge of origin/main (--carry below).
 #
 # --carry re-pins an earlier pass to the current head instead of a new review, and only when the head is a chain of
 # clean merges of origin/main on a passed commit (tools/lib/pass-carry.sh, #1568): each merge conflict-free, git

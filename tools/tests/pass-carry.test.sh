@@ -171,6 +171,19 @@ git checkout -q feat
 git merge -q --no-edit other
 carries "voided: a merge of a branch that is not on origin/main" 1
 
+# --- an octopus merge (three parents) voids it even when each side merges cleanly ---
+start
+on_feat a.txt feat1
+git rev-parse HEAD >"$PASSES"
+on_main b.txt main1
+git checkout -q -B side "$base"
+echo side >s.txt
+git add -A
+git commit -q -m "side"
+git checkout -q feat
+git merge -q --no-edit origin/main side
+carries "voided: an octopus merge" 1
+
 # --- a head GitHub shows that is not the one asked about voids it ---
 start
 on_feat a.txt feat1
