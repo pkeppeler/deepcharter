@@ -119,7 +119,7 @@ The mechanics are built before the layer is ([#973](https://github.com/pkeppeler
 
 #### Overgrowth
 
-A hazard of the Sleeper's growth, not a mob. A bore left unvisited grows over with pale soft growth: drillable at extra fuel, cut by hand on foot. Placed blocks never grow over, so a lined shaft stays open.
+A hazard of the Sleeper's growth, not a mob. A bore left unvisited grows over with damp moss, flecked with pale mould, a thin film of it creeping ahead along the rock and hanging from roofs, faintly glowing in the dark (no light, only a pale warning): drillable at extra fuel, cut by hand on foot. Placed blocks never grow over, so a lined shaft stays open.
 
 #### The kneeling shapes
 

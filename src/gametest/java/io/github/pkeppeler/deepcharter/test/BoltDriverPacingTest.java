@@ -36,6 +36,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -323,7 +325,8 @@ public class BoltDriverPacingTest {
             if (blastedAt[0] < 0) {
                 // Their own charter's blast, so the PvP rule does not matter.
                 CharterId mine = charter(helper, under);
-                CaveIns.blasted(level, corridor.stand(7).add(0, 1, 0), Optional.of(mine));
+                Vec3 at = corridor.stand(7).add(0, 1, 0);
+                CaveIns.blasted(level, new AABB(at, at), Optional.of(mine));
                 blastedAt[0] = now;
                 return;
             }
