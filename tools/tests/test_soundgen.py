@@ -15,6 +15,7 @@ from pathlib import Path
 SOUNDS = Path(__file__).resolve().parent.parent / "sounds"
 sys.path.insert(0, str(SOUNDS))
 
+import dsp  # noqa: E402
 import first_sounds  # noqa: E402
 import recipes  # noqa: E402
 import soundgen  # noqa: E402
@@ -190,6 +191,55 @@ class RecipeTest(unittest.TestCase):
         lengths = [len(recipes.render(f"hymn/{name}").left) for name in ("colony", "layer_1", "layer_2")]
         self.assertEqual(sorted(lengths), lengths)
         self.assertEqual(3, len(set(lengths)))
+
+
+class BreachSoundTest(unittest.TestCase):
+    """#1293: a crust breach and a cave-in sound like rock giving way, not like an explosion."""
+
+    @staticmethod
+    def rms(signal, at, length):
+        window = signal[round(at * recipes.RATE) : round((at + length) * recipes.RATE)]
+        return math.sqrt(sum(v * v for v in window) / len(window))
+
+    def test_the_breach_lasts_four_to_six_seconds_and_the_cave_in_is_shorter(self):
+        breach = len(recipes.render("breach/rumble").left) / recipes.RATE
+        cave_in = len(recipes.render("layer/cave_in").left) / recipes.RATE
+        self.assertTrue(4.0 <= breach <= 6.0, breach)
+        self.assertLess(cave_in, breach)
+
+    def test_the_breach_gives_with_no_bright_transient(self):
+        # The fracture is sub-bass: above 2 kHz, the half second around it holds a sliver of what the whole of it holds, and no sample
+        # of that band is near the peak.
+        left = recipes.render("breach/rumble").left
+        bright = dsp.filt(left, "hp", 2000, 0.7)
+        around = bright[round(1.0 * recipes.RATE) : round(1.5 * recipes.RATE)]
+        self.assertLess(max(abs(v) for v in around), 0.08 * max(abs(v) for v in left))
+        low = dsp.filt(left, "lp", 120, 0.7)
+        self.assertGreater(self.rms(low, 1.05, 0.4), 3 * self.rms(bright, 1.05, 0.4))
+
+    def test_the_breach_strains_before_it_gives_and_dies_into_near_silence(self):
+        left = recipes.render("breach/rumble").left
+        self.assertLess(self.rms(left, 0.0, 0.25), self.rms(left, 0.6, 0.25), "the strain rises")
+        self.assertLess(self.rms(left, 0.6, 0.25), self.rms(left, 1.05, 0.25), "the give is the loudest part")
+        top = self.rms(left, 1.05, 0.25)
+        self.assertLess(self.rms(left, 4.0, 0.25), top / 10)
+        self.assertLess(self.rms(left, len(left) / recipes.RATE - 0.3, 0.25), top / 100, "the tail ends in near silence")
+
+    def test_the_cave_in_is_a_dull_thump_and_a_dying_rockfall(self):
+        left = recipes.render("layer/cave_in").left
+        bright = dsp.filt(left, "hp", 3000, 0.7)
+        self.assertLess(max(abs(v) for v in bright), 0.08 * max(abs(v) for v in left))
+        self.assertGreater(self.rms(left, 0.0, 0.3), 4 * self.rms(left, 2.0, 0.3))
+        self.assertLess(self.rms(left, len(left) / recipes.RATE - 0.3, 0.25), self.rms(left, 0.0, 0.3) / 100)
+
+
+class ChannelTest(unittest.TestCase):
+    def channels(self, name):
+        return first_sounds.ogg_channels(soundgen.OUT / f"{name}.ogg")
+
+    def test_only_the_sounds_listed_mono_are_mono(self):
+        for name in recipes.RECIPES:
+            self.assertEqual(1 if name in recipes.MONO else 2, self.channels(name), name)
 
 
 if __name__ == "__main__":

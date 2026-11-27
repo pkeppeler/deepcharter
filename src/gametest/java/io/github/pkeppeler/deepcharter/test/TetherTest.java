@@ -1173,8 +1173,6 @@ public class TetherTest {
         ServerLevel level = TestLayers.level(helper, 1);
         int x = ROOM_X + index * ROOM_STEP;
         int z = ROOM_Z;
-        RoomCarver.carve(level, x, x + 50, ROOM_FLOOR - 12, ROOM_FLOOR - 1, z - 8, z + 18, Blocks.STONE);
-        RoomCarver.carve(level, x, x + 50, ROOM_FLOOR, ROOM_FLOOR + 60, z - 8, z + 18, Blocks.AIR);
         Room room = new Room(level, x);
         List<BlockPos> columns = new ArrayList<>();
         for (int cx = x; cx <= x + 50 + 15; cx += 16) {
@@ -1183,6 +1181,10 @@ public class TetherTest {
         int[] ready = {0};
         FarChunks.awaitEntityTicking(helper, level, columns, i -> {
             if (++ready[0] == columns.size()) {
+                // Carved once the chunks are loaded: RoomSeal reads the shell, which would load them on the
+                // server thread.
+                RoomCarver.carve(level, x, x + 50, ROOM_FLOOR - 12, ROOM_FLOOR - 1, z - 8, z + 18, Blocks.STONE);
+                RoomCarver.carve(level, x, x + 50, ROOM_FLOOR, ROOM_FLOOR + 60, z - 8, z + 18, Blocks.AIR);
                 room.ready = true;
             }
         });

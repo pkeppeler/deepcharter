@@ -270,8 +270,8 @@ public final class BandCost {
         return windows.stream()
                 .map(window -> {
                     double marginal = pool.marginalPerRow(window.world(), window.floor());
-                    // Only a run that read all four worlds has a ratio of its own; with none, the bound is the pooled
-                    // ratio.
+                    // Only a run that read all four worlds has a ratio of its own; with none, the bound is the
+                    // pooled ratio.
                     double[] perRun = pool.runs(window.world()).stream()
                             .filter(run -> Stream.of(window.floor(), reference, referenceFloor)
                                     .allMatch(world -> pool.runs(world).contains(run)))

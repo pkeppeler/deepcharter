@@ -95,8 +95,8 @@ public class PodBraceClientTest implements FabricClientGameTest {
                     pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
                 }
             });
-            // One ore of 12 hull takes 20 to 32, over the crust's 24 and the reserve of 4: the brace burns one and
-            // stops.
+            // One ore of 12 hull takes 20 to 32, over the crust's 24 and the reserve of 4: the brace burns one
+            // and stops.
             ClientWait.until(
                     context,
                     "the brace burning one ore",

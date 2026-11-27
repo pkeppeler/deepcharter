@@ -32,6 +32,8 @@ record SpecSheetLayout(
      * The layout on a screen {@code width} by {@code height} for a console whose glass should be {@code wantedGlass} tall, which
      * the theme's least and most height and the window clamp.
      */
+    // const-param: the screen passes font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font);
+    // the parameter keeps the layout tied to the font
     static SpecSheetLayout of(
             int width, int height, CatalogueLook look, CrtTuning crt, int lineHeight, int wantedGlass) {
         CatalogueLook.Casing c = look.casing();

@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -387,42 +388,45 @@ public class ContinuityEventTest {
      * Outside the campaign's bands the altimeter means nothing, so the line ends at the cause: a death in the Nether names no depth, and
      * a death on the surface does.
      */
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aDeathOutsideTheCampaignNamesNoDepth(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "continuity-nether");
         ServerPlayer player = mock.player();
         player.setGameMode(GameType.SURVIVAL);
         ServerLevel nether =
                 Objects.requireNonNull(helper.getLevel().getServer().getLevel(Level.NETHER), "no nether");
-        helper.startSequence()
-                .thenExecute(() -> {
-                    // fixed-pos: a place in the Nether's own rows, only somewhere that is not the campaign; nothing
-                    // reads it
-                    mock.teleportTo(nether, Vec3.atBottomCenterOf(new BlockPos(0, 100, 0)), 0f, 0f);
-                    player.hurtServer(nether, nether.damageSources().lava(), 1000f);
-                })
-                .thenIdle(2)
-                .thenExecute(() -> {
-                    List<TranslatableContents> lines = linesFor(mock, "continuity-nether", NO_DEPTH_KEY);
-                    expect(
-                            helper,
-                            lines.size() == 1 && lines.getFirst().getArgs().length == 3,
-                            "a death in the Nether gets one line with no depth, the chat was %s",
-                            mock.chatMessages());
-                    expect(
-                            helper,
-                            linesFor(mock, "continuity-nether").isEmpty(),
-                            "and no line with a depth, the chat was %s",
-                            mock.chatMessages());
-                    expect(
-                            helper,
-                            key(lines.getFirst().getArgs()[2])
-                                    .equals(Optional.of("deepcharter.continuity.cause.burned")),
-                            "the line still names the cause, it was %s",
-                            lines.getFirst());
-                    player.setGameMode(GameType.SPECTATOR);
-                })
-                .thenSucceed();
+        // The mock ticks only in a loaded chunk, so the Nether chunk is awaited before the player is sent there.
+        FarChunks.whenBlocksLoaded(
+                helper,
+                List.of(new FarChunks.At(nether, 0, 0)),
+                () -> helper.startSequence()
+                        .thenExecute(() -> {
+                            // fixed-pos: a place in the Nether's own rows, not the campaign's; nothing reads it
+                            mock.teleportTo(nether, Vec3.atBottomCenterOf(new BlockPos(0, 100, 0)), 0f, 0f);
+                            player.hurtServer(nether, nether.damageSources().lava(), 1000f);
+                        })
+                        .thenIdle(2)
+                        .thenExecute(() -> {
+                            List<TranslatableContents> lines = linesFor(mock, "continuity-nether", NO_DEPTH_KEY);
+                            expect(
+                                    helper,
+                                    lines.size() == 1 && lines.getFirst().getArgs().length == 3,
+                                    "a death in the Nether gets one line with no depth, the chat was %s",
+                                    mock.chatMessages());
+                            expect(
+                                    helper,
+                                    linesFor(mock, "continuity-nether").isEmpty(),
+                                    "and no line with a depth, the chat was %s",
+                                    mock.chatMessages());
+                            expect(
+                                    helper,
+                                    key(lines.getFirst().getArgs()[2])
+                                            .equals(Optional.of("deepcharter.continuity.cause.burned")),
+                                    "the line still names the cause, it was %s",
+                                    lines.getFirst());
+                            player.setGameMode(GameType.SPECTATOR);
+                        })
+                        .thenSucceed());
     }
 
     /** With {@code showDeathMessages} off there is no line at all, and the death still counts. */
