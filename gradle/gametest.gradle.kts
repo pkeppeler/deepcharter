@@ -67,7 +67,7 @@ object GametestScan {
 	private const val FORCE_MARKER = "// force-ok:"
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
 	// A pin made by a test class exists only in the shard that holds it (#1482, #1586); outside support/ it is flagged or marked.
-	private val worldPin = Regex("""\bFarChunks\s*\.\s*pin\s*\(|\bColonyChunks\s*\.\s*force\s*\(""")
+	private val worldPin = Regex("""\bFarChunks\s*\.\s*pin\s*\(|\bColonyChunks\s*\.\s*force\s*\(|\bimport\s+static\s+[\w.]*\b(?:FarChunks\s*\.\s*(?:pin|\*)|ColonyChunks\s*\.\s*(?:force|\*))\s*;""")
 	private val inSupport = Regex("""(?:^|\.)support\.""")
 	// A synchronous chunk load on the server thread (getChunk or getChunkAt, which load or generate the chunk and wait
 	// for it) stalls the one thread that every server GameTest in the batch shares, so a test beside it makes no

@@ -88,6 +88,9 @@ PINS = {
     "a pin": "FarChunks.pin(level, 3, 4);",
     "a pad pin": "ColonyChunks.force(level, colony);",
     "a pad pin in a lambda": "ColonyEvents.BUILT.register((server, colony) -> ColonyChunks.force(server.overworld(), colony));",
+    "a static import of pin": "import static io.github.pkeppeler.deepcharter.test.support.FarChunks.pin;",
+    "a static import of force": "import static io.github.pkeppeler.deepcharter.test.support.ColonyChunks.force;",
+    "a wildcard static import": "import static io.github.pkeppeler.deepcharter.test.support.FarChunks.*;",
     "a wrapped pin": "FarChunks\n            .pin(level, 3, 4);",
 }
 BARE = "// force-ok:\n        level.setChunkForced(3, 4, true);"
