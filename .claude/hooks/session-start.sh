@@ -9,8 +9,8 @@ adr_lib=0
 source tools/lib/adr.sh 2>/dev/null && adr_lib=1
 R=pkeppeler/deepcharter
 # Worst case: limit check 8 s + handoff 10 s + open PRs 10 s + the per-PR mergeable reads 6 s in total + ADR list
-# 10 s + merged PRs 10 s + playtest issue count 4 s = 58 s, under the 60 s hook timeout (the local git calls and python start-ups take well
-# under a second). SESSION_START_PR_BUDGET (seconds) is a test seam for the 6 s.
+# 10 s + merged PRs 10 s + playtest issue count 4 s = 58 s, under the 60 s hook timeout (the local git calls and python
+# start-ups take well under a second). SESSION_START_PR_BUDGET (seconds) is a test seam for the 6 s.
 t() { perl -e 'alarm shift; exec @ARGV' "${T:-10}" "$@" 2>/dev/null; }
 
 # Make the pre-push hook active in every session: an unset core.hooksPath becomes .githooks. A set value stays, even a different one.

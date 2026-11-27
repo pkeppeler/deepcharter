@@ -29,4 +29,4 @@ End with the rows you checked and found clean, and each uncertainty with what ma
 
 ## Cycle 2
 
-Do not sweep again. Three checks: every Critical and Warning from cycle 1 is resolved (quote the line or media that resolves each); the simplifier's edits added no new Critical; the PR still does what the issue asked. Answer `PASS` or `FAIL` with a numbered list of what fails. On PASS the orchestrator labels the PR `px-reviewed`; the merge gate refuses a `gameplay` PR without it.
+Do not sweep again. Three checks: every Critical and Warning from cycle 1 is resolved (quote the line or media that resolves each); the simplifier's edits added no new Critical; the PR still does what the issue asked. Answer `PASS` or `FAIL` with a numbered list of what fails.

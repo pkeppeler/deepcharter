@@ -5,7 +5,7 @@ description: Deep Charter's player-experience checklist, the recurring themes fr
 
 # Player experience
 
-Playtesters hit the same problems again and again; code review does not see them. Each theme below is a rule a reviewer can check against a PR's diff, lang text, textures and evidence media. The first sweep read all 67 `playtest-feedback` issues; a theme with one source is a one-off, not a rule.
+Playtesters hit the same problems again and again; code review does not see them. Each theme below is a rule a reviewer can check against a PR's diff, lang text, textures and evidence media. A theme with one source is a one-off, not a rule.
 
 Learned through playtest-feedback issue: #1539
 
