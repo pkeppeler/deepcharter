@@ -9,6 +9,8 @@ public enum TerminalRefusal {
     NO_SUCH_TERMINAL,
     /** The player is more than {@link TerminalTuning#maxDistance()} blocks away. */
     TOO_FAR,
+    /** A seated player asked for a terminal and none is within reach of their pod. */
+    NONE_IN_REACH,
     NOT_ON_A_CHARTER,
     /** An action that needs a working terminal, at one that is not repaired yet. */
     UNREPAIRED,

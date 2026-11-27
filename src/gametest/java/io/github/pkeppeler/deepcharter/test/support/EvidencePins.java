@@ -31,6 +31,12 @@ public final class EvidencePins {
     public static volatile float figureAnimationAge = -1f;
 
     /**
+     * The age in ticks that GeckoLib reads as the clock of a drifter's animation (0 or more); negative keeps the
+     * drifter's own, which runs on the entity's ticks and the frame's partial tick.
+     */
+    public static volatile float drifterAnimationAge = -1f;
+
+    /**
      * The attack button counts as held, whatever the mouse does. The test client's mouse is not grabbed, so vanilla
      * sees the button up on every tick and aborts the block being mined; with this on, the game's own mining runs as
      * it does for a player who holds the button.
@@ -50,6 +56,7 @@ public final class EvidencePins {
         figureSpawningOff = false;
         cardinalLightNether = false;
         figureAnimationAge = -1f;
+        drifterAnimationAge = -1f;
         attackHeld = false;
     }
 }

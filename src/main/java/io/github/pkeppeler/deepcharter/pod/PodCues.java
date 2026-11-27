@@ -59,9 +59,9 @@ public final class PodCues {
             return;
         }
         Input input = pilot.getLastClientInput();
-        // The same lift as PodMovement.tick: the engine power that cargo and PodEvents.extraMass leave.
-        float usable = PodStats.of(pod).enginePower() - PodEvents.extraMass(pod);
-        if (!input.jump() || usable - pod.cargoMass() > 0f) {
+        // The same load as PodMovement.tick: a held rotor that cannot climb is a failed lift.
+        PodLoad load = PodLoad.of(pod);
+        if (!input.jump() || !load.cannotClimb()) {
             LAST_CUE.remove(pod);
             return;
         }
@@ -71,10 +71,10 @@ public final class PodCues {
             return;
         }
         LAST_CUE.put(pod, now);
-        // Dumping cargo only helps when the engine could lift something without it: towing alone can take all the lift.
-        boolean dumpHelps = pod.cargoMass() > 0f && usable > 0f;
         pilot.sendOverlayMessage(
-                Component.translatable(dumpHelps ? "deepcharter.pod.overloaded" : "deepcharter.pod.overloaded_load"));
+                PodDump.overloadedByCargo(pod)
+                        ? Component.translatable("deepcharter.pod.overloaded", Component.keybind(PodDump.KEY))
+                        : Component.translatable("deepcharter.pod.overloaded_load"));
         ((ServerLevel) pod.level()).playSound(null, pod, DeepSound.CARGO_FULL.event(), SoundSource.NEUTRAL, 1f, 1f);
     }
 }

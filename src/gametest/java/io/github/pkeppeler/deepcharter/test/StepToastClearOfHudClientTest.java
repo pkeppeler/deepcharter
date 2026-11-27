@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.pod.SeatedHotbar;
 import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
@@ -382,7 +383,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
 
     /**
      * Every part of the HUD that is up for the local player on a GUI {@code width} x {@code height}, from the theme and the HUD's
-     * public figures: in the cockpit the ribbon, each gauge, the lamps, the scanner window and bezel and the readout plate; without
+     * public figures: in the cockpit the ribbon, each gauge, the lamps, the scanner window and bezel, the readout plate and vanilla's hotbar; without
      * it the plain pod readout and scanner panel; the altimeter, the account line and a transmission wherever they are drawn. The
      * navigator's sonar scope is the one part read from {@link HudKeepClear}: its layout is private to the HUD, so
      * {@link StepToastClearOfSonarClientTest} checks that rectangle against what the scope draws.
@@ -396,6 +397,9 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         if (seated.isPresent()) {
             Layout ribbon = seated.get();
             hud.put("cockpit ribbon", box(ribbon.band(), width, height));
+            // Vanilla's hotbar, which a seated pilot keeps (#1457): 182 x 22 at the bottom centre, its selection frame
+            // a pixel round it.
+            hud.put("hotbar", new Box(width / 2 - 92, height - 23, 184, 23));
             hud.put("fuel gauge", box(ribbon.fuel().area(), width, height));
             hud.put("hull gauge", box(ribbon.hull().area(), width, height));
             hud.put("cargo gauge", box(ribbon.cargo().area(), width, height));
@@ -409,13 +413,18 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             if (CockpitHud.showsReadout(client, width, height)) {
                 PodEntity pod = (PodEntity) Objects.requireNonNull(player.getVehicle(), "the pilot is in a pod");
                 var look = CockpitLook.current();
-                var rows = CockpitHud.fitting(
+                var rows = CockpitHud.plateRows(
+                        font,
+                        ribbon,
+                        look,
                         CockpitHud.rows(
                                 pod,
                                 CockpitReading.of(pod, CockpitHud.heat()),
                                 look,
                                 PodStatusHud.readout(player, pod)),
-                        CockpitHud.roomForRows(font, ribbon, look, height));
+                        SeatedHotbar.slots(client, width, height),
+                        width,
+                        height);
                 var plate = CockpitHud.plateBox(font, ribbon, look, rows, width, height);
                 hud.put("readout plate", new Box(plate.left(), plate.top(), plate.width(), plate.height()));
             }
@@ -478,13 +487,14 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                 widest = Math.max(widest, font.width(readout.hint().get()));
             }
             double scale = look.scale();
+            int boxHeight = (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale);
             hud.put(
                     "block readout",
                     new Box(
                             (width - (int) Math.ceil(widest * scale)) / 2,
-                            height / 2 + look.offsetY(),
+                            look.blockTop(height, font.lineHeight),
                             (int) Math.ceil(widest * scale),
-                            (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale)));
+                            boxHeight));
         });
         if (TransmissionOverlay.active()) {
             TransmissionLook look = TransmissionLook.current();

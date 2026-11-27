@@ -3,6 +3,8 @@
   "margin": 4,
   "titleColor": "#FFFFFF",
   "airColor": "#101820",
+  "outOfRangeColor": "#0A0F14",
+  "outOfRangeLineColor": "#1A2631",
   "rockColor": "#5C5248",
   "oreColor": "#E8E8F0",
   "goldOreColor": "#FFD21E",

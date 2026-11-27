@@ -14,6 +14,8 @@ import java.util.Map;
  * @param margin GUI pixels between the panel and the screen edge
  * @param titleColor the panel's title
  * @param airColor air, and the panel's background
+ * @param outOfRangeColor the cockpit window's background beyond the scanned area: the part of the window a tier's whole cells do not reach, which shows nothing real
+ * @param outOfRangeLineColor every other row of that background, so that it reads as the instrument's unscanned raster and never as the flat air of an empty cell
  * @param rockColor solid rock, when its block has no usable sprite
  * @param oreColor ore, when its block has no usable sprite
  * @param goldOreColor gold ore, when its block has no usable sprite
@@ -56,6 +58,8 @@ public record ScannerLook(
         int margin,
         int titleColor,
         int airColor,
+        int outOfRangeColor,
+        int outOfRangeLineColor,
         int rockColor,
         int oreColor,
         int goldOreColor,
@@ -101,6 +105,8 @@ public record ScannerLook(
                 d.integer("margin", 0),
                 d.color("titleColor"),
                 d.color("airColor"),
+                d.color("outOfRangeColor"),
+                d.color("outOfRangeLineColor"),
                 d.color("rockColor"),
                 d.color("oreColor"),
                 d.color("goldOreColor"),

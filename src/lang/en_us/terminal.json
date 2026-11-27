@@ -9,6 +9,7 @@
   "deepcharter.terminal.refusal.missing_part": "You do not carry that part",
   "deepcharter.terminal.refusal.no_such_action": "The terminal cannot do that",
   "deepcharter.terminal.refusal.no_such_terminal": "There is no terminal there",
+  "deepcharter.terminal.refusal.none_in_reach": "No terminal in reach",
   "deepcharter.terminal.refusal.not_a_part": "That is not a part of this terminal",
   "deepcharter.terminal.refusal.not_on_a_charter": "Only a charter can use a terminal",
   "deepcharter.terminal.refusal.prerequisite_unrepaired": "Repair the earlier terminal first",
