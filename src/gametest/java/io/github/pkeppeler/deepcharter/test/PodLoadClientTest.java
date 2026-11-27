@@ -57,8 +57,8 @@ public class PodLoadClientTest implements FabricClientGameTest {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                // The floor stays rock: the pod stands on it under gravity, which the climb limit is worked out
-                // against.
+                // The floor stays rock: the pod stands on it under gravity, which the climb limit is
+                // worked out against.
                 RoomCarver.carve(one, -4, 4, FEET_Y, FEET_Y + 8, -4, 4, Blocks.AIR);
                 player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
