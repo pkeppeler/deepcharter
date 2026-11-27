@@ -124,6 +124,11 @@ public final class CaveIns {
         return read(level, feet).loose();
     }
 
+    /** Air, or the moss film (#974): a film of moss on a face is no roof, and does not fill the cell under one. */
+    private static boolean open(BlockState state) {
+        return state.isAir() || state.is(LayerBlocks.OVERGROWTH_VENEER);
+    }
+
     /** Never loads a chunk: a block in one that is not loaded is not read. */
     private static Roof read(ServerLevel level, BlockPos feet) {
         CaveInTuning tuning = CaveInTuning.DEFAULT;
@@ -142,11 +147,10 @@ public final class CaveIns {
                         break;
                     }
                     BlockState state = level.getBlockState(at);
-                    if (state.isAir() || !state.getFluidState().isEmpty()) {
+                    if (open(state) || !state.getFluidState().isEmpty()) {
                         continue;
                     }
-                    if (state.is(HazardBlocks.NATURAL_ROCK)
-                            && level.getBlockState(at.below()).isAir()) {
+                    if (state.is(HazardBlocks.NATURAL_ROCK) && open(level.getBlockState(at.below()))) {
                         if (holds(bolts, at)) {
                             bolted++;
                         } else {
@@ -282,9 +286,10 @@ public final class CaveIns {
     }
 
     /**
-     * A falling block settles in the cell of any entity under it, so rock that landed on a person would leave them inside it. Rock about to
-     * reach a person on foot shatters on them instead: it hurts by the blocks it fell to their feet, up to {@link
-     * CaveInTuning#fallDamageMax()}, never to their last health, and leaves no block. Returns whether it shattered.
+     * A falling block settles in the cell of any entity under it, so rock that landed on a person would leave them
+     * inside it. Rock about to reach a person on foot shatters on them instead: it hurts by the blocks it fell to their
+     * feet, up to {@link CaveInTuning#fallDamageMax()}, never to their last health, and leaves no block. Returns
+     * whether it shattered.
      */
     private static boolean shatterOnPerson(ServerLevel level, FallingBlockEntity rock) {
         AABB reach = rock.getBoundingBox().expandTowards(0, rock.getDeltaMovement().y - STEP_DOWN, 0);
@@ -325,7 +330,7 @@ public final class CaveIns {
         if (!level.getBlockState(roof).is(HazardBlocks.NATURAL_ROCK)) {
             return Optional.of("bolt_not_rock");
         }
-        if (!level.getBlockState(cell).isAir()) {
+        if (!open(level.getBlockState(cell))) {
             return Optional.of("bolt_no_room");
         }
         if (boltNear(level, cell, spacing)) {
