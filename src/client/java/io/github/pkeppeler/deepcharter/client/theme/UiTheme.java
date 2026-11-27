@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  * @param tow the chain links of the tow line between two pods
  * @param beam the fake light beams of a lit pod's headlamp and the colony floodlights
  * @param catalogue the size and place of the parts catalogue and its recipe panel, beside the inventory
- * @param readout the block name and hint under the crosshair
+ * @param readout the block name and hint above the hotbar
  * @param sonar the navigator's sonar scope
  * @param suit the suit gauge: the timer of a person on foot
  * @param continuity the Continuity Event: the skull that laughs at a person who has died, and its timings

@@ -607,14 +607,17 @@ Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario 
 Only names and uses are given here. No audio is copied, played into a recording, or published.
 
 - The sound events are in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json`. Since #249 the pod engines and rotor,
-  the drill's dig and blocked, the terminal's power-on and the UI sounds point at OGGs of ours (`assets/deepcharter/sounds/`, each made by a recipe in `tools/sounds/`), the layers' music
+  the drill's dig and blocked, the terminal's power-on and online chord and the UI sounds point at OGGs of ours (`assets/deepcharter/sounds/`, each made by a recipe in `tools/sounds/`), the layers' music
   slots are silent, and the rest are still a **vanilla Minecraft sound** as a placeholder, with pitch or volume tweaks. A private audio pack (built by `tools/build-audio-pack.sh` from files that stay out of the repo) replaces
-  them at play time through `tools/audio-pack-map.txt`; the drone beds and the Lamp Hymn have no original and are not in it. Vanilla: **partly**.
+  them at play time through `tools/audio-pack-map.txt`; the drone beds, the Lamp Hymn and the online chord have no original and are not in it. Vanilla: **partly**.
 - The drone beds (#249) are `ambient_sounds` in each biome: `ambient.surface_loop` with `ambient.surface_groan`, `ambient.layer_1_loop` with its creak and knock, `ambient.layer_2_loop` with its creak and knock. The Lamp Hymn
-  (`hymn.colony`, `hymn.layer_1`, `hymn.layer_2`) plays from `main/sound/HymnMoments.java` on founding or joining a charter, going down a breach and coming up into the colony.
+  (`hymn.colony`, `hymn.layer_1`, `hymn.layer_2`) plays from `main/sound/HymnMoments.java` on founding or joining a charter, going down a breach and coming up into the colony; its first three
+  notes (`hymn.chapter`, about four seconds) play to each online member when a handbook chapter's last directive is done (`handbook/HandbookEvents.CHAPTER_COMPLETED`, fired by
+  `HandbookProgress.sweep`, never for progress already held on joining). The phrase is queued: it plays on the next tick at the earliest, not
+  while a repaired machine's chord rings, and not at all if that player's hymn is still playing then (#1267).
 - Groups and where they play: pod (engine idle, drive, drill side and down, rotor, transform land and launch, crash, explosion, the seep sounder's hiss `pod.seep_hiss`, repeating faster as a gas pocket nears, the heat shield's crackle `pod.glaze_burn` for each brick it burns, the signal decay's crackle `pod.signal_crackle` and heartbeat `pod.signal_lost`, #502), drill (dig, blocked, lava, dynamite,
   plastic), cargo (collect, jettison, full), fuel (low, refuel), repair (nanobots), breach (rumble, cross), scanner (ping, sweep), UI (typewriter, hover, select, confirm,
-  purchase, sale, error, refused), terminal (power on, teleport), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
+  purchase, sale, error, refused), terminal (power on, online chord, teleport; a repair that brings a terminal online plays the power-on and the chord in the world where the repairer stands, `main/sound/TerminalSounds.java`, #1267), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
 - Music: `deepcharter:music.layer_1` plays in layer 1 and `music.layer_2` in layer 2, each every 600 to 1800 ticks, set in the dimension types; the shipped sound is three seconds of
   silence, and the private pack (original `BGM_main` and `BGM_core`) fills them. `music.terminal` loops while a terminal screen is open (`client/sound/TerminalMusic.java`) and plays the terminal's hum (ours). No vanilla music plays on the
   surface or in a layer: a surface biome sets an empty `background_music`. Engine loops are `client/sound/PodLoops.java`; the typewriter click is `client/sound/TypewriterSound.java`;

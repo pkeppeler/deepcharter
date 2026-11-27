@@ -20,6 +20,8 @@ import net.minecraft.resources.Identifier;
  */
 public final class AccountHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "account");
+    /** The account line's lang key: the cockpit's plate shows the line as a note ({@link io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Line#kind}). */
+    public static final String KEY = "hud.deepcharter.account";
 
     private AccountHud() {}
 
@@ -53,8 +55,7 @@ public final class AccountHud {
 
     /** The text shown, or empty when the player is on no charter. Public so tests can check it without reading pixels. */
     public static Optional<Component> text() {
-        return ClientCharter.view()
-                .map(charter -> Component.translatable("hud.deepcharter.account", charter.name(), charter.balance()));
+        return ClientCharter.view().map(charter -> Component.translatable(KEY, charter.name(), charter.balance()));
     }
 
     public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {

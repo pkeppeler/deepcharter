@@ -55,8 +55,8 @@ public class GreatStalkScenario extends EvidenceScenario {
     private static final int CHUNK_RADIUS = 2;
     private static final int SETTLE_TICKS = 20;
     private static final int TICKS_PER_FRAME = 2;
-    /** The sag of the tallest trunk, its bursts and a margin; the recording stops when it is over. */
-    private static final int COLLAPSE_TICKS = 90;
+    /** From the break: the collapse is instant, so this is the puff and the scattering drops settling, and a margin. */
+    private static final int COLLAPSE_TICKS = 45;
     /** The cell of the layout that is broken: the lowest part of a trunk with something above it, this high from the base. */
     private static final int BREAK_LEVEL = 2;
 
