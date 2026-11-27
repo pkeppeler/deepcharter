@@ -163,13 +163,17 @@ public class TeleportArrivalTest {
                     released[0] < 0 || countdown[0] >= 0,
                     "the arrival ticket was released at tick %d before its countdown started",
                     released[0]);
+            boolean counting = countdown[0] >= 0;
             countdownWait.await(
                     helper,
                     overworld,
-                    countdown[0] >= 0,
+                    counting,
                     () -> String.format(
                             "the arrival ticket's countdown never started (ever held: %s, tickets now: %s)",
                             everHeld[0], tickets));
+            if (!counting) {
+                return;
+            }
             expect(
                     helper,
                     released[0] >= 0 || countdown[0] < 0 || tick <= countdown[0] + countdownTicks + RELEASE_MARGIN,
