@@ -1,19 +1,25 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreBlock.Host;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -33,7 +39,6 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -65,15 +70,46 @@ public class OreHostTest {
         };
     }
 
-    @GameTest(maxTicks = 6000)
+    /** The rocks the zone fill finds in {@code layer}: layer 1's strata (#1277), and elsewhere the layer's one rock. */
+    static Set<Host> generatedHosts(int layer) {
+        return layer == 1 ? Set.of(Host.HARDPAN, Host.PACKED_SHALE, Host.BLACK_SHALE) : Set.of(expectedHost(layer));
+    }
+
+    /**
+     * A saved ore or Company rock names its host by this name, so the names are permanent: a renamed value would load
+     * as the default host (packed shale) in every world saved before.
+     */
+    @GameTest
+    public void theHostNamesArePermanent(GameTestHelper helper) {
+        List<String> names =
+                Arrays.stream(Host.values()).map(Host::getSerializedName).toList();
+        if (!names.equals(List.of("packed_shale", "green_shale", "basalt_core", "hardpan", "black_shale"))) {
+            throw helper.assertionException("the host names are %s", names);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void generatedOreInEachLayerSitsInThatLayersRock(GameTestHelper helper) {
+        List<FarChunks.At> chunks = new ArrayList<>();
+        for (int layer = 1; layer <= LAYERS; layer++) {
+            chunks.addAll(FarChunks.rect(
+                    TestLayers.level(helper, layer),
+                    FIRST_CHUNK,
+                    FIRST_CHUNK,
+                    FIRST_CHUNK + SIDE - 1,
+                    FIRST_CHUNK + SIDE - 1));
+        }
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> generatedOreSitsInThatLayersRock(helper));
+    }
+
+    private static void generatedOreSitsInThatLayersRock(GameTestHelper helper) {
         for (int layer = 1; layer <= LAYERS; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             LayerChain.Band levelBand = TestLayers.band(level, layer);
             Map<Host, Integer> found = new EnumMap<>(Host.class);
             for (int cx = FIRST_CHUNK; cx < FIRST_CHUNK + SIDE; cx++) {
                 for (int cz = FIRST_CHUNK; cz < FIRST_CHUNK + SIDE; cz++) {
-                    level.getChunk(cx, cz, ChunkStatus.FULL);
                     for (int x = cx << 4; x < (cx << 4) + 16; x++) {
                         for (int z = cz << 4; z < (cz << 4) + 16; z++) {
                             for (int y = levelBand.minY();
@@ -92,11 +128,17 @@ public class OreHostTest {
                 }
             }
             int total = found.values().stream().mapToInt(Integer::intValue).sum();
-            int right = found.getOrDefault(expectedHost(layer), 0);
-            if (total < AT_LEAST || right != total) {
-                throw helper.assertionException(
-                        "layer_%s should hold at least %s ores, all in %s, it holds %s",
-                        layer, AT_LEAST, expectedHost(layer), found);
+            Set<Host> hosts = generatedHosts(layer);
+            int right =
+                    hosts.stream().mapToInt(host -> found.getOrDefault(host, 0)).sum();
+            if (total < AT_LEAST || right != total || !found.keySet().containsAll(hosts)) {
+                throw failure(
+                        helper,
+                        "layer_%s should hold at least %s ores, all in %s and some in each, it holds %s",
+                        layer,
+                        AT_LEAST,
+                        hosts,
+                        found);
             }
         }
         helper.succeed();
@@ -139,9 +181,14 @@ public class OreHostTest {
                 if (!result.consumesAction()
                         || !placed.is(OreBlocks.of(type))
                         || placed.getValue(OreBlock.HOST) != expectedHost(layer)) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "%s placed in layer_%s should sit in %s, it is %s (%s)",
-                            type.blockId(), layer, expectedHost(layer), placed, result);
+                            type.blockId(),
+                            layer,
+                            expectedHost(layer),
+                            placed,
+                            result);
                 }
             }
         }
@@ -165,7 +212,7 @@ public class OreHostTest {
                                 .create(LootContextParamSets.BLOCK),
                         1L);
                 if (drops.size() != 1 || !drops.getFirst().is(OreRegistry.item(type))) {
-                    throw helper.assertionException("%s in %s should drop 1 %s, it drops %s", block, host, type, drops);
+                    throw failure(helper, "%s in %s should drop 1 %s, it drops %s", block, host, type, drops);
                 }
             }
         }
@@ -186,8 +233,7 @@ public class OreHostTest {
             legacy.keySet().removeIf(key -> !key.equals("Name") && !key.equals("id"));
             BlockState old = BlockState.CODEC.parse(NbtOps.INSTANCE, legacy).getOrThrow();
             if (!old.is(OreBlocks.of(type)) || old.getValue(OreBlock.HOST) != Host.PACKED_SHALE) {
-                throw helper.assertionException(
-                        "%s saved with no host should load in packed shale, it is %s", type, old);
+                throw failure(helper, "%s saved with no host should load in packed shale, it is %s", type, old);
             }
             BlockState green = OreBlocks.of(type).defaultBlockState().setValue(OreBlock.HOST, Host.GREEN_SHALE);
             BlockState back = BlockState.CODEC
@@ -196,7 +242,7 @@ public class OreHostTest {
                             BlockState.CODEC.encodeStart(NbtOps.INSTANCE, green).getOrThrow())
                     .getOrThrow();
             if (back != green) {
-                throw helper.assertionException("%s in green shale should survive a save, it came back %s", type, back);
+                throw failure(helper, "%s in green shale should survive a save, it came back %s", type, back);
             }
         }
         helper.succeed();

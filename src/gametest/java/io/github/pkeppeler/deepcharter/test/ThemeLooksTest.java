@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.theme.BeamLook;
 import io.github.pkeppeler.deepcharter.client.theme.BeamStyle;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
-import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.ContinuityLook;
@@ -71,8 +70,8 @@ public class ThemeLooksTest {
         }
     }
 
-    // The expected values below are the literals the Java held before #226, written out. Do not read them from the
-    // files.
+    // The expected values below are the literals the Java held before #226, written out, and the values added since
+    // (#1265 added the ghost veil, 0xA8050A06). Do not read them from the files.
 
     @GameTest
     public void theDefaultCrtLookIsTheOldOne(GameTestHelper helper) {
@@ -92,6 +91,7 @@ public class ThemeLooksTest {
                         0xFF2E7A45,
                         0xFF123D20,
                         0xFFFFB000,
+                        0xA8050A06,
                         6,
                         2,
                         1,
@@ -150,6 +150,8 @@ public class ThemeLooksTest {
                         4,
                         0xFFFFFFFF,
                         0xFF101820,
+                        0xFF0A0F14,
+                        0xFF1A2631,
                         0xFF5C5248,
                         0xFFE8E8F0,
                         0xFFFFD21E,
@@ -183,7 +185,18 @@ public class ThemeLooksTest {
                                 OreType.EINSTEINIUM,
                                 0xFFDCCCFF,
                                 OreType.CICATRIUM,
-                                0xFFFFC8E4)),
+                                0xFFFFC8E4),
+                        5,
+                        10,
+                        20,
+                        2,
+                        4,
+                        5,
+                        0xC0C8D4E0,
+                        0xFFE0E8F0,
+                        0xC0101820,
+                        0xFF38F06E,
+                        6),
                 ScannerLook.of(area("scanner", null)));
         expect(
                 helper,
@@ -198,6 +211,7 @@ public class ThemeLooksTest {
                         0xFFC9B8F0,
                         0xFFE060E0,
                         0xFFFFB020,
+                        0xFF7FE8FF,
                         4,
                         0xFFFFFFFF,
                         4,
@@ -210,7 +224,6 @@ public class ThemeLooksTest {
                 new TransmissionLook(0xEA050A06, 0xFF7CFC9A, 0xFF7CFC9A, 0xFFFFC857, 0xFFFF5A4F, 320, 16, 0.4, 6, 100),
                 TransmissionLook.of(area("transmission", null)));
         expect(helper, "breach", new BreachLook(20, 8, 4, 10, 3, 0xFF000000), BreachLook.of(area("breach", null)));
-        expect(helper, "cargo", new CargoLook(0xFF404040), CargoLook.of(area("cargo", null)));
         expect(helper, "tow", new TowChainLook(0.28, 0.2, 1.35, 0xFFFFFFFF, 7), TowChainLook.of(area("tow", null)));
         expect(
                 helper,
@@ -224,7 +237,7 @@ public class ThemeLooksTest {
         expect(
                 helper,
                 "readout",
-                new ReadoutLook(14, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
+                new ReadoutLook(77, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
                 ReadoutLook.of(area("readout", null)));
         expect(
                 helper,
@@ -299,51 +312,6 @@ public class ThemeLooksTest {
                         10.0),
                 ContinuityLook.of(area("continuity", null)));
         helper.succeed();
-    }
-
-    @GameTest
-    public void theCargoSpritesAreTheOldPanelAndSlot(GameTestHelper helper) throws IOException {
-        sprite(helper, "panel", 0xFF373737, 0xFFC6C6C6);
-        sprite(helper, "slot", 0xFF373737, 0xFF8B8B8B);
-        helper.succeed();
-    }
-
-    private static void sprite(GameTestHelper helper, String name, int edge, int fill) throws IOException {
-        String base = "/assets/deepcharter/textures/gui/sprites/cargo/" + name + ".png";
-        BufferedImage image;
-        try (InputStream stream = ThemeLooksTest.class.getResourceAsStream(base)) {
-            image = ImageIO.read(stream);
-        }
-        if (image.getWidth() != 3 || image.getHeight() != 3) {
-            throw failure(helper, "%s sprite should be 3 x 3, is %s x %s", name, image.getWidth(), image.getHeight());
-        }
-        for (int y = 0; y < 3; y++) {
-            for (int x = 0; x < 3; x++) {
-                int expected = x == 1 && y == 1 ? fill : edge;
-                if (image.getRGB(x, y) != expected) {
-                    throw failure(
-                            helper,
-                            "%s sprite pixel %d,%d should be 0x%08X, is 0x%08X",
-                            name,
-                            x,
-                            y,
-                            expected,
-                            image.getRGB(x, y));
-                }
-            }
-        }
-        try (InputStream stream = ThemeLooksTest.class.getResourceAsStream(base + ".mcmeta")) {
-            JsonObject scaling = JsonParser.parseString(new String(stream.readAllBytes(), StandardCharsets.UTF_8))
-                    .getAsJsonObject()
-                    .getAsJsonObject("gui")
-                    .getAsJsonObject("scaling");
-            if (!scaling.get("type").getAsString().equals("nine_slice")
-                    || scaling.get("border").getAsInt() != 1
-                    || scaling.get("width").getAsInt() != 3
-                    || scaling.get("height").getAsInt() != 3) {
-                throw failure(helper, "%s sprite should be a 3 x 3 nine-slice with border 1, is %s", name, scaling);
-            }
-        }
     }
 
     @GameTest
@@ -524,7 +492,8 @@ public class ThemeLooksTest {
             if (topLeft != expected || bottomRight != expected) {
                 throw failure(
                         helper,
-                        "the porthole's row %s is %s in at the top left and %s at the bottom right, but glassRadius %s says %s",
+                        "the porthole's row %s is %s in at the top left and %s at the bottom right, but glassRadius %s"
+                                + " says %s",
                         row,
                         topLeft,
                         bottomRight,
@@ -548,8 +517,9 @@ public class ThemeLooksTest {
     @GameTest
     public void aPackRestylesThePanelKeyByKeyAndAnchorsDecals(GameTestHelper helper) {
         PanelLook look = PanelLook.of(area("panel", """
-				{ "enabled": 1, "insetTop": 18, "nameplateW": 70, "nameplateH": 14, "nameplateAnchorX": 2, "nameplateAnchorY": 0, "nameplateX": 6, "nameplateY": 0,
-				  "dressAW": 30, "dressAH": 20, "dressAAnchorX": 1, "dressAAnchorY": 2, "dressAX": -10, "dressAY": 3 }"""));
+            { "enabled": 1, "insetTop": 18, "nameplateW": 70, "nameplateH": 14, "nameplateAnchorX": 2, "nameplateAnchorY": 0, "nameplateX": 6, "nameplateY": 0,
+              "dressAW": 30, "dressAH": 20, "dressAAnchorX": 1, "dressAAnchorY": 2, "dressAX": -10, "dressAY": 3 }\
+            """));
         if (!look.enabled() || look.content().top() != 18 || look.content().left() != 52) {
             throw failure(helper, "a pack names a key and keeps the rest, got %s", look);
         }
@@ -704,7 +674,6 @@ public class ThemeLooksTest {
                 "hud",
                 "transmission",
                 "breach",
-                "cargo",
                 "pod",
                 "panel",
                 "cockpit",
@@ -738,6 +707,13 @@ public class ThemeLooksTest {
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cellAspect\": 3 }")), "cellAspect");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"jawSteps\": 0 }")), "jawSteps");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"bodySolidTicks\": 21 }")), "bodySolidTicks");
+        // Gson reads a bare NaN or Infinity leniently as a string, which the number check refuses: a timing that is not
+        // a number would hold the button.
+        rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cutSeconds\": NaN }")), "cutSeconds");
+        rejected(
+                helper,
+                () -> ContinuityLook.of(area("continuity", "{ \"skipPeriodSeconds\": Infinity }")),
+                "skipPeriodSeconds");
         rejected(
                 helper,
                 () -> ContinuityLook.of(
@@ -790,6 +766,11 @@ public class ThemeLooksTest {
     @GameTest
     public void theBlockReadoutStaysWithinItsBounds(GameTestHelper helper) {
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"scale\": 3 }")), "scale");
+        rejected(
+                helper,
+                () -> ReadoutLook.of(
+                        area("readout", "{ \"bottomOffset\": " + (ReadoutLook.CLEAR_OF_VANILLA - 1) + " }")),
+                "bottomOffset");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeInTicks\": 0 }")), "fadeInTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeOutTicks\": 41 }")), "fadeOutTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"settleTicks\": -1 }")), "settleTicks");

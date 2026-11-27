@@ -30,9 +30,7 @@ public final class SuitReserve {
         }
         SuitState filled = state.get().withReserve(Math.min(capacity, reserve + seconds));
         // The breach hit reads the stored mode, so a breached suit leaves BREACHED now, not at the next second.
-        player.setAttached(
-                SuitRegistry.SUIT,
-                Versioned.of(filled.mode() == Mode.BREACHED ? filled.withMode(Mode.EXPOSED) : filled));
+        player.setAttached(SuitRegistry.SUIT, Versioned.of(filled.mode() == Mode.BREACHED ? filled.exposed() : filled));
         return Optional.empty();
     }
 

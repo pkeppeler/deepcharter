@@ -50,6 +50,11 @@ public class PodLavaWatchScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, 0f, true);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + TUNNEL / 2, Z, TUNNEL / 2 + 5);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setYRot(FACING_EAST);
@@ -96,6 +101,7 @@ public class PodLavaWatchScenario extends EvidenceScenario {
                     "the ribbon cockpit",
                     client -> CockpitHud.seated(client).isPresent());
             boolean lamp = context.computeOnClient(client -> CockpitHud.lampsLit(
+                    false,
                     false,
                     false,
                     false,

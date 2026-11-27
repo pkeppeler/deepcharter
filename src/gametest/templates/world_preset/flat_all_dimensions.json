@@ -43,9 +43,9 @@
           "min_y": -2032,
           "height": 2048,
           "biomes": [
-            "deepcharter:topsoil_claims",
-            "deepcharter:stone_benches",
-            "deepcharter:deep_claim"
+            "deepcharter:reference_topsoil_claims",
+            "deepcharter:reference_stone_benches",
+            "deepcharter:reference_deep_claim"
           ]
         },
         "settings": "deepcharter:tall_baseline"
@@ -192,9 +192,9 @@
           "min_y": -2032,
           "height": 2352,
           "biomes": [
-            "deepcharter:topsoil_claims",
-            "deepcharter:stone_benches",
-            "deepcharter:deep_claim"
+            "deepcharter:reference_topsoil_claims",
+            "deepcharter:reference_stone_benches",
+            "deepcharter:reference_deep_claim"
           ]
         },
         "settings": "deepcharter:tall_surface"
@@ -940,8 +940,7 @@
                 "deepcharter:upper_levels",
                 "deepcharter:shift_change",
                 "deepcharter:prospectors_run"
-              ],
-              "floor_crust": "normal"
+              ]
             },
             {
               "min_y": -768,
@@ -950,8 +949,7 @@
                 "deepcharter:garden",
                 "deepcharter:spore_fields",
                 "deepcharter:quiet"
-              ],
-              "floor_crust": "normal"
+              ]
             }
           ],
           "unbuilt": "deepcharter:unbuilt_depth"
@@ -971,9 +969,9 @@
           "min_y": -2032,
           "height": 2048,
           "biomes": [
-            "deepcharter:topsoil_claims",
-            "deepcharter:stone_benches",
-            "deepcharter:deep_claim"
+            "deepcharter:reference_topsoil_claims",
+            "deepcharter:reference_stone_benches",
+            "deepcharter:reference_deep_claim"
           ]
         },
         "settings": "deepcharter:tall_layer"
@@ -1310,9 +1308,9 @@
           "min_y": -2032,
           "height": 2048,
           "biomes": [
-            "deepcharter:topsoil_claims",
-            "deepcharter:stone_benches",
-            "deepcharter:deep_claim"
+            "deepcharter:reference_topsoil_claims",
+            "deepcharter:reference_stone_benches",
+            "deepcharter:reference_deep_claim"
           ]
         },
         "settings": "deepcharter:tall_layer"

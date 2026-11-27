@@ -184,8 +184,8 @@ public class SuitTracksTest {
                 "the wire body is three var ints, heat, pressure, air, it was %s bytes",
                 wire.readableBytes());
         expect(helper, SuitTracks.STREAM.decode(wire).equals(new SuitTracks(1, 2, 3)), "the wire body round-trips");
-        // The wire refuses what its encoder cannot produce, where the disk clamps: a tier of 9 or a negative one
-        // throws.
+        // The wire refuses what its encoder cannot produce, where the disk clamps: a tier of 9 or a negative
+        // one throws.
         for (int bad : new int[] {9, 4, -1}) {
             ByteBuf wide = Unpooled.buffer();
             ByteBufCodecs.VAR_INT.encode(wide, bad);

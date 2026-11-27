@@ -107,8 +107,8 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 items.add(item);
             }
         }
-        // Stock items: one that is fuel, one that wears, one with neither, and the longest name in the vanilla set that
-        // matters.
+        // Stock items: one that is fuel, one that wears, one with neither, and the longest name in the vanilla set
+        // that matters.
         items.addAll(List.of(Items.COAL, Items.IRON_PICKAXE, Items.DIAMOND_SWORD, Items.CRAFTING_TABLE));
         return items;
     }
@@ -253,8 +253,8 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 textsOf(item("part_radiator")).contains("HEAT x0.75"),
                 "the radiator's tier 2 lowers the heat to x0.75");
         require(
-                textsOf(RepairRegistry.item(Consumable.BLASTING_CHARGE)).containsAll(List.of("$40", "2 SLABS", "3 S")),
-                "a blasting charge reads its $40, the 2 slabs it clears and its 3 second fuse, it draws "
+                textsOf(RepairRegistry.item(Consumable.BLASTING_CHARGE)).containsAll(List.of("$60", "4 SLABS", "3 S")),
+                "a blasting charge reads its $60, the 4 slabs it clears and its 3 second fuse, it draws "
                         + textsOf(RepairRegistry.item(Consumable.BLASTING_CHARGE)));
         require(
                 textsOf(item("goldium")).contains("$250"),
@@ -560,8 +560,8 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         CatalogueScene.hover(context, cell);
         context.waitTicks(2);
 
-        // The control: with no sheet open the slot's tooltip is drawn, so a missing tooltip below means the sheet hid
-        // it.
+        // The control: with no sheet open the slot's tooltip is drawn, so a missing tooltip below means the sheet
+        // hid it.
         require(
                 context.computeOnClient(client -> drawnAtTheMouse(client, screen).stream()
                         .anyMatch(text -> text.text().equals("Cobblestone"))),

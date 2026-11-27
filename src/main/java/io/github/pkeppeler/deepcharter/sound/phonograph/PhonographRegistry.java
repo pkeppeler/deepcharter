@@ -37,15 +37,13 @@ public final class PhonographRegistry {
             key -> new Item(new Item.Properties().setId(key).stacksTo(1).component(RECORDING, Recording.values()[0])));
 
     /** The phonograph a player crafts and carries: it holds one cylinder at a time. */
-    public static final Block PHONOGRAPH = registerBlock(
-            "phonograph",
-            key -> new PhonographBlock(
-                    BlockBehaviour.Properties.of()
-                            .setId(key)
-                            .strength(1.0F)
-                            .sound(SoundType.WOOD)
-                            .noOcclusion(),
-                    false));
+    public static final Block PHONOGRAPH = registerBlock(key -> new PhonographBlock(
+            BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(1.0F)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion(),
+            false));
 
     /**
      * The colony's phonograph, on the counter of the Lamp and Pick: Company property that holds the rack of the colony's cylinders, which
@@ -104,8 +102,9 @@ public final class PhonographRegistry {
         return Registry.register(BuiltInRegistries.BLOCK, key, factory.apply(key));
     }
 
-    /** A block and its item. */
-    private static Block registerBlock(String path, Function<ResourceKey<Block>, Block> factory) {
+    /** The phonograph block and its item. */
+    private static Block registerBlock(Function<ResourceKey<Block>, Block> factory) {
+        String path = "phonograph";
         Block block = register(path, factory);
         registerItem(
                 path,

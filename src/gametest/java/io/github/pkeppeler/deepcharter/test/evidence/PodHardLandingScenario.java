@@ -33,7 +33,9 @@ public class PodHardLandingScenario extends EvidenceScenario {
     private static final int X = 5200;
     private static final int Z = 5200;
     private static final int FLOOR_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
-    private static final int SHAFT_BLOCKS = 96;
+    /** Deep enough that a crewed free fall still wrecks the pod through the ground cushion (#1432). */
+    private static final int SHAFT_BLOCKS = 150;
+
     private static final int BRAKED_TICKS_PER_FRAME = 5;
     private static final int FALL_TICKS_PER_FRAME = 2;
     private static final int MAX_TICKS = 900;
@@ -64,9 +66,21 @@ public class PodHardLandingScenario extends EvidenceScenario {
                 for (int y = FLOOR_Y + 6; y < FLOOR_Y + SHAFT_BLOCKS; y += 12) {
                     one.setBlock(new BlockPos(X + 2, y, Z), Blocks.GLOWSTONE.defaultBlockState(), 3);
                 }
+            });
+            // Before the pilot arrives: a survival pilot falls down the shaft while it waits.
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 2);
+            singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                player.teleportTo(one, X + 0.5, FLOOR_Y + SHAFT_BLOCKS - 2, Z + 0.5, Set.of(), 0, 0, true);
+                player.teleportTo(
+                        TestLayers.level(server, 1),
+                        X + 0.5,
+                        FLOOR_Y + SHAFT_BLOCKS - 2,
+                        Z + 0.5,
+                        Set.of(),
+                        0,
+                        0,
+                        true);
             });
             ClientWait.until(
                     context,

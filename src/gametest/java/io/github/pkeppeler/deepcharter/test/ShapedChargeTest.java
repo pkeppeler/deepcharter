@@ -2,7 +2,9 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.pod.PodCharge;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
@@ -65,16 +67,30 @@ public class ShapedChargeTest {
 
     private static void scene(
             GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<PodEntity> afterSet, Verify verify) {
+        scene(helper, x, build, pod -> {}, afterSet, verify);
+    }
+
+    /** As {@link #scene(GameTestHelper, int, Consumer, Consumer, Verify)}, with {@code beforeSet} run on the resting pod just before the charge is set. */
+    private static void scene(
+            GameTestHelper helper,
+            int x,
+            Consumer<ServerLevel> build,
+            Consumer<PodEntity> beforeSet,
+            Consumer<PodEntity> afterSet,
+            Verify verify) {
         ServerLevel level = TestLayers.level(helper, 1);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
-        build.accept(level);
         MockPlayer pilot = MockPlayers.join(helper, "shaped-" + x);
-        pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
-        pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Built once the chunk ticks, so its lava is poured into a ticking chunk (#1089) and RoomSeal's read of the
+            // shell loads nothing on the server thread.
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
+            build.accept(level);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, at, 0f, 0f);
+            pilot.player().setGameMode(GameType.SURVIVAL);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
@@ -89,6 +105,7 @@ public class ShapedChargeTest {
                 return;
             }
             if (setAt[0] < 0) {
+                beforeSet.accept(pod[0]);
                 hull[0] = pod[0].hull();
                 InteractionResult result = ChargeUse.use(pilot.player(), Consumable.SHAPED_CHARGE);
                 if (!result.consumesAction()) {
@@ -187,6 +204,33 @@ public class ShapedChargeTest {
                 });
     }
 
+    /** The jet ends on the crust under Company rock, the breach crust or the grained one, and opens neither (#1022). */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aShapedChargeStopsAtTheCrustUnderTheRockAndOpensNeither(GameTestHelper helper) {
+        int x = 4400;
+        scene(
+                helper,
+                x,
+                level -> {
+                    rock(level, x - 1, -1, 2);
+                    level.setBlock(cell(x - 1, -3, -1), LayerBlocks.BREACH_CRUST.defaultBlockState(), 2);
+                    rock(level, x, -1, 2);
+                    level.setBlock(cell(x, -3, -1), LayerBlocks.GRAINED_CRUST.defaultBlockState(), 2);
+                },
+                pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()),
+                (helper2, level, pod, hull) -> {
+                    for (int column = x - 1; column <= x; column++) {
+                        for (int dy = -1; dy >= -2; dy--) {
+                            expectAir(helper2, level, cell(column, dy, -1), "the rock over the crust");
+                        }
+                    }
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x - 1, -3, -1), LayerBlocks.BREACH_CRUST, "breach crust under rock");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x, -3, -1), LayerBlocks.GRAINED_CRUST, "grained crust under rock");
+                });
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
     public void aShapedChargeClearsNoMoreThanItsDepthAndNoRockButCompanyRock(GameTestHelper helper) {
         int x = 4080;
@@ -234,6 +278,34 @@ public class ShapedChargeTest {
                         lost);
             }
         });
+    }
+
+    /**
+     * A charge is never a suicide button (#1458): a pod left sitting on a shaped charge over a full {@code shapedDepth} column takes the blast
+     * and then falls the whole column unbraked. At exactly that cost the charge is refused; just over it the pod lives through both.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPodJustOverTheGuardSurvivesTheBlastAndTheDropDownAFullColumn(GameTestHelper helper) {
+        int x = 4400;
+        int depth = TUNING.shapedDepth();
+        float[] guard = new float[1];
+        scene(
+                helper,
+                x,
+                level -> {
+                    for (int dx = -1; dx <= 0; dx++) {
+                        for (int dz = -1; dz <= 0; dz++) {
+                            rock(level, x + dx, dz, depth);
+                        }
+                    }
+                },
+                pod -> {
+                    guard[0] = PodCharge.wreckingHull(pod, TUNING, depth);
+                    ChargeUse.refuseAtGuardThenClearIt(helper, pod, Consumable.SHAPED_CHARGE, guard[0]);
+                },
+                pod -> {},
+                (helper2, level, pod, hull) ->
+                        ChargeUse.expectSurvivedBlastAndDrop(helper2, pod, hull, guard[0], FLOOR - depth));
     }
 
     @GameTest(maxTicks = MAX_TICKS)
@@ -303,10 +375,11 @@ public class ShapedChargeTest {
             } else if (step[0] == 2) {
                 pending[0] = expectRefusedAndKept(helper, pilot, "a run that ends on lava", "charge_opens_lava");
                 level.setBlock(cell(x, -4, 0), Blocks.STONE.defaultBlockState(), 2);
-                pod[0].setHull(TUNING.chargeDamage());
+                pod[0].setHull(PodCharge.wreckingHull(pod[0], TUNING, 3)); // the 3 row run: a drop too short to hurt
                 step[0] = 3;
             } else if (step[0] == 3) {
-                pending[0] = expectRefusedAndKept(helper, pilot, "a hull no more than the blast", "charge_hull_low");
+                pending[0] = expectRefusedAndKept(
+                        helper, pilot, "a hull no more than the blast and the drop", "charge_hull_low");
                 pod[0].setHull(pod[0].maxHull());
                 pod[0].setPos(pod[0].getX(), pod[0].getY() + 3, pod[0].getZ());
                 step[0] = 4;
@@ -340,13 +413,14 @@ public class ShapedChargeTest {
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         rock(level, x - 1, -1, 3); // a run that ends on stone
         rock(level, x, 0, 2); // the last column of the footprint: its run ends on lava
-        level.setBlock(cell(x, -3, 0), Blocks.LAVA.defaultBlockState(), 2);
         MockPlayer pilot = MockPlayers.join(helper, "shaped-far-lava");
         pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
         pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Poured once the chunk ticks (#1089).
+            level.setBlock(cell(x, -3, 0), Blocks.LAVA.defaultBlockState(), 2);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);

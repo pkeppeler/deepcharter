@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
-import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -15,6 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.level.storage.LevelData;
@@ -22,8 +22,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the cargo is left behind
- * as item entities where the pod was. Nothing mined teleports.
+ * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the whole hold is left
+ * behind as item entities where the pod was. Nothing mined teleports.
  */
 final class Teleports {
     /** How many random spots a scattering teleporter tries before it falls back to the exact column. */
@@ -45,25 +45,18 @@ final class Teleports {
      * Where the teleporters take a pod: the colony's respawn point, or the world spawn while the colony is not built or its
      * data is unreadable.
      */
-    static GlobalPos destination(MinecraftServer server) {
-        return Colony.respawnPoint(server).orElseGet(() -> worldSpawn(server));
+    private static GlobalPos destination(MinecraftServer server) {
+        return Colony.respawnPoint(server).orElseGet(() -> {
+            LevelData.RespawnData spawn = server.overworld().getRespawnData();
+            return GlobalPos.of(spawn.dimension(), spawn.pos());
+        });
     }
 
     /** Sends {@code pod}, at most {@code scatter} blocks from the destination. Empty when it went, or the reason it did not. */
     static Optional<Component> send(PodEntity pod, double scatter) {
-        return send(pod, scatter, destination(((ServerLevel) pod.level()).getServer()), SpillLife.VANILLA);
-    }
-
-    /** The world spawn, where a transit goes when the colony's column is blocked. */
-    static GlobalPos worldSpawn(MinecraftServer server) {
-        LevelData.RespawnData spawn = server.overworld().getRespawnData();
-        return GlobalPos.of(spawn.dimension(), spawn.pos());
-    }
-
-    /** As {@link #send(PodEntity, double)}, to {@code target}, with the spilled ore lying for {@code spill}. */
-    static Optional<Component> send(PodEntity pod, double scatter, GlobalPos target, SpillLife spill) {
         ServerLevel from = (ServerLevel) pod.level();
         MinecraftServer server = from.getServer();
+        GlobalPos target = destination(server);
         ServerLevel to = server.getLevel(target.dimension());
         if (to == null || !pod.canUsePortal(true) || !pod.canTeleport(from, to)) {
             return Consumables.refusal("teleport_blocked");
@@ -73,14 +66,13 @@ final class Teleports {
             // The bay cannot be emptied, and nothing mined may travel.
             return Consumables.refusal("cargo_unreadable");
         }
-        // Everything that can refuse comes before the first change: a refused teleport moves nothing and keeps the
-        // item.
+        // Everything that can refuse comes before the first change: a refused teleport moves nothing and keeps
+        // the item.
         Optional<Vec3> spot = safeLanding(to, pod, target.pos(), scatter);
         if (spot.isEmpty()) {
             return Consumables.refusal("teleport_blocked");
         }
         Vec3 landing = spot.get();
-        List<PodCargo.Entry> held = cargo.entries();
         Vec3 departure = pod.position();
         settle(to);
         Entity arrived = pod.teleport(new TeleportTransition(
@@ -93,18 +85,13 @@ final class Teleports {
         to.getChunkSource()
                 .addTicketWithRadius(RepairRegistry.TELEPORT_ARRIVAL, arrived.chunkPosition(), ARRIVAL_RADIUS);
         arrived.getPassengersAndSelf().forEach(Entity::resetFallDistance);
-        // The ore is spilled first, so that a failure after it loses nothing: the bay is emptied last.
-        for (PodCargo.Entry entry : held) {
-            ItemEntity drop = new ItemEntity(
-                    from, departure.x, departure.y, departure.z, entry.stack().copy());
-            if (spill == SpillLife.EXTENDED) {
-                drop.setExtendedLifetime();
-            }
-            from.addFreshEntity(drop);
-        }
-        // The saved cargo travelled with the pod (a crossing is a new entity): empty the arriving bay.
+        // The whole hold spills, not only the ore (SPEC section 11: you drop your cargo, and nothing mined teleports).
+        // The saved hold travelled with the pod (a crossing is a new entity), so it is the arriving pod's that empties.
+        // The fuel slot is fuel, not cargo, and stays, as the tank's fuel does.
         if (arrived instanceof PodEntity moved) {
-            moved.cargo().dump(moved);
+            for (ItemStack stack : moved.cargo().takeAll(moved)) {
+                from.addFreshEntity(new ItemEntity(from, departure.x, departure.y, departure.z, stack));
+            }
         }
         from.playSound(
                 null, departure.x, departure.y, departure.z, DeepSound.TERMINAL_TELEPORT.event(), SoundSource.PLAYERS);
@@ -157,8 +144,8 @@ final class Teleports {
     }
 
     private static Optional<Vec3> fit(ServerLevel level, PodEntity pod, double x, double z, int nearY) {
-        // An unloaded chunk answers every height with the bottom of the world, so load what the pod will stand on
-        // first.
+        // An unloaded chunk answers every height with the bottom of the world, so load what the pod will stand
+        // on first.
         AABB reach = pod.getDimensions(pod.getPose())
                 .makeBoundingBox(new Vec3(x, nearY, z))
                 .inflate(1.0);

@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
+import static io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueHardware.fit;
+import static io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueHardware.termWidth;
+
 import com.google.common.base.Splitter;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
@@ -26,9 +29,6 @@ import net.minecraft.world.item.ItemStack;
  * sheet of any shipped item that is.
  */
 final class SpecSheetView {
-    /** The dots a line loses its tail to when it is too long. */
-    private static final String ELLIPSIS = "..";
-
     private SpecSheetView() {}
 
     /** What a click on a placed sheet does. */
@@ -74,8 +74,8 @@ final class SpecSheetView {
 
     /** Places {@code sheet} on a screen {@code width} by {@code height}: a console as tall as the text needs, centred. */
     static Placed place(SpecSheet sheet, int width, int height, CatalogueLook look, CrtTuning crt, Font font) {
-        // The text is planned once in the tallest console to see how much room it takes, then again in the console that
-        // size.
+        // The text is planned once in the tallest console to see how much room it takes, then again in the console
+        // that size.
         SpecSheetLayout tallest = SpecSheetLayout.of(width, height, look, crt, font.lineHeight, Integer.MAX_VALUE / 2);
         Plan measured = plan(sheet, tallest, look, font);
         int needed = measured.usedBottom() - tallest.glass().y() + look.pad();
@@ -189,22 +189,6 @@ final class SpecSheetView {
                 false,
                 true,
                 layout.close().contains(mouseX, mouseY));
-    }
-
-    private static int termWidth(Font font, String text) {
-        return font.width(CrtText.terminal(text));
-    }
-
-    /** {@code text} cut to {@code width} with {@link #ELLIPSIS} in place of its tail when it is wider. */
-    private static String fit(Font font, String text, int width) {
-        if (termWidth(font, text) <= width) {
-            return text;
-        }
-        String cut = text;
-        while (!cut.isEmpty() && termWidth(font, cut + ELLIPSIS) > width) {
-            cut = cut.substring(0, cut.length() - 1);
-        }
-        return cut.stripTrailing() + ELLIPSIS;
     }
 
     /** {@code text} broken at spaces into lines no wider than {@code width}; a word wider than that is cut. */

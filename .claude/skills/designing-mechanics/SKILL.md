@@ -14,13 +14,14 @@ The user grants creative liberty over dig mechanics, hazards, pod upgrades and c
 
 ## Copy what is already solved
 
-When a system has an established precedent in vanilla or a major mod (vanilla boats for vehicles, EMI or JEI for recipe viewing, GTNH or BetterQuesting for quests), copy its behaviour and controls, read the source to do it, and deviate only where our mechanics require it. Say each deviation and its reason in the PR and the design doc. Don't re-derive solved UX: players already know it, and the user has twice had to ask for it back (#1281 and the questbook).
+When a system has an established precedent in vanilla or a major mod (vanilla boats for vehicles on water, tank controls for the pod's ground steering (ADR 0095, #1442), EMI or JEI for recipe viewing, GTNH or BetterQuesting for quests), copy its behaviour and controls, read the source to do it, and deviate only where our mechanics require it. Say each deviation and its reason in the PR and the design doc. Don't re-derive solved UX: players already know it, and the user has twice had to ask for it back (#1281 and the questbook).
 
 ## What makes a mechanic good here
 
 - **Motherload's loop.** Danger rises with depth. Money buys counterplay, and each purchase changes how you dig. A good mechanic gives a shop decision a reason to exist.
 - **The lore's vibe.** Mystery, thalassophobia (dread of the deep, dark and unknown below), darkness. Dread should come from what you can almost see: a crack spreading, heat in the wall ahead, a sound below. Avoid random instant death.
 - **Readable danger.** The player can always perceive a hazard before it hurts them, provided they bought the right sensor or are paying attention. A death should feel earned.
+- **Not getting stuck is the player's job.** The game guarantees no way out of a stranding. A solo pilot who runs dry at the bottom of a shaft with no fuel item, no reserve tank and no money (#963) may lose the pod, and that is the fuel clock working. Do not add a rescue, free or paid, or a self-rescue floor that makes a stranding safe (user decision of 2026-11-26, [ADR 0104](../../../docs/adr/0104-a-stranded-pod-is-the-players-to-get-home-and-the-company-sends-no-crew.md)). Make the danger readable before it bites, and sell the counterplay: reserve tanks, tow cables, crewmates. This covers the player's own mistakes in the field. A gate the game itself puts up, such as limp mode holding a pod at the colony, still offers a way through (the free flue scrape).
 - **Show the cause.** Anything that slows, hurts or blocks the player shows why, the first time and while it lasts: a one-time line (and a tooltip on the item behind it) when it first bites, and a status icon while it holds. A player who cannot tell why they are slow thinks the game is broken. Ore and fuel weight show an Ore/Fuel status, an ore tooltip and a first-ore line (#853).
 - **A ladder, not a switch.** Counterplay grows in three stages:
   1. by hand: slow, teaches the danger;

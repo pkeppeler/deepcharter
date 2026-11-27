@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param podLinerColor the line that shows a pod with a liner the slabs to its next ring
  * @param podSounderColor the lines that show a pod with a seep sounder the gas pockets it hears, and the pocket its drill is bleeding
  * @param podHardLandingColor the warning line that shows while the pod sinks faster than it can land without damage
+ * @param podSprintColor the line that shows while the pod runs on its sprint boost
  * @param altimeterMargin space between the altimeter and the top edge
  * @param altimeterColor its text
  * @param accountMargin space between the account line and the left edge
@@ -31,6 +32,7 @@ public record HudLook(
         int podLinerColor,
         int podSounderColor,
         int podHardLandingColor,
+        int podSprintColor,
         int altimeterMargin,
         int altimeterColor,
         int accountMargin,
@@ -51,6 +53,7 @@ public record HudLook(
                 d.color("podLinerColor"),
                 d.color("podSounderColor"),
                 d.color("podHardLandingColor"),
+                d.color("podSprintColor"),
                 d.integer("altimeterMargin", 0),
                 d.color("altimeterColor"),
                 d.integer("accountMargin", 0),

@@ -251,8 +251,8 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
         PodGeoRenderState state = renderPassInfo.renderState();
         pose.apply(state, snapshots);
         if (state.cabHidden) {
-            // The pilot looks through the front camera: nothing of the pod's own body, cab or cutter stands in the
-            // view.
+            // The pilot looks through the front camera: nothing of the pod's own body, cab or cutter stands in
+            // the view.
             geo.bones().forEach(bone -> snapshots.ifPresent(bone.name(), snapshot -> snapshot.skipRender(true)));
         }
         for (String name : hiddenBones(state.appearance())) {

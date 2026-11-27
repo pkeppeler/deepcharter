@@ -9,12 +9,14 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
+import io.github.pkeppeler.deepcharter.upgrade.PartUnits;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeEvents;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.ArrayList;
@@ -31,6 +33,7 @@ import java.util.function.Function;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -41,6 +44,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for #536 (ADR 0053): tier 1 of every track but the scanner (drill, hull, engine, fuel tank, radiator, cargo bay, lights, spoil
@@ -465,6 +469,40 @@ public class PartFittingTest {
                 if (track != ComponentTrack.CARGO_BAY
                         && PodComponents.partOf(pod, track).isPresent()) {
                     throw failure(helper, "the cargo bay unit fitted a %s part too", track);
+                }
+            }
+            helper.succeed();
+        } finally {
+            scene.clean();
+        }
+    }
+
+    /**
+     * A right click on the pod reaches the server as the one interact packet 26.3 sends, with the hit relative
+     * to the pod. Handled by the real packet listener, it passes the range check and every entity-use listener
+     * before {@code PartFitting}, and fits the part (#1404).
+     */
+    @GameTest
+    public void aUnitFitsThroughTheInteractPacketARightClickSends(GameTestHelper helper) {
+        Scene scene = scene(helper, true);
+        try {
+            CharterId charter = charterOf(helper, scene.player());
+            for (Item unit : List.of(unit(ComponentTrack.FUEL_TANK), ScannerRegistry.SCANNER_UNIT)) {
+                ComponentTrack track = PartUnits.trackOf(new ItemStack(unit)).orElseThrow();
+                PodEntity pod = pod(helper, scene, Optional.of(charter));
+                scene.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(unit));
+                scene.player()
+                        .connection
+                        .handleInteract(new ServerboundInteractPacket(
+                                pod.getId(), InteractionHand.MAIN_HAND, new Vec3(0, 1, 0), false));
+                if (PodComponents.effectiveTier(pod, track) != 1
+                        || !scene.player().getMainHandItem().isEmpty()) {
+                    throw failure(
+                            helper,
+                            "the interact packet should fit the %s unit and use it up, tier %s, hand holds %s",
+                            track,
+                            PodComponents.effectiveTier(pod, track),
+                            scene.player().getMainHandItem());
                 }
             }
             helper.succeed();
