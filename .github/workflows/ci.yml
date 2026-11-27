@@ -64,6 +64,8 @@ jobs:
       server-count: ${{ steps.plan.outputs.server-count }}
       server-matrix: ${{ steps.plan.outputs.server-matrix }}
       build-needed: ${{ steps.plan.outputs.build-needed }}
+      # `true` when main's Gradle cache is seeded, so a PR-tier job may compile for itself from it; `false` sends the jobs to the compile job.
+      cache-warm: ${{ steps.seeded.outputs.cache-matched-key != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -79,6 +81,15 @@ jobs:
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: plan
+      # Is main's Gradle cache seeded (cache-seed.yml saves a marker)? A cold PR-tier compile does not fit a job's five minutes, so the jobs
+      # take the compile job's output instead (ADR 0116). A lookup only: nothing is downloaded.
+      - id: seeded
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/seed-marker
+          key: deepcharter-seed-marker-v1-none
+          restore-keys: deepcharter-seed-marker-v1-
+          lookup-only: true
       - uses: ./.github/actions/setup-python-uv
       - id: plan
         env:
@@ -98,9 +109,10 @@ jobs:
   compile:
     name: compile
     needs: [setup, plan]
-    # Only for a full run: its shards and checks download one compile instead of each compiling. A PR-tier job compiles for itself,
-    # from the Gradle build cache (ADR 0116), so nothing waits for a compile job in front of it.
-    if: ${{ !github.event.pull_request.draft && needs.plan.outputs.build-needed == 'true' && needs.plan.outputs.server-full == 'true' }}
+    # For a full run, whose shards and checks download one compile instead of each compiling, and for a PR-tier run on a cold cache,
+    # where a job that compiled for itself would not fit its five minutes. A PR-tier run on a warm cache compiles for itself, from the
+    # Gradle build cache (ADR 0116), so nothing waits for a compile job in front of it.
+    if: ${{ !github.event.pull_request.draft && needs.plan.outputs.build-needed == 'true' && (needs.plan.outputs.server-full == 'true' || needs.plan.outputs.cache-warm != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -261,10 +273,11 @@ jobs:
           COUNT: ${{ needs.plan.outputs.server-count }}
           NEEDED: ${{ needs.plan.outputs.build-needed }}
           FULL: ${{ needs.plan.outputs.server-full }}
+          WARM: ${{ needs.plan.outputs.cache-warm }}
         run: |
           ok() { [ "$1" = success ] || { [ "$1" = skipped ] && [ "$2" = true ]; }; }
           compile_skippable=false
-          if [ "$NEEDED" != true ] || [ "$FULL" != true ]; then compile_skippable=true; fi
+          if [ "$NEEDED" != true ] || { [ "$FULL" != true ] && [ "$WARM" = true ]; }; then compile_skippable=true; fi
           shards_skippable=false
           if [ "$COUNT" = 0 ]; then shards_skippable=true; fi
           checks_skippable=false

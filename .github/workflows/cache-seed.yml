@@ -49,3 +49,11 @@ jobs:
       # Restores main's previous entry, so a broken one would otherwise stay broken (#830); also retries a
       # repository that fails to answer (#1358).
       - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses
+      # Says the seed above has run: a PR's plan job looks this marker up (lookup only, a few bytes) to learn whether its jobs may compile for
+      # themselves from the Gradle build cache or must take the compile job's output, because a cold compile does not fit a job's five minutes
+      # (ADR 0116). The marker is evicted with the cache entries it stands for, as nearly as one can tell.
+      - run: echo "$GITHUB_SHA" > "$RUNNER_TEMP/seed-marker"
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/seed-marker
+          key: deepcharter-seed-marker-v1-${{ github.sha }}

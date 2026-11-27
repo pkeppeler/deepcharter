@@ -44,6 +44,7 @@ jobs:
       client-classes: ${{ steps.plan.outputs.client-classes }}
       client-count: ${{ steps.plan.outputs.client-count }}
       client-matrix: ${{ steps.plan.outputs.client-matrix }}
+      cache-warm: ${{ steps.seeded.outputs.cache-matched-key != '' }}
     steps:
       # The PR head merged with the real main (#979): main-sha..HEAD is exactly the PR's changes.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -64,6 +65,15 @@ jobs:
           git diff --no-renames --name-only "$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
           echo "run=$(tools/ci-client-needed.sh "$GAMEPLAY_LABEL" < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
       # Which client classes the change can affect, or the whole suite (tools/ci_affected.py, ADR 0116). Unread when `run` is false.
+      # Is main's Gradle cache seeded (cache-seed.yml saves a marker)? A cold PR-tier compile does not fit a job's five minutes, so the jobs
+      # take the compile job's output instead (ADR 0116). A lookup only: nothing is downloaded.
+      - id: seeded
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/seed-marker
+          key: deepcharter-seed-marker-v1-none
+          restore-keys: deepcharter-seed-marker-v1-
+          lookup-only: true
       - uses: ./.github/actions/setup-python-uv
       - id: plan
         env:
@@ -78,8 +88,9 @@ jobs:
   compile:
     name: client-compile
     needs: changes
-    # Only for a full run, whose shards download one compile; a PR-tier shard compiles for itself from the Gradle build cache.
-    if: needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0' && needs.changes.outputs.client-full == 'true'
+    # For a full run, whose shards download one compile, and for a PR-tier run on a cold cache (a shard that compiled for itself would not
+    # fit its five minutes); a PR-tier shard on a warm cache compiles for itself from the Gradle build cache.
+    if: needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0' && (needs.changes.outputs.client-full == 'true' || needs.changes.outputs.cache-warm != 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -171,10 +182,11 @@ jobs:
       - env:
           COUNT: ${{ needs.changes.outputs.client-count }}
           FULL: ${{ needs.changes.outputs.client-full }}
+          WARM: ${{ needs.changes.outputs.cache-warm }}
           COMPILE: ${{ needs.compile.result }}
           SHARDS: ${{ needs.client-shard.result }}
         run: |
-          if [ "$COUNT" != 0 ] && { { [ "$COMPILE" != success ] && { [ "$COMPILE" != skipped ] || [ "$FULL" = true ]; }; } || [ "$SHARDS" != success ]; }; then
+          if [ "$COUNT" != 0 ] && { { [ "$COMPILE" != success ] && { [ "$COMPILE" != skipped ] || [ "$FULL" = true ] || [ "$WARM" != true ]; }; } || [ "$SHARDS" != success ]; }; then
             echo "::error::client-compile finished as '$COMPILE' and the client shards as '$SHARDS' ($COUNT selected), not both success"
             exit 1
           fi

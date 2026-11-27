@@ -129,6 +129,17 @@ class BuildShardWorkflowTest(unittest.TestCase):
             with self.subTest(key):
                 self.assertIn("if: needs.compile.result == 'success'", job(key))
 
+    def test_a_cold_gradle_cache_sends_the_run_through_the_compile_job(self):
+        # A PR-tier job that compiled for itself from nothing would not fit its five minutes (ADR 0116): the plan looks up the seed's marker.
+        plan = job("plan")
+        self.assertIn("lookup-only: true", plan)
+        self.assertIn("deepcharter-seed-marker-v1-", plan)
+        self.assertIn("cache-warm: ${{ steps.seeded.outputs.cache-matched-key != '' }}", plan)
+        self.assertIn("needs.plan.outputs.cache-warm != 'true'", job("compile"))
+        seed = (REPO / ".github/workflows/cache-seed.yml").read_text()
+        self.assertIn("key: deepcharter-seed-marker-v1-${{ github.sha }}", seed)
+        self.assertIn('WARM: ${{ needs.plan.outputs.cache-warm }}', job("build-result"))
+
     def test_no_other_job_is_named_build(self):
         self.assertEqual(re.findall(r"^    name: build$", WORKFLOW, re.M), ["    name: build"])
 

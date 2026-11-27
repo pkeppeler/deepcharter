@@ -66,6 +66,13 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIn("name: compile\n", compile_job.split("upload-merged-main")[1])
         self.assertIn("main-sha-compile", self.aggregate_job())
 
+    def test_a_cold_gradle_cache_sends_the_run_through_the_compile_job(self):
+        changes = re.search(r"^  changes:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)[1]
+        self.assertIn("lookup-only: true", changes)
+        self.assertIn("cache-warm: ${{ steps.seeded.outputs.cache-matched-key != '' }}", changes)
+        compile_job = re.search(r"^  compile:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)[1]
+        self.assertIn("needs.changes.outputs.cache-warm != 'true'", compile_job)
+
     def test_each_shard_uploads_its_own_screenshots(self):
         self.assertIn("name: client-gametest-screenshots${{ inputs.artifact-suffix }}", ACTION)
         self.assertIn("artifact-suffix: -${{ matrix.shard }}", self.shard_job())
