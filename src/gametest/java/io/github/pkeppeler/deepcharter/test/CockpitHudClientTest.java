@@ -215,12 +215,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         if (!Set.copyOf(CockpitHud.HIDDEN_WHILE_SEATED).equals(expected)
                 || CockpitHud.HIDDEN_WHILE_SEATED.size() != expected.size()) {
             throw new AssertionError(
-<<<<<<< HEAD
-                    "The cockpit hides health, armour, food, air, mount health and the experience bar and level, and leaves the hotbar, the held item name and the action bar, got "
-=======
-                    "The cockpit hides the hotbar, health, armour, food, air, mount health, experience bar and level"
-                            + " and held item name, and leaves the action bar, got "
->>>>>>> origin/1432-soft-landings
+                    "The cockpit hides health, armour, food, air, mount health and the experience bar and level, and"
+                            + " leaves the hotbar, the held item name and the action bar, got "
                             + CockpitHud.HIDDEN_WHILE_SEATED);
         }
     }
@@ -361,14 +357,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         double back = differing(bare, onFoot, STATUS_BOX);
         if (back < DIFFERENT) {
             throw new AssertionError(
-<<<<<<< HEAD
-                    "On foot the vanilla hearts and food are back: their rows should differ from the bare game, but only "
+                    "On foot the vanilla hearts and food are back: their rows should differ from the bare game, but"
+                            + " only "
                             + back + " of them does");
-=======
-                    "On foot the vanilla HUD is back: the middle of the bottom of the screen should differ from the"
-                            + " bare game, but only "
-                            + back + " of it does");
->>>>>>> origin/1432-soft-landings
         }
         singleplayer.getServer().runOnServer(server -> {
             if (!server.getPlayerList().getPlayers().getFirst().startRiding(pod)) {
