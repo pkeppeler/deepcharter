@@ -3,7 +3,7 @@
 # a warning (with the renew command) for a missing limit, a wrong limit and one expiring in
 # 3 days; none for a limit expiring in 150 days; a one-line note when gh fails. Also the derived
 # sections (next free ADR, last merged PRs), the collapsed
-# worktree-agent-* branch line and the one-line warning for a handoff that breaks the rules.
+# worktree-agent-* branch line, the one-line warning for a handoff that breaks the rules and the new-playtest-issues line.
 # Usage: tools/tests/session-start.test.sh
 set -euo pipefail
 # shellcheck source=/dev/null
@@ -24,13 +24,14 @@ git init -q --bare -b main "$work/origin.git"
 git clone -q "$work/origin.git" "$work/repo" 2>/dev/null
 git -C "$work/repo" config user.email t@example.com
 git -C "$work/repo" config user.name t
-mkdir -p "$work/repo/docs/adr" "$work/repo/.claude/hooks" "$work/repo/tools/lib"
+mkdir -p "$work/repo/docs/adr" "$work/repo/.claude/hooks" "$work/repo/.claude/skills/player-experience" "$work/repo/tools/lib"
 touch "$work/repo/docs/adr/0001-first.md" "$work/repo/docs/adr/0047-latest.md" "$work/repo/docs/adr/README.md"
 git -C "$work/repo" add -A
 git -C "$work/repo" commit -q -m seed
 git -C "$work/repo" push -q origin HEAD:main
 git -C "$work/repo" fetch -q origin
 cp "$root/.claude/hooks/session-start.sh" "$work/repo/.claude/hooks/"
+cp "$root/.claude/skills/player-experience/SKILL.md" "$work/repo/.claude/skills/player-experience/"
 cp "$root/tools/lib/adr.sh" "$work/repo/tools/lib/"
 cp "$root/tools/handoff_check.py" "$root/tools/py" "$work/repo/tools/"
 cp "$root/.python-version" "$work/repo/"
@@ -57,6 +58,9 @@ case "$path" in
   *interaction-limits*)
     [[ ${GH_MODE:-} != fail ]] || exit 1
     printf '%s\n' "${LIMITS_JSON:-}" ;;
+  *issues\?labels=playtest-feedback*)
+    [[ ${PLAYTEST_MODE:-} != fail ]] || exit 1
+    if [[ -n ${PLAYTEST_JSON-} ]]; then printf '%s\n' "$PLAYTEST_JSON" | jq -r "$jq"; else printf '%s\n' "${PLAYTEST_OUT-0}"; fi ;;
   *issues\?labels=handoff*)
     if [[ -n ${ISSUES_JSON-} ]]; then printf '%s\n' "$ISSUES_JSON" | jq -r "$jq"; else printf '%s\n' "${HANDOFF_OUT-}"; fi ;;
   *pulls\?state=closed*)
@@ -242,6 +246,32 @@ out=$(LIMITS_JSON='{}' OPEN_OUT="$open_lines" MERGEABLE_12=false run_hook)
 check "no note when every read succeeds" no "$(has 'mergeability not read')"
 out=$(LIMITS_JSON='{}' OPEN_MODE=fail run_hook)
 check "open PR fetch failure is noted" yes "$(has '(could not fetch PRs)')"
+
+# The playtest line: the count of playtest-feedback issues past the skill's marker. The marker is read from the skill.
+marker=$(sed -n 's/^Learned through playtest-feedback issue: #\([0-9][0-9]*\).*/\1/p' "$root/.claude/skills/player-experience/SKILL.md")
+check "the skill carries a marker the hook can read" yes "$([[ $marker =~ ^[0-9]+$ ]] && echo yes || echo no)"
+out=$(LIMITS_JSON='{}' PLAYTEST_OUT=3 run_hook)
+check "new playtest issues get one line" yes "$(has '3 new playtest issues: run /refresh-player-experience')"
+out=$(LIMITS_JSON='{}' PLAYTEST_OUT=1 run_hook)
+check "one new playtest issue is singular" yes "$(has '1 new playtest issue: run /refresh-player-experience')"
+out=$(LIMITS_JSON='{}' PLAYTEST_OUT=0 run_hook)
+check "no new playtest issues is silent" no "$(has 'new playtest issue')"
+check "no new playtest issues prints no failure note" no "$(has 'could not check for new playtest issues')"
+out=$(LIMITS_JSON='{}' PLAYTEST_MODE=fail run_hook)
+check "a failed playtest read is noted, not a count" yes "$(has '(could not check for new playtest issues)')"
+if only_with_jq "playtest filter"; then
+  pt=$(jq -n --argjson m "$marker" '[{number: ($m + 3)}, {number: ($m + 2), pull_request: {url: "x"}}, {number: ($m + 1)}, {number: $m}, {number: ($m - 5)}]')
+  out=$(LIMITS_JSON='{}' PLAYTEST_JSON="$pt" run_hook)
+  check "the filter counts only issues past the marker, not a PR or the marker itself" yes "$(has '2 new playtest issues: run')"
+  out=$(LIMITS_JSON='{}' PLAYTEST_JSON="$(jq -n --argjson m "$marker" '[{number: $m}]')" run_hook)
+  check "an issue at the marker is not new" no "$(has 'new playtest issue')"
+fi
+# A hook with no marker line says so instead of counting everything as new.
+sed -i.bak 's/^Learned through.*$//' "$work/repo/.claude/skills/player-experience/SKILL.md"
+out=$(LIMITS_JSON='{}' PLAYTEST_OUT=3 run_hook)
+mv "$work/repo/.claude/skills/player-experience/SKILL.md.bak" "$work/repo/.claude/skills/player-experience/SKILL.md"
+check "a missing marker is noted" yes "$(has '(could not read the playtest marker')"
+check "a missing marker prints no count" no "$(has 'new playtest issues: run')"
 
 # core.hooksPath: an unset value becomes .githooks (the fake clone shares it with its worktrees); a set one, even a different one, stays.
 hp() { git -C "$work/repo" config --get core.hooksPath || echo unset; }

@@ -124,6 +124,18 @@ check_map_fresh() {
   fi
 }
 
+# A `gameplay` PR numbered PX_REVIEW_FIRST_PR or above also needs the label `px-reviewed`, set after the
+# player-experience reviewer's cycle-2 PASS (skill .claude/skills/player-experience/SKILL.md). A lower number, a PR that
+# was open when this check merged, is exempt, with no lookup that could fail open. The label is not pinned to a sha:
+# cycle 2 re-judges after any push. Needs $pr.
+PX_REVIEW_FIRST_PR=1588
+check_px_review() {
+  has_label gameplay || return 0
+  [[ $pr -ge $PX_REVIEW_FIRST_PR ]] || return 0
+  ! has_label px-reviewed || return 0
+  refuse "is labelled 'gameplay' but lacks the 'px-reviewed' label: run player-experience-reviewer (cycle 1, cycle 2) and label the PR after its PASS"
+}
+
 # All the body and label checks, for a caller that does not need them interleaved with others
 # (tools/mark-review-passed.sh). Needs $sha.
 check_pr_body_and_labels() {
@@ -133,4 +145,5 @@ check_pr_body_and_labels() {
   check_demo
   check_map_change
   check_map_fresh
+  check_px_review
 }
