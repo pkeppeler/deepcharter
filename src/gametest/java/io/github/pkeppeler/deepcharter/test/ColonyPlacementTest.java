@@ -51,7 +51,6 @@ import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
@@ -975,8 +974,7 @@ public class ColonyPlacementTest {
 
     private static void finish(GameTestHelper helper, List<String> problems) {
         if (!problems.isEmpty()) {
-            throw helper.assertionException(
-                    Component.literal(problems.size() + " problem(s):\n  " + String.join("\n  ", problems)));
+            throw failure(helper, "%s problem(s):\n  %s", problems.size(), String.join("\n  ", problems));
         }
         helper.succeed();
     }

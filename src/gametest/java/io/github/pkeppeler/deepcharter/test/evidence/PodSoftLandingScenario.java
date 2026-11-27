@@ -74,6 +74,11 @@ public class PodSoftLandingScenario extends EvidenceScenario {
                     one.setBlock(new BlockPos(X - ROOM_RADIUS, y, Z), Blocks.GLOWSTONE.defaultBlockState(), 3);
                     one.setBlock(new BlockPos(X, y, Z - ROOM_RADIUS), Blocks.GLOWSTONE.defaultBlockState(), 3);
                 }
+            });
+            // The carve queues a chunk re-send: settle the room's light before a pod with a pilot moves in (#1303).
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, ROOM_RADIUS);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X + 0.5, FLOOR_Y + 1 + HOVER_BLOCKS, Z + 0.5, Set.of(), 0, 0, true);
