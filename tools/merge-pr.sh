@@ -114,6 +114,8 @@ else
   [[ -z $review_pass_refusal ]] || refuse "$review_pass_refusal"
 fi
 
+check_px_review
+
 if [[ $mode == preflight ]]; then
   # The batch build finds a conflict itself, so mergeability is not read here.
   load_pr_files

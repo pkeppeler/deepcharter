@@ -92,6 +92,8 @@ case "$method $path" in
     # What the gate's --jq prints: the first line of each comment by the login the filter selects, as JSON. The
     # comment is STUB_COMMENT (a body, possibly with a footer) by STUB_COMMENT_USER (default pkeppeler).
     user=${STUB_COMMENT_USER-pkeppeler}
+    # The px-review grandfather read asks for the comment's created_at.
+    if [[ $jq == *created_at* ]]; then printf '%s\n' "${STUB_COMMENT_AT-2026-11-01T00:00:00Z}"; exit; fi
     if [[ $jq == *"select(.user.login == \"$user\")"* ]]; then
       body=${STUB_COMMENT-review-passed ${STUB_SHA-abc123}}
       printf '"%s"\n' "${body%%$'\n'*}"
@@ -314,7 +316,7 @@ if gh_fixture_available; then
   logged "fixture: the merge is pinned to the recorded head sha and sends its title and the body's first line" \
     "gh api -X PUT repos/pkeppeler/deepcharter/pulls/7/merge -f merge_method=squash -f sha=$fx_sha -f commit_title=$fx_title (#7) -f commit_message=$fx_body_first"
   open_sha=$(jq -r .head.sha "$open_pr")
-  SCRIPT=$mark run_script "$(fx_pr pulls-open.json)" "STUB_SHA=$open_sha"
+  SCRIPT=$mark run_script "$(fx_pr pulls-open.px-reviewed.hand-edited.json)" "STUB_SHA=$open_sha"
   exited "fixture: mark reads the head sha and ref from the recorded PR" 0
   logged "fixture: mark comments on the recorded head sha" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed $open_sha"
 else
@@ -961,6 +963,43 @@ exited "mark-review-passed exits 0" 0
 logged "mark reads head sha and branch in one call" "gh api repos/pkeppeler/deepcharter/pulls/7 --jq .head.sha + \" \" + .head.ref"
 logged "mark comments exact body" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed def456"
 logged "mark adds label" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/labels -f labels[]=review-passed"
+# The player-experience pass (#1555): a gameplay PR needs the px-reviewed label unless its review-passed comment predates the cutoff.
+gp="STUB_BODY=Closes #12
+No map change: test"
+SCRIPT=$mark run_script "$gp" "STUB_LABELS=gameplay
+demo"
+exited "mark refuses a gameplay PR without px-reviewed" 1
+printed "mark names the px fix" "lacks the 'px-reviewed' label"
+not_logged "mark refused before writing anything (px)" "^gh api -X POST"
+SCRIPT=$mark run_script "$gp" "STUB_LABELS=gameplay
+demo" STUB_COMMENT_AT=2026-11-01T00:00:00Z
+exited "mark does not grandfather a gameplay PR" 1
+SCRIPT=$mark run_script "$gp" "STUB_LABELS=gameplay
+demo
+px-reviewed"
+exited "mark allows a gameplay PR with px-reviewed" 0
+SCRIPT=$mark run_script STUB_LABELS=infra
+exited "mark leaves a non-gameplay PR alone" 0
+# merge-pr.sh: the same gate; a pass comment from before the cutoff is grandfathered, one after is not.
+pxl="STUB_LABELS=gameplay
+demo
+review-passed"
+reset; rc=0
+out=$(env "$gp" "$pxl" STUB_COMMENT_AT=2026-11-29T00:00:00Z PATH="$work/bin:$PATH" bash "$script" --check 7 2>&1) || rc=$?
+exited "check refuses a gameplay PR without px-reviewed, pass after the cutoff" 1
+printed "check names the px fix" "lacks the 'px-reviewed' label"
+reset; rc=0
+out=$(env "$gp" "$pxl" STUB_COMMENT_AT=2026-11-01T00:00:00Z PATH="$work/bin:$PATH" bash "$script" --check 7 2>&1) || rc=$?
+if [[ $out == *"px-reviewed"* ]]; then fail "a gameplay PR passed before the cutoff is grandfathered (out: $out)"; else pass "a gameplay PR passed before the cutoff is grandfathered"; fi
+reset; rc=0
+out=$(env "$gp" "STUB_LABELS=gameplay
+demo
+review-passed
+px-reviewed" STUB_COMMENT_AT=2026-11-29T00:00:00Z PATH="$work/bin:$PATH" bash "$script" --check 7 2>&1) || rc=$?
+if [[ $out == *"px-reviewed"* ]]; then fail "px-reviewed lets a late gameplay pass through (out: $out)"; else pass "px-reviewed lets a late gameplay pass through"; fi
+reset; rc=0
+out=$(env STUB_COMMENT_AT=2026-11-29T00:00:00Z PATH="$work/bin:$PATH" bash "$script" --check 7 2>&1) || rc=$?
+if [[ $out == *"px-reviewed"* ]]; then fail "a non-gameplay PR is unaffected (out: $out)"; else pass "a non-gameplay PR is unaffected"; fi
 # merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
 # check_pr_body_and_labels: the two lists must hold the same steps.
 lib=$tools/lib/pr-body-checks.sh
@@ -997,7 +1036,8 @@ printed "mark names the demo fix" "changes in-game code (src/main/A.java) with n
 SCRIPT=$mark run_script STUB_LABELS=gameplay STUB_BODY="Closes #12"
 exited "mark refuses a gameplay PR with no map change line" 1
 printed "mark names the map fix" "No map change: <reason>"
-SCRIPT=$mark run_script STUB_LABELS=gameplay STUB_BODY="Closes #12
+SCRIPT=$mark run_script "STUB_LABELS=gameplay
+px-reviewed" STUB_BODY="Closes #12
 No map change: tooling only"
 exited "mark passes a gameplay PR with a map change line" 0
 SCRIPT=$mark run_script STUB_MAP_STALE="$(printf 'n1\tplanned\t#12')"
