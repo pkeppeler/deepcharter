@@ -28,6 +28,7 @@ When a system has an established precedent in vanilla or a major mod (vanilla bo
   2. a pod upgrade that automates it: costs cargo, money or speed;
   3. mastery: a later chassis or hull that makes the old counterplay unnecessary. The old tool keeps a niche, such as a cheaper spare pod.
 - **Prefer vanilla keys and clicks.** Playtests keep replacing custom keys with vanilla ones or a click (#1537, #1540). A new key needs an entry in `gradle/keybind-allowlist.txt` with the reason no vanilla key or click fits; `checkKeybindGate` fails the build without it.
+- **Sound is ours.** A vanilla explosion, vanilla music or a vanilla cave ambience breaks the tone (#1293, #1296). Give a mechanic a `DeepSound`; `checkVanillaSoundGate` fails a reference to a sound on `gradle/banned-vanilla-sounds.txt` unless its line says `// vanilla-ok: <reason>`.
 - **Trade-offs.** Every upgrade costs something the player also wants: cargo slots, drill speed, fuel, money, or a component slot.
 - **Say when a default gets harder.** A tuning change that makes the default build harder than main says so in Decisions, with the unpacked and early-game columns, even when it restores an earlier design.
 - **A pacing table labels each row measured or modelled.** Measured is asserted by a test; modelled is computed from assumed shares, and a modelled row names its assumptions.

@@ -679,7 +679,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "keybind", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "keybind", "vanilla_sound", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -710,6 +710,12 @@ tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
 	val keybindProblems = project.extra["keybindProblems"] as (File, File) -> List<String>
 	val keybindAdvice = project.extra["keybindAdvice"] as String
+	// The vanilla-sound gate's scan (vanilla-sound-gate.gradle.kts), run the same way.
+	@Suppress("UNCHECKED_CAST")
+	val vanillaSoundProblems = project.extra["vanillaSoundProblems"] as (File, File, (String) -> String, (List<String>) -> List<String>, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
+	@Suppress("UNCHECKED_CAST")
+	val codeLines = project.extra["codeLines"] as (List<String>) -> List<String>
+	val vanillaSoundAdvice = project.extra["vanillaSoundAdvice"] as String
 	// The null-marked gate's scan (null-marked-gate.gradle.kts), run the same way.
 	@Suppress("UNCHECKED_CAST")
 	val nullMarkedProblems = project.extra["nullMarkedProblems"] as (File, File) -> List<String>
@@ -780,6 +786,15 @@ tasks.register("checkGametestFixtures") {
 					val problems = keybindProblems(root, root)
 					if (problems.isNotEmpty()) {
 						throw GradleException("Custom keys without an allow-list entry. $keybindAdvice\n  " + problems.joinToString("\n  "))
+					}
+					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
+					continue
+				}
+				if (c["gate"] == "vanilla_sound") {
+					val root = File(c["root"] as String)
+					val problems = vanillaSoundProblems(root, root, blankLiterals, codeLines, markedNear)
+					if (problems.isNotEmpty()) {
+						throw GradleException("Banned vanilla sounds. $vanillaSoundAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue
