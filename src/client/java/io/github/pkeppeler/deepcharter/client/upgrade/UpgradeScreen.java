@@ -169,8 +169,8 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
             // to be fitted.
             boolean crafted = tier == 1;
             boolean needsFirst = selected.needsFirstTier() && tier > 1 && !counts;
-            // The cap note, longest first; an engine row gives up the long note, then any note, to keep its lift in the
-            // button.
+            // The cap note, longest first; an engine row gives up the long note, then any note, to keep its lift
+            // inside the button.
             List<String> notes = tier > pod.cap()
                     ? List.of(
                             Component.translatable("screen.deepcharter.upgrade.capped", pod.cap())
