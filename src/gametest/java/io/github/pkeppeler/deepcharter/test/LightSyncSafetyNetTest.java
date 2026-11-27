@@ -212,8 +212,7 @@ public class LightSyncSafetyNetTest {
                         if (!unsent.isEmpty()) {
                             throw failure(
                                     helper,
-                                    "the player was sent the chunk lit, the light is dark again, and the net did not"
-                                            + " send the sections %s, so the client keeps the lamp's light",
+                                    "the player was sent the chunk lit, the light is dark again, and the net did not send the sections %s, so the client keeps the lamp's light",
                                     unsent);
                         }
                         finish.run();
@@ -392,8 +391,7 @@ public class LightSyncSafetyNetTest {
                         if (!unsent.isEmpty()) {
                             throw failure(
                                     helper,
-                                    "the chunk %s could not be sent when the hold was requested, its light changed"
-                                            + " after it was sent, and the net did not send the sections %s",
+                                    "the chunk %s could not be sent when the hold was requested, its light changed after it was sent, and the net did not send the sections %s",
                                     beyond,
                                     unsent);
                         }
@@ -681,9 +679,7 @@ public class LightSyncSafetyNetTest {
         if (!unsent.isEmpty()) {
             throw failure(
                     helper,
-                    "the light of %s changed in the sections %s (counted from the lowest light section) after its hold"
-                        + " ended, no broadcast reached the player, and the net did not send them, so the client keeps"
-                        + " the old light",
+                    "the light of %s changed in the sections %s (counted from the lowest light section) after its hold ended, no broadcast reached the player, and the net did not send them, so the client keeps the old light",
                     home,
                     unsent);
         }

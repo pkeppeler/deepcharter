@@ -134,8 +134,7 @@ public class PodChunkLoadTest {
                     if (!level.getBlockState(edgeCell).is(Blocks.STONE)) {
                         throw failure(
                                 helper,
-                                "the drill should wait to bore the edge cell %s until the chunk next to it is loaded,"
-                                        + " it left %s",
+                                "the drill should wait to bore the edge cell %s until the chunk next to it is loaded, it left %s",
                                 edgeCell.toShortString(),
                                 level.getBlockState(edgeCell));
                     }
@@ -267,8 +266,7 @@ public class PodChunkLoadTest {
         if (System.nanoTime() - deadline > 0) {
             throw failure(
                     helper,
-                    "chunk %s was still unloaded %s s after its forced ticket was added, and the test was waiting for"
-                            + " it to load",
+                    "chunk %s was still unloaded %s s after its forced ticket was added, and the test was waiting for it to load",
                     site.chunk(),
                     LOAD_BUDGET_SECONDS);
         }

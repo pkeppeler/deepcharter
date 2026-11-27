@@ -148,8 +148,7 @@ public class EconomyAffordabilityTest {
         PodStats stock = PodStats.base();
         Run run = EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0, mass);
         LOGGER.info(
-                "[economy] spoil hopper: a layer 1 run with a full bay is {}; a full bay and rack weigh {} of {}"
-                        + " engine power",
+                "[economy] spoil hopper: a layer 1 run with a full bay is {}; a full bay and rack weigh {} of {} engine power",
                 run,
                 mass,
                 stock.enginePower());
@@ -213,8 +212,7 @@ public class EconomyAffordabilityTest {
         long tierTwo = UpgradeTuning.DEFAULT.price(ComponentTrack.HEAT_SHIELD, 2);
         long tierThree = UpgradeTuning.DEFAULT.price(ComponentTrack.HEAT_SHIELD, 3);
         LOGGER.info(
-                "[economy] heat shield tier 2 ${}: {} Mole layer 2 runs of {}; tier 3 ${}: {} Prospector layer 2 runs"
-                        + " of {}",
+                "[economy] heat shield tier 2 ${}: {} Mole layer 2 runs of {}; tier 3 ${}: {} Prospector layer 2 runs of {}",
                 tierTwo,
                 mole.toAfford(tierTwo),
                 mole,
@@ -240,8 +238,7 @@ public class EconomyAffordabilityTest {
         if (prospector.toAfford(tierThree) > HEAT_SHIELD_TIER_THREE_RUNS) {
             throw failure(
                     helper,
-                    "heat shield tier 3 costs $%d, which is %d Prospector layer 2 runs of $%.0f; at most %d are"
-                            + " allowed",
+                    "heat shield tier 3 costs $%d, which is %d Prospector layer 2 runs of $%.0f; at most %d are allowed",
                     tierThree,
                     prospector.toAfford(tierThree),
                     prospector.net(),
@@ -410,8 +407,7 @@ public class EconomyAffordabilityTest {
         int cheapest =
                 Arrays.stream(OreType.values()).mapToInt(OreType::value).min().orElseThrow();
         LOGGER.info(
-                "[economy] brace: cheapest ore ${} for {} hull is ${} a hull; nanobots ${} a hull; the cap is ${} an"
-                        + " ore",
+                "[economy] brace: cheapest ore ${} for {} hull is ${} a hull; nanobots ${} a hull; the cap is ${} an ore",
                 cheapest,
                 hullPerOre,
                 cheapest / hullPerOre,
@@ -503,8 +499,7 @@ public class EconomyAffordabilityTest {
         if (runs > EARLY_BUY_RUNS) {
             throw failure(
                     helper,
-                    "the thermal scanner (tier %d) costs $%d, which is %d layer 2 runs of $%.0f; at most %d are"
-                            + " allowed",
+                    "the thermal scanner (tier %d) costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed",
                     tier,
                     price,
                     runs,
@@ -616,8 +611,7 @@ public class EconomyAffordabilityTest {
                 - outpost.litres() * FuelTuning.DEFAULT.pricePerLitre();
         double share = 1 - outpost.net() / colonyNet;
         LOGGER.info(
-                "[economy] layer 2 run from the outpost {}; from the surface {}; the outpost's prices take {} of the"
-                        + " colony-priced net ${}",
+                "[economy] layer 2 run from the outpost {}; from the surface {}; the outpost's prices take {} of the colony-priced net ${}",
                 outpost,
                 surface,
                 share,
@@ -715,8 +709,7 @@ public class EconomyAffordabilityTest {
         long money = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).money();
         int runs = run.toAfford(money);
         LOGGER.info(
-                "[economy] Mole with tier 2 drill, tank and bay, layer 2 upper levels: {}; Prospector restore ${}: {}"
-                        + " runs",
+                "[economy] Mole with tier 2 drill, tank and bay, layer 2 upper levels: {}; Prospector restore ${}: {} runs",
                 run,
                 money,
                 runs);
@@ -739,8 +732,7 @@ public class EconomyAffordabilityTest {
         HangarTuning.RestoreCost cost = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR);
         Run run = EarlyRunModel.layerTwoRun(Zone.load("prospectors_run"), EarlyRunModel.mole(2, 2, 2));
         LOGGER.info(
-                "[economy] Prospector restore: {} Cicatrium, {} advanced; from ore alone, at {} per run in the deepest"
-                        + " zone, it would take {} runs",
+                "[economy] Prospector restore: {} Cicatrium, {} advanced; from ore alone, at {} per run in the deepest zone, it would take {} runs",
                 cost.catalysts(),
                 cost.advance(),
                 run.catalysts(),
@@ -748,8 +740,7 @@ public class EconomyAffordabilityTest {
         if (cost.advance() < cost.catalysts()) {
             throw failure(
                     helper,
-                    "the Prospector restore takes %d Cicatrium but the Company advances only %d, so the ore gates it"
-                            + " again",
+                    "the Prospector restore takes %d Cicatrium but the Company advances only %d, so the ore gates it again",
                     cost.catalysts(),
                     cost.advance());
         }
@@ -769,8 +760,7 @@ public class EconomyAffordabilityTest {
         if (sold > CATALYST_SALE_SHARE * run.net()) {
             throw failure(
                     helper,
-                    "Cicatrium sells for $%d, so a run's %.3f of it is $%.0f, over %.0f%% of the $%.0f that its other"
-                            + " ore nets",
+                    "Cicatrium sells for $%d, so a run's %.3f of it is $%.0f, over %.0f%% of the $%.0f that its other ore nets",
                     OreType.CICATRIUM.value(),
                     run.catalysts(),
                     sold,
@@ -981,8 +971,7 @@ public class EconomyAffordabilityTest {
         long price = UpgradeTuning.DEFAULT.price(ComponentTrack.DRILL, tier);
         Run layerTwo = upgradedRunInLayerTwo();
         LOGGER.info(
-                "[economy] bitten slab at depth {}: {} s, {} L, {} hull, ${} against ${} a slab of a blasting charge"
-                        + " and {} s of stone; the tier {} drill costs ${}, {} layer 2 runs of ${}",
+                "[economy] bitten slab at depth {}: {} s, {} L, {} hull, ${} against ${} a slab of a blasting charge and {} s of stone; the tier {} drill costs ${}, {} layer 2 runs of ${}",
                 depth,
                 bite.seconds(),
                 bite.litres(),

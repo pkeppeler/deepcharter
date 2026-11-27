@@ -117,8 +117,7 @@ public final class ColonyBuilder {
         BlockPos wanted = new BlockPos(spawn.pos().getX(), 0, spawn.pos().getZ());
         BlockPos centre = findDryGround(overworld, wanted).orElseGet(() -> {
             DeepCharter.LOGGER.error(
-                    "No dry ground within {} blocks of the world spawn {} {}: building the colony at the spawn anyway,"
-                            + " on water",
+                    "No dry ground within {} blocks of the world spawn {} {}: building the colony at the spawn anyway, on water",
                     ColonyTuning.DEFAULT.searchRings() * ColonyTuning.DEFAULT.searchStepChunks() * 16,
                     wanted.getX(),
                     wanted.getZ());
@@ -127,8 +126,7 @@ public final class ColonyBuilder {
         long played = overworld.getGameTime();
         if (played > ColonyTuning.DEFAULT.freshWorldTicks()) {
             DeepCharter.LOGGER.warn(
-                    "Building the colony in a world that has run for {} ticks: it replaces everything in the {} x {} x"
-                            + " {} blocks at {} {}",
+                    "Building the colony in a world that has run for {} ticks: it replaces everything in the {} x {} x {} blocks at {} {}",
                     played,
                     ColonyTuning.DEFAULT.padSize(),
                     ColonyTuning.DEFAULT.padSize(),
@@ -216,9 +214,7 @@ public final class ColonyBuilder {
         if (!anchors.equals(started.anchors())) {
             throw new IllegalStateException(
                     "the colony's layout changed since its build began: " + started.anchors() + " became " + anchors
-                            + ". A world whose colony build stopped under an older layout cannot finish it: start a"
-                            + " new world, or delete the world's data/deepcharter/colony.dat so the colony is placed"
-                            + " again");
+                            + ". A world whose colony build stopped under an older layout cannot finish it: start a new world, or delete the world's data/deepcharter/colony.dat so the colony is placed again");
         }
         if (!started.edgeGraded()) {
             // Once: the grade reads the natural ground, which a second grade would find already graded.
