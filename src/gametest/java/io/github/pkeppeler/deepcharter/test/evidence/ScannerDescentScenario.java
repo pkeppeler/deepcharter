@@ -68,8 +68,7 @@ public class ScannerDescentScenario extends EvidenceScenario {
                 RoomCarver.carve(one, X - 1, X + 1, feetY, feetY + ABOVE, Z - 1, Z + 1, Blocks.AIR);
             });
             // The carve queues a chunk re-send: settle the room's light before a pod with a pilot moves in (#1303).
-            ClientWait.lightSettled(
-                    context, singleplayer.getServer(), 1, X, Z, Math.max(AREA.halfWidth() + 2, ACROSS));
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, Math.max(AREA.halfWidth() + 2, ACROSS));
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
