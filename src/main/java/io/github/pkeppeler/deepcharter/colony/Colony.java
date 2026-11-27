@@ -29,6 +29,17 @@ public final class Colony {
     }
 
     /**
+     * Where {@code anchor} is once the colony's pad is chosen, which is before its build finishes: the anchors are recorded with the pad
+     * and never move. Empty before the pad is chosen or when the colony's data is unreadable. For what must know the colony while the
+     * build loads the pad's chunks ({@code LayerStructures}); anything that needs the colony built reads {@link #anchor}.
+     */
+    // const-param: mirrors anchor(), which takes any ColonyAnchor; layer structures need only the conduit before the
+    // build today
+    public static Optional<BlockPos> plannedAnchor(MinecraftServer server, ColonyAnchor anchor) {
+        return readable(server).flatMap(ColonySite::started).map(started -> anchor.in(started.anchors()));
+    }
+
+    /**
      * The colony's respawn point, the Continuity Office, for a crew that has no other. Empty before the colony is built or
      * when its data is unreadable. Wrecks move a respawned crew here one tick after the respawn.
      */

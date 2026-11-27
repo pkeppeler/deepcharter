@@ -1,13 +1,14 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -23,7 +24,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundEvent;
@@ -33,7 +33,6 @@ import net.minecraft.world.attribute.BackgroundMusic;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #249: every biome of the surface and of each layer carries its own drone bed in its {@code ambient_sounds}, with
@@ -48,21 +47,24 @@ public class SoundAmbienceTest {
         return event.value().location();
     }
 
-    /** The biomes of a layer, from the layer's own biome source. */
+    /** The biomes of a layer, from the campaign level's biome source, which keeps each layer's own list. */
     private static Set<Identifier> layerBiomes(MinecraftServer server, int layer) {
-        BiomeSource source = ClientLight.serverLevel(server, LayerChain.dimension(layer))
-                .getChunkSource()
-                .getGenerator()
-                .getBiomeSource();
+        BiomeSource source =
+                TestLayers.level(server, layer).getChunkSource().getGenerator().getBiomeSource();
+        if (!(source instanceof BandBiomeSource bands)) {
+            throw new IllegalStateException("the campaign level is not given its biomes by band: " + source);
+        }
         Set<Identifier> ids = new TreeSet<>();
-        source.possibleBiomes()
+        bands.layers()
+                .get(layer - 1)
+                .biomes()
                 .forEach(biome -> ids.add(biome.unwrapKey().orElseThrow().identifier()));
         return ids;
     }
 
     /**
-     * The biomes of the surface, read from the mod's own {@code data/minecraft/dimension/overworld.json}: the GameTest world replaces the
-     * overworld's generator with a flat one, so the level in the test has none of them.
+     * The biomes of the surface band, read from the mod's own {@code data/minecraft/dimension/overworld.json}: the GameTest world replaces
+     * the overworld's generator with a flat one, so the level in the test has none of them.
      */
     private static Set<Identifier> surfaceBiomes(GameTestHelper helper) {
         var stream = SoundAmbienceTest.class.getResourceAsStream("/data/minecraft/dimension/overworld.json");
@@ -72,7 +74,8 @@ public class SoundAmbienceTest {
             JsonObject source = JsonParser.parseReader(reader)
                     .getAsJsonObject()
                     .getAsJsonObject("generator")
-                    .getAsJsonObject("biome_source");
+                    .getAsJsonObject("biome_source")
+                    .getAsJsonObject("surface");
             for (JsonElement entry : source.getAsJsonArray("biomes")) {
                 ids.add(Identifier.parse(entry.getAsJsonObject().get("biome").getAsString()));
             }
@@ -164,21 +167,35 @@ public class SoundAmbienceTest {
         helper.succeed();
     }
 
-    /** What a player in each place could hear as music, in every mode: the biome's own music over the dimension's, creative and underwater too. */
+    /**
+     * What a player in each place could hear as music, in every mode: the biome's own music, creative and underwater too. Since #744 the
+     * track is the biome's own, so the one type of the campaign world serves every band.
+     */
     @GameTest
     public void noLayerMusicInAnyModeIsAVanillaTrack(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
-            BackgroundMusic dimension = ClientLight.serverLevel(server, LayerChain.dimension(layer))
-                    .dimensionType()
-                    .attributes()
-                    .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.EMPTY);
             for (Identifier biomeId : layerBiomes(server, layer)) {
-                BackgroundMusic music = Objects.requireNonNull(
-                                registry.getValue(biomeId), "registry.getValue(biomeId) is absent")
-                        .getAttributes()
-                        .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, dimension);
+                Biome biome =
+                        Objects.requireNonNull(registry.getValue(biomeId), "registry.getValue(biomeId) is absent");
+                expect(
+                        helper,
+                        biome.getAttributes().contains(EnvironmentAttributes.BACKGROUND_MUSIC),
+                        "the biome %s sets no background music of its own",
+                        biomeId);
+                BackgroundMusic music = biome.getAttributes()
+                        .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.EMPTY);
+                expect(
+                        helper,
+                        music.defaultMusic()
+                                .map(track -> name(track.sound()))
+                                .filter(id("music.layer_" + layer)::equals)
+                                .isPresent(),
+                        "the biome %s plays %s, wanted deepcharter:music.layer_%s",
+                        biomeId,
+                        music.defaultMusic().map(track -> name(track.sound())),
+                        layer);
                 for (boolean creative : List.of(false, true)) {
                     for (boolean underwater : List.of(false, true)) {
                         music.select(creative, underwater)
@@ -192,6 +209,32 @@ public class SoundAmbienceTest {
                                         underwater));
                     }
                 }
+            }
+        }
+        helper.succeed();
+    }
+
+    /** No layer covers the unbuilt depth, so it must set its own music or vanilla's plays (#1296). */
+    @GameTest
+    public void unbuiltDepthPlaysNoVanillaMusicInAnyMode(GameTestHelper helper) {
+        var registry = helper.getLevel().getServer().registryAccess().lookupOrThrow(Registries.BIOME);
+        Biome biome = Objects.requireNonNull(registry.getValue(id("unbuilt_depth")), "the unbuilt depth does not load");
+        expect(
+                helper,
+                biome.getAttributes().contains(EnvironmentAttributes.BACKGROUND_MUSIC),
+                "the unbuilt depth sets no background music of its own");
+        BackgroundMusic music =
+                biome.getAttributes().applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.OVERWORLD);
+        for (boolean creative : List.of(false, true)) {
+            for (boolean underwater : List.of(false, true)) {
+                music.select(creative, underwater)
+                        .ifPresent(track -> expect(
+                                helper,
+                                !name(track.sound()).getNamespace().equals("minecraft"),
+                                "the unbuilt depth plays %s (creative %s, underwater %s)",
+                                name(track.sound()),
+                                creative,
+                                underwater));
             }
         }
         helper.succeed();
@@ -250,13 +293,5 @@ public class SoundAmbienceTest {
             }
         }
         helper.succeed();
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw helper.assertionException(Component.literal(String.format(format, args)));
-        }
     }
 }

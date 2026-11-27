@@ -1,10 +1,11 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 
 /**
  * Server GameTests for #400: the {@link ChassisChecks} of #399 run on the two chassis the game ships, the Mole (1.9 wide, 2.9 tall: a
@@ -16,10 +17,6 @@ public class ShippedChassisTest {
     private static final ChassisChecks PROSPECTOR =
             new ChassisChecks(Chassis.PROSPECTOR, PodRegistry.typeOf(Chassis.PROSPECTOR), 3000);
 
-    private static RuntimeException failure(GameTestHelper helper, String message) {
-        return helper.assertionException(Component.literal(message));
-    }
-
     /**
      * The sizes are literals, so a change to one is a change to this test and to the table in mechanics.md. The ladder (ADR 0043): each
      * chassis of {@link Chassis#all()} is wider than the one before it, and so has more cells in a slab and in the bore a sideways step cuts.
@@ -27,14 +24,14 @@ public class ShippedChassisTest {
     @GameTest
     public void theMoleAndTheProspectorHaveTheSizesOfTheLadder(GameTestHelper helper) {
         if (Chassis.MOLE.width() != 1.9f || Chassis.MOLE.height() != 2.9f) {
-            throw failure(
-                    helper, "the Mole is " + Chassis.MOLE.width() + " x " + Chassis.MOLE.height() + ", not 1.9 x 2.9");
+            throw failure(helper, "the Mole is %s x %s, not 1.9 x 2.9", Chassis.MOLE.width(), Chassis.MOLE.height());
         }
         if (Chassis.PROSPECTOR.width() != 2.9f || Chassis.PROSPECTOR.height() != 2.9f) {
             throw failure(
                     helper,
-                    "the Prospector is " + Chassis.PROSPECTOR.width() + " x " + Chassis.PROSPECTOR.height()
-                            + ", not 2.9 x 2.9");
+                    "the Prospector is %s x %s, not 2.9 x 2.9",
+                    Chassis.PROSPECTOR.width(),
+                    Chassis.PROSPECTOR.height());
         }
         if (Chassis.MOLE.boreWidth() != 2
                 || Chassis.MOLE.boreHeight() != 3
@@ -42,9 +39,11 @@ public class ShippedChassisTest {
                 || Chassis.PROSPECTOR.boreHeight() != 3) {
             throw failure(
                     helper,
-                    "the bores should be 2 x 3 and 3 x 3, they are " + Chassis.MOLE.boreWidth() + " x "
-                            + Chassis.MOLE.boreHeight() + " and " + Chassis.PROSPECTOR.boreWidth() + " x "
-                            + Chassis.PROSPECTOR.boreHeight());
+                    "the bores should be 2 x 3 and 3 x 3, they are %s x %s and %s x %s",
+                    Chassis.MOLE.boreWidth(),
+                    Chassis.MOLE.boreHeight(),
+                    Chassis.PROSPECTOR.boreWidth(),
+                    Chassis.PROSPECTOR.boreHeight());
         }
         Chassis smaller = null;
         for (Chassis chassis : Chassis.all()) {
@@ -56,8 +55,9 @@ public class ShippedChassisTest {
                                 <= smaller.boreWidth() * smaller.boreWidth() * smaller.boreHeight()) {
                     throw failure(
                             helper,
-                            "the " + chassis.id() + " should be bigger than the " + smaller.id()
-                                    + " in width, slab and bore, and no lower");
+                            "the %s should be bigger than the %s in width, slab and bore, and no lower",
+                            chassis.id(),
+                            smaller.id());
                 }
             }
             smaller = chassis;

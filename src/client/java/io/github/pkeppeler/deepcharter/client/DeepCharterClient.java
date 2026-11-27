@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client;
 
 import io.github.pkeppeler.deepcharter.client.beam.BeamClientInit;
 import io.github.pkeppeler.deepcharter.client.charter.CharterClientInit;
+import io.github.pkeppeler.deepcharter.client.continuity.ContinuityClientInit;
 import io.github.pkeppeler.deepcharter.client.creature.CreatureClientInit;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelClientInit;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookClientInit;
@@ -9,10 +10,12 @@ import io.github.pkeppeler.deepcharter.client.hangar.HangarClientInit;
 import io.github.pkeppeler.deepcharter.client.layer.LayerClientInit;
 import io.github.pkeppeler.deepcharter.client.market.MarketClientInit;
 import io.github.pkeppeler.deepcharter.client.ore.OreClientInit;
+import io.github.pkeppeler.deepcharter.client.outpost.OutpostClientInit;
 import io.github.pkeppeler.deepcharter.client.pod.PodClientInit;
 import io.github.pkeppeler.deepcharter.client.repair.RepairClientInit;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerClientInit;
 import io.github.pkeppeler.deepcharter.client.sound.SoundClientInit;
+import io.github.pkeppeler.deepcharter.client.suit.SuitClientInit;
 import io.github.pkeppeler.deepcharter.client.surface.SurfaceClientInit;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalClientInit;
 import io.github.pkeppeler.deepcharter.client.texture.TextureClientInit;
@@ -29,6 +32,7 @@ public class DeepCharterClient implements ClientModInitializer {
     public void onInitializeClient() {
         BeamClientInit.init();
         CharterClientInit.init();
+        ContinuityClientInit.init();
         CreatureClientInit.init();
         FuelClientInit.init();
         HandbookClientInit.init();
@@ -36,10 +40,12 @@ public class DeepCharterClient implements ClientModInitializer {
         LayerClientInit.init();
         MarketClientInit.init();
         OreClientInit.init();
+        OutpostClientInit.init();
         PodClientInit.init();
         RepairClientInit.init();
         ScannerClientInit.init();
         SoundClientInit.init();
+        SuitClientInit.init();
         SurfaceClientInit.init();
         TerminalClientInit.init();
         TextureClientInit.init();

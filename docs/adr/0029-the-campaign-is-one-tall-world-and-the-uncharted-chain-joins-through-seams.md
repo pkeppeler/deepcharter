@@ -6,6 +6,12 @@ status: accepted
 
 Supersedes [ADR 0003](0003-depth-as-chained-layer-dimensions.md). Amends [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md). Measurements: issue #185 and draft PR #187.
 
+Amended 2026-11-23 (#1127) by [ADR 0086](0086-each-campaign-band-is-held-to-one-layers-cost-per-row-and-the-whole-worlds-ratio-is-only-tracked.md): the 1.15x bar holds each band to one layer's CPU per filled row; the whole world's ratio against `tall_baseline` below is tracked, no longer a gate.
+
+Amended 2026-11-23 (#1111) by [ADR 0085](0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md): the campaign world is the first dimension of a stack, and depth continues in deep dimensions below it.
+
+Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md): the band Ys, `min_y` and `max_y` are fixed.
+
 One dimension, the **campaign world**, holds the surface and story layers 1 to 8. Below it, the uncharted layers are a chain of 2048-tall worlds, joined by **seams**.
 
 ## Decision
@@ -46,3 +52,56 @@ One dimension, the **campaign world**, holds the surface and story layers 1 to 8
 - A drilled shaft lets a pod reach a seam at terminal speed, so the 600-block lead is a minimum.
 - ADR 0006 (a breach crossing recreates the pod) and ADR 0022 (the tower carries a towed pod across a breach) still hold at seams, where the entity crosses worlds. Inside the campaign world there is no crossing to recreate or carry through. Follow-up in #214 and #215.
 - The breach code (`BreachService`) crosses by teleport today. Its rewrite is separate work under the same milestone.
+
+## Follow-up, 2026-10-22 (#743): the campaign world with its content, against the 1.15x bar
+
+Method: `CampaignCostTest`, 289 columns per world and round, 5 rounds per run, one JVM per run (`tools/gametest.sh 'campaign_cost_test*'`, `DEEPCHARTER_CAMPAIGN_COST=5`), CPU ms per column, the ratio taken on the medians and scaled to per block of height (2048 / 2352 = 0.871). Each run's load is the 1-minute load average read just before the run (all under 2); the Mac was shared, so the peak CPU of the busiest other process (not Java) is listed too.
+
+The fill covers 448 of 2352 rows in `campaign_sample` (the layers' bands), 2048 of 2048 in `tall_layer` and 0 of 2048 in `tall_baseline` (vanilla stone, where the zone fill places nothing).
+
+| Run | World order | Load before | Busiest other process | `tall_baseline` min / median | `campaign_sample` min / median | Per column | Per block |
+|---|---|---|---|---|---|---|---|
+| 1 | baseline, campaign | 1.89 | Chrome helper 143% | 122.91 / 150.63 | 175.29 / 202.95 | 1.35x | 1.17x |
+| 2 | campaign, baseline | 1.90 | Code helper 36% | 114.57 / 135.37 | 163.96 / 186.04 | 1.37x | 1.20x |
+| 3 | baseline, campaign | 1.88 | `mediaanalysisd` 238% | 123.68 / 139.32 | 164.17 / 199.39 | 1.43x | 1.25x |
+
+Pooled over the 15 rounds: `tall_baseline` min 114.57, median 139.32; `campaign_sample` min 163.96, median 199.39. That is 1.43x per column and 1.25x per block of height on the medians (the minima give the same 1.43x and 1.25x). The per-run minima give 1.43x, 1.43x and 1.33x per column (1.25x, 1.25x, 1.16x per block). Run 3 shared the Mac with a 238% background process; its rounds drift upward, as the earlier readings did.
+
+Context, one run (load 1.56, busiest other process a 74% Code helper): `tall_layer` min 186.60, median 235.41; `campaign_sample` min 169.42, median 218.64. The campaign world is 0.93x per column and 0.81x per block of height against a world that fills every row.
+
+Verdict: against the 1.15x per-block bar the campaign world with its content is over, at 1.17x to 1.25x per block (1.25x pooled) against `tall_baseline`. The bar is not met. The baseline is a world with no fill, no biome zones, no structures and no layer rock, so the comparison charges the campaign world for all its content. The fill alone is not shown to be the cost: the world fills 448 rows and costs 0.81x per block of the world that fills 2048. Which part of the content makes up the 1.25x (the band biome source, the layer rock, the structure draw, the ore and cave features) is not measured. A split by feature is the next step if the bar is to be met, and the heap readings drift too much between rounds (negative deltas) to judge.
+
+## Follow-up, 2026-11-20 (#743): the cost split by feature, two cuts, re-measured
+
+The machine changed: a cloud Linux VM with 4 vCPU. The unchanged code read about 1.29x mean per block of height here by process CPU (four indicative runs), so a reading here is not directly comparable with the Mac's 1.25x.
+
+Split of the gap by feature (JFR worker-thread samples with `-XX:+DebugNonSafepoints`, share of the campaign world's extra samples over `tall_baseline`):
+
+| Feature | Share of the gap |
+|---|---|
+| Layer rock (surface-rule writes in `MaterialSystem.buildSurface`) | 63% |
+| Zone fill (before the cuts) | 30% |
+| Terrain noise fill (`doFill`) | 6% |
+| Chunk save | 5.5% |
+| Band biome source | 4% |
+| Structures, cave stalks, other features | about 0 |
+| Light (cheaper in the campaign world: 530 samples fewer) | -11% |
+| Frames in none of these | 2% |
+
+Ablations (campaign cost per block of height, as the change from 1.37x, the mean of 2 runs on the unchanged code, which is not the 1.29x above): no zone fill about -0.34, no layer-rock rule about -0.22, both off 0.85x. Both off reads below 1.0x because the remaining content (surface, structures, stalks, biome source) is net cheaper than `tall_baseline`.
+
+Two cuts, neither changing a roll: `ZoneFillFeature` and `OreBlock` work out the rock's tag test, ore states and thresholds once, not per block, and read only the blocks that place something in a section; `BandBiomeSource` takes the biome from a table by height. The generated world is identical: `CampaignWorldHashTest` run on the tree before the cuts (`b00ddbd9`) and on this one gives the same 216 chunk lines (`campaign_sample`, `layer_1` and `tall_layer`, two 6 x 6 patches each, seed 0 only, as the GameTest world's seed is fixed), with every block state hashed by name and properties and every biome cell by key, 0 differ. By JFR worker-thread samples (a count of samples, not CPU ms) the ratio goes from 1.18x to 1.107x per block.
+
+Quiet measurement: the same method as above, but 6 rounds per run against the earlier 5, 3 runs, world order alternating, no JFR. The load average before each run was under 1.0 (0.55, 0.96, 0.95); it was not sampled during the runs.
+
+| Run | World order | Load before | `tall_baseline` min / median | `campaign_sample` min / median | Per column | Per block |
+|---|---|---|---|---|---|---|
+| 1 | baseline, campaign | 0.55 | 100.17 / 125.94 | 143.77 / 173.53 | 1.38x | 1.20x |
+| 2 | campaign, baseline | 0.96 | 91.87 / 120.61 | 126.54 / 140.39 | 1.16x | 1.01x |
+| 3 | baseline, campaign | 0.95 | 85.26 / 109.22 | 112.01 / 148.51 | 1.36x | 1.18x |
+
+Pooled over the 18 rounds: `tall_baseline` min 85.26, median 118.57; `campaign_sample` min 112.01, median 151.45. That is 1.28x per column and 1.11x per block of height on the medians (the minima give 1.31x and 1.14x). The runs spread from 1.01x to 1.20x per block. Within a run the rounds drift: the median of the campaign world's rounds rises from 141 ms in rounds 1 to 3 to 180 ms in rounds 4 to 6, the baseline's from 111 to 125 (the means move from 140 to 176 and from 118 to 123). On those medians, per block, that is about 1.10x in rounds 1 to 3 and about 1.25x in rounds 4 to 6; the pooled mean of all 18 rounds is 1.139x. The cause of the drift is open and is tracked on #781.
+
+Verdict: against the 1.15x per-block bar, the pooled medians pass, at 1.11x, but the pass is inside the run-to-run noise. The margin is small: two of the three runs read above 1.15x alone (1.20x and 1.18x, and the test's own per-run assertion failed on them), and the pooled minima read 1.14x. What is left of the gap is mostly layer rock, the vanilla `buildSurface` writes of the layers' own stone.
+
+`ColumnCost` counts process CPU, so JIT and GC threads are in it; JFR worker-thread samples (counts, not CPU ms) are steadier for a small change.

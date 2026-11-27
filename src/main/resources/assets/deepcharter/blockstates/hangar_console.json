@@ -1,32 +1,62 @@
 {
   "variants": {
-    "active=false,facing=north": {
+    "active=false,facing=north,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet"
+    },
+    "active=false,facing=north,half=upper": {
       "model": "deepcharter:block/hangar_console"
     },
-    "active=true,facing=north": {
-      "model": "deepcharter:block/hangar_console_active"
+    "active=false,facing=east,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 90
     },
-    "active=false,facing=east": {
+    "active=false,facing=east,half=upper": {
       "model": "deepcharter:block/hangar_console",
       "y": 90
     },
-    "active=true,facing=east": {
-      "model": "deepcharter:block/hangar_console_active",
-      "y": 90
+    "active=false,facing=south,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 180
     },
-    "active=false,facing=south": {
+    "active=false,facing=south,half=upper": {
       "model": "deepcharter:block/hangar_console",
       "y": 180
     },
-    "active=true,facing=south": {
-      "model": "deepcharter:block/hangar_console_active",
-      "y": 180
+    "active=false,facing=west,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 270
     },
-    "active=false,facing=west": {
+    "active=false,facing=west,half=upper": {
       "model": "deepcharter:block/hangar_console",
       "y": 270
     },
-    "active=true,facing=west": {
+    "active=true,facing=north,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet"
+    },
+    "active=true,facing=north,half=upper": {
+      "model": "deepcharter:block/hangar_console_active"
+    },
+    "active=true,facing=east,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 90
+    },
+    "active=true,facing=east,half=upper": {
+      "model": "deepcharter:block/hangar_console_active",
+      "y": 90
+    },
+    "active=true,facing=south,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 180
+    },
+    "active=true,facing=south,half=upper": {
+      "model": "deepcharter:block/hangar_console_active",
+      "y": 180
+    },
+    "active=true,facing=west,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 270
+    },
+    "active=true,facing=west,half=upper": {
       "model": "deepcharter:block/hangar_console_active",
       "y": 270
     }

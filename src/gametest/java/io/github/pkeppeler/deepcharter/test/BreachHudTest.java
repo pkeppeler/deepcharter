@@ -1,14 +1,14 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -24,7 +24,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Client GameTest: the altimeter string matches the depth maths, and a crossing starts and clears the fade. */
+/** Client GameTest: the altimeter string matches the depth maths, and a crossing in place shakes the HUD without a fade. */
 public class BreachHudTest implements FabricClientGameTest {
     private static final double X = 2000.5;
     private static final double Z = 2000.5;
@@ -34,8 +34,6 @@ public class BreachHudTest implements FabricClientGameTest {
     /** Written out here, not read from Depth, so the test checks the maths rather than repeating it. */
     private static final int SEA_LEVEL = 63;
 
-    private static final int OVERWORLD_MIN_Y = -64;
-    private static final int LAYER_1_HEIGHT = 192;
     private static final double FEET_PER_BLOCK = 3.28;
 
     @Override
@@ -46,6 +44,7 @@ public class BreachHudTest implements FabricClientGameTest {
                     context, "the client in the world", client -> client.player != null && client.level != null);
 
             assertFadeCoversPodHud(context, singleplayer);
+            assertRumbleWithoutFade(context);
 
             // On the surface the altimeter reads sea level minus Y.
             assertAltimeter(
@@ -53,19 +52,15 @@ public class BreachHudTest implements FabricClientGameTest {
                     "the surface",
                     client -> SEA_LEVEL - ClientSession.player(client).getBlockY());
 
-            // In layer 1 low enough that the reading is over a thousand feet, so it has a thousands separator.
+            // In layer 1 low enough that the reading is over a thousand feet, so it has a thousands separator. The
+            // depth is the
+            // surface's formula (ADR 0059): sea level minus Y, in the one level.
             teleport(singleplayer, 1, 5);
-            ClientWait.until(
-                    context,
-                    "the client in layer_1",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+            ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
             assertAltimeter(
                     context,
                     "layer 1",
-                    client -> SEA_LEVEL
-                            - OVERWORLD_MIN_Y
-                            + LAYER_1_HEIGHT
-                            - ClientSession.player(client).getBlockY());
+                    client -> SEA_LEVEL - ClientSession.player(client).getBlockY());
             String deep = context.computeOnClient(client -> Altimeter.reading(
                             ClientLight.clientLevel(client),
                             ClientSession.player(client).getBlockY())
@@ -74,41 +69,50 @@ public class BreachHudTest implements FabricClientGameTest {
                 throw new AssertionError("A reading over 1,000 ft should group its digits, read: " + deep);
             }
 
-            // A crossing: one block under the floor of layer 1, so it crosses on the next server tick.
+            // A crossing: one block under the floor of layer 1, so it crosses on the next server tick. It is in place,
+            // so the HUD shakes
+            // and nothing fades.
             teleport(singleplayer, 1, -1);
             float peak = 0;
-            int startedAt = -1;
-            int clearedAt = -1;
-            for (int tick = 0; tick < PATIENCE && clearedAt < 0; tick++) {
-                float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-                if (alpha > 0 && startedAt < 0) {
-                    startedAt = tick;
-                }
-                peak = Math.max(peak, alpha);
-                if (startedAt >= 0 && alpha == 0) {
-                    clearedAt = tick;
+            boolean shook = false;
+            int inLayerTwoFor = 0;
+            for (int tick = 0; tick < PATIENCE && inLayerTwoFor <= BreachEffects.fadeTicks(); tick++) {
+                peak = Math.max(peak, context.computeOnClient(client -> BreachEffects.fadeAlpha(0f)));
+                shook |= !context.computeOnClient(
+                        client -> BreachEffects.jitter().equals(new BreachEffects.Offset(0, 0)));
+                if (context.computeOnClient(client -> TestLayers.clientIsIn(client, 2))) {
+                    inLayerTwoFor++;
                 }
                 context.waitTick();
             }
-            if (startedAt < 0) {
-                throw new AssertionError("The fade never started after a crossing");
-            }
-            if (peak < 0.8f) {
-                throw new AssertionError("The fade should reach black, peaked at " + peak);
-            }
-            if (clearedAt < 0) {
-                throw new AssertionError("The fade did not clear within " + PATIENCE + " ticks");
-            }
-            int length = clearedAt - startedAt;
-            // Sampling is per tick, so allow a few ticks either side of the nominal length.
-            if (length < BreachEffects.fadeTicks() - 3 || length > BreachEffects.fadeTicks() + 5) {
-                throw new AssertionError(
-                        "The fade should last about " + BreachEffects.fadeTicks() + " ticks, lasted " + length);
-            }
-            if (!context.computeOnClient(
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)))) {
+            if (inLayerTwoFor <= BreachEffects.fadeTicks()) {
                 throw new AssertionError("The crossing should have put the client in layer 2");
             }
+            if (peak > 0) {
+                throw new AssertionError("A crossing in place should not fade, faded to " + peak);
+            }
+            if (!shook) {
+                throw new AssertionError("A crossing in place should shake the HUD");
+            }
+        }
+    }
+
+    /** A crossing inside one level (the campaign world) shakes the HUD and sounds, and never fades to black. */
+    private static void assertRumbleWithoutFade(ClientGameTestContext context) {
+        context.runOnClient(client -> BreachEffects.begin(false));
+        boolean shook = false;
+        float peak = 0;
+        for (int tick = 0; tick <= BreachEffects.fadeTicks(); tick++) {
+            shook |= !context.computeOnClient(client -> BreachEffects.jitter().equals(new BreachEffects.Offset(0, 0)));
+            peak = Math.max(peak, context.computeOnClient(client -> BreachEffects.fadeAlpha(0f)));
+            context.waitTick();
+        }
+        context.runOnClient(client -> BreachEffects.reset());
+        if (!shook) {
+            throw new AssertionError("A crossing in place should still shake the HUD");
+        }
+        if (peak > 0) {
+            throw new AssertionError("A crossing in place should not fade, faded to " + peak);
         }
     }
 
@@ -127,7 +131,7 @@ public class BreachHudTest implements FabricClientGameTest {
         if (brightestInRibbon(context, context.takeScreenshot("breach-hud-before-fade")) < 200) {
             throw new AssertionError("The Ribbon should be visible before the fade, or this check proves nothing");
         }
-        context.runOnClient(client -> BreachEffects.begin());
+        context.runOnClient(client -> BreachEffects.begin(true));
         ClientWait.until(context, "the breach fade complete", client -> BreachEffects.fadeAlpha(0f) >= 1f);
         int brightest = brightestInRibbon(context, context.takeScreenshot("breach-hud-fade-peak"));
         if (brightest > 8) {
@@ -173,9 +177,9 @@ public class BreachHudTest implements FabricClientGameTest {
     /** Teleports the real player into layer {@code layer} at height {@code y}. */
     private static void teleport(TestSingleplayerContext singleplayer, int layer, int y) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.teleportTo(level, X, y, Z, Set.of(), 0, 0, true);
+            player.teleportTo(level, X, TestLayers.worldY(layer, y), Z, Set.of(), 0, 0, true);
         });
     }
 

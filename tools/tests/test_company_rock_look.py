@@ -4,6 +4,8 @@ A plain cube with three textures, one block in five carrying the survey chevron,
 
 #539, ADR 0056: the rock of layer 2 glows in its joints (the glow is a cutout over the joints and nothing else), and a charge widens the joints in
 two steps (a dark widening and a hotter glow over the same cube). The blockstate names every state, so no state shows a missing model.
+Layer 3's rock (#972) does not glow: it looks as layer 1's does until the stills settle it. Nor do layer 1's other strata (#1277): Company Rock in
+the hardpan or the black shale is layer 1's.
 """
 import json
 import sys
@@ -23,7 +25,7 @@ import texgen  # noqa: E402
 MOD = texgen.ROOT / "src/main/resources/assets/deepcharter"
 TEXTURES = ("company_rock_joint_0", "company_rock_joint_1", "company_rock_joint_2")
 CHEVRON = "company_rock_joint_2"
-HOSTS = ("packed_shale", "green_shale")
+HOSTS = ("packed_shale", "green_shale", "basalt_core", "hardpan", "black_shale")
 
 
 def suffix_of(state: str) -> str:
@@ -73,6 +75,10 @@ class CompanyRockLookTest(unittest.TestCase):
         self.assertEqual("_glow", suffix_of("crack=0,host=green_shale"))
         self.assertEqual(variants["crack=1,host=packed_shale"], variants["crack=1,host=green_shale"])
         self.assertEqual(variants["crack=2,host=packed_shale"], variants["crack=2,host=green_shale"])
+        self.assertEqual("", suffix_of("crack=0,host=basalt_core"))
+        for crack in range(3):
+            for host in ("basalt_core", "hardpan", "black_shale"):
+                self.assertEqual(variants[f"crack={crack},host=packed_shale"], variants[f"crack={crack},host={host}"], host)
 
     def test_the_glow_is_over_the_joints_and_nothing_else(self):
         for name in TEXTURES:

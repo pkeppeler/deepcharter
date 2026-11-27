@@ -7,8 +7,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * The Notes the server last said this player's charter has found, in Note order. Empty when the player is on no charter. An id this
- * build has no text for is dropped. The handbook screen reads it. Read and written on the client thread.
+ * The Notes the server last said this player's charter has found, in Note order; on no charter, the ones the player
+ * found alone. An id this build has no text for is dropped. The handbook screen reads it. Read and written on the
+ * client thread.
  */
 public final class ClientNotes {
     private static List<Identifier> found = List.of();

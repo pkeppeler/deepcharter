@@ -25,6 +25,14 @@ public final class OddPods implements ModInitializer {
     public static final EntityType<PodEntity> TALL_TYPE = PodRegistry.register(
             Identifier.fromNamespaceAndPath("deepcharter_test", "tall_pod"), TALL, List.of(new Vec3(0, 0.5, 0)));
 
+    /** A Mole's frame (1.9 wide, 2.9 tall) with the Prospector's tier cap, for {@code LavaBoreTest}: it measures a tier 3 part on the bot's bore, which a Mole's cap would hold to tier 2 (#712). */
+    public static final Chassis DEEP_MOLE = new Chassis("deep_mole", 1, 3, Chassis.MOLE.width(), Chassis.MOLE.height());
+
+    public static final EntityType<PodEntity> DEEP_MOLE_TYPE = PodRegistry.register(
+            Identifier.fromNamespaceAndPath("deepcharter_test", "deep_mole_pod"),
+            DEEP_MOLE,
+            List.of(new Vec3(0, 0.5, 0)));
+
     @Override
     public void onInitialize() {
         // The registration above runs when the class loads.

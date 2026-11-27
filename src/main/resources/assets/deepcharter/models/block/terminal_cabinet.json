@@ -1,0 +1,83 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "#side",
+    "casing": "deepcharter:block/terminal_casing",
+    "casing_top": "deepcharter:block/terminal_casing_top",
+    "side": "deepcharter:block/terminal_side",
+    "top": "deepcharter:block/terminal_top",
+    "bottom": "deepcharter:block/terminal_side"
+  },
+  "elements": [
+    {
+      "name": "cabinet",
+      "from": [
+        1,
+        0,
+        1
+      ],
+      "to": [
+        15,
+        16,
+        15
+      ],
+      "faces": {
+        "down": {
+          "texture": "#bottom",
+          "uv": [
+            1,
+            1,
+            15,
+            15
+          ],
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#top",
+          "uv": [
+            1,
+            1,
+            15,
+            15
+          ]
+        },
+        "north": {
+          "texture": "#side",
+          "uv": [
+            1,
+            0,
+            15,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#casing",
+          "uv": [
+            1,
+            0,
+            15,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#casing",
+          "uv": [
+            1,
+            0,
+            15,
+            16
+          ]
+        },
+        "east": {
+          "texture": "#casing",
+          "uv": [
+            1,
+            0,
+            15,
+            16
+          ]
+        }
+      }
+    }
+  ]
+}

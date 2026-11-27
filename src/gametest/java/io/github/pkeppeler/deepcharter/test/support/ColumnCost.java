@@ -1,0 +1,346 @@
+package io.github.pkeppeler.deepcharter.test.support;
+
+import io.github.pkeppeler.deepcharter.test.mixin.MinecraftServerAccess;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Measures what generating new columns costs in the test dimensions {@code deepcharter:<world>}: CPU, heap and wall time per column, over
+ * rounds that alternate the order of the worlds, so that load on the machine falls on each world in turn. {@code SurfaceCostTest} (#240) and
+ * {@code CampaignCostTest} (#742) run it with their own worlds and report their own ratios.
+ */
+public final class ColumnCost {
+    /** Chunks to each side of the centre in the smoke case, which only checks that the worlds generate. */
+    private static final int SMOKE_RADIUS = 1;
+
+    /** Chunks to each side of the centre of a measured run, so a run is {@code (2 * 8 + 1)} squared chunks, which the readings call columns. */
+    public static final int MEASURED_RADIUS = 8;
+
+    private static final int WARM_UP_RADIUS = 4;
+    /** Chunk rows between two regions, so that no two measurements share a column. */
+    private static final int REGION_SPACING_CHUNKS = 64;
+
+    private static final int COOL_DOWN_TICKS = 100;
+    /** A region counts as unloaded when this few chunks of a world are left, such as those around a spawn. */
+    private static final int UNLOADED_CHUNKS = 30;
+
+    /**
+     * Set to {@code 1} to start a measured run with the last world of the list instead of the first, so that
+     * {@code tools/cost-run.sh} can alternate the order between runs as the rounds already alternate it inside one.
+     * Unset is the order of the list.
+     */
+    public static final String REVERSE_ENV = "DEEPCHARTER_COST_REVERSE";
+
+    private static final boolean REVERSE = "1".equals(System.getenv(REVERSE_ENV));
+
+    /**
+     * The tests whose measured run holds the autosave off, by their bounds, and the countdown from before the first of them. The hold
+     * ends with the last of them, on any exit of the test, through {@link #release} from {@code GameTestInfoMixin}'s {@code finish}.
+     * Server thread only.
+     */
+    private static final Map<AABB, MinecraftServerAccess> AUTOSAVE_HOLDERS = new HashMap<>();
+
+    private static int countdownBeforeHold;
+
+    private ColumnCost() {}
+
+    /**
+     * One run's reading, per column, and the blocks of height of the world it was taken in. {@code gcMsPerColumn} and
+     * {@code gcCount} are the JVM's garbage collection time and count over the same window as the CPU reading (the heap
+     * readings' own forced collections are outside it), which tells a cost that grows with the world's age from a
+     * collector working on the chunks the world keeps.
+     */
+    public record Measurement(
+            double cpuMsPerColumn,
+            double heapMb,
+            double wallMsPerColumn,
+            int height,
+            double gcMsPerColumn,
+            int gcCount) {
+        /** CPU per block of the column's height: what a taller world costs apart from being taller. */
+        public double cpuMsPerBlock() {
+            return cpuMsPerColumn / height;
+        }
+    }
+
+    /**
+     * Generates the columns of {@code worlds} and, for {@code rounds} above 0, hands the readings of each world (one per round) to
+     * {@code report} and succeeds. With 0 rounds it is the smoke case: a few columns of each world, no heap readings, no waits. A measured
+     * run first warms every world up, then runs each round over {@code worlds} (reversed on even rounds, or on odd ones
+     * with {@value #REVERSE_ENV}=1), and waits for every world in
+     * {@code allWorlds} to hold nothing of the last region before it starts the next, because heap is read with the one before it gone.
+     * Call it from the test method.
+     */
+    public static void run(
+            GameTestHelper helper,
+            List<String> worlds,
+            List<String> allWorlds,
+            int rounds,
+            Consumer<Map<String, List<Measurement>>> report) {
+        TestTicks.each(helper, tickBody(helper, worlds, allWorlds, rounds, report));
+    }
+
+    /** {@link #run}'s tick body, so a test can call it where a throw is catchable. */
+    public static Runnable tickBody(
+            GameTestHelper helper,
+            List<String> worlds,
+            List<String> allWorlds,
+            int rounds,
+            Consumer<Map<String, List<Measurement>>> report) {
+        boolean smoke = rounds == 0;
+        if (!smoke) {
+            holdAutosave(helper);
+        }
+        ArrayDeque<Run> queue = new ArrayDeque<>();
+        if (smoke) {
+            worlds.forEach(world -> queue.add(new Run(world, SMOKE_RADIUS, 0, false, true)));
+        } else {
+            worlds.forEach(world -> queue.add(new Run(world, WARM_UP_RADIUS, 0, false, false)));
+            for (int round = 1; round <= rounds; round++) {
+                for (String world : (round % 2 == 1) != REVERSE ? worlds : worlds.reversed()) {
+                    queue.add(new Run(world, MEASURED_RADIUS, round, true, false));
+                }
+            }
+        }
+        Map<String, List<Measurement>> results = new LinkedHashMap<>();
+        @Nullable Run[] current = {null};
+        int[] cooldown = {0};
+        return () -> {
+            if (cooldown[0] > 0) {
+                cooldown[0]--;
+                idle(smoke);
+                return;
+            }
+            if (current[0] == null && !smoke && !everyWorldIsUnloaded(helper, allWorlds)) {
+                idle(smoke);
+                return;
+            }
+            Run active = current[0];
+            if (active == null) {
+                if (queue.isEmpty()) {
+                    return;
+                }
+                // Only a run that began is current: after a begin() that throws, the next tick must not read its level.
+                active = queue.poll();
+                active.begin(helper);
+                current[0] = active;
+            }
+            if (!active.isGenerated()) {
+                idle(smoke);
+                return;
+            }
+            Measurement measurement = active.finish(helper);
+            if (active.measured) {
+                results.computeIfAbsent(active.world, world -> new ArrayList<>())
+                        .add(measurement);
+            }
+            current[0] = null;
+            cooldown[0] = smoke ? 0 : COOL_DOWN_TICKS;
+            if (queue.isEmpty()) {
+                if (rounds > 0) {
+                    report.accept(results);
+                }
+                helper.succeed();
+            }
+        };
+    }
+
+    /** Pushes the server's next autosave past the end of {@code helper}'s test, until {@link #release}. */
+    private static void holdAutosave(GameTestHelper helper) {
+        MinecraftServerAccess server = (MinecraftServerAccess) helper.getLevel().getServer();
+        if (AUTOSAVE_HOLDERS.isEmpty()) {
+            countdownBeforeHold = server.deepcharter$ticksUntilAutosave();
+            server.deepcharter$setTicksUntilAutosave(Integer.MAX_VALUE);
+        }
+        AUTOSAVE_HOLDERS.put(helper.getBounds(), server);
+    }
+
+    /** Whether the test with these bounds holds the autosave. */
+    public static boolean holds(AABB testBounds) {
+        return AUTOSAVE_HOLDERS.containsKey(testBounds);
+    }
+
+    /** Ends the autosave hold of the test with these bounds, and restores the countdown when no other test holds it. */
+    public static void release(AABB testBounds) {
+        MinecraftServerAccess server = AUTOSAVE_HOLDERS.remove(testBounds);
+        if (server != null && AUTOSAVE_HOLDERS.isEmpty()) {
+            server.deepcharter$setTicksUntilAutosave(countdownBeforeHold);
+        }
+    }
+
+    /** The median of each reading over {@code all}. */
+    public static Measurement median(List<Measurement> all) {
+        return new Measurement(
+                medianOf(all.stream().mapToDouble(m -> m.cpuMsPerColumn).toArray()),
+                medianOf(all.stream().mapToDouble(m -> m.heapMb).toArray()),
+                medianOf(all.stream().mapToDouble(m -> m.wallMsPerColumn).toArray()),
+                all.getFirst().height,
+                medianOf(all.stream().mapToDouble(m -> m.gcMsPerColumn).toArray()),
+                (int) Math.round(
+                        medianOf(all.stream().mapToDouble(m -> m.gcCount).toArray())));
+    }
+
+    public static String format(double value) {
+        return String.format("%.2f", value);
+    }
+
+    /** The columns of a measured run. */
+    public static int measuredColumns() {
+        return columnsOf(MEASURED_RADIUS);
+    }
+
+    /** A sleeping thread accrues no CPU; without the sleep the server spun empty ticks the reading counted (ADR 0086). */
+    private static void idle(boolean smoke) {
+        if (smoke) {
+            return;
+        }
+        try {
+            Thread.sleep(FarChunks.POLL_MILLIS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while waiting for columns", e);
+        }
+    }
+
+    private static boolean everyWorldIsUnloaded(GameTestHelper helper, List<String> allWorlds) {
+        for (String world : allWorlds) {
+            ServerLevel level = helper.getLevel()
+                    .getServer()
+                    .getLevel(ResourceKey.create(
+                            Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", world)));
+            if (level != null && level.getChunkSource().getLoadedChunksCount() > UNLOADED_CHUNKS) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static double medianOf(double[] values) {
+        double[] sorted = values.clone();
+        Arrays.sort(sorted);
+        int middle = sorted.length / 2;
+        return sorted.length % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    }
+
+    private static long gcMillis() {
+        return ManagementFactory.getGarbageCollectorMXBeans().stream()
+                .mapToLong(GarbageCollectorMXBean::getCollectionTime)
+                .sum();
+    }
+
+    private static long gcCollections() {
+        return ManagementFactory.getGarbageCollectorMXBeans().stream()
+                .mapToLong(GarbageCollectorMXBean::getCollectionCount)
+                .sum();
+    }
+
+    private static int columnsOf(int radius) {
+        return (2 * radius + 1) * (2 * radius + 1);
+    }
+
+    /** CPU time of every thread of this JVM, not of the generation workers alone. */
+    private static long processCpuNanos() {
+        return ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean())
+                .getProcessCpuTime();
+    }
+
+    /** Heap in use after a collection, so that garbage of earlier work is not counted. */
+    private static long usedHeap() {
+        for (int i = 0; i < 3; i++) {
+            System.gc();
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("interrupted while measuring heap", e);
+            }
+        }
+        Runtime runtime = Runtime.getRuntime();
+        return runtime.totalMemory() - runtime.freeMemory();
+    }
+
+    /** The columns of one world around a centre of its own: forced, then waited for tick by tick. */
+    private static final class Run {
+        private final String world;
+        private final int radius;
+        private final int round;
+        private final boolean measured;
+        private final boolean smoke;
+        private final Arrival<ServerLevel> level = new Arrival<>("level", "begin() finds the dimension");
+        private int centreChunk;
+        private long heapBefore;
+        private long cpuBefore;
+        private long wallBefore;
+        private long gcMsBefore;
+        private long gcCountBefore;
+
+        Run(String world, int radius, int round, boolean measured, boolean smoke) {
+            this.world = world;
+            this.radius = radius;
+            this.round = round;
+            this.measured = measured;
+            this.smoke = smoke;
+        }
+
+        void begin(GameTestHelper helper) {
+            ResourceKey<Level> key =
+                    ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", world));
+            ServerLevel found = helper.getLevel().getServer().getLevel(key);
+            if (found == null) {
+                throw helper.assertionException(Component.literal("no dimension " + key.identifier()));
+            }
+            level.set(found);
+            centreChunk = (round + 1) * REGION_SPACING_CHUNKS;
+            heapBefore = smoke ? 0 : usedHeap();
+            cpuBefore = processCpuNanos();
+            wallBefore = System.nanoTime();
+            gcMsBefore = gcMillis();
+            gcCountBefore = gcCollections();
+            forEachChunk(chunk -> FarChunks.force(helper, found, chunk[0], chunk[1]));
+        }
+
+        boolean isGenerated() {
+            boolean[] all = {true};
+            forEachChunk(chunk -> all[0] &= level.get().getChunkSource().getChunkNow(chunk[0], chunk[1]) != null);
+            return all[0];
+        }
+
+        Measurement finish(GameTestHelper helper) {
+            double columns = columnsOf(radius);
+            double cpuMs = (processCpuNanos() - cpuBefore) / 1e6;
+            double wallMs = (System.nanoTime() - wallBefore) / 1e6;
+            double gcMs = gcMillis() - gcMsBefore;
+            int gcCount = (int) (gcCollections() - gcCountBefore);
+            double heapMb = smoke ? 0 : (usedHeap() - heapBefore) / (1024.0 * 1024.0);
+            forEachChunk(chunk -> FarChunks.release(helper, level.get(), chunk[0], chunk[1]));
+            return new Measurement(
+                    // level-height: the cost is per block of the whole test world, which is no layer
+                    cpuMs / columns, heapMb, wallMs / columns, level.get().getHeight(), gcMs / columns, gcCount);
+        }
+
+        private void forEachChunk(Consumer<int[]> action) {
+            for (int x = -radius; x <= radius; x++) {
+                for (int z = -radius; z <= radius; z++) {
+                    action.accept(new int[] {centreChunk + x, centreChunk + z});
+                }
+            }
+        }
+    }
+}

@@ -13,6 +13,9 @@
 set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+py=$root/tools/py
+# The lock holder below is killed by PID, so it must be the interpreter itself: through tools/py that PID is uv, and killing uv leaves python holding the lock.
+pyexe=$("$py" -c 'import sys; print(sys.executable)')
 work=$(cd "$(mktemp -d)" && pwd -P)
 pids=()
 kill_pids() {
@@ -69,6 +72,8 @@ real_home=${GRADLE_USER_HOME:-$HOME/.gradle}
 export GRADLE_USER_HOME=$work/gradle-home
 mkdir -p "$GRADLE_USER_HOME"
 if [[ -d $real_home/wrapper ]]; then ln -s "$real_home/wrapper" "$GRADLE_USER_HOME/wrapper"; fi
+# gradlew would register these daemons in the live checkout's registry (#1120), where the cleanup --stop would reach a real build.
+export GRADLE_OPTS="-Dorg.gradle.daemon.registry.base=$GRADLE_USER_HOME/daemon"
 # Small, quick-starting daemons: up to a dozen run at once and nothing here needs heap.
 printf '%s\n' "org.gradle.daemon.idletimeout=60000" "org.gradle.jvmargs=-Xmx192m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xshare:auto" \
   >"$GRADLE_USER_HOME/gradle.properties"
@@ -135,7 +140,7 @@ order_is() { [[ $(tr '\n' ' ' <"$order") == "$1" ]]; }
 hold_old() {
   rm -f "$work/old.ready"
   mkdir -p "$locks"
-  python3 -I -c '
+  "$pyexe" -I -c '
 import fcntl, sys, time
 f = open(sys.argv[1], "a")
 fcntl.lockf(f, fcntl.LOCK_EX | fcntl.LOCK_NB)

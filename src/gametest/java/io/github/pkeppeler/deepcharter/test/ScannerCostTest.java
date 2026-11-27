@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.BootstrapCost.Needs;
@@ -13,9 +13,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,12 +33,6 @@ public class ScannerCostTest {
     private static final double MOST_EXTRA_MINUTES = 2.0;
     /** A salvage patch holds up to 8 crates (placed_feature/salvage_litter.json): the scanner alone is about one patch, and 90 starts in 100 need no more than this. */
     private static final int PATCH_CRATES = 8;
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
 
     @GameTest(maxTicks = 200)
     public void theRecipeAsksForTheBootstrapsMetalAndNoMoreThanAFewCrates(GameTestHelper helper) {

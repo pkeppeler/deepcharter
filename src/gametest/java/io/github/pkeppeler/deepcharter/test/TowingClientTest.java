@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 
 import io.github.pkeppeler.deepcharter.client.pod.TowChainRenderer;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -11,6 +12,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
 import java.util.Objects;
@@ -23,7 +25,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -36,15 +37,10 @@ import org.jspecify.annotations.Nullable;
 public class TowingClientTest implements FabricClientGameTest {
     private static final int X = 700;
     private static final int Z = 700;
-    private static final int FLOOR_Y = 200;
-    /** Long enough for the tower to drive out the 4.9 blocks of slack the pod starts with and then pull it 5 blocks. */
-    private static final int DRIVE_TICKS = 100;
-
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     private static final double MIN_FOLLOWED_BLOCKS = 5;
     /** What the client's pods may disagree by: each one is interpolated from what the server last sent. */
     private static final double CLIENT_LAG_BLOCKS = 1.5;
-
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 
     /** The two pods by UUID: a pod whose chunk is unloaded and loaded again comes back as a new entity with a new id. */
     private record Rig(UUID tower, UUID towed) {}
@@ -64,7 +60,17 @@ public class TowingClientTest implements FabricClientGameTest {
                     context.computeOnClient(client -> pod(client, rig.towed()).position());
 
             two.server().runOnServer(server -> two.mock().setInput(FORWARD));
-            context.waitTicks(DRIVE_TICKS);
+            // Until the client sees the follow, not for a count of client ticks: the client ticks unthrottled, and a
+            // server still generating the tall world's chunks has run few of them (CI: 90 ticks behind, the pod 3.7
+            // blocks along).
+            ClientWait.until(
+                    context,
+                    "the client sees the towed pod follow its tower " + MIN_FOLLOWED_BLOCKS + " blocks",
+                    client -> {
+                        PodEntity towed = podIfPresent(client, rig.towed());
+                        return towed != null
+                                && towed.position().subtract(towedStart).horizontalDistance() >= MIN_FOLLOWED_BLOCKS;
+                    });
             two.server().runOnServer(server -> two.mock().releaseInput());
             context.waitTicks(10);
 

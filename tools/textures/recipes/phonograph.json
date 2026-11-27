@@ -1,0 +1,105 @@
+{
+  "templates": {},
+  "recipes": {
+    "block/phonograph_wood": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["timber.3", "timber.4", "timber.4", "timber.5"], "seed": 8641, "cell": 8, "octaves": 2, "dither": 0.6},
+      {"op": "speckle", "colours": ["timber.2", "timber.5"], "density": 0.05, "seed": 8642},
+      {"op": "rect", "rect": [0, 8, 16, 1], "colour": "timber.5"},
+      {"op": "rect", "rect": [0, 15, 16, 1], "colour": "timber.1"},
+      {"op": "rect", "rect": [2, 9, 12, 6], "colour": "timber.1", "outline": true},
+      {"op": "bevel", "rect": [3, 10, 10, 4], "light": "timber.5", "dark": "timber.2", "inset": true},
+      {"op": "grime", "colours": ["dust.0", "dust.1"], "density": 0.12, "seed": 8643, "rect": [0, 9, 16, 7]}
+    ]},
+    "block/phonograph_front": {"kind": "opaque", "layers": [
+      {"op": "include", "recipe": "block/phonograph_wood"},
+      {"op": "rect", "rect": [4, 10, 8, 4], "colour": "tarp.1"},
+      {"op": "pixels", "at": [4, 10], "legend": {"c": "tarp.3", "k": "tarp.0"},
+        "rows": ["c.c.c.c.", ".k.k.k.k", "c.c.c.c.", ".k.k.k.k"]},
+      {"op": "rect", "rect": [4, 10, 8, 4], "colour": "brass.2", "outline": true},
+      {"op": "rect", "rect": [7, 14, 2, 1], "colour": "brass.5"}
+    ]},
+    "block/phonograph_top": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["timber.4", "timber.4", "timber.5"], "seed": 8648, "cell": 8, "octaves": 2, "dither": 0.5},
+      {"op": "speckle", "colours": ["timber.3", "timber.5", "dust.2"], "density": 0.06, "seed": 8649},
+      {"op": "rect", "rect": [1, 1, 14, 14], "colour": "timber.2", "outline": true},
+      {"op": "rect", "rect": [2, 2, 12, 12], "colour": "timber.5", "outline": true},
+      {"op": "pixels", "at": [10, 11], "legend": {"r": "timber.2", "q": "timber.3"}, "rows": [".rr.", "r..q", ".rr."]}
+    ]},
+    "block/phonograph_steel": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["steel.2", "steel.3", "steel.3", "steel.4"], "seed": 8650, "cell": 4, "octaves": 2, "dither": 0.6},
+      {"op": "speckle", "colours": ["steel.1", "steel.5", "rust.1"], "density": 0.07, "seed": 8651},
+      {"op": "rect", "rect": [0, 0, 16, 1], "colour": "steel.5"}
+    ]},
+    "block/phonograph_horn": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["brass.2", "brass.3", "brass.4", "brass.4"], "seed": 8644, "cell": 8, "octaves": 2, "dither": 0.5},
+      {"op": "speckle", "colours": ["brass.1", "brass.5", "brass.6"], "density": 0.07, "seed": 8645},
+      {"op": "rect", "rect": [0, 0, 16, 1], "colour": "brass.5"},
+      {"op": "rect", "rect": [0, 15, 16, 1], "colour": "brass.1"},
+      {"op": "grime", "colours": ["rust.0", "rust.1"], "density": 0.12, "seed": 8646}
+    ]},
+    "block/phonograph_bore": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["brass.0", "brass.1", "steel.0"], "seed": 8652, "cell": 4, "octaves": 2, "dither": 0.7},
+      {"op": "speckle", "colours": ["brass.2"], "density": 0.04, "seed": 8653}
+    ]},
+    "block/phonograph_wax": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["timber.3", "timber.4", "fuel.1", "timber.4"], "seed": 8647, "cell": 8, "octaves": 2, "dither": 0.5},
+      {"op": "rect", "rect": [1, 0, 1, 16], "colour": "timber.1"},
+      {"op": "rect", "rect": [4, 0, 1, 16], "colour": "timber.1"},
+      {"op": "rect", "rect": [7, 0, 1, 16], "colour": "timber.1"},
+      {"op": "rect", "rect": [10, 0, 1, 16], "colour": "timber.1"},
+      {"op": "rect", "rect": [13, 0, 1, 16], "colour": "timber.1"},
+      {"op": "rect", "rect": [2, 0, 1, 16], "colour": "fuel.2"}
+    ]},
+    "block/phonograph_wax_end": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["fuel.1", "fuel.1", "timber.4"], "seed": 8654, "cell": 8, "octaves": 1, "dither": 0.4},
+      {"op": "rect", "rect": [5, 5, 6, 6], "colour": "timber.1", "outline": true},
+      {"op": "rect", "rect": [7, 7, 2, 2], "colour": "steel.0"}
+    ]},
+    "block/colony_phonograph_front": {"kind": "opaque", "layers": [
+      {"op": "template", "name": "company_plate", "args": {"seed": 8661}},
+      {"op": "rect", "rect": [2, 9, 12, 6], "colour": "steel.1", "outline": true},
+      {"op": "pixels", "at": [4, 10], "legend": {"v": "steel.0", "l": "steel.4"},
+        "rows": ["v.v.v.v.", "v.v.v.v.", "v.v.v.v.", "l.l.l.l."]},
+      {"op": "rect", "rect": [3, 14, 10, 1], "colour": "company.2"},
+      {"op": "rect", "rect": [3, 15, 10, 1], "colour": "company.0"},
+      {"op": "rivets", "at": [[1, 9], [13, 9]], "ramp": ["steel.1", "steel.4", "steel.6"], "rust": "rust.2"}
+    ]},
+    "block/wreck_phonograph_wood": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["iron.1", "iron.2", "iron.2", "iron.3"], "seed": 8671, "cell": 8, "octaves": 2, "dither": 0.6},
+      {"op": "speckle", "colours": ["iron.0", "iron.4", "rust.1"], "density": 0.09, "seed": 8672},
+      {"op": "rect", "rect": [0, 8, 16, 1], "colour": "iron.4"},
+      {"op": "rect", "rect": [0, 15, 16, 1], "colour": "iron.0"},
+      {"op": "rect", "rect": [2, 9, 12, 6], "colour": "iron.0", "outline": true},
+      {"op": "bevel", "rect": [3, 10, 10, 4], "light": "iron.3", "dark": "iron.0", "inset": true},
+      {"op": "grime", "colours": ["iron.0", "rust.1", "rust.2"], "density": 0.3, "seed": 8673, "rect": [0, 9, 16, 7]},
+      {"op": "pixels", "at": [9, 11], "legend": {"s": "iron.0"}, "rows": ["ss", ".s.", ".ss"]}
+    ]},
+    "block/wreck_phonograph_front": {"kind": "opaque", "layers": [
+      {"op": "include", "recipe": "block/wreck_phonograph_wood"},
+      {"op": "rect", "rect": [4, 10, 8, 4], "colour": "void"},
+      {"op": "pixels", "at": [4, 10], "legend": {"c": "tarp.1", "k": "tarp.0"},
+        "rows": ["cc.k....", ".k......", "..k.....", "........"]},
+      {"op": "rect", "rect": [4, 10, 8, 4], "colour": "rust.1", "outline": true},
+      {"op": "pixels", "at": [7, 14], "legend": {"b": "rust.3"}, "rows": ["b."]}
+    ]},
+    "block/wreck_phonograph_top": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["iron.1", "iron.2", "iron.3"], "seed": 8674, "cell": 8, "octaves": 2, "dither": 0.5},
+      {"op": "speckle", "colours": ["iron.0", "iron.4", "dust.0"], "density": 0.1, "seed": 8675},
+      {"op": "rect", "rect": [1, 1, 14, 14], "colour": "iron.0", "outline": true},
+      {"op": "grime", "colours": ["iron.0", "rust.0"], "density": 0.35, "seed": 8676}
+    ]},
+    "block/wreck_phonograph_steel": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["iron.1", "iron.2", "iron.3", "steel.2"], "seed": 8677, "cell": 4, "octaves": 2, "dither": 0.6},
+      {"op": "speckle", "colours": ["rust.1", "rust.2", "rust.3"], "density": 0.14, "seed": 8678}
+    ]},
+    "block/wreck_phonograph_horn": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["rust.0", "rust.1", "rust.2", "brass.2"], "seed": 8679, "cell": 8, "octaves": 2, "dither": 0.5},
+      {"op": "speckle", "colours": ["iron.0", "rust.3", "brass.3"], "density": 0.12, "seed": 8680},
+      {"op": "rect", "rect": [0, 0, 16, 1], "colour": "rust.3"},
+      {"op": "grime", "colours": ["iron.0", "iron.1"], "density": 0.3, "seed": 8681}
+    ]},
+    "item/wax_cylinder": {"template": "sprite", "args": {
+      "legend": {"h": "ochre.2", "w": "ochre.1", "d": "timber.1", "l": "fuel.1", "g": "timber.3", "s": "steel.0"},
+      "rows": ["", "", "....hhhhhhhh", "...hwwwwwwwwg", "...hwwsssswwg", "...hwwwwwwwwg", "...dhllllllgd", "...dhllllllgd", "...dddddddddd", "...dhllllllgd", "...dhllllllgd", "...dddddddddd", "...dhllllllgd", "...dhllllllgd", "....dddddddd", ""]}}
+  }
+}

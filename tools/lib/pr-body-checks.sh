@@ -8,41 +8,48 @@ refuse() {
   exit 1
 }
 
-pr_field() { gh pr view "$pr" -R "$repo" --json "$1" --jq "$2"; }
+# shellcheck source=gh-rest.sh
+source "$(dirname "${BASH_SOURCE[0]}")/gh-rest.sh"
 
-# GitHub's own parse of the body (keywords, cross-repo refs, URLs), not a regex of ours.
-# The set is GitHub's, so it can lag a body edit made just before the gate runs; merge-pr.sh
-# reads it again right before the merge. It also holds issues linked by hand in the sidebar.
-# One owner/repo#N per line; refs in this repo print as #N. Sets $closes.
+pr_field() { pr_get "$pr" "$1"; }
+
+# The issues the body closes. REST has no closingIssuesReferences (it is GraphQL only, #788), so the body is read for
+# GitHub's closing keywords by tools/closing_refs.py, the one grammar (tools/roadmap.py imports it too). One owner/repo#N
+# per line; refs in this repo print as #N. Reads the body live, so merge-pr.sh calls it again right before the merge.
+# Sets $closes.
 closing_set() {
-  local refs
-  refs=$(pr_field closingIssuesReferences '.closingIssuesReferences[] | "\(.repository.owner.login)/\(.repository.name)#\(.number)"') \
-    || refuse "has no readable closing references"
-  closes=$(sort -u <<<"${refs//$repo#/#}" | grep . | tr '\n' ' ' || true) # grep: an empty set exits 1
+  local text refs here
+  here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+  text=$(pr_field '.body // ""') || refuse "has no readable closing references"
+  refs=$(printf '%s\n' "$text" | "$here/py" "$here/closing_refs.py" "$repo") || refuse "has no readable closing references"
+  closes=$(tr '\n' ' ' <<<"$refs")
   closes=${closes% }
 }
 
 # The PR must close exactly the issue its branch (<issue>-<slug>) is named for.
 # Sets $branch, $issue, $body and $closes (not in a subshell, so a refusal exits the script).
 check_closing_reference() {
-  branch=$(pr_field headRefName .headRefName) || refuse "has no readable head branch"
+  branch=$(pr_field .head.ref) || refuse "has no readable head branch"
+  if [[ $branch == renovate/* ]]; then
+    refuse "has head branch '$branch', not <issue>-<slug>: Renovate rewrites its body. File an issue, push Renovate's commits to <issue>-<slug> (regenerate locks and gradle/verification-metadata.xml if a Gradle version changed), open a PR that closes it, close this one with a pointer"
+  fi
   [[ $branch =~ ^([0-9]+)- ]] || refuse "has head branch '$branch', not <issue>-<slug>"
   issue=${BASH_REMATCH[1]}
-  body=$(pr_field body .body) || refuse "has no readable body"
+  body=$(pr_field '.body // ""') || refuse "has no readable body"
   closing_set
   [[ -n $closes ]] || refuse "has no closing reference (put 'Closes #$issue' in the body)"
   [[ $closes == "#$issue" ]] \
-    || refuse "body closes $closes but branch $branch is for issue #$issue only (the closing set must be exactly {#$issue})"
+    || refuse "body closes $closes but branch $branch is for issue #$issue only (the closing set must be exactly {#$issue}): mention any other issue in prose, not after a closing keyword, and close it by hand after the merge"
 }
 
 # Sets $labels; has_label <name> tests it.
-load_labels() { labels=$(pr_field labels '.labels[].name') || refuse "has no readable labels"; }
+load_labels() { labels=$(pr_field '.labels[].name') || refuse "has no readable labels"; }
 has_label() { grep -qxF -- "$1" <<<"$labels"; }
 
 # Sets $pr_files: one status, path and previous path (or empty) per line.
 load_pr_files() {
-  pr_files=$(gh api "repos/$repo/pulls/$pr/files?per_page=100" --paginate \
-    --jq '.[] | [.status, .filename, (.previous_filename // "")] | @tsv') || refuse "could not read its changed files"
+  gh_list pr_files "repos/$repo/pulls/$pr/files?per_page=100" '.[] | [.status, .filename, (.previous_filename // "")] | @tsv' \
+    || refuse "could not read its changed files: $gh_list_err"
 }
 
 # In-game code (src/main/, src/client/, src/lang/) needs a demo: the `demo` label and a

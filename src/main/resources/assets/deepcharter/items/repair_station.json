@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/repair_station_active"
+    "model": "deepcharter:block/repair_station_item"
   }
 }

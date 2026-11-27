@@ -78,7 +78,7 @@ public class GlowBeamsScenario extends EvidenceScenario {
     private void floodlights(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         List<BlockPos> lights = singleplayer
                 .getServer()
-                .computeOnServer(server -> BlockSurvey.find(server.overworld(), 4, ColonyKit.FLOODLIGHT));
+                .computeOnServer(server -> BlockSurvey.generateAndFind(server.overworld(), 4, ColonyKit.FLOODLIGHT));
         if (lights.isEmpty()) {
             throw new AssertionError("the colony has no floodlight within four chunks of the spawn");
         }
@@ -114,8 +114,9 @@ public class GlowBeamsScenario extends EvidenceScenario {
             Block block,
             String still,
             int distance) {
-        List<BlockPos> found =
-                singleplayer.getServer().computeOnServer(server -> BlockSurvey.find(server.overworld(), 4, block));
+        List<BlockPos> found = singleplayer
+                .getServer()
+                .computeOnServer(server -> BlockSurvey.generateAndFind(server.overworld(), 4, block));
         if (found.isEmpty()) {
             throw new AssertionError("the colony has no " + still + " subject within four chunks of the spawn");
         }

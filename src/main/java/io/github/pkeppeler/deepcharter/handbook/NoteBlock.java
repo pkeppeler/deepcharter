@@ -1,8 +1,10 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
 import java.util.Locale;
+import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -18,7 +20,8 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * A sheet of paper lying in the world. Using it files its Note in the handbook of the user's whole charter ({@link Notes#find}).
+ * A sheet of paper lying in the world. Using it opens its Note to read ({@link OpenNotePayload}), and files it in the handbook
+ * of the user's whole charter ({@link Notes#find}) when they are on one.
  * The block stays, so another charter can find the same Note. Which Note it is lies in the block state: the property
  * {@link #NOTE} is the Note's number (N07 is 7), so the world stores nothing more than a block. A number with no text yet shows
  * a message and files nothing. Where the blocks stand is level design (#79).
@@ -57,12 +60,23 @@ public final class NoteBlock extends Block {
     protected InteractionResult useWithoutItem(
             BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer) {
-            FindResult result = Notes.find(serverPlayer, Notes.id(state.getValue(NOTE)));
-            serverPlayer.sendSystemMessage(
-                    Component.translatable(
-                            "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT)),
-                    true);
+            use(serverPlayer, Notes.id(state.getValue(NOTE)), payload -> OpenNotePayload.send(serverPlayer, payload));
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /**
+     * What using the Note {@code note} does: files it ({@link Notes#find}), hands {@code opener} the payload that opens it to read
+     * when there is one ({@link OpenNotePayload#after}), and tells the player in the action bar. The block passes the real send;
+     * a test passes a recorder, because a mock player cannot receive packets.
+     */
+    public static FindResult use(ServerPlayer player, Identifier note, Consumer<OpenNotePayload> opener) {
+        FindResult result = Notes.find(player, note);
+        OpenNotePayload.after(result, note).ifPresent(opener);
+        player.sendSystemMessage(
+                Component.translatable(
+                        "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT)),
+                true);
+        return result;
     }
 }

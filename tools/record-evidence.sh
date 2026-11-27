@@ -170,5 +170,5 @@ done
 # A rock texture round is judged on its rendered stills as well as on the seam check of its generator, which cannot see a grid that a model or a
 # motif makes (docs/design/layer-concepts-2.md). grid.py prints the table and exits non-zero on a grid in layers 1 and 2, which fails the recording.
 if [[ $scenario == layer-concepts && -d $out/screenshots ]]; then
-  python3 -I tools/layer_concepts/grid.py "$out/screenshots"
+  tools/py tools/layer_concepts/grid.py "$out/screenshots"
 fi

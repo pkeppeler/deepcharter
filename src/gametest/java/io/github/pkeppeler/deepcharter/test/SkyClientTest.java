@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -19,7 +20,7 @@ public class SkyClientTest implements FabricClientGameTest {
     private static final long SKY_DARKEST = 144_000;
     /** Straight up, from high above the colony. */
     private static final String LOOK_UP = "tp @p 18 250 0 0 -90";
-    /** At the dusk sun: the sun stands 10 degrees above the western horizon, and the view is turned 10 degrees off it so that the crosshair is clear. */
+    /** At the dusk sun: the sun stands 10 degrees above the western horizon, and the view is turned 10 degrees off it. */
     private static final String LOOK_AT_SUN = "tp @p 18 250 0 100 -10";
 
     private static final int BRIGHT = 0xC0;
@@ -31,7 +32,7 @@ public class SkyClientTest implements FabricClientGameTest {
     private static final int SUN_MAX_WIDTH = 100;
 
     private static final int GLOW_MAX_RADIUS = 80;
-    private static final int DUST_PIXELS = 6;
+    private static final int STRAY_PIXELS = 6;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -76,20 +77,16 @@ public class SkyClientTest implements FabricClientGameTest {
     /** The bright pixels of the sun view form one disc that is round, small and off the middle, and the glow dies out soon after it. */
     private static void theSunIsSmallAndRound(ClientGameTestContext context, TestServerContext server) {
         server.runCommand(LOOK_AT_SUN);
-        context.waitTicks(40);
-        BufferedImage image = read(context.takeScreenshot("sky-sun"));
-        int centreX = image.getWidth() / 2;
-        int centreY = image.getHeight() / 2;
+        BufferedImage image = read(ClientChecks.skyShot(context, "sky-sun"));
         int minX = Integer.MAX_VALUE;
         int maxX = -1;
         int minY = Integer.MAX_VALUE;
         int maxY = -1;
         int bright = 0;
-        // Rows 100 to 380 skip the readout and the hotbar; the box round the middle skips the crosshair.
+        // The rows start below the readout, and F1 hides the hand.
         for (int y = 100; y < 380; y++) {
             for (int x = 0; x < image.getWidth(); x++) {
-                boolean crosshair = Math.abs(x - centreX) < 14 && Math.abs(y - centreY) < 14;
-                if (!crosshair && isBright(image.getRGB(x, y))) {
+                if (isBright(image.getRGB(x, y))) {
                     bright++;
                     minX = Math.min(minX, x);
                     maxX = Math.max(maxX, x);
@@ -128,8 +125,8 @@ public class SkyClientTest implements FabricClientGameTest {
                 }
             }
         }
-        // A few pixels may be a speck of dust.
-        if (differing > DUST_PIXELS) {
+        // A few stray pixels are allowed.
+        if (differing > STRAY_PIXELS) {
             throw new AssertionError(
                     "The glow should be narrow: %d pixels of the row from %d to %d pixels off the middle of the sun differ from the sky"
                             .formatted(differing, GLOW_MAX_RADIUS, GLOW_MAX_RADIUS + 40));
@@ -146,8 +143,7 @@ public class SkyClientTest implements FabricClientGameTest {
 
     /** The average colour of a patch at the middle of the screen, looking straight up, once the client has caught up. */
     private static int[] skyAbove(ClientGameTestContext context, String shotName) {
-        context.waitTicks(40);
-        BufferedImage image = read(context.takeScreenshot(shotName));
+        BufferedImage image = read(ClientChecks.skyShot(context, shotName));
         int half = 20;
         long[] sum = new long[3];
         int count = 0;

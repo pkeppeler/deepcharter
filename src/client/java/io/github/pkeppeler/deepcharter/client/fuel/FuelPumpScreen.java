@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterView;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalNoticeLine;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
@@ -12,6 +13,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
+import io.github.pkeppeler.deepcharter.outpost.OutpostRates;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
@@ -24,6 +26,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -50,8 +53,14 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
         super(Component.translatable(typeOf(view).block().getDescriptionId()));
         this.view = view;
         this.typewriter = typewriter(
-                Component.translatable("screen.deepcharter.fuel_pump.online", FuelTuning.DEFAULT.pricePerLitre()),
-                new TypewriterSound());
+                Component.translatable("screen.deepcharter.fuel_pump.online", price()), new TypewriterSound());
+    }
+
+    /** What a litre costs here: the server charges the price of the band the pump stands in, in the level that is the client's own. */
+    private long price() {
+        return OutpostRates.fuelPricePerLitre(
+                Objects.requireNonNull(Minecraft.getInstance().level, "a pump screen opens in a world"),
+                view.pos().getY());
     }
 
     private static TerminalType typeOf(TerminalView view) {
@@ -61,7 +70,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
 
     @Override
     public boolean accepts(TerminalView other) {
-        return view.pos().equals(other.pos()) && view.type().equals(other.type()) && other.repaired();
+        return view.pos().equals(other.pos()) && view.type().equals(other.type());
     }
 
     @Override
@@ -72,6 +81,11 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
     @Override
     public Typewriter typewriter() {
         return typewriter;
+    }
+
+    /** The room the view's risk line takes under the header, which the text below it moves down by. */
+    private int noticeHeight() {
+        return TerminalNoticeLine.height(font, view, contentWidth(MARGIN));
     }
 
     @Override
@@ -136,7 +150,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
     private void refreshButtons(Optional<PodEntity> pod) {
         float room = pod.map(found -> PodStats.of(found).tankLitres() - FuelPump.litres(found))
                 .orElse(0f);
-        long price = FuelTuning.DEFAULT.pricePerLitre();
+        long price = price();
         List<Integer> steps = FuelTuning.DEFAULT.purchaseSteps();
         for (int i = 0; i < buyButtons.size(); i++) {
             int litres = steps.get(i);
@@ -156,11 +170,12 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
                 contentLeft(MARGIN),
                 contentTop(MARGIN),
                 contentRight(MARGIN));
+        TerminalNoticeLine.draw(graphics, font, view, contentLeft(MARGIN), contentTop(MARGIN), contentWidth(MARGIN));
         int below = drawTypewriter(
                 graphics,
                 typewriter,
                 contentLeft(MARGIN),
-                contentTop(MARGIN) + font.lineHeight + 14,
+                contentTop(MARGIN) + font.lineHeight + 14 + noticeHeight(),
                 contentWidth(MARGIN));
         Optional<PodEntity> pod = pod();
         int y = below + GAP;

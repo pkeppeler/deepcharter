@@ -36,7 +36,7 @@ Known blind spots: a parameter every caller passes the same non-literal value, a
 overwritten before its first read (any later Load counts), a base class that is imported but is not an outside API, and a decorator
 not in NEUTRAL_DECORATORS that does not register anything.
 
-Usage: python3 -I tools/tests/unused_check.py
+Usage: tools/py tools/tests/unused_check.py
 """
 import ast
 import builtins

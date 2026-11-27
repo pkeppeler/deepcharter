@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook.Layout;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
@@ -37,30 +39,40 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The cockpit HUD (#247, {@link CockpitLook}): while the local player sits in a pod and the GUI is big enough for the Ribbon, the ribbon along the top edge, its gauges and
- * warning lamps, the scanner window hung from its end and the readout plate under that are the HUD, and the vanilla hotbar, hearts and held item name are not drawn. The
- * action bar stays: the game says things there that a pilot must read (a grab on the hull, a refusal), and the Ribbon has no other place for them. On foot, and with a GUI
- * smaller than the Ribbon needs (or a pack that sets {@code enabled} to 0), nothing here draws or hides anything.
+ * warning lamps, the scanner window hung from its end and the readout plate under that are the HUD, and the vanilla hearts, food, armour, air and experience are not drawn.
+ * The vanilla hotbar and the held item's name stay (#1457): the pilot picks dynamite and the other consumables from the seat, so it must see the slot it is on
+ * ({@link SeatedHotbar} lists it for {@link HudKeepClear}, and the plate stops short of it). The action bar stays too: the game says things there that a pilot must read
+ * (a grab on the hull, a refusal), and the Ribbon has no other place for them. On foot, and with a GUI smaller than the Ribbon needs (or a pack that sets {@code enabled}
+ * to 0), nothing here draws or hides anything.
  *
  * <p>Every piece goes through {@link #draw}, so the signal decay near the bottom of a layer (#502, {@link CockpitDecay}) wraps one place and not each gauge. It darkens a
- * gauge or the scanner's window, draws static over the scanner, makes a gauge or the plate's numbers jump, and swaps the plate for a tag. It never touches the hull lamp or
- * the burning lamp, which stay true so that a pilot who dies in the dark still sees what killed them, and the scanner's cells are drawn by {@link ScannerHud} unchanged.
+ * gauge or the scanner's window, draws static over the scanner, makes a gauge or the plate's numbers jump, and swaps the plate for a tag. It never touches the hull lamp,
+ * the burning lamp or the overloaded lamp, which stay true so that a pilot who dies or sticks in the dark still sees why, and the scanner's cells are drawn by
+ * {@link ScannerHud} unchanged.
+ *
+ * <p>The cargo slot's gauge reads the pod's load against its climb limit (#1449, {@link CockpitReading#load}): a mark in the limit colour after
+ * {@link Layout#loadLimit} segments, the bar in that colour at and over it, and a LOAD title on a small plate hung under it from the band.
+ *
+ * <p>While the pod sinks fast, a SINK plate hangs under the band's middle (#1432, {@link CockpitReading#sink}, coloured
+ * by {@link #sinkColor}). It reads the depth gauge's signal, as the altimeter does.
  */
 public final class CockpitHud {
-    /** How many warning lamps the Ribbon has: low fuel, low hull, burning, and any other warning of the readout. */
-    public static final int LAMPS = 4;
+    /** How many warning lamps the Ribbon has: low fuel, low hull, burning, any other warning of the readout, and overloaded. */
+    public static final int LAMPS = 5;
 
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cockpit");
-    /** The vanilla elements a seated pilot does not get: the cluster of hotbar, health, armour, hunger, air, experience and the held item's name. */
+    /**
+     * The vanilla elements a seated pilot does not get: health, armour, hunger, air and experience, which the pod's gauges stand in for. The hotbar and the held item's name
+     * are not here (#1457): the pilot uses consumables from the selected slot.
+     */
     public static final List<Identifier> HIDDEN_WHILE_SEATED = List.of(
-            VanillaHudElements.HOTBAR,
             VanillaHudElements.ARMOR_BAR,
             VanillaHudElements.HEALTH_BAR,
             VanillaHudElements.FOOD_BAR,
             VanillaHudElements.AIR_BAR,
             VanillaHudElements.MOUNT_HEALTH,
             VanillaHudElements.INFO_BAR,
-            VanillaHudElements.EXPERIENCE_LEVEL,
-            VanillaHudElements.HELD_ITEM_TOOLTIP);
+            VanillaHudElements.EXPERIENCE_LEVEL);
 
     /** The pieces of the Ribbon that move or can fail, each drawn through {@link #draw}, and the instrument of the signal decay that fails with it. */
     public enum Part {
@@ -85,11 +97,14 @@ public final class CockpitHud {
     }
 
     private static double heat;
+    /** Client ticks the SINK plate stays up: reset while the pod sinks past its show share, counted down after. */
+    private static int sinkHold;
 
     private CockpitHud() {}
 
     public static void init() {
         for (Identifier element : HIDDEN_WHILE_SEATED) {
+            // keep-clear-ok: this takes vanilla's own bars away while seated; it draws nothing of its own
             HudElementRegistry.replaceElement(element, original -> (graphics, deltaTracker) -> {
                 if (seated(Minecraft.getInstance()).isEmpty()) {
                     original.extractRenderState(graphics, deltaTracker);
@@ -102,28 +117,85 @@ public final class CockpitHud {
         // over the Ribbon.
         HudElementRegistry.attachElementAfter(VanillaHudElements.MISC_OVERLAYS, ID, CockpitHud::extract);
         ClientTickEvents.END_CLIENT_TICK.register(CockpitHud::tick);
+        HudKeepClear.register(CockpitHud::keepClear);
+        SeatedHotbar.init();
     }
 
     /** The layout in force when the local player sits in a pod and the Ribbon fits the GUI; empty on foot, with the cockpit off, or on a GUI too small for it. */
     public static Optional<Layout> seated(Minecraft client) {
+        return seated(
+                client,
+                client.getWindow().getGuiScaledWidth(),
+                client.getWindow().getGuiScaledHeight());
+    }
+
+    /** {@link #seated(Minecraft)} on a GUI {@code guiWidth} x {@code guiHeight}, which the client's window need not have. */
+    public static Optional<Layout> seated(Minecraft client, int guiWidth, int guiHeight) {
         if (client.player == null || !(client.player.getVehicle() instanceof PodEntity)) {
             return Optional.empty();
         }
         CockpitLook look = CockpitLook.current();
-        return look.fits(
-                        client.getWindow().getGuiScaledWidth(),
-                        client.getWindow().getGuiScaledHeight())
-                ? Optional.of(look.ribbon())
-                : Optional.empty();
+        return look.fits(guiWidth, guiHeight) ? Optional.of(look.ribbon()) : Optional.empty();
     }
 
     /** Whether the cockpit's plate shows the text readout: the local player is the pilot of a pod and the Ribbon fits. The plain HUD's readout and account line stay quiet then. */
     public static boolean showsReadout(Minecraft client) {
+        return showsReadout(
+                client,
+                client.getWindow().getGuiScaledWidth(),
+                client.getWindow().getGuiScaledHeight());
+    }
+
+    /** {@link #showsReadout(Minecraft)} on a GUI {@code guiWidth} x {@code guiHeight}. */
+    public static boolean showsReadout(Minecraft client, int guiWidth, int guiHeight) {
         LocalPlayer player = client.player;
         return player != null
-                && seated(client).isPresent()
+                && seated(client, guiWidth, guiHeight).isPresent()
                 && player.getVehicle() instanceof PodEntity pod
                 && PodSeat.showsPodStatus(pod, player);
+    }
+
+    /**
+     * What a popup keeps clear of while the cockpit is up: the ribbon, which holds the gauges, the lamps and the altimeter's recess,
+     * the scanner's bezel when the pod has a map, and the readout plate where it hangs.
+     */
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        Optional<Layout> seated = seated(client, guiWidth, guiHeight);
+        PodEntity pod = seatedPod(client);
+        if (seated.isEmpty() || pod == null || client.player == null) {
+            return;
+        }
+        Layout layout = seated.get();
+        into.add(rect("cockpit ribbon", layout.band(), guiWidth, guiHeight));
+        if (ScannerHud.hasMap()) {
+            into.add(rect("cockpit scanner window", layout.scanner(), guiWidth, guiHeight));
+            into.add(rect("cockpit scanner bezel", layout.cap(), guiWidth, guiHeight));
+        }
+        if (showsReadout(client, guiWidth, guiHeight)) {
+            CockpitLook look = CockpitLook.current();
+            if (sinkShown(pod)) {
+                Box sink = sinkBox(client.font, layout, look, guiWidth, guiHeight);
+                into.add(new HudKeepClear.Rect("cockpit sink", sink.left(), sink.top(), sink.width(), sink.height()));
+            }
+            if (layout.cargo().on()) {
+                Box title = loadTitleBox(client.font, layout, look, guiWidth, guiHeight);
+                into.add(title.rect("cockpit load title"));
+            }
+            List<Row> rows = plateRows(
+                    client.font,
+                    layout,
+                    look,
+                    rows(pod, CockpitReading.of(pod, heat), look, PodStatusHud.readout(client.player, pod)),
+                    SeatedHotbar.slots(client, guiWidth, guiHeight),
+                    guiWidth,
+                    guiHeight);
+            into.add(plateBox(client.font, layout, look, rows, guiWidth, guiHeight)
+                    .rect("cockpit readout plate"));
+        }
+    }
+
+    private static HudKeepClear.Rect rect(String what, Decal decal, int guiWidth, int guiHeight) {
+        return new HudKeepClear.Rect(what, decal.left(guiWidth), decal.top(guiHeight), decal.width(), decal.height());
     }
 
     /** The heat gauge's reading, 0 to 1: the burning of the hull, eased. */
@@ -134,15 +206,23 @@ public final class CockpitHud {
     private static void tick(Minecraft client) {
         if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod)) {
             heat = 0;
+            sinkHold = 0;
             return;
         }
         CockpitLook look = CockpitLook.current();
         heat = pod.hullBurning()
                 ? Math.min(1.0, heat + look.heatRisePerTick())
                 : Math.max(0.0, heat - look.heatFallPerTick());
+        if (pod.onGround()) {
+            sinkHold = 0;
+        } else if (CockpitReading.of(pod, heat).sink() >= look.sink().showShare()) {
+            sinkHold = look.sink().holdTicks() + 1;
+        } else if (sinkHold > 0) {
+            sinkHold--;
+        }
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
         PodEntity pod = seatedPod(client);
@@ -204,8 +284,8 @@ public final class CockpitHud {
                 decay,
                 Part.CARGO,
                 layout.cargo().area(),
-                () -> gauge(
-                        graphics, layout.cargo(), decay.shown(Part.CARGO, reading.cargo()), look.cargoColor(), look));
+                () -> loadGauge(graphics, layout, decay, reading, look));
+        loadTitle(graphics, client.font, layout, look);
         draw(
                 graphics,
                 decay,
@@ -219,6 +299,11 @@ public final class CockpitHud {
                 Part.HEAT,
                 layout.heat().area(),
                 () -> gauge(graphics, layout.heat(), decay.shown(Part.HEAT, reading.heat()), look.heatColor(), look));
+        if (sinkShown(pod) && decay.fault(Part.DEPTH) != Fault.DROP) {
+            double bar = Math.min(
+                    1.0, reading.sink() * look.sink().limit() / look.sink().segments());
+            sinkReadout(graphics, client.font, layout, look, decay.shown(Part.DEPTH, bar));
+        }
         draw(
                 graphics,
                 decay,
@@ -227,8 +312,10 @@ public final class CockpitHud {
                 () -> lamps(
                         graphics,
                         layout.lamps(),
-                        decayedLamps(decay, lampsLit(fuelLow, hullLow, pod.hullBurning(), lines)),
-                        new int[] {look.lowColor(), look.lowColor(), look.heatColor(), look.depthColor()},
+                        decayedLamps(decay, lampsLit(fuelLow, hullLow, pod.hullBurning(), reading.overloaded(), lines)),
+                        new int[] {
+                            look.lowColor(), look.lowColor(), look.heatColor(), look.depthColor(), look.lowColor()
+                        },
                         look));
         draw(
                 graphics,
@@ -260,17 +347,17 @@ public final class CockpitHud {
     }
 
     /**
-     * The lamps as the decay lets them read: the fuel lamp and the alert lamp go dark or show a false state, and the hull lamp and the burning lamp never change, so a pilot
-     * who is dying in the dark still sees why.
+     * The lamps as the decay lets them read: the fuel lamp and the alert lamp go dark or show a false state, and the hull lamp, the burning lamp and the overloaded
+     * lamp never change, so a pilot who is dying or stuck in the dark still sees why.
      */
     public static boolean[] decayedLamps(CockpitDecay decay, boolean[] lit) {
-        return new boolean[] {decay.lampShown(lit[0], 0), lit[1], lit[2], decay.lampShown(lit[3], 1)};
+        return new boolean[] {decay.lampShown(lit[0], 0), lit[1], lit[2], decay.lampShown(lit[3], 1), lit[4]};
     }
 
     /** The altimeter's reading as the decay lets it read: gone when the depth gauge is dark, its digits jumping when it jumps. Not seated in a pod, the reading as given; empty only on a drop-out of the depth gauge. */
-    public static Optional<Component> altimeter(Minecraft client, Component reading) {
+    public static Optional<Component> altimeter(Minecraft client, int guiWidth, int guiHeight, Component reading) {
         PodEntity pod = seatedPod(client);
-        if (pod == null || seated(client).isEmpty()) {
+        if (pod == null || seated(client, guiWidth, guiHeight).isEmpty()) {
             return Optional.of(reading);
         }
         CockpitDecay decay = CockpitDecay.of(client, pod, CockpitLook.current());
@@ -313,9 +400,150 @@ public final class CockpitHud {
         }
     }
 
-    /** Which of the {@link #LAMPS} are lit: low fuel, low hull, the hull burning, and any line of the readout that is a warning ({@link Kind#ALERT}). */
-    public static boolean[] lampsLit(boolean fuelLow, boolean hullLow, boolean burning, List<Line> readout) {
-        return new boolean[] {fuelLow, hullLow, burning, readout.stream().anyMatch(line -> line.kind() == Kind.ALERT)};
+    /**
+     * Which of the {@link #LAMPS} are lit: low fuel, low hull, the hull burning, any line of the readout that is a warning ({@link Kind#ALERT}), and a load the rotor
+     * cannot climb with.
+     */
+    public static boolean[] lampsLit(
+            boolean fuelLow, boolean hullLow, boolean burning, boolean overloaded, List<Line> readout) {
+        return new boolean[] {
+            fuelLow, hullLow, burning, readout.stream().anyMatch(line -> line.kind() == Kind.ALERT), overloaded
+        };
+    }
+
+    /**
+     * The load gauge: the load as a share of the bar, which runs to {@code segments / loadLimit} of the climb limit, in the gauge's colour under the limit and the limit
+     * colour at and over it, and the limit's mark, a line in the limit colour through the gap before segment {@code loadLimit} and a pixel past the bar each side.
+     */
+    private static void loadGauge(
+            GuiGraphicsExtractor graphics,
+            Layout layout,
+            CockpitDecay decay,
+            CockpitReading reading,
+            CockpitLook look) {
+        Gauge gauge = layout.cargo();
+        if (!gauge.on()) {
+            return;
+        }
+        double share = Math.min(1.0, reading.load() * layout.loadLimit() / gauge.segments());
+        gauge(
+                graphics,
+                gauge,
+                decay.shown(Part.CARGO, share),
+                reading.overloaded() ? look.lowColor() : look.cargoColor(),
+                look);
+        int left = gauge.area().left(graphics.guiWidth());
+        int top = gauge.area().top(graphics.guiHeight());
+        int mark = left + layout.loadLimit() * gauge.area().width() / gauge.segments() - 1;
+        graphics.fill(mark, top - 1, mark + 1, top + gauge.area().height() + 1, look.lowColor());
+    }
+
+    /**
+     * The load gauge's title, so the bar reads as the load and not the bay's slots. In the game's own font, as the plate's text is: the terminal font is drawn at
+     * 6 pixels, which a GUI of scale 1 renders as "I NAD".
+     */
+    private static Component loadTitleText() {
+        return Component.translatable("hud.deepcharter.cockpit.load");
+    }
+
+    /**
+     * Where the load gauge's title plate is: as wide as the title and {@link CockpitLook#titleGap} past the plate sprite's border each side, as tall as the font's
+     * capitals ({@link CockpitLook#titleTextHeight}) the same way, centred under the gauge and hung from the band's lower edge.
+     */
+    public static Box loadTitleBox(Font font, Layout layout, CockpitLook look, int guiWidth, int guiHeight) {
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        int width = font.width(loadTitleText()) + border.left() + border.right() + 2 * look.titleGap();
+        int height = look.titleTextHeight() + border.top() + border.bottom() + 2 * look.titleGap();
+        Decal area = layout.cargo().area();
+        int left = area.left(guiWidth) + (area.width() - width) / 2;
+        int top = layout.band().top(guiHeight) + layout.band().height();
+        return new Box(left, top, width, height);
+    }
+
+    /** The cab's label, not the signal's: it stays when the gauge goes dark. */
+    private static void loadTitle(GuiGraphicsExtractor graphics, Font font, Layout layout, CockpitLook look) {
+        if (!layout.cargo().on()) {
+            return;
+        }
+        Box box = loadTitleBox(font, layout, look, graphics.guiWidth(), graphics.guiHeight());
+        CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        graphics.text(
+                font,
+                loadTitleText(),
+                box.left() + border.left() + look.titleGap(),
+                box.top() + border.top() + look.titleGap(),
+                look.cargoColor());
+    }
+
+    /** Whether the SINK plate is up: the pod is airborne and sank past the show share within the plate's hold time. */
+    public static boolean sinkShown(PodEntity pod) {
+        return sinkHold > 0 && !pod.onGround();
+    }
+
+    private static Component sinkTitleText() {
+        return Component.translatable("hud.deepcharter.cockpit.sink");
+    }
+
+    /**
+     * Where the SINK plate is: the title and the bar side by side, {@link CockpitLook#titleGap} past the plate sprite's
+     * border, as tall as the taller of the font's capitals and the bar, centred under the band (so under the
+     * altimeter's recess) and hung from its lower edge.
+     */
+    public static Box sinkBox(Font font, Layout layout, CockpitLook look, int guiWidth, int guiHeight) {
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        CockpitLook.SinkLook sink = look.sink();
+        int width = font.width(sinkTitleText())
+                + sink.barGap()
+                + sink.barWidth()
+                + border.left()
+                + border.right()
+                + 2 * look.titleGap();
+        int height = Math.max(look.titleTextHeight(), sink.barHeight())
+                + border.top()
+                + border.bottom()
+                + 2 * look.titleGap();
+        Decal band = layout.band();
+        return new Box(
+                band.left(guiWidth) + (band.width() - width) / 2, band.top(guiHeight) + band.height(), width, height);
+    }
+
+    /**
+     * The SINK readout's colour at a sink of {@code share} of the buffer: the hull gauge's, {@code ribbonWarn} from the
+     * warning share, the warning colour past 1.
+     */
+    public static int sinkColor(double share, CockpitLook look) {
+        if (share > 1.0) {
+            return look.lowColor();
+        }
+        return share >= look.sink().warnShare() ? look.sink().warnColor() : look.hullColor();
+    }
+
+    /**
+     * The SINK plate with its bar at {@code bar} (0 to 1, the full bar {@code segments / limit} of the buffer): its
+     * title, and its bar lit to it with the buffer marked in the warning colour.
+     */
+    private static void sinkReadout(
+            GuiGraphicsExtractor graphics, Font font, Layout layout, CockpitLook look, double bar) {
+        Box box = sinkBox(font, layout, look, graphics.guiWidth(), graphics.guiHeight());
+        CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        CockpitLook.SinkLook sink = look.sink();
+        int color = sinkColor(bar * sink.segments() / sink.limit(), look);
+        int x = box.left() + border.left() + look.titleGap();
+        int y = box.top() + border.top() + look.titleGap();
+        int content = Math.max(look.titleTextHeight(), sink.barHeight());
+        graphics.text(font, sinkTitleText(), x, y + (content - look.titleTextHeight()) / 2, color);
+        int left = x + font.width(sinkTitleText()) + sink.barGap();
+        int top = y + (content - sink.barHeight()) / 2;
+        int lit = (int) Math.ceil(bar * sink.segments() - 1e-9);
+        for (int i = 0; i < sink.segments(); i++) {
+            int from = left + i * sink.barWidth() / sink.segments();
+            int to = left + (i + 1) * sink.barWidth() / sink.segments() - 1;
+            graphics.fill(from, top, to, top + sink.barHeight(), i < lit ? color : look.offColor());
+        }
+        int mark = left + sink.limit() * sink.barWidth() / sink.segments() - 1;
+        graphics.fill(mark, top - 1, mark + 1, top + sink.barHeight() + 1, look.lowColor());
     }
 
     /** The warning lamps: {@link #LAMPS} squares in a row (a slot wider than it is tall) or a column, each lit in its colour or off. */
@@ -397,13 +625,25 @@ public final class CockpitHud {
     }
 
     /** Where the plate is on the screen. */
-    public record Box(int left, int top, int width, int height) {}
+    public record Box(int left, int top, int width, int height) {
+        public HudKeepClear.Rect rect(String what) {
+            return new HudKeepClear.Rect(what, left, top, width, height);
+        }
+    }
 
     /**
      * The space from the plate's edge to its text: the plate sprite's nine-slice border on each side, which the sprite's own metadata gives (so a pack that draws a
      * thicker border keeps its text clear of it), and {@link CockpitLook#plateGap} past it. A sprite that is not cut in nine has no border.
      */
     public static GuiSpriteScaling.NineSlice.Border plateInset(Layout layout, CockpitLook look) {
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        int gap = look.plateGap();
+        return new GuiSpriteScaling.NineSlice.Border(
+                border.left() + gap, border.top() + gap, border.right() + gap, border.bottom() + gap);
+    }
+
+    /** The plate sprite's nine-slice border, from the sprite's own metadata; none for a sprite that is not cut in nine. */
+    private static GuiSpriteScaling.NineSlice.Border plateBorder(Layout layout) {
         GuiSpriteScaling scaling = Minecraft.getInstance()
                 .getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.GUI)
@@ -412,13 +652,9 @@ public final class CockpitHud {
                 .getAdditionalMetadata(GuiMetadataSection.TYPE)
                 .orElse(GuiMetadataSection.DEFAULT)
                 .scaling();
-        int gap = look.plateGap();
-        if (scaling instanceof GuiSpriteScaling.NineSlice nine) {
-            GuiSpriteScaling.NineSlice.Border border = nine.border();
-            return new GuiSpriteScaling.NineSlice.Border(
-                    border.left() + gap, border.top() + gap, border.right() + gap, border.bottom() + gap);
-        }
-        return new GuiSpriteScaling.NineSlice.Border(gap, gap, gap, gap);
+        return scaling instanceof GuiSpriteScaling.NineSlice nine
+                ? nine.border()
+                : new GuiSpriteScaling.NineSlice.Border(0, 0, 0, 0);
     }
 
     /** The plate that holds {@code rows}, as big as its longest row and the number of rows, hung from the layout's readout anchor. */
@@ -434,10 +670,33 @@ public final class CockpitHud {
         return new Box(layout.readout().left(guiWidth, width), layout.readout().top(guiHeight, height), width, height);
     }
 
-    /** How many rows the plate has room for under its anchor on a GUI {@code guiHeight} high. */
-    public static int roomForRows(Font font, Layout layout, CockpitLook look, int guiHeight) {
+    /**
+     * The rows of {@code all} the plate shows on a GUI {@code guiWidth} x {@code guiHeight}: as many as fit under its anchor ({@link #fitting}), and fewer when the plate
+     * would then reach down into one of {@code hotbar}, what vanilla draws along the bottom edge ({@link SeatedHotbar#slots}), which a narrow GUI puts under the plate's
+     * columns (#1457). A warning is never dropped, so a pile of warnings can still reach it.
+     */
+    public static List<Row> plateRows(
+            Font font,
+            Layout layout,
+            CockpitLook look,
+            List<Row> all,
+            List<HudKeepClear.Rect> hotbar,
+            int guiWidth,
+            int guiHeight) {
+        List<Row> rows = fitting(all, roomForRows(font, layout, look, guiHeight, guiHeight));
+        HudKeepClear.Rect plate =
+                plateBox(font, layout, look, rows, guiWidth, guiHeight).rect("plate");
+        OptionalInt floor = hotbar.stream()
+                .filter(plate::overlaps)
+                .mapToInt(HudKeepClear.Rect::y)
+                .min();
+        return floor.isEmpty() ? rows : fitting(all, roomForRows(font, layout, look, guiHeight, floor.getAsInt()));
+    }
+
+    /** How many rows the plate has room for between its anchor on a GUI {@code guiHeight} high and {@code bottom}. */
+    private static int roomForRows(Font font, Layout layout, CockpitLook look, int guiHeight, int bottom) {
         GuiSpriteScaling.NineSlice.Border inset = plateInset(layout, look);
-        int room = guiHeight
+        int room = bottom
                 - layout.readout().top(guiHeight, 0)
                 - inset.top()
                 - inset.bottom()
@@ -463,7 +722,16 @@ public final class CockpitHud {
         Font font = client.font;
         List<Row> rows = decay.fault(Part.PLATE) == Fault.DROP
                 ? List.of(tag(decay, look))
-                : jumped(decay, fitting(all, roomForRows(font, layout, look, graphics.guiHeight())));
+                : jumped(
+                        decay,
+                        plateRows(
+                                font,
+                                layout,
+                                look,
+                                all,
+                                SeatedHotbar.slots(client, graphics.guiWidth(), graphics.guiHeight()),
+                                graphics.guiWidth(),
+                                graphics.guiHeight()));
         Box box = plateBox(font, layout, look, rows, graphics.guiWidth(), graphics.guiHeight());
         CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
         GuiSpriteScaling.NineSlice.Border inset = plateInset(layout, look);

@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnloadedChunk;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -37,7 +38,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
@@ -49,7 +49,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #380, the audit of gameplay decisions that ask an entity query. A query sees only the entities of loaded
@@ -71,12 +70,6 @@ public class EntityQueryAuditTest {
             + (int) STALE_UUID.getMostSignificantBits() + "," + (int) (STALE_UUID.getLeastSignificantBits() >> 32) + ","
             + (int) STALE_UUID.getLeastSignificantBits() + "]";
 
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
     /** Holds once the entities saved with the chunk at {@code pos} have loaded into the world, which is later than the chunk ticking. */
     private static BooleanSupplier entitiesLoaded(ServerLevel level, BlockPos pos) {
         ChunkPos chunk = ChunkPos.containing(pos);
@@ -88,7 +81,7 @@ public class EntityQueryAuditTest {
     public void aCharterCountsItsPodsWhoseChunkIsNotLoaded(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = server.overworld();
-        BlockPos far = new BlockPos(16_000, 140, 16_000);
+        BlockPos far = TestLayers.pos(TestLayers.SURFACE, 16_000, 140, 16_000);
         CharterId charter = CharterId.random();
         UUID[] pod = {null};
         UnloadedChunk.cycle(
@@ -124,7 +117,7 @@ public class EntityQueryAuditTest {
     @GameTest(maxTicks = CYCLE_TICKS)
     public void aFigureIsGoneWhenItsChunkUnloadsSoTheCapsNeedNoSavedCount(GameTestHelper helper) {
         ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), Level.NETHER);
-        BlockPos far = new BlockPos(16_040, 100, 16_040);
+        BlockPos far = new BlockPos(16_040, 100, 16_040); // fixed-pos: the Nether, which is not a layer
         List<UUID> figures = new ArrayList<>();
         UnloadedChunk.cycle(
                 helper,
@@ -133,7 +126,7 @@ public class EntityQueryAuditTest {
                 new UnloadedChunk.Stages(
                         () -> {
                             floor(level, far, 3);
-                            for (int i = 0; i < CREATURES.maxPerLevel(); i++) {
+                            for (int i = 0; i < CREATURES.maxPerBand(); i++) {
                                 LamplessFigure figure = TestEntities.create(
                                         CreatureRegistry.LAMPLESS_FIGURE, level, EntitySpawnReason.EVENT);
                                 figure.setPos(Vec3.atBottomCenterOf(far.above()));
@@ -141,15 +134,15 @@ public class EntityQueryAuditTest {
                                 level.addFreshEntity(figure);
                                 figures.add(figure.getUUID());
                             }
-                            if (LamplessFigures.levelHasRoom(level, false)) {
+                            if (LamplessFigures.bandHasRoom(level, false, far.getY())) {
                                 throw failure(
                                         helper,
                                         "the level holds its %d figures and still has room for another",
-                                        CREATURES.maxPerLevel());
+                                        CREATURES.maxPerBand());
                             }
                         },
                         () -> {
-                            if (!LamplessFigures.levelHasRoom(level, false)) {
+                            if (!LamplessFigures.bandHasRoom(level, false, far.getY())) {
                                 throw failure(
                                         helper, "the figures of a chunk that unloaded still use up the level's room");
                             }
@@ -173,7 +166,7 @@ public class EntityQueryAuditTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aQuerySeesEntitiesOfALoadedChunkThatDoesNotTick(GameTestHelper helper) {
         ServerLevel level = helper.getLevel().getServer().overworld();
-        BlockPos far = new BlockPos(16_300, 140, 16_300);
+        BlockPos far = TestLayers.pos(TestLayers.SURFACE, 16_300, 140, 16_300);
         ChunkPos chunk = ChunkPos.containing(far);
         UUID[] pod = {null};
         boolean[] placed = {false};
@@ -249,7 +242,7 @@ public class EntityQueryAuditTest {
         BlockPos centre = Colony.placed(server)
                 .orElseThrow(() -> failure(helper, "the colony was not built"))
                 .center();
-        BlockPos far = new BlockPos(16_200, 140, 16_200);
+        BlockPos far = TestLayers.pos(TestLayers.SURFACE, 16_200, 140, 16_200);
         UnloadedChunk.cycle(
                 helper,
                 level,
@@ -369,9 +362,9 @@ public class EntityQueryAuditTest {
         int before = server.getPlayerList().getSimulationDistance();
         server.getPlayerList().setSimulationDistance(3);
         MockPlayer mock = MockPlayers.join(helper, "simulation-distance");
-        // The player stands in the last block column of its chunk, so 30 blocks east is the far end of the second chunk
-        // beyond.
-        Vec3 at = new Vec3(17_007.5, 100, 17_000.5);
+        // The player stands in the last block column of its chunk, so 30 blocks east is the far end of the second
+        // chunk beyond.
+        Vec3 at = TestLayers.vec(TestLayers.SURFACE, 17_007.5, 100, 17_000.5);
         BlockPos podPos = BlockPos.containing(at.x + 30, at.y, at.z);
         FarChunks.Deadline deadline = FarChunks.deadline();
         boolean[] moved = {false};

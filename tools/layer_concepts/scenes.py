@@ -391,7 +391,7 @@ def dress_a(d: Dressing) -> None:
             d.put(fx, TOP - 1, zz, state("steel_beam", axis="z"))
     d.track(1, LAVA_X - 7, CZ, BASE)
     d.track(LAVA_X + 5, CRUST_X - 6, CZ, BASE)
-    d.p.set(7, BASE, CZ, state("ore_car", facing="east"))
+    d.p.set(7, BASE, CZ, state("ore_car", facing="east", looted="false"))
     for x in range(1, LAVA_X - 6):
         d.put(x, TOP - 1, CZ - 2, state("deepcharter:conduit"))
         if x % 4 == 1:

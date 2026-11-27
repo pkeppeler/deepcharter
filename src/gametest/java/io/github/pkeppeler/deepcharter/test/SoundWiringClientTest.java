@@ -1,6 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -14,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -21,6 +25,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -47,7 +52,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.Music;
 import net.minecraft.world.attribute.EnvironmentAttributes;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -63,12 +67,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
     /** The layers that have music. A new layer fails the count check until its music is listed here. */
     private static final List<String> LAYER_MUSIC = List.of("music.layer_1", "music.layer_2");
 
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
     private static final int X = 500;
     private static final int Z = 500;
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     private static final int BURSTS = 12;
     private static final int BURST_TICKS = 5;
     private static final double BURST_BLOCKS = 0.5;
@@ -145,8 +146,8 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     "the pod in the client's level",
                     client -> ClientLight.clientLevel(client).getEntity(podId) != null);
 
-            // The client loads the pod a few times while the teleported player's chunks settle; count from the settled
-            // pod.
+            // The client loads the pod a few times while the teleported player's chunks settle; count from the
+            // settled pod.
             ClientWait.until(
                     context,
                     "the pod idling with its engine sound heard",
@@ -202,6 +203,14 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 
     /** Bursts of movement with rests between them keep one drive loop: every burst is a real move, a rest is a few ticks. */
     private static void movingHold(ClientGameTestContext context, Heard heard, TwoPlayerServer two, int podId) {
+        // The loop of the last drive falls to silence before it stops (#961), and a drive that starts while it falls
+        // rises again
+        // instead of starting a new one: count the bursts' loops from a pod with none.
+        await(
+                context,
+                heard,
+                "the loop of the last drive faded out",
+                client -> !heard.isPlaying(client.getSoundManager(), "pod.engine_drive"));
         long driveBefore = heard.count("pod.engine_drive");
         long idleBefore = heard.count("pod.engine_idle");
         for (int burst = 0; burst < BURSTS; burst++) {
@@ -230,12 +239,13 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 "pod.engine_idle playing before leaving the overworld",
                 client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
         long idleBefore = heard.count("pod.engine_idle");
-        teleportReal(two, LayerChain.dimension(1), 0.5, 100, 0.5);
-        await(
-                context,
-                heard,
-                "the client in layer 1",
-                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+        teleportReal(
+                two,
+                two.server().computeOnServer(s -> TestLayers.dimension(s, 1)),
+                0.5,
+                TestLayers.worldY(1, 100),
+                0.5);
+        await(context, heard, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
         teleportReal(two, Level.OVERWORLD, X + 3.5, FLOOR_Y, Z - 3.5);
         await(
                 context,
@@ -277,8 +287,8 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     .runOnServer(server ->
                             server.getPlayerList().getPlayers().getFirst().stopRiding());
 
-            // A terminal: music while it is open, letters while it types, and a sound for a sale, an error and a
-            // purchase.
+            // A terminal: music while it is open, letters while it types, and a sound for a sale, an error and
+            // a purchase.
             open(context, scene.processor());
             await(
                     context,
@@ -326,9 +336,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                             .getPlayers()
                             .getFirst()
                             .teleportTo(
-                                    ClientLight.serverLevel(server, LayerChain.dimension(1)),
+                                    TestLayers.level(server, 1),
                                     0.5,
-                                    100,
+                                    TestLayers.worldY(1, 100),
                                     0.5,
                                     Set.of(),
                                     0,
@@ -338,10 +348,10 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     context,
                     heard,
                     "pod.engine_idle stopped in layer 1",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                    client -> TestLayers.clientIsIn(client, 1)
                             && !heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 
-            // Each layer's dimension carries its music, and the client plays what the dimension says.
+            // Each layer's zone biomes carry its music, and the client plays what the biome at the player says.
             int layers = singleplayer.getServer().computeOnServer(server -> LayerChain.count(server.registryAccess()));
             require(
                     layers == LAYER_MUSIC.size(),
@@ -354,9 +364,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                                 .getPlayers()
                                 .getFirst()
                                 .teleportTo(
-                                        ClientLight.serverLevel(server, LayerChain.dimension(target)),
+                                        TestLayers.level(server, target),
                                         0.5,
-                                        100,
+                                        TestLayers.worldY(target, 100),
                                         0.5,
                                         Set.of(),
                                         0,
@@ -365,8 +375,16 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 ClientWait.until(
                         context,
                         "the client in the target layer",
-                        client ->
-                                client.level != null && client.level.dimension().equals(LayerChain.dimension(target)));
+                        client -> client.level != null && TestLayers.clientIsIn(client, target));
+                // The music is the biome's, so read it only once the client has the chunk and its biome.
+                ClientWait.until(context, "the client's biome at the player in layer " + target, client -> {
+                    Vec3 at = ClientSession.player(client).position();
+                    return ClientLight.clientLevel(client)
+                            .getBiome(BlockPos.containing(at))
+                            .unwrapKey()
+                            .filter(key -> key.identifier().getNamespace().equals(DeepCharter.MOD_ID))
+                            .isPresent();
+                });
                 String expected = LAYER_MUSIC.get(layer - 1);
                 Identifier music = context.computeOnClient(client -> {
                     Music playing = ClientLight.clientLevel(client)
@@ -410,9 +428,13 @@ public class SoundWiringClientTest implements FabricClientGameTest {
         }
         BlockPos pump = player.blockPosition().relative(Direction.EAST, 2);
         BlockPos processor = player.blockPosition().relative(Direction.SOUTH, 2);
-        server.overworld().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
-        server.overworld()
-                .setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(), pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                processor,
+                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                3);
         player.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
         PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
         pod.setPos(player.position().relative(Direction.WEST, 3));

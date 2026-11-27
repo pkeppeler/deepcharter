@@ -17,8 +17,8 @@ import net.minecraft.server.level.ServerPlayer;
 /**
  * Notes: pages found in the world. A Note a player finds belongs to their whole charter: every member's handbook lists it, and it
  * is unread for each member until that member opens it ({@link ReadMarks}, which belongs to the player). A new member of a charter
- * sees the charter's Notes, unread unless they read them before. A player on no charter files nothing: a Note needs a charter's
- * handbook to go into ({@link FindResult#NO_CHARTER}), and it is not remembered for a charter the player founds later.
+ * sees the charter's Notes, unread unless they read them before. A player on no charter files the Note for themselves
+ * ({@link PersonalHandbookData}, {@link FindResult#NO_CHARTER}); {@link ProgressCarry} moves it into a charter they found or join.
  *
  * <p>The set of Notes is fixed in code, N01 to N11 for M2 (docs/lore/notes.md). A Note's id is {@code deepcharter:note/n<NN>}, and
  * its title and text are the language keys {@link #titleKey} and {@link #textKey}, so the server needs no table that the client has
@@ -77,9 +77,9 @@ public final class Notes {
     }
 
     /**
-     * Files {@code note} in the handbook of every member of {@code finder}'s charter, unread for each, and tells their clients. Does
-     * nothing, and says why in the result, when the Note does not exist, the player is on no charter, the charter already has the Note,
-     * or the saved charters or Notes are unreadable.
+     * Files {@code note} in the handbook of every member of {@code finder}'s charter, unread for each, and tells their clients. A
+     * player on no charter files it for themselves and gets {@link FindResult#NO_CHARTER}. Does nothing, and says why in the result,
+     * when the Note does not exist, the charter already has the Note, or the saved charters, Notes or personal data are unreadable.
      */
     public static FindResult find(ServerPlayer finder, Identifier note) {
         MinecraftServer server = finder.level().getServer();
@@ -92,6 +92,13 @@ public final class Notes {
         }
         Optional<Charter> charter = Charters.readableCharterOf(server, finder.getUUID());
         if (charter.isEmpty()) {
+            Optional<PersonalHandbookData> personal = HandbookProgress.readablePersonal(server);
+            if (personal.isEmpty()) {
+                return FindResult.UNREADABLE;
+            }
+            if (personal.get().addNote(finder.getUUID(), note)) {
+                NotesSyncPayload.send(server, finder);
+            }
             return FindResult.NO_CHARTER;
         }
         if (!data.get().add(charter.get().id(), note)) {
@@ -102,17 +109,20 @@ public final class Notes {
     }
 
     /**
-     * The Notes the charter of {@code player} has found, in Note order: empty when they are on no charter. Empty, and logged once,
-     * while the saved charters or Notes are unreadable.
+     * The Notes the charter of {@code player} has found, in Note order, or those they found themselves when they are on no charter.
+     * Empty, and logged once, while the saved charters, Notes or personal data are unreadable.
      */
     public static List<Identifier> foundFor(MinecraftServer server, UUID player) {
         Optional<NotesData> data = readableData(server);
         if (data.isEmpty()) {
             return List.of();
         }
-        Set<Identifier> found = Charters.readableCharterOf(server, player)
-                .map(charter -> data.get().found(charter.id()))
-                .orElse(Set.of());
+        Optional<Charter> charter = Charters.readableCharterOf(server, player);
+        Set<Identifier> found = charter.isPresent()
+                ? data.get().found(charter.get().id())
+                : HandbookProgress.readablePersonal(server)
+                        .map(personal -> personal.notes(player))
+                        .orElse(Set.of());
         return ALL.stream().filter(found::contains).toList();
     }
 

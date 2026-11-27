@@ -1,0 +1,1320 @@
+{
+  "dimensions": {
+    "deepcharter:layer_1": {
+      "type": "deepcharter:layer_1",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": 0,
+          "height": 192,
+          "biomes": [
+            "deepcharter:topsoil_claims",
+            "deepcharter:stone_benches",
+            "deepcharter:deep_claim"
+          ]
+        },
+        "settings": "deepcharter:layer_1"
+      }
+    },
+    "deepcharter:layer_2": {
+      "type": "deepcharter:layer_2",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": 0,
+          "height": 256,
+          "biomes": [
+            "deepcharter:upper_levels",
+            "deepcharter:shift_change",
+            "deepcharter:prospectors_run"
+          ]
+        },
+        "settings": "deepcharter:layer_2"
+      }
+    },
+    "deepcharter:tall_baseline": {
+      "type": "deepcharter:tall_baseline",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": -2032,
+          "height": 2048,
+          "biomes": [
+            "deepcharter:reference_topsoil_claims",
+            "deepcharter:reference_stone_benches",
+            "deepcharter:reference_deep_claim"
+          ]
+        },
+        "settings": "deepcharter:tall_baseline"
+      }
+    },
+    "deepcharter:tall_baseline_biomes": {
+      "type": "deepcharter:tall_baseline",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "deepcharter:regolith_plains",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:mesa_country",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:basalt_field",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:salvage_yard",
+              "parameters": {
+                "temperature": [
+                  0.5,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            }
+          ]
+        },
+        "settings": "deepcharter:tall_baseline"
+      }
+    },
+    "deepcharter:tall_surface": {
+      "type": "deepcharter:tall_surface",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": -2032,
+          "height": 2352,
+          "biomes": [
+            "deepcharter:reference_topsoil_claims",
+            "deepcharter:reference_stone_benches",
+            "deepcharter:reference_deep_claim"
+          ]
+        },
+        "settings": "deepcharter:tall_surface"
+      }
+    },
+    "deepcharter:tall_surface_biomes": {
+      "type": "deepcharter:tall_surface",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "deepcharter:regolith_plains",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:mesa_country",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:basalt_field",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:salvage_yard",
+              "parameters": {
+                "temperature": [
+                  0.5,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            }
+          ]
+        },
+        "settings": "deepcharter:tall_surface"
+      }
+    },
+    "minecraft:overworld": {
+      "type": "deepcharter:test_overworld",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "minecraft:desert",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "minecraft:sandstone",
+              "height": 67
+            }
+          ]
+        }
+      }
+    },
+    "minecraft:the_end": {
+      "type": "minecraft:the_end",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "minecraft:the_end",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "minecraft:end_stone",
+              "height": 3
+            }
+          ]
+        }
+      }
+    },
+    "minecraft:the_nether": {
+      "type": "minecraft:the_nether",
+      "generator": {
+        "type": "minecraft:flat",
+        "settings": {
+          "biome": "minecraft:basalt_deltas",
+          "features": false,
+          "lakes": false,
+          "layers": [
+            {
+              "block": "minecraft:bedrock",
+              "height": 1
+            },
+            {
+              "block": "minecraft:basalt",
+              "height": 3
+            }
+          ]
+        }
+      }
+    },
+    "deepcharter:tall_surface_bare": {
+      "type": "deepcharter:tall_surface",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "deepcharter-test:bare_regolith_plains",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter-test:bare_mesa_country",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter-test:bare_basalt_field",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter-test:bare_salvage_yard",
+              "parameters": {
+                "temperature": [
+                  0.5,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            }
+          ]
+        },
+        "settings": "deepcharter:tall_surface"
+      }
+    },
+    "deepcharter:tall_surface_yard": {
+      "type": "deepcharter:tall_surface",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "deepcharter:regolith_plains",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:mesa_country",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:basalt_field",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:salvage_yard",
+              "parameters": {
+                "temperature": [
+                  0.5,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            }
+          ]
+        },
+        "settings": "deepcharter:tall_surface_yard"
+      }
+    },
+    "deepcharter:tall_surface_yard_bare": {
+      "type": "deepcharter:tall_surface",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "deepcharter-test:bare_regolith_plains",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter-test:bare_mesa_country",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter-test:bare_basalt_field",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter-test:bare_salvage_yard",
+              "parameters": {
+                "temperature": [
+                  0.5,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            }
+          ]
+        },
+        "settings": "deepcharter:tall_surface_yard"
+      }
+    },
+    "deepcharter:campaign_sample": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:bands",
+          "surface_min_y": -64,
+          "surface": {
+            "biomes": [
+              {
+                "biome": "deepcharter:regolith_plains",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    0.22
+                  ],
+                  "erosion": [
+                    -2.0,
+                    0.5
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:mesa_country",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    0.22,
+                    2.0
+                  ],
+                  "erosion": [
+                    -1.0,
+                    1.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:basalt_field",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    0.22
+                  ],
+                  "erosion": [
+                    0.5,
+                    2.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:salvage_yard",
+                "parameters": {
+                  "temperature": [
+                    0.5,
+                    1.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    2.0
+                  ],
+                  "erosion": [
+                    -1.0,
+                    1.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              }
+            ]
+          },
+          "layers": [
+            {
+              "min_y": -256,
+              "height": 192,
+              "biomes": [
+                "deepcharter:topsoil_claims",
+                "deepcharter:stone_benches",
+                "deepcharter:deep_claim"
+              ],
+              "floor_crust": "normal"
+            },
+            {
+              "min_y": -512,
+              "height": 256,
+              "biomes": [
+                "deepcharter:upper_levels",
+                "deepcharter:shift_change",
+                "deepcharter:prospectors_run"
+              ]
+            },
+            {
+              "min_y": -768,
+              "height": 256,
+              "biomes": [
+                "deepcharter:garden",
+                "deepcharter:spore_fields",
+                "deepcharter:quiet"
+              ]
+            }
+          ],
+          "unbuilt": "deepcharter:unbuilt_depth"
+        },
+        "settings": "deepcharter:campaign_sample"
+      }
+    },
+    "deepcharter:campaign_full": {
+      "$from": "minecraft:overworld"
+    },
+    "deepcharter:tall_layer": {
+      "type": "deepcharter:tall_baseline",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": -2032,
+          "height": 2048,
+          "biomes": [
+            "deepcharter:reference_topsoil_claims",
+            "deepcharter:reference_stone_benches",
+            "deepcharter:reference_deep_claim"
+          ]
+        },
+        "settings": "deepcharter:tall_layer"
+      }
+    },
+    "deepcharter:campaign_grain_sample": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:bands",
+          "surface_min_y": -64,
+          "surface": {
+            "biomes": [
+              {
+                "biome": "deepcharter:regolith_plains",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    0.22
+                  ],
+                  "erosion": [
+                    -2.0,
+                    0.5
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:mesa_country",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    0.22,
+                    2.0
+                  ],
+                  "erosion": [
+                    -1.0,
+                    1.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:basalt_field",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    0.22
+                  ],
+                  "erosion": [
+                    0.5,
+                    2.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:salvage_yard",
+                "parameters": {
+                  "temperature": [
+                    0.5,
+                    1.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    2.0
+                  ],
+                  "erosion": [
+                    -1.0,
+                    1.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              }
+            ]
+          },
+          "layers": [
+            {
+              "min_y": -256,
+              "height": 192,
+              "biomes": [
+                "deepcharter:topsoil_claims",
+                "deepcharter:stone_benches",
+                "deepcharter:deep_claim"
+              ],
+              "floor_crust": "grained"
+            },
+            {
+              "min_y": -512,
+              "height": 256,
+              "biomes": [
+                "deepcharter:upper_levels",
+                "deepcharter:shift_change",
+                "deepcharter:prospectors_run"
+              ],
+              "floor_crust": "draw"
+            }
+          ],
+          "unbuilt": "deepcharter:unbuilt_depth"
+        },
+        "settings": "deepcharter:campaign"
+      }
+    },
+    "deepcharter:surface_sample": {
+      "type": "deepcharter:test_overworld",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "biomes": [
+            {
+              "biome": "deepcharter:regolith_plains",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:mesa_country",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:basalt_field",
+              "parameters": {
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            },
+            {
+              "biome": "deepcharter:salvage_yard",
+              "parameters": {
+                "temperature": [
+                  0.5,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "continentalness": [
+                  -2.0,
+                  2.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0
+              }
+            }
+          ]
+        },
+        "settings": "deepcharter:surface"
+      }
+    },
+    "deepcharter:campaign_surface": {
+      "$from": "minecraft:overworld",
+      "type": "deepcharter:campaign_surface"
+    },
+    "deepcharter:campaign_surface_floor": {
+      "$from": "minecraft:overworld",
+      "type": "deepcharter:campaign_surface_floor"
+    },
+    "deepcharter:campaign_layer_1": {
+      "$from": "minecraft:overworld",
+      "type": "deepcharter:campaign_layer_1"
+    },
+    "deepcharter:campaign_layer_1_floor": {
+      "$from": "minecraft:overworld",
+      "type": "deepcharter:campaign_layer_1_floor"
+    },
+    "deepcharter:campaign_layer_2": {
+      "$from": "minecraft:overworld",
+      "type": "deepcharter:campaign_layer_2"
+    },
+    "deepcharter:campaign_layer_2_floor": {
+      "$from": "minecraft:overworld",
+      "type": "deepcharter:campaign_layer_2_floor"
+    },
+    "deepcharter:campaign_layer_3": {
+      "$from": "minecraft:overworld",
+      "type": "deepcharter:campaign_layer_3"
+    },
+    "deepcharter:campaign_layer_3_floor": {
+      "$from": "minecraft:overworld",
+      "type": "deepcharter:campaign_layer_3_floor"
+    },
+    "deepcharter:tall_layer_floor": {
+      "type": "deepcharter:tall_layer_floor",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:zones",
+          "min_y": -2032,
+          "height": 2048,
+          "biomes": [
+            "deepcharter:reference_topsoil_claims",
+            "deepcharter:reference_stone_benches",
+            "deepcharter:reference_deep_claim"
+          ]
+        },
+        "settings": "deepcharter:tall_layer"
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "scopePixels": 81,
+  "margin": 4,
+  "titleColor": "#7CE0FF",
+  "backgroundColor": "#C0081018",
+  "frameColor": "#FF000000",
+  "ringColor": "#40FFFFFF",
+  "podColor": "#38F06E",
+  "oreColor": "#FFE8E8F0",
+  "gasColor": "#FFE040E0",
+  "caveColor": "#FF7A8896",
+  "movedColor": "#FFFF7A2A",
+  "chargeColor": "#7CE0FF",
+  "chargeBackColor": "#80000000",
+  "hintColor": "#B0B0B0",
+  "minAlpha": 60,
+  "markColor": "#FFFFFF",
+  "markPixels": 9,
+  "markMargin": 14
+}

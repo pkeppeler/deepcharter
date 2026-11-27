@@ -1,8 +1,10 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
+import net.minecraft.client.gui.screens.MenuScreens;
 
 public final class PodClientRegistry {
     private PodClientRegistry() {}
@@ -16,6 +18,8 @@ public final class PodClientRegistry {
             EntityRendererRegistry.register(
                     PodRegistry.typeOf(chassis), context -> new PodGeoRenderer(context, chassis));
         }
+        MenuScreens.register(PodMenu.TYPE, PodScreen::new);
         TowChainRenderer.init();
+        TetherLineRenderer.init();
     }
 }

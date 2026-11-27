@@ -1,8 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -11,12 +11,12 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -39,7 +39,7 @@ import org.jspecify.annotations.Nullable;
 public class BlastingChargeTest {
     private static final RepairTuning TUNING = RepairTuning.DEFAULT;
     private static final int Z = 5200;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int ROOM = 14;
     /** Blocks east that the pod is moved to leave the blast: its box then starts 6.55 past the volume, over chargeReach, and the pod stays in its chunk (x is a multiple of 16). */
     private static final double FAR = 9.5;
@@ -61,17 +61,20 @@ public class BlastingChargeTest {
      */
     private static void scene(
             GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<PodEntity> afterSet, Verify verify) {
-        ServerLevel level = layer(helper);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
-        level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
-        build.accept(level);
+        ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer pilot = MockPlayers.join(helper, "charge-" + x);
-        pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
-        pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Built once the chunk ticks, so its lava is poured into a ticking chunk (#1089) and RoomSeal's read of the
+            // shell loads nothing on the server thread.
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
+            level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
+            build.accept(level);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, at, 0f, 0f);
+            pilot.player().setGameMode(GameType.SURVIVAL);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
@@ -172,7 +175,7 @@ public class BlastingChargeTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void aChargeSparesWhatIsBuiltFluidsBedrockAndVentsNoGas(GameTestHelper helper) {
+    public void aChargeSparesWhatIsBuiltFluidsBedrockCrustAndVentsNoGas(GameTestHelper helper) {
         int x = 3072;
         scene(
                 helper,
@@ -181,6 +184,8 @@ public class BlastingChargeTest {
                     level.setBlock(cell(x - 1, -2, -1), Blocks.OAK_PLANKS.defaultBlockState(), 2);
                     level.setBlock(cell(x - 1, -1, 0), SlagBrick.BLOCK.defaultBlockState(), 2);
                     level.setBlock(cell(x, -1, -1), Blocks.BEDROCK.defaultBlockState(), 2);
+                    level.setBlock(cell(x - 1, -1, -1), LayerBlocks.BREACH_CRUST.defaultBlockState(), 2);
+                    level.setBlock(cell(x - 1, -2, 0), LayerBlocks.GRAINED_CRUST.defaultBlockState(), 2);
                     level.setBlock(cell(x, -2, -1), Blocks.LAVA.defaultBlockState(), 2);
                     level.setBlock(
                             cell(x, -2, 0), HazardBlocks.GAS_POCKET.defaultBlockState(), 2); // a corner of the volume
@@ -192,6 +197,10 @@ public class BlastingChargeTest {
                     ChargeUse.expectBlock(helper2, level, cell(x - 1, -2, -1), Blocks.OAK_PLANKS, "planks");
                     ChargeUse.expectBlock(helper2, level, cell(x - 1, -1, 0), SlagBrick.BLOCK, "a slag brick");
                     ChargeUse.expectBlock(helper2, level, cell(x, -1, -1), Blocks.BEDROCK, "bedrock");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x - 1, -1, -1), LayerBlocks.BREACH_CRUST, "breach crust");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x - 1, -2, 0), LayerBlocks.GRAINED_CRUST, "grained crust (#1022)");
                     ChargeUse.expectBlock(helper2, level, cell(x, -2, -1), Blocks.LAVA, "lava");
                     expectAir(helper2, level, cell(x, -2, 0), "the gas pocket goes with the blast");
                     ChargeUse.expectBlock(
@@ -274,7 +283,7 @@ public class BlastingChargeTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aChargeIsRefusedAndKeptWhenThePodIsNotReadyForIt(GameTestHelper helper) {
         int x = 3392;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         MockPlayer pilot = MockPlayers.join(helper, "charge-refused");
@@ -351,20 +360,5 @@ public class BlastingChargeTest {
         }
         pilot.player().getInventory().clearContent();
         return Component.translatable("message.deepcharter.repair." + key);
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
-        return level;
     }
 }

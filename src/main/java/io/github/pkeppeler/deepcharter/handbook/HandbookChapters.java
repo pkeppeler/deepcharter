@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.event.registry.DynamicRegistries;
 import net.minecraft.core.Holder;
@@ -72,6 +73,17 @@ public final class HandbookChapters {
             throw new IllegalStateException(index.problem());
         }
         return index.directives();
+    }
+
+    /**
+     * The step a charter is on: the first directive, in handbook order, that is not in {@code completed}. Empty once every directive
+     * is done. The quest map circles the same step.
+     */
+    public static Optional<HandbookChapter.Entry> current(MinecraftServer server, Set<Identifier> completed) {
+        return all(server).stream()
+                .flatMap(chapter -> chapter.value().directives().stream())
+                .filter(entry -> !completed.contains(entry.id()))
+                .findFirst();
     }
 
     /**

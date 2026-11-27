@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.TourShots.EYE;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -9,18 +11,15 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
-import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
-import io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen;
+import io.github.pkeppeler.deepcharter.client.pod.PodScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.RepairScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
-import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
-import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
@@ -34,6 +33,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -45,6 +45,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
@@ -59,17 +60,18 @@ import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.test.support.TourShots;
+import io.github.pkeppeler.deepcharter.test.support.TourShots.Subject;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -77,7 +79,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -106,19 +107,14 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -143,13 +139,11 @@ import org.jspecify.annotations.Nullable;
  * id so that the pods are painted the same colour. See .claude/skills/deepcharter-conventions/evidence.md for what still differs.
  *
  * <p>The order: handbook and item gallery, the surface by day, dusk and night, the colony, the terminal screens, the pods by day,
- * a dark room (pods lit and unlit, the lampless figure), the HUDs, layer 1, the breach into layer 2, layer 2 and its structures.
+ * a dark room (pods lit and unlit, the lampless figure), the HUDs, layer 1, the breach into layer 2, layer 2 and its structures, the
+ * last transmissions, then layer 3: a cavern of each zone. Layer 3 comes last, so its chunks generate after every other still is
+ * taken and no earlier still changes for it. {@link HollowsTourScenario} shoots the layer 3 stops alone.
  */
 public class DesignTourScenario extends EvidenceScenario {
-    private static final double EYE = 1.62;
-    /** The Host's plinth is this many blocks high (tools/colony/town.py PLINTH_TOP): his anchor is the block over it. */
-    private static final int PLINTH_TOP = 5;
-
     private static final int ORBIT_FRAMES = 26;
     private static final int ORBIT_RADIUS = 58;
     private static final int ORBIT_HEIGHT = 34;
@@ -161,6 +155,17 @@ public class DesignTourScenario extends EvidenceScenario {
     private static final int ROOM_HEIGHT = 7;
     private static final int LAYER_X = 2000;
     private static final int LAYER_Z = 2000;
+    /** Layer 3's views are searched in the chunks this far round the layer's start column, for a floor with this long a view. */
+    private static final int HOLLOWS_CHUNKS = 3;
+
+    private static final int HOLLOWS_RUN = 32;
+    /** A layer 3 view looks this many blocks ahead, and this much down for each block ahead. */
+    private static final int HOLLOWS_LOOK = 16;
+
+    private static final double HOLLOWS_DROP = 0.15;
+    /** Ticks a layer 3 air still gives a zone's ambient particles to fill the view: they appear a few a tick round the camera. */
+    private static final int HOLLOWS_AIR_TICKS = 40;
+
     private static final int ITEMS_PER_PAGE = 36;
     private static final long FUNDS = 5_000;
     private static final int TERMINAL_TYPING_TICKS = 140;
@@ -172,39 +177,46 @@ public class DesignTourScenario extends EvidenceScenario {
     private static final int SETTLE_STABLE_POLLS = 5;
     /** Where the cursor is parked when a screen is open: well outside the window, so that no slot or button is hovered. */
     private static final double OFF_SCREEN = -10_000;
-    /** The breach fade is shot held half black. */
-    private static final float FADE_SHOT_ALPHA = 0.5f;
     /** The tour's charter has this id on every run, so that its pods are painted the same colour on every run (ADR 0041: the slot is the id's hash). */
     private static final CharterId TOUR_CHARTER = new CharterId(new UUID(0L, 0L));
-    /** The kit's blocks: the public block fields of {@link ColonyKit}. */
-    private static final Set<Block> KIT = kitBlocks();
 
     /** A room carved by the tour, in its dimension. */
     private record LitRoom(ResourceKey<Level> dimension, Box box) {}
 
-    private @Nullable CharterId charter;
+    /** A view of a zone of layer 3: the zone's name, and where the camera stands and looks. */
+    private record HollowsView(String zone, Vec3 eye, Vec3 target) {}
+
+    private final Arrival<CharterId> charter = new Arrival<>("charter", "setUpCamera() founds it");
     /** The rooms the tour carved whose light settle waits on: it waits until the client reads the light the server holds in each room it is in. */
     private final List<LitRoom> litRooms = new CopyOnWriteArrayList<>();
     /** The mobs the tour made itself (the lampless figures it poses): settle leaves them, and clears every other mob. */
     private final Set<UUID> tourMobs = ConcurrentHashMap.newKeySet();
-
-    private CharterId charter() {
-        return Objects.requireNonNull(charter, "charter: founded by setUpCamera(), read before it ran");
-    }
 
     @Override
     protected String name() {
         return "design-tour";
     }
 
-    @Override
-    protected void run(ClientGameTestContext context) {
-        ClientChecks.withHudHidden(context, () -> runHidden(context));
+    /** The stops a run of the tour shoots. */
+    enum Stops {
+        ALL,
+        /** Only layer 3's caverns, after the world, the colony and the camera are set up as for the whole tour. */
+        LAYER_THREE
     }
 
-    private void runHidden(ClientGameTestContext context) {
-        // A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the other
-        // scenarios.
+    @Override
+    protected void run(ClientGameTestContext context) {
+        tour(context, this, Stops.ALL);
+    }
+
+    /** Shoots {@code stops} of the tour, filing the stills and frames under {@code owner}'s name. */
+    void tour(ClientGameTestContext context, EvidenceScenario owner, Stops stops) {
+        ClientChecks.withHudHidden(context, () -> runHidden(context, owner, stops));
+    }
+
+    private void runHidden(ClientGameTestContext context, EvidenceScenario owner, Stops stops) {
+        // A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the
+        // other scenarios.
         try (TestSingleplayerContext singleplayer = context.worldBuilder()
                 .setUseConsistentSettings(false)
                 .adjustSettings(state -> state.setSeed("deepcharter-design-tour"))
@@ -215,24 +227,10 @@ public class DesignTourScenario extends EvidenceScenario {
                     .getServer()
                     .computeOnServer(
                             server -> Colony.placed(server).orElseThrow(() -> new AssertionError("no colony")));
-            new Run(context, singleplayer, colony).play();
+            new Run(context, singleplayer, colony, owner, stops).play();
         } finally {
             EvidencePins.reset();
         }
-    }
-
-    private static Set<Block> kitBlocks() {
-        Set<Block> blocks = new HashSet<>();
-        for (Field field : ColonyKit.class.getFields()) {
-            if (Block.class.isAssignableFrom(field.getType())) {
-                try {
-                    blocks.add((Block) field.get(null));
-                } catch (IllegalAccessException e) {
-                    throw new IllegalStateException("cannot read the kit block " + field.getName(), e);
-                }
-            }
-        }
-        return blocks;
     }
 
     /** Where the camera is, and the pod it rides if it rides one: a pod still gliding to a halt is not settled. */
@@ -243,24 +241,34 @@ public class DesignTourScenario extends EvidenceScenario {
         return vehicle == null ? pose : pose + " " + vehicle.position() + " " + vehicle.getYRot();
     }
 
-    /** A block of the colony's kit: what the colony is made of, so a view of the town or of a wall of it has a subject. */
-    private static boolean isColony(BlockState state) {
-        return KIT.contains(state.getBlock()) || state.is(ColonyBlocks.CONDUIT) || state.is(ColonyBlocks.COMPANY_LAMP);
-    }
-
     private final class Run {
         private final ClientGameTestContext ctx;
         private final TestSingleplayerContext sp;
         private final ColonySite.Placed colony;
+        private final EvidenceScenario owner;
+        private final Stops stops;
 
-        Run(ClientGameTestContext ctx, TestSingleplayerContext sp, ColonySite.Placed colony) {
+        Run(
+                ClientGameTestContext ctx,
+                TestSingleplayerContext sp,
+                ColonySite.Placed colony,
+                EvidenceScenario owner,
+                Stops stops) {
             this.ctx = ctx;
             this.sp = sp;
             this.colony = colony;
+            this.owner = owner;
+            this.stops = stops;
         }
 
         private void play() {
             EvidenceWorld.pin(ctx, sp);
+            if (stops == Stops.LAYER_THREE) {
+                pinTheClient();
+                setUpCamera();
+                layerThree();
+                return;
+            }
             // The handbook and item stills have the HUD under their screen; it is hidden from setUpCamera on.
             ClientChecks.withHudShown(ctx, () -> {
                 pinTheClient();
@@ -279,11 +287,12 @@ public class DesignTourScenario extends EvidenceScenario {
             breachToLayerTwo();
             layerTwo();
             remainingTransmissions();
+            layerThree();
         }
 
         /**
          * Holds still what moves on client ticks and frames and that no wait can settle (issue 309). The switches are in
-         * {@link EvidencePins}. The breach fade is held only for its own still.
+         * {@link EvidencePins}.
          */
         private void pinTheClient() {
             EvidencePins.spritesFrozen = true;
@@ -410,8 +419,8 @@ public class DesignTourScenario extends EvidenceScenario {
             return true;
         }
 
-        // ------------------------------------------------------------------------------------------------ handbook,
-        // items
+        // ------------------------------------------------------------------------------------------------
+        // handbook, items
 
         private void handbook() {
             ClientWait.until(ctx, "the handbook in the hotbar", client -> handbookSlot(client) >= 0);
@@ -484,8 +493,8 @@ public class DesignTourScenario extends EvidenceScenario {
             }
         }
 
-        // ------------------------------------------------------------------------------------------------ surface,
-        // colony
+        // ------------------------------------------------------------------------------------------------
+        // surface, colony
 
         private void setUpCamera() {
             serverDo(server -> {
@@ -500,10 +509,10 @@ public class DesignTourScenario extends EvidenceScenario {
                         .isPresent()) {
                     throw new AssertionError("founding the charter should succeed");
                 }
-                charter = Charters.charterOfOrThrow(server, player.getUUID())
+                charter.set(Charters.charterOfOrThrow(server, player.getUUID())
                         .orElseThrow()
-                        .id();
-                Charters.deposit(server, charter(), FUNDS);
+                        .id());
+                Charters.deposit(server, charter.get(), FUNDS);
             });
             ctx.runOnClient(client -> {
                 client.options.setCameraType(CameraType.FIRST_PERSON);
@@ -513,18 +522,13 @@ public class DesignTourScenario extends EvidenceScenario {
 
         /** A point {@code dx} east and {@code dz} south of the middle of the square (the foot of its plinth), {@code h} above the square's paving. */
         private Vec3 p(double dx, double h, double dz) {
-            // The statue's anchor is the block he stands in, over his plinth: the paving's block is the plinth's height
-            // below it.
-            return rel(ColonyAnchor.STATUE, dx, h - PLINTH_TOP, dz);
+            return TourShots.p(colony, dx, h, dz);
         }
 
         /** A point {@code dx} east, {@code dy} up and {@code dz} south of the bottom centre of the block of {@code anchor}. */
         private Vec3 rel(ColonyAnchor anchor, double dx, double dy, double dz) {
-            return Vec3.atBottomCenterOf(TestColony.anchor(colony, anchor)).add(dx, dy, dz);
+            return TourShots.rel(colony, anchor, dx, dy, dz);
         }
-
-        /** What a still is of: a block that must stand within {@code radius} blocks of the point the camera looks at. */
-        private record Subject(String what, Predicate<BlockState> test, double radius) {}
 
         /** Takes the named still of {@code target} from {@code eye}, after checking that the {@code subject} is really there. */
         private void shoot(String stillName, int layer, Vec3 eye, Vec3 target, int wait, Subject subject) {
@@ -533,35 +537,18 @@ public class DesignTourScenario extends EvidenceScenario {
             still(stillName);
         }
 
+        private void shoot(TourShots.Shot shot) {
+            shoot(shot.name(), 0, shot.eye(), shot.target(), shot.settleTicks(), shot.subject());
+        }
+
         /**
-         * Throws an {@link AssertionError} naming the still when the world has moved the subject: when no block of the subject is within
-         * its radius of {@code target}, or when something else stands in the line of sight and hides it. A building that moves in the
-         * overhaul then fails the tour loudly, and does not make it shoot the wrong thing.
+         * Throws an {@link AssertionError} naming the still when the world has moved the subject
+         * ({@link TourShots#problem}). A building that moves in the overhaul then fails the tour loudly, and does
+         * not make it shoot the wrong thing.
          */
         private void verify(String stillName, int layer, Vec3 eye, Vec3 target, Subject subject) {
-            String problem = serverGet(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
-                BlockPos centre = BlockPos.containing(target);
-                int reach = (int) Math.ceil(subject.radius());
-                boolean found = BlockPos.betweenClosedStream(
-                                centre.offset(-reach, -reach, -reach), centre.offset(reach, reach, reach))
-                        .anyMatch(pos -> Vec3.atCenterOf(pos).distanceTo(target) <= subject.radius()
-                                && subject.test().test(level.getBlockState(pos)));
-                if (!found) {
-                    return "no " + subject.what() + " within " + subject.radius() + " blocks of " + target;
-                }
-                BlockHitResult hit = level.clip(new ClipContext(
-                        eye, target, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player(server)));
-                if (hit.getType() == HitResult.Type.MISS) {
-                    return null;
-                }
-                BlockState first = level.getBlockState(hit.getBlockPos());
-                if (!subject.test().test(first) && hit.getLocation().distanceTo(target) > subject.radius() + 1) {
-                    return first + " at " + hit.getBlockPos().toShortString() + " is in the way of " + subject.what()
-                            + " (from " + eye + " to " + target + ", hit at " + hit.getLocation() + ")";
-                }
-                return null;
-            });
+            String problem =
+                    serverGet(server -> TourShots.problem(TestLayers.level(server, layer), eye, target, subject));
             if (problem != null) {
                 throw new AssertionError("still " + stillName + ": " + problem);
             }
@@ -591,8 +578,8 @@ public class DesignTourScenario extends EvidenceScenario {
         }
 
         private void surface() {
-            // From south of the town's south row, where nothing of the colony is in the way to the south, east and
-            // west.
+            // From south of the town's south row, where nothing of the colony is in the way to the south, east
+            // and west.
             Vec3 stand = p(0, EYE, 30);
             String[] names = {"south", "east", "west", "north"};
             Vec3[] targets = {p(0, EYE, 128), p(100, EYE, 28), p(-100, EYE, 28), p(0, EYE, -72)};
@@ -620,147 +607,21 @@ public class DesignTourScenario extends EvidenceScenario {
         }
 
         private void colonyTour() {
-            Subject town = new Subject("the town", DesignTourScenario::isColony, 40);
-            Vec3 middle = p(0, 6, -6);
-            shoot("colony-aerial-south", 0, p(0, 38, 62), middle, 80, town);
-            shoot("colony-aerial-northwest", 0, p(-52, 38, -52), middle, 30, town);
-            shoot("colony-aerial-northeast", 0, p(52, 38, -52), middle, 30, town);
-            // From out on the graded land, looking back at the pad's edge: the south margin, and the east side where
-            // the
-            // land is higher.
-            shoot("colony-margin-looking-back-south", 0, p(14, 12, 60), p(0, 6, 8), 30, town);
-            shoot("colony-margin-from-the-east", 0, p(60, 14, 8), p(0, 6, -4), 30, town);
-            shoot("colony-from-straight-above", 0, p(0, 80, 6), p(0, 0, -2), 30, town);
-            shoot(
-                    "colony-from-the-south-edge",
-                    0,
-                    p(0, EYE, 11.5),
-                    p(0, 9, 0),
-                    30,
-                    new Subject("the plinth", state -> state.is(ColonyKit.BRASS_TRIM), 8));
+            TourShots.overviews(colony).forEach(this::shoot);
 
             // The orbit for the GIF.
+            Vec3 middle = TourShots.middle(colony);
             for (int i = 0; i < ORBIT_FRAMES; i++) {
                 double angle = 2 * Math.PI * i / ORBIT_FRAMES + Math.PI / 2;
                 Vec3 eye = p(Math.cos(angle) * ORBIT_RADIUS, ORBIT_HEIGHT, Math.sin(angle) * ORBIT_RADIUS);
                 view(0, eye, middle, i == 0 ? 40 : 2);
                 if (i == 0) {
-                    verify("colony-orbit", 0, eye, middle, town);
+                    verify("colony-orbit", 0, eye, middle, TourShots.TOWN);
                 }
-                frame(ctx);
+                owner.frame(ctx);
             }
 
-            // Close-ups, each from the open side of the building (the square for the plinths, the street for the
-            // doors).
-            // Every view is
-            // measured from the building's own anchor, so it follows the building when the colony is redrawn.
-            for (TerminalType type : TerminalTypes.all()) {
-                Optional<ColonyAnchor> anchor = ColonyAnchor.forTerminal(type);
-                if (anchor.isPresent()) {
-                    Vec3 plinth = rel(anchor.get(), 0, 0, 0);
-                    shoot(
-                            "terminal-" + type.id().getPath().replace('_', '-'),
-                            0,
-                            plinth.add(0, 2.0, 4.5),
-                            plinth.add(0, 0.5, 0),
-                            20,
-                            new Subject(
-                                    "the " + type.id().getPath() + " terminal", state -> state.is(type.block()), 1.5));
-                }
-            }
-            Vec3 upgrade = rel(ColonyAnchor.UPGRADE_TERMINAL, 0, 0, 0);
-            // From the south-east, past the square's corner, so that the Host's plinth, which stands in line with the
-            // upgrade terminal, is
-            // not in the line of sight.
-            shoot(
-                    "terminal-row",
-                    0,
-                    upgrade.add(12, 4, 14),
-                    upgrade.add(0, 0.5, 0),
-                    20,
-                    new Subject(
-                            "a terminal",
-                            state -> TerminalTypes.all().stream().anyMatch(type -> state.is(type.block())),
-                            1.5));
-            Subject plinth = new Subject("the Host's plinth", state -> state.is(ColonyKit.BRASS_TRIM), 9);
-            shoot("statue-from-the-square", 0, p(6, 2.5, 12), p(0, 9, 0), 20, plinth);
-            shoot("statue-close", 0, p(6, 3, 9), p(0, 11, 0), 20, plinth);
-            shoot("statue-hands-from-above", 0, p(-6, 22, 16), p(0, 13, 0), 20, plinth);
-
-            Subject lectern = new Subject("the lectern", state -> state.is(Blocks.LECTERN), 2.5);
-            Vec3 office = rel(ColonyAnchor.CONTINUITY_OFFICE, 0, 0, 0);
-            shoot(
-                    "continuity-office-from-the-square",
-                    0,
-                    office.add(-12, EYE, 0),
-                    office.add(0, 1.3, 0),
-                    40,
-                    new Subject("the lectern", state -> state.is(Blocks.LECTERN), 6));
-            shoot("continuity-office-inside", 0, office.add(-2, 2.5, 0), office.add(3, 1.5, -3), 20, lectern);
-
-            // The hangar's bay faces the west street: shot from the square through it, at the pad the pods stand on.
-            Vec3 hangar = rel(ColonyAnchor.HANGAR, 0, 0, 0);
-            shoot(
-                    "hangar-from-the-square",
-                    0,
-                    hangar.add(19, EYE, 0),
-                    hangar.add(0, 2.3, 0),
-                    40,
-                    new Subject("the hangar's pad", state -> state.is(ColonyKit.RIVETED_PLATE), 3));
-
-            // The chapel's door is on the west street: shot through it, along the aisle to the altar.
-            Vec3 candle = rel(ColonyAnchor.CHAPEL_CANDLE, 0, 0, 0);
-            Subject lit = new Subject(
-                    "the lit chapel candle", state -> state.is(Blocks.CANDLE) && state.getValue(CandleBlock.LIT), 1.5);
-            shoot("chapel-from-the-square", 0, candle.add(11, 0.62, 0), candle.add(0, 0.3, 0), 40, lit);
-            shoot("chapel-altar-and-candle", 0, candle.add(4.5, 0.62, 0), candle.add(-0.5, 0.3, 0), 20, lit);
-
-            // The doors of the south row open on the south street, across which the square is in sight.
-            Vec3 bunkhouse = rel(ColonyAnchor.BUNKHOUSE, 0, 0, 0);
-            shoot(
-                    "bunkhouse-from-the-square",
-                    0,
-                    bunkhouse.add(0.0, EYE, -9),
-                    bunkhouse.add(0, 1.3, 0),
-                    40,
-                    new Subject("a bed", state -> state.getBlock() instanceof BedBlock, 4));
-            Vec3 pay = rel(ColonyAnchor.PAY_OFFICE, 0, 0, 0);
-            shoot(
-                    "pay-office-from-the-square",
-                    0,
-                    pay.add(0, EYE, -7),
-                    pay.add(0, 1.3, 2.5),
-                    40,
-                    new Subject("the grille", state -> state.is(ColonyKit.GRATING), 3));
-            Vec3 personnel = rel(ColonyAnchor.PERSONNEL_OFFICE, 0, 0, 0);
-            shoot(
-                    "personnel-office-from-the-square",
-                    0,
-                    personnel.add(0, EYE, -8),
-                    personnel.add(0, 1.5, 2),
-                    40,
-                    new Subject("Joy's calendar (a Note)", state -> state.getBlock() instanceof NoteBlock, 3));
-            // The bar's door faces the square across the street, so it is shot from the square itself.
-            Vec3 bar = rel(ColonyAnchor.LAMP_AND_PICK, 0, 0, 0);
-            shoot(
-                    "lamp-and-pick-from-the-square",
-                    0,
-                    bar.add(0, EYE, -9),
-                    bar.add(0, 0.3, 2),
-                    40,
-                    new Subject("the coal blocks of the bar", state -> state.is(Blocks.COAL_BLOCK), 3));
-
-            // The Conduit stands in the headframe: its casing shows through the open front of the tower, and the tower
-            // is
-            // the subject
-            // from the sides.
-            Vec3 conduit = rel(ColonyAnchor.CONDUIT, 0, 0, 0);
-            Subject casing = new Subject("the conduit casing", state -> state.is(ColonyBlocks.CONDUIT), 3);
-            Subject tower = new Subject(
-                    "the headframe", state -> state.is(ColonyKit.LATTICE_GIRDER) || state.is(ColonyBlocks.CONDUIT), 9);
-            shoot("conduit-from-the-square", 0, conduit.add(0, 5, 16), conduit.add(0, 5, 0), 30, casing);
-            shoot("conduit-from-the-west", 0, conduit.add(-20, 12, 8), conduit.add(0, 9, 0), 20, tower);
-            shoot("conduit-from-the-north", 0, conduit.add(6, 26, -22), conduit.add(0, 10, 0), 20, tower);
+            TourShots.closeUps(colony).forEach(this::shoot);
         }
 
         // ------------------------------------------------------------------------------------------------ terminals
@@ -795,17 +656,16 @@ public class DesignTourScenario extends EvidenceScenario {
                 ColonyAnchor.REPAIR_STATION
             };
             for (int i = 0; i < order.size(); i++) {
-                openTerminal(TestColony.anchor(colony, anchorOf[i]), TerminalScreen.class);
+                openTerminal(TestColony.anchor(colony, anchorOf[i]), RepairScreen.class);
                 still("screen-" + order.get(i).id().getPath().replace('_', '-') + "-offline");
                 ctx.setScreen(() -> null);
             }
-            openAt(console, consoleEye, TerminalScreen.class);
+            openAt(console, consoleEye, RepairScreen.class);
             still("screen-hangar-console-offline");
             ctx.setScreen(() -> null);
 
-            // Repair the four colony terminals at once, and park a worked pod at each one so the screens have something
-            // to
-            // show.
+            // Repair the four colony terminals at once, and park a worked pod at each one so the screens
+            // have something to show.
             serverDo(server -> {
                 RepairState state = RepairState.get(server);
                 for (TerminalType type : order) {
@@ -866,7 +726,7 @@ public class DesignTourScenario extends EvidenceScenario {
             view(0, eye, Vec3.atCenterOf(terminal), 20);
             ctx.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
             ClientWait.screen(ctx, screen.asSubclass(Screen.class));
-            if (!TerminalViewScreen.class.isAssignableFrom(screen)) {
+            if (!TerminalViewScreen.class.isAssignableFrom(screen) && screen != RepairScreen.class) {
                 throw new AssertionError(screen + " is not a terminal screen");
             }
             ctx.waitTicks(TERMINAL_TYPING_TICKS);
@@ -876,14 +736,14 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private PodEntity spawnPod(EntityType<PodEntity> type, int layer, Vec3 at, float yaw, boolean lights) {
             return serverGet(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+                ServerLevel level = TestLayers.level(server, layer);
                 PodEntity pod = TestEntities.create(type, level);
                 pod.setPos(at);
                 pod.setYRot(yaw);
                 level.addFreshEntity(pod);
-                PodComponents.register(pod, charter());
+                PodComponents.register(pod, charter.get());
                 if (lights) {
-                    PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter()));
+                    PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter.get()));
                 }
                 return pod;
             });
@@ -1023,8 +883,8 @@ public class DesignTourScenario extends EvidenceScenario {
             podAngles("prospector-lit-dark", 0, base, 7.5, 2.9, FSB);
             serverDo(server -> litProspector.discard());
 
-            // The lampless figure, still, in the dark room: once with night vision so it can be seen, once as the
-            // player
+            // The lampless figure, still, in the dark room: once with night vision so it can be seen, once as
+            // the player
             // would see it.
             LamplessFigure figure = serverGet(server -> {
                 ServerLevel level = server.overworld();
@@ -1057,8 +917,8 @@ public class DesignTourScenario extends EvidenceScenario {
             still("lampless-figure-close");
             serverDo(server -> figure.discard());
 
-            // A figure beside a lit pod. It stands at rest beside the pod and stays whole: a light does not fade it
-            // (#485).
+            // A figure beside a lit pod. It stands at rest beside the pod and stays whole: a light does not fade
+            // it (#485).
             PodEntity lamp = spawnPod(PodRegistry.POD, 0, base.add(3, 0, 0), 0f, true);
             awaitLight(lamp);
             LamplessFigure walker = serverGet(server -> {
@@ -1085,7 +945,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
         // ------------------------------------------------------------------------------------------------ HUDs
 
-        /** The pod's cargo screen, opened as a player does: sneak and use the pod. */
+        /** The pod screen with a full hold, opened as a player does: sneak and use the pod. */
         private void cargoScreen() {
             Vec3 stage = stage();
             view(0, stage.add(0, EYE, -3), stage.add(2, 1, -3), 20);
@@ -1099,7 +959,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 UseEntity.on(player, player.level(), InteractionHand.MAIN_HAND, pod);
                 player.setShiftKeyDown(false);
             });
-            ClientWait.screen(ctx, OreCargoScreen.class);
+            ClientWait.screen(ctx, PodScreen.class);
             ctx.waitTicks(10);
             still("screen-pod-cargo");
             ctx.setScreen(() -> null);
@@ -1174,10 +1034,10 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private void layerOne() {
             serverDo(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 loadChunks(one, LAYER_X, LAYER_Z, 3);
             });
-            Vec3 cell = serverGet(server -> openCell(ClientLight.serverLevel(server, LayerChain.dimension(1))));
+            Vec3 cell = serverGet(server -> openCell(TestLayers.level(server, 1), 1));
             terrainViews(1, cell);
 
             // The structures of layer 1: the three shafts, one in each zone.
@@ -1202,30 +1062,34 @@ public class DesignTourScenario extends EvidenceScenario {
             int x = LAYER_X + 200;
             int z = LAYER_Z + 200;
             serverDo(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 loadChunks(one, x, z, 2);
-                BlockPos min = new BlockPos(x - 3, 3, z - 3);
-                BlockPos max = new BlockPos(x + 3, 8, z + 3);
+                BlockPos min = TestLayers.pos(1, x - 3, 3, z - 3);
+                BlockPos max = TestLayers.pos(1, x + 3, 8, z + 3);
                 RoomCarver.carve(one, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                RoomCarver.carvePocketBelow(one, 1, x - 2, x + 2, z - 2, z + 2);
             });
             litRooms.add(new LitRoom(
-                    LayerChain.dimension(1), new Box(new BlockPos(x - 3, 3, z - 3), new BlockPos(x + 3, 8, z + 3))));
+                    layerDimension(1),
+                    new Box(TestLayers.pos(1, x - 3, 3, z - 3), TestLayers.pos(1, x + 3, 8, z + 3))));
             nightVision();
-            view(1, new Vec3(x + 0.5, 6.5, z + 0.5), new Vec3(x + 0.5, 1.5, z + 1.5), 120);
+            view(1, TestLayers.vec(1, x + 0.5, 6.5, z + 0.5), TestLayers.vec(1, x + 0.5, 1.5, z + 1.5), 120);
             still("layer-1-breach-crust-floor");
-            view(1, new Vec3(x - 2.5, 4.5, z - 2.5), new Vec3(x + 1.5, 3, z + 1.5), 20);
+            view(1, TestLayers.vec(1, x - 2.5, 4.5, z - 2.5), TestLayers.vec(1, x + 1.5, 3, z + 1.5), 20);
             still("layer-1-breach-crust-floor-low");
             serverDo(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dz = -1; dz <= 1; dz++) {
-                        for (int y = one.getMinY(); y <= one.getMinY() + 3; y++) {
+                        for (int y = TestLayers.band(one, 1).minY();
+                                y <= TestLayers.band(one, 1).minY() + 3;
+                                y++) {
                             BreachService.breakCrust(one, new BlockPos(x + dx, y, z + dz));
                         }
                     }
                 }
             });
-            view(1, new Vec3(x + 0.5, 6.5, z + 0.5), new Vec3(x + 0.5, 1.5, z + 1.5), 40);
+            view(1, TestLayers.vec(1, x + 0.5, 6.5, z + 0.5), TestLayers.vec(1, x + 0.5, 1.5, z + 1.5), 40);
             still("layer-1-breach-crust-broken");
         }
 
@@ -1236,34 +1100,26 @@ public class DesignTourScenario extends EvidenceScenario {
             int x = LAYER_X + 200;
             int z = LAYER_Z + 200;
             serverDo(server -> {
-                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel two = TestLayers.level(server, 2);
                 loadChunks(two, x, z, 3);
             });
             hud(true);
             ctx.runOnClient(
                     client -> ClientSession.player(client).getInventory().clearContent());
-            view(1, new Vec3(x + 0.5, 4.0, z + 0.5), new Vec3(x + 0.5, 0.5, z + 1.5), 30);
+            view(1, TestLayers.vec(1, x + 0.5, 4.0, z + 0.5), TestLayers.vec(1, x + 0.5, 0.5, z + 1.5), 30);
             clearTransmissions();
             still("hud-altimeter-layer-1-floor");
-            // The fade, held: with the pin set, the fade and the typing of the transmission stand still from the moment
-            // the
-            // crossing begins,
-            // so the still does not depend on the client tick that it lands on, or on how long the new level takes to
-            // load.
-            EvidencePins.breachFadeAlpha = FADE_SHOT_ALPHA;
+            // The crossing is in place (ADR 0061): the HUD shakes and nothing fades, so the transmissions of the
+            // crossing are what is shot.
             serverDo(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-                player(server).teleportTo(one, x + 0.5, one.getMinY() - 1, z + 0.5, Set.of(), 0, 60, true);
+                ServerLevel one = TestLayers.level(server, 1);
+                player(server)
+                        .teleportTo(one, x + 0.5, TestLayers.band(one, 1).minY() - 1, z + 0.5, Set.of(), 0, 60, true);
             });
             ClientWait.until(
                     ctx,
-                    "layer 2 with the breach fade running and no screen",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
-                            && client.gui.screen() == null
-                            && BreachEffects.fadeAlpha(0f) > 0f);
-            settle("hud-breach-fade");
-            screenshot(ctx, "hud-breach-fade");
-            EvidencePins.breachFadeAlpha = -1f;
+                    "layer 2 with no screen",
+                    client -> TestLayers.clientIsIn(client, 2) && client.gui.screen() == null);
 
             // Then the two transmissions of the crossing, each shot once it has typed out.
             Set<Identifier> shot = new HashSet<>();
@@ -1274,35 +1130,33 @@ public class DesignTourScenario extends EvidenceScenario {
                         TransmissionOverlay.transmission().map(Transmission::id).orElse(null));
                 boolean typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
                 if (typed && current != null && shot.add(current)) {
-                    screenshot(ctx, "hud-transmission-" + current.getPath());
+                    owner.screenshot(ctx, "hud-transmission-" + current.getPath());
                 }
                 tail = typed && current != null && current.equals(last) ? tail + 1 : 0;
                 last = current;
                 ctx.waitTick();
             }
-            ClientWait.until(
-                    ctx,
-                    "the client in layer 2",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)));
+            ClientWait.until(ctx, "the client in layer 2", client -> TestLayers.clientIsIn(client, 2));
             clearTransmissions();
         }
 
         private void layerTwo() {
             serverDo(server -> {
-                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel two = TestLayers.level(server, 2);
                 loadChunks(two, LAYER_X, LAYER_Z, 3);
             });
             hud(false);
-            Vec3 cell = serverGet(server -> openCell(ClientLight.serverLevel(server, LayerChain.dimension(2))));
+            Vec3 cell = serverGet(server -> openCell(TestLayers.level(server, 2), 2));
             terrainViews(2, cell);
 
             // A pod in the dark with a scanner: the HUD at depth.
             // A sealed hall, so that no lava or gas of the cave reaches the pod.
             Vec3 hall = serverGet(server -> {
-                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel two = TestLayers.level(server, 2);
                 int x = LAYER_X + 120;
                 int z = LAYER_Z + 120;
-                int floor = (two.getMinY() + two.getMaxY()) / 2;
+                LayerChain.Band band = TestLayers.band(two, 2);
+                int floor = (band.minY() + band.maxY()) / 2;
                 loadChunks(two, x, z, 3);
                 BlockPos min = new BlockPos(x - 6, floor, z - 6);
                 BlockPos max = new BlockPos(x + 6, floor + 7, z + 6);
@@ -1310,7 +1164,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 return new Vec3(x + 0.5, floor + EYE, z + 0.5);
             });
             litRooms.add(new LitRoom(
-                    LayerChain.dimension(2),
+                    layerDimension(2),
                     new Box(
                             BlockPos.containing(hall).offset(-6, -1, -6),
                             BlockPos.containing(hall).offset(6, 6, 6))));
@@ -1339,8 +1193,8 @@ public class DesignTourScenario extends EvidenceScenario {
                     case GALLERY -> {
                         view(2, at(site, -8, 2, 0), at(site, 12, 1.5, 0), 120);
                         still("structure-gallery-toward-the-rubble");
-                        // The board is on the near end wall and the rubble at the far end, so stand toward the board's
-                        // end,
+                        // The board is on the near end wall and the rubble at the far end, so stand toward the
+                        // board's end,
                         // in the clear.
                         shoot(
                                 "structure-gallery-quota-board",
@@ -1367,8 +1221,8 @@ public class DesignTourScenario extends EvidenceScenario {
                                 at(site, 7.5, 1.5, 0),
                                 20,
                                 new Subject("the shelves", state -> state.is(Blocks.BOOKSHELF), 1.5));
-                        // Down the middle of the hall, clear of the stone pillars, at the lit sea lantern above the
-                        // clock.
+                        // Down the middle of the hall, clear of the stone pillars, at the lit sea lantern above
+                        // the clock.
                         shoot(
                                 "structure-punch-clock-lit-clock",
                                 2,
@@ -1389,13 +1243,20 @@ public class DesignTourScenario extends EvidenceScenario {
                                 20,
                                 new Subject("a timber post", state -> state.is(Blocks.OAK_LOG), 2.5));
                     }
-                    default -> throw new AssertionError(kind + " has no views in the tour");
+                    case KELLS_SHAFT -> {
+                        // From the drift's lip, down the shaft.
+                        view(2, at(site, -7, site.height() - 1.0, -0.5), at(site, 0, site.height() - 6.0, -0.5), 60);
+                        still("structure-kells-shaft-from-the-lip");
+                    }
+                    case TOPSOIL_SHAFT, BENCHES_SHAFT, DEEP_SHAFT, WRECK ->
+                        throw new AssertionError(kind + " has no views in the tour");
                 }
             }
 
             // The wreck sites: Prospector's wreck, with its lamp and Note N10, and an empty bay.
-            StructureSite prospector =
-                    serverGet(server -> LayerStructures.prospector(server).orElseThrow());
+            StructureSite prospector = serverGet(
+                    server -> LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                            .orElseThrow());
             loadSite(prospector);
             Vec3 pod = at(prospector, 0, 1.2, 0);
             view(2, at(prospector, 5, 2, 0), pod, 120);
@@ -1404,8 +1265,8 @@ public class DesignTourScenario extends EvidenceScenario {
             still("structure-wreck-prospector-0002-side");
             view(2, at(prospector, -5, 2, 0), pod, 20);
             still("structure-wreck-prospector-0002-back");
-            // The burning lamp is the lantern at (3, 2): close, from the side away from the pod, so the pod is not in
-            // front
+            // The burning lamp is the lantern at (3, 2): close, from the side away from the pod, so the pod is not
+            // in front
             // of it.
             shoot(
                     "structure-wreck-the-lamp",
@@ -1436,12 +1297,13 @@ public class DesignTourScenario extends EvidenceScenario {
         }
 
         /** A cell of air with room round it, close to the layer's start column, as the middle of a cave. */
-        private static Vec3 openCell(ServerLevel level) {
+        private static Vec3 openCell(ServerLevel level, int layer) {
+            LayerChain.Band band = TestLayers.band(level, layer);
             BlockPos best = null;
             int bestClearance = 0;
             for (int x = LAYER_X - 40; x <= LAYER_X + 40; x += 2) {
                 for (int z = LAYER_Z - 40; z <= LAYER_Z + 40; z += 2) {
-                    for (int y = level.getMinY() + 24; y <= level.getMaxY() - 40; y += 2) {
+                    for (int y = band.minY() + 24; y <= band.maxY() - 40; y += 2) {
                         BlockPos pos = new BlockPos(x, y, z);
                         int clearance = clearance(level, pos);
                         if (clearance > bestClearance) {
@@ -1453,7 +1315,7 @@ public class DesignTourScenario extends EvidenceScenario {
             }
             if (best == null) {
                 // No cave in reach: cut a hall into the rock, sealed first, so there is a place to stand.
-                int mid = (level.getMinY() + level.getMaxY()) / 2;
+                int mid = (band.minY() + band.maxY()) / 2;
                 BlockPos min = new BlockPos(LAYER_X - 6, mid, LAYER_Z - 6);
                 BlockPos max = new BlockPos(LAYER_X + 6, mid + 6, LAYER_Z + 6);
                 RoomCarver.carve(level, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
@@ -1497,17 +1359,119 @@ public class DesignTourScenario extends EvidenceScenario {
             still("layer-" + layer + "-cave-down");
         }
 
+        // ------------------------------------------------------------------------------------------------ layer 3
+
+        /**
+         * A cavern of each zone of layer 3, the Fungal Hollows (#972): from a floor in the zone, across the longest open run, as it is
+         * played and with night vision. In {@link Stops#LAYER_THREE} each still is a frame too, since nothing else frames that run, and each
+         * zone has an air still as well.
+         */
+        private void layerThree() {
+            hud(false);
+            serverDo(server -> loadChunks(TestLayers.level(server, 3), LAYER_X, LAYER_Z, HOLLOWS_CHUNKS));
+            for (int zone = 0; zone < Zones.COUNT; zone++) {
+                int index = zone;
+                HollowsView spot = serverGet(server -> hollowsView(TestLayers.level(server, 3), index));
+                String prefix = "layer-3-" + spot.zone().replace('_', '-');
+                serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
+                view(3, spot.eye(), spot.target(), 120);
+                hollowsStill(prefix + "-as-played-no-light");
+                if (stops == Stops.LAYER_THREE) {
+                    airStill(prefix + "-air");
+                }
+                nightVision();
+                view(3, spot.eye(), spot.target(), 20);
+                hollowsStill(prefix);
+            }
+        }
+
+        /**
+         * The view as played once the zone's ambient particles have had {@value #HOLLOWS_AIR_TICKS} ticks to fill it: the Spore Fields'
+         * haze (#972). Settle clears the particles before every still, so the other stills never show them. Only the layer 3 stops shoot
+         * it, so the whole tour's stills stay as they were.
+         */
+        private void airStill(String stillName) {
+            settle(stillName);
+            // tick-wait: the ambient particles appear a few a tick round the camera; nothing reports that the view
+            // is full
+            ctx.waitTicks(HOLLOWS_AIR_TICKS);
+            owner.screenshot(ctx, stillName);
+            owner.frame(ctx);
+        }
+
+        private void hollowsStill(String stillName) {
+            still(stillName);
+            if (stops == Stops.LAYER_THREE) {
+                owner.frame(ctx);
+            }
+        }
+
+        /**
+         * The view of zone {@code zone} of layer 3: from the floor cell near the layer's start column with the longest run of open cells
+         * along an axis at eye height, looking along it and a little down. Throws, naming the zone, when the zone has no floor in reach.
+         */
+        private static HollowsView hollowsView(ServerLevel level, int zone) {
+            LayerChain.Band band = TestLayers.band(level, 3);
+            Zones.Span span = Zones.span(band.minY(), band.height(), zone);
+            String name = Zones.of(3, band.minY(), band.height(), span.low())
+                    .orElseThrow()
+                    .id()
+                    .getPath();
+            BlockPos best = null;
+            Direction bestDirection = Direction.SOUTH;
+            int bestRun = 0;
+            int reach = HOLLOWS_CHUNKS * 16 - HOLLOWS_RUN;
+            for (int x = LAYER_X - reach; x <= LAYER_X + reach; x += 4) {
+                for (int z = LAYER_Z - reach; z <= LAYER_Z + reach; z += 4) {
+                    // The floor rows leave room for the eye and the head over it inside the zone.
+                    for (int y = span.low() + 1; y <= span.high() - 3; y++) {
+                        BlockPos feet = new BlockPos(x, y, z);
+                        if (!passable(level, feet)
+                                || !passable(level, feet.above())
+                                || !level.getBlockState(feet.below()).isFaceSturdy(level, feet.below(), Direction.UP)) {
+                            continue;
+                        }
+                        for (Direction direction : Direction.Plane.HORIZONTAL) {
+                            int run = 0;
+                            while (run < HOLLOWS_RUN
+                                    && passable(level, feet.above().relative(direction, run + 1))) {
+                                run++;
+                            }
+                            if (run > bestRun) {
+                                best = feet;
+                                bestDirection = direction;
+                                bestRun = run;
+                            }
+                        }
+                    }
+                }
+            }
+            if (best == null) {
+                throw new AssertionError("layer 3 has no floor in zone " + name + " within " + reach + " blocks of "
+                        + LAYER_X + ", " + LAYER_Z);
+            }
+            Vec3 eye = Vec3.atBottomCenterOf(best).add(0, EYE, 0);
+            Vec3 ahead = Vec3.atLowerCornerOf(bestDirection.getUnitVec3i()).scale(HOLLOWS_LOOK);
+            return new HollowsView(name, eye, eye.add(ahead).add(0, -HOLLOWS_LOOK * HOLLOWS_DROP, 0));
+        }
+
+        /** Nothing to collide with: air, a glowcap, a stalk's cap the camera passes through. */
+        private static boolean passable(ServerLevel level, BlockPos pos) {
+            return level.getBlockState(pos).getCollisionShape(level, pos).isEmpty();
+        }
+
         // ------------------------------------------------------------------------------------------------ structures
 
         private StructureSite siteOf(StructureKind kind, @Nullable BlockPos near) {
             StructureSite site = serverGet(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(kind.layer()));
+                ServerLevel level = TestLayers.level(server, kind.layer());
+                LayerChain.Band levelBand = TestLayers.band(level, kind.layer());
                 BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT).orElseThrow();
                 return LayerStructures.nearest(
                         level.getSeed(),
                         kind,
-                        level.getMinY(),
-                        level.getHeight(),
+                        levelBand.minY(),
+                        levelBand.height(),
                         near == null ? conduit : near,
                         conduit);
             });
@@ -1517,8 +1481,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private void loadSite(StructureSite site) {
             serverDo(server -> {
-                ServerLevel level = ClientLight.serverLevel(
-                        server, LayerChain.dimension(site.kind().layer()));
+                ServerLevel level = TestLayers.level(server, site.kind().layer());
                 BoundingBox box = site.bounds();
                 for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++) {
                     for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++) {
@@ -1526,15 +1489,6 @@ public class DesignTourScenario extends EvidenceScenario {
                     }
                 }
             });
-        }
-
-        /** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow. */
-        private static Vec3 at(StructureSite site, double u, double y, double v) {
-            BlockPos origin = site.origin();
-            return new Vec3(
-                    origin.getX() + 0.5 + (site.alongZ() ? v : u),
-                    origin.getY() + y,
-                    origin.getZ() + 0.5 + (site.alongZ() ? u : v));
         }
 
         // ------------------------------------------------------------------------------------------------
@@ -1545,14 +1499,14 @@ public class DesignTourScenario extends EvidenceScenario {
             for (String id : List.of("t02", "surface_arrival")) {
                 Identifier transmission = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, id);
                 settle("hud-transmission-" + id);
-                serverDo(server -> Transmissions.fire(server, charter(), transmission));
+                serverDo(server -> Transmissions.fire(server, charter.get(), transmission));
                 boolean typed = false;
                 for (int tick = 0; tick < 1200 && !typed; tick++) {
                     typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
                     ctx.waitTick();
                 }
                 ctx.waitTicks(10);
-                screenshot(ctx, "hud-transmission-" + id);
+                owner.screenshot(ctx, "hud-transmission-" + id);
                 clearTransmissions();
             }
         }
@@ -1580,21 +1534,14 @@ public class DesignTourScenario extends EvidenceScenario {
                 player.getAbilities().flying = true;
                 player.onUpdateAbilities();
                 player.teleportTo(
-                        ClientLight.serverLevel(server, LayerChain.dimension(layer)),
-                        eye.x,
-                        eye.y - EYE,
-                        eye.z,
-                        Set.of(),
-                        yaw,
-                        pitch,
-                        true);
+                        TestLayers.level(server, layer), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
             });
-            // Arrived exactly, looking exactly: a camera still a block short, or a turn short, makes a different
-            // picture.
+            // Arrived exactly, looking exactly: a camera still a block short, or a turn short, makes a
+            // different picture.
             ClientWait.until(
                     ctx,
                     "the camera at the eye in layer " + layer + ", facing yaw " + yaw + " and pitch " + pitch,
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                    client -> TestLayers.clientIsIn(client, layer)
                             && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                             && Math.abs(Mth.wrapDegrees(
                                             ClientSession.player(client).getYRot() - yaw))
@@ -1614,7 +1561,7 @@ public class DesignTourScenario extends EvidenceScenario {
         private void awaitLight(PodEntity pod) {
             long deadline = System.nanoTime() + SETTLE_LIMIT_NANOS;
             while (!serverGet(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(0));
+                ServerLevel level = TestLayers.level(server, 0);
                 return BlockPos.betweenClosedStream(
                                 BlockPos.containing(pod.getX(), pod.getBoundingBox().minY, pod.getZ()),
                                 BlockPos.containing(pod.getX(), pod.getBoundingBox().maxY, pod.getZ()))
@@ -1637,7 +1584,7 @@ public class DesignTourScenario extends EvidenceScenario {
             });
             clearTransmissions();
             settle(stillName);
-            screenshot(ctx, stillName);
+            owner.screenshot(ctx, stillName);
         }
 
         private void nightVision() {
@@ -1665,6 +1612,10 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private <T extends @Nullable Object> T serverGet(Function<MinecraftServer, T> action) {
             return sp.getServer().computeOnServer(action::apply);
+        }
+
+        private ResourceKey<Level> layerDimension(int layer) {
+            return serverGet(server -> TestLayers.dimension(server, layer));
         }
 
         private void serverDo(Consumer<MinecraftServer> action) {

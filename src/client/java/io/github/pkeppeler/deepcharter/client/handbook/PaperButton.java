@@ -14,6 +14,8 @@ import net.minecraft.network.chat.Component;
  */
 final class PaperButton extends Button {
     private boolean selected;
+    private boolean faded;
+    private boolean joinsLeft;
 
     PaperButton(int x, int y, int width, int height, Component label, OnPress onPress) {
         super(x, y, width, height, label, onPress, DEFAULT_NARRATION);
@@ -21,6 +23,16 @@ final class PaperButton extends Button {
 
     void setSelected(boolean selected) {
         this.selected = selected;
+    }
+
+    /** A tab on the sheet's right edge: when selected, it runs on into the sheet on its left. */
+    void setJoinsLeft() {
+        joinsLeft = true;
+    }
+
+    /** A faded tab is for a chapter the player has not reached: it still opens, in the ink of a button that cannot be pressed. */
+    void setFaded(boolean faded) {
+        this.faded = faded;
     }
 
     /** The base class paints the vanilla sprite first; the fill here is opaque and covers it. */
@@ -36,7 +48,11 @@ final class PaperButton extends Button {
                 selected ? t.paperColor() : lit ? t.hoverFillColor() : t.paperEdgeColor());
         PaperDraw.border(graphics, getX(), getY(), getRight(), getBottom(), Colors.opaque(t.paperEdgeColor()));
         Font font = Minecraft.getInstance().font;
-        int ink = active ? t.inkColor() : t.disabledInkColor();
+        if (selected && joinsLeft) {
+            // the open chapter's tab runs on into the sheet beside it
+            graphics.fill(getX() - 1, getY() + 1, getX() + 1, getBottom() - 1, t.paperColor());
+        }
+        int ink = active && !faded ? t.inkColor() : t.disabledInkColor();
         Component label = PaperDraw.ink(getMessage(), ink);
         graphics.text(
                 font,

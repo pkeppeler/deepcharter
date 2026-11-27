@@ -1,31 +1,28 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.requireNone;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodGlideTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.OpenGround;
+import io.github.pkeppeler.deepcharter.test.support.PodDrives;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.Arrays;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Input;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,23 +32,53 @@ import org.slf4j.LoggerFactory;
  * server's, and the client must see the mock pilot's pod move.
  */
 public class PodMovementClientTest implements FabricClientGameTest {
-    /** How far the client's pod may trail the server's while driving (SPEC section 7 risk: input lag). */
-    static final double MAX_LAG_BLOCKS = 0.5;
+    private static final double SPEED = PodTuning.DEFAULT.movement().horizontalSpeed();
+
+    static final double MARGIN_BLOCKS = 0.05;
+
+    /** Input lag (SPEC section 7): 2 ticks the harness lags a pod, 1 for the client's slide (#961), at the pod's speed, plus a margin. */
+    static final double MAX_LAG_BLOCKS = (2 + 1) * SPEED + MARGIN_BLOCKS;
+
+    /** Moves in a row a loaded machine delivers a tick late, each adding a tick of speed to the trail (#1356). */
+    private static final int LATE_MOVES = 2;
+
+    /**
+     * Ticks in a row the trail may stay over {@link #MAX_LAG_BLOCKS} (#1356): the {@link #LATE_MOVES} ticks the late moves are
+     * missing, then the ticks the client's slide takes to bring their {@code LATE_MOVES} ticks of speed strictly under the margin
+     * ({@link TrailJudge#slideTicks}). This window catches a lag that holds: a pod that trails for longer than late moves explain.
+     */
+    static final int MAX_TICKS_OVER =
+            LATE_MOVES + TrailJudge.slideTicks(LATE_MOVES * SPEED, MARGIN_BLOCKS, PodGlideTuning.DEFAULT.steps());
+
+    /**
+     * Ticks over {@link #MAX_LAG_BLOCKS} in the whole drive, in a row or not: two independent late spells. This total catches a lag
+     * that keeps coming back, dipping under the bound between spells so that no run outlasts {@link #MAX_TICKS_OVER}.
+     */
+    static final int MAX_TICKS_OVER_IN_ALL = 2 * MAX_TICKS_OVER;
+
+    /**
+     * The worst single tick: {@link #LATE_MOVES} ticks of speed over {@link #MAX_LAG_BLOCKS}, the most late moves add. This bound
+     * catches a spike late moves cannot explain, however short.
+     */
+    static final double MAX_WORST_BLOCKS = MAX_LAG_BLOCKS + LATE_MOVES * SPEED;
 
     static final int DRIVE_TICKS = 40;
-    /** The pad's corner: far enough from the world spawn that no colony or other structure of it reaches. */
-    private static final int PAD_X = 6000;
-
-    private static final int PAD_Z = 0;
-    /** The pad's margin behind and beside the riders, and ahead of them along the drive, in blocks. */
-    private static final int PAD_BEHIND = 4;
-
-    private static final int PAD_SIDE = 16;
-    private static final int PAD_AHEAD = 70;
-    private static final int PAD_HEADROOM = 10;
     private static final Logger LOGGER = LoggerFactory.getLogger(PodMovementClientTest.class);
     private static final double MOCK_OFFSET_BLOCKS = 8;
-    private static final Input MOCK_FORWARD = new Input(true, false, false, false, false, false, false);
+
+    /** Blocks a tick the watched pod coasts at before the push: slow, so it is still near its target when the push comes. */
+    private static final double PRE_PUSH_SPEED = 0.1;
+
+    /** Blocks a tick a push reports, as a knockback or a tow release does. */
+    private static final double PUSHED_SPEED = 3.0;
+
+    /** Blocks each move of the pushed pod advances it: under half of {@link #PUSHED_SPEED}, as a server that slows the pod faster than its last reported speed. */
+    private static final double PUSHED_ADVANCE = 1.0;
+
+    private static final int PUSHED_MOVES = 6;
+
+    /** Blocks a pushed pod may be drawn past where the server put it: within PodGlide's arrival, so none. */
+    private static final double PUSHED_PAST_TOLERANCE = 1e-4;
 
     /** Seat the real player in a new pod, and the mock in another pod beside it. Returns the mock pod's entity id. */
     public static int mountBoth(TwoPlayerServer two) {
@@ -74,57 +101,12 @@ public class PodMovementClientTest implements FabricClientGameTest {
      * to tick on the server and for the real client to hold the pad.
      */
     public static void moveToOpenGround(ClientGameTestContext context, TwoPlayerServer two) {
-        List<ChunkPos> chunks = new ArrayList<>();
-        for (int chunkX = (PAD_X - PAD_BEHIND) >> 4; chunkX <= (PAD_X + PAD_SIDE) >> 4; chunkX++) {
-            for (int chunkZ = (PAD_Z - PAD_BEHIND) >> 4; chunkZ <= (PAD_Z + PAD_AHEAD) >> 4; chunkZ++) {
-                chunks.add(new ChunkPos(chunkX, chunkZ));
-            }
-        }
-        // force-ok: a client test has no GameTestHelper to release through; the world is discarded when the test ends
-        two.server()
-                .runOnServer(server ->
-                        chunks.forEach(chunk -> server.overworld().setChunkForced(chunk.x(), chunk.z(), true)));
-        ClientWait.until(
-                context,
-                "the pad's chunks entity-ticking far from the colony",
-                () -> two.server()
-                        .computeOnServer(server -> chunks.stream()
-                                .allMatch(chunk ->
-                                        server.overworld().isPositionEntityTicking(chunk.getMiddleBlockPosition(64)))),
-                () -> "chunks " + chunks);
-        BlockPos floor = two.server().computeOnServer(server -> {
-            ServerLevel level = server.overworld();
-            int groundY = level.getHeightmapPos(
-                            Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(PAD_X, 64, PAD_Z))
-                    .getY();
-            BlockState stone = Blocks.STONE.defaultBlockState();
-            BlockState air = Blocks.AIR.defaultBlockState();
-            for (int x = PAD_X - PAD_BEHIND; x <= PAD_X + PAD_SIDE; x++) {
-                for (int z = PAD_Z - PAD_BEHIND; z <= PAD_Z + PAD_AHEAD; z++) {
-                    level.setBlock(new BlockPos(x, groundY - 1, z), stone, Block.UPDATE_CLIENTS);
-                    for (int y = groundY; y < groundY + PAD_HEADROOM; y++) {
-                        level.setBlock(new BlockPos(x, y, z), air, Block.UPDATE_CLIENTS);
-                    }
-                }
-            }
-            ServerPlayer real = realPlayer(server, two.mock().player().getUUID());
-            real.teleportTo(level, PAD_X + 0.5, groundY, PAD_Z + 0.5, Set.of(), 0f, 0f, true);
-            return new BlockPos(PAD_X, groundY - 1, PAD_Z);
-        });
-        ClientWait.until(
-                context,
-                "the client holding the flat pad",
-                client -> ClientLight.clientLevel(client).getBlockState(floor).is(Blocks.STONE)
-                        && ClientLight.clientLevel(client)
-                                .getBlockState(floor.above())
-                                .isAir()
-                        && ClientSession.player(client)
-                                        .distanceToSqr(floor.getX() + 0.5, floor.getY() + 1, floor.getZ() + 0.5)
-                                < 4);
+        UUID mockId = two.mock().player().getUUID();
+        OpenGround.prepare(context, two.server(), player -> !player.getUUID().equals(mockId), (x, z) -> Blocks.STONE);
     }
 
     public static void driveMock(TwoPlayerServer two) {
-        two.server().runOnServer(server -> two.mock().setInput(MOCK_FORWARD));
+        two.server().runOnServer(server -> two.mock().setInput(FORWARD));
     }
 
     private static ServerPlayer realPlayer(MinecraftServer server, UUID mockId) {
@@ -157,6 +139,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity
                             && ClientLight.clientLevel(client).getEntity(mockPodId) != null);
             context.waitTicks(10);
+            expectPushedCoastedPodStaysBehindItsTarget(context, mockPodId);
 
             int ownPodId = context.computeOnClient(
                     client -> TestEntities.vehicle(ClientSession.player(client)).getId());
@@ -168,18 +151,17 @@ public class PodMovementClientTest implements FabricClientGameTest {
             context.getInput().holdKey(options -> options.keyUp);
             driveMock(two);
 
-            double lag = 0;
-            double worstLag = 0;
+            double[] trail = new double[DRIVE_TICKS];
             for (int tick = 0; tick < DRIVE_TICKS; tick++) {
                 context.waitTick();
-                lag = lagBlocks(context, two, ownPodId);
-                worstLag = Math.max(worstLag, lag);
+                trail[tick] = lagBlocks(context, two, ownPodId);
             }
             LOGGER.info(
-                    "PodMovementClientTest: client pod trailed the server pod by {} blocks at tick {}, worst {}",
-                    lag,
+                    "PodMovementClientTest: client pod trailed the server pod by {} blocks at tick {}, {}: {}",
+                    trail[DRIVE_TICKS - 1],
                     DRIVE_TICKS,
-                    worstLag);
+                    TrailJudge.summary(trail),
+                    Arrays.toString(trail));
             context.getInput().releaseKey(options -> options.keyUp);
 
             Vec3 ownEnd = context.computeOnClient(
@@ -193,12 +175,57 @@ public class PodMovementClientTest implements FabricClientGameTest {
             require(
                     !(mockEnd.subtract(mockStart).horizontalDistance() < 2),
                     "The client should see the mock pilot's pod move, it moved " + mockStart.distanceTo(mockEnd));
-            require(
-                    !(lag > MAX_LAG_BLOCKS),
-                    "After " + DRIVE_TICKS + " ticks the client's pod trailed the server's by " + lag
-                            + " blocks, over the " + MAX_LAG_BLOCKS + " bound (worst during the drive: " + worstLag
-                            + ")");
+            requireNone(
+                    "The client's pod trailed the server's more than late moves explain (every tick: "
+                            + Arrays.toString(trail) + ")",
+                    TrailJudge.fault(trail));
         }
+    }
+
+    /**
+     * A pod that has coasted and is then pushed (a knockback, a tow release) reports a speed its moves do not keep up with: each move
+     * advances the target by less than half of it. The client draws it to each target and never dead-reckons past one at the reported
+     * speed (ADR 0082). Driven on the client's copy of the watched pod, which the server holds still, as the moves a server would send.
+     */
+    private static void expectPushedCoastedPodStaysBehindItsTarget(ClientGameTestContext context, int podId) {
+        Vec3 start = PodDrives.onClient(context, podId);
+        double past = Double.NEGATIVE_INFINITY;
+        try {
+            context.runOnClient(client -> {
+                Entity pod = TestEntities.require(ClientLight.clientLevel(client), podId);
+                pod.setDeltaMovement(0, 0, PRE_PUSH_SPEED);
+                pod.moveOrInterpolateTo(start, pod.getYRot(), pod.getXRot());
+            });
+            ClientWait.until(
+                    context,
+                    "the watched pod coasting past its target",
+                    client -> TestEntities.require(ClientLight.clientLevel(client), podId)
+                                    .getZ()
+                            > start.z);
+            for (int move = 1; move <= PUSHED_MOVES; move++) {
+                Vec3 target = start.add(0, 0, move * PUSHED_ADVANCE);
+                context.runOnClient(client -> {
+                    Entity pod = TestEntities.require(ClientLight.clientLevel(client), podId);
+                    pod.setDeltaMovement(0, 0, PUSHED_SPEED);
+                    pod.moveOrInterpolateTo(target, pod.getYRot(), pod.getXRot());
+                });
+                context.waitTick();
+                past = Math.max(past, PodDrives.onClient(context, podId).z - target.z);
+            }
+        } finally {
+            context.runOnClient(client -> {
+                Entity pod = TestEntities.require(ClientLight.clientLevel(client), podId);
+                pod.setDeltaMovement(Vec3.ZERO);
+                pod.moveOrInterpolateTo(start, pod.getYRot(), pod.getXRot());
+            });
+        }
+        LOGGER.info(
+                "PodMovementClientTest: a pushed pod that had coasted: drawn {} blocks past its target at most (allowed {})",
+                past,
+                PUSHED_PAST_TOLERANCE);
+        require(
+                past <= PUSHED_PAST_TOLERANCE,
+                "a pushed pod that had coasted was drawn " + past + " blocks past where the server put it");
     }
 
     /** Distance between the client's pod and the server's pod now. The server side runs between two client ticks. */

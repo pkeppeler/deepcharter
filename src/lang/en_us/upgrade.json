@@ -66,6 +66,7 @@
   "screen.deepcharter.upgrade.intro": "UPGRADE TERMINAL ONLINE. CHOOSE A PART.",
   "screen.deepcharter.upgrade.needs_first": "BUY TIER %s  $%s  (FIT TIER 1 FIRST)",
   "screen.deepcharter.upgrade.no_pod": "NO POD OF YOURS IS PARKED AT THE TERMINAL.",
+  "screen.deepcharter.upgrade.note.heat_shield": "TIER 3 BURNS THE PACK'S BRICKS FIRST,\nSO THE RACK STAYS FOR LINING.",
   "screen.deepcharter.upgrade.pod": "POD %s   TIER CAP %s",
   "screen.deepcharter.upgrade.pod_unregistered": "POD (UNREGISTERED)   TIER CAP %s",
   "screen.deepcharter.upgrade.scroll": "TRACKS %s-%s OF %s",

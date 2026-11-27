@@ -12,11 +12,13 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
@@ -139,8 +141,8 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                     .orElseThrow());
             require(!unaffordable.active, "a part the account cannot pay for is dead");
 
-            // #483: the scanner's tier 1 is crafted, so its row is not for sale and the next tier waits for it to be
-            // fitted.
+            // #483: the scanner's tier 1 is crafted, so its row is not for sale and the next tier waits for it to
+            // be fitted.
             context.clickScreenButton("SCANNER  T0");
             ClientWait.until(
                     context,
@@ -192,6 +194,35 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                             .computeOnServer(server2 ->
                                     PodComponents.effectiveTier(pod(server2, scene), ComponentTrack.SCANNER) == 2),
                     "the server installed the tier 2 scanner over the crafted one");
+
+            // #712: the heat shield sells tiers 2 and 3; a Mole works a tier 3 as tier 2.
+            context.runOnClient(client -> UpgradeShown.reveal(fitted, ComponentTrack.HEAT_SHIELD));
+            context.clickScreenButton("HEAT SHIELD  T0");
+            ClientWait.until(
+                    context,
+                    "the heat shield track selected",
+                    client -> UpgradeShown.isChosen(fitted, ComponentTrack.HEAT_SHIELD));
+            List<String> shield = labels(context, fitted);
+            require(
+                    shield.contains("TIER 1  CRAFTED, NOT SOLD")
+                            && shield.contains("BUY TIER 2  $1250")
+                            && shield.contains("BUY TIER 3  $2500  (WORKS AS TIER 2)"),
+                    "the heat shield lists tier 1 as crafted, tier 2 at $1250 and tier 3 at $2500, got " + shield);
+            require(
+                    context.computeOnClient(client -> DrawnText.of(fitted).stream()
+                            .anyMatch(drawn -> drawn.text().contains("BURNS THE PACK'S BRICKS FIRST"))),
+                    "the heat shield's tier 3 note says it burns the pack first");
+            context.clickScreenButton("BUY TIER 2  $1250");
+            ClientWait.until(
+                    context,
+                    "the heat shield tier 2 install label",
+                    client -> labels(fitted).contains("TIER 2  INSTALLED"));
+            require(
+                    singleplayer
+                            .getServer()
+                            .computeOnServer(server2 ->
+                                    PodComponents.effectiveTier(pod(server2, scene), ComponentTrack.HEAT_SHIELD) == 2),
+                    "the server installed the tier 2 heat shield");
             context.setScreen(() -> null);
         }
     }
@@ -214,8 +245,11 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
         }
         BlockPos here = player.blockPosition();
         BlockPos terminal = here.relative(Direction.EAST, 2);
-        server.overworld()
-                .setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                terminal,
+                TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
+                3);
         PodEntity pod = TestEntities.create(PodRegistry.POD, server.overworld());
         BlockPos parked = here.relative(Direction.WEST, 3);
         pod.setPos(parked.getX() + 0.5, parked.getY(), parked.getZ() + 0.5);

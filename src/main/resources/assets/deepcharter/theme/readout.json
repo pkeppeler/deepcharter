@@ -1,0 +1,10 @@
+{
+  "bottomOffset": 77,
+  "lineGap": 2,
+  "scale": 1.0,
+  "nameColor": "#7CFC9A",
+  "hintColor": "#E8C170",
+  "fadeInTicks": 4,
+  "fadeOutTicks": 6,
+  "settleTicks": 2
+}

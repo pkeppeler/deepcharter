@@ -1,0 +1,30 @@
+{
+  "criteria": {
+    "torch": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:torch"
+          }
+        ]
+      }
+    },
+    "lantern": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:lantern"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "torch",
+      "lantern"
+    ]
+  ]
+}

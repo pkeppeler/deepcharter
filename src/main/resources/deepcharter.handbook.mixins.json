@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "io.github.pkeppeler.deepcharter.handbook.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "RecipeManagerMixin",
+    "ServerAdvancementManagerMixin",
+    "ServerRecipeBookMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

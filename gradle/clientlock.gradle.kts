@@ -235,7 +235,7 @@ abstract class ClientLock : BuildService<BuildServiceParameters.None>, AutoClose
 	}
 }
 
-// The server GameTest JVM has its own pool (#541): -Xmx2G each.
+// The server GameTest JVM has its own pool (#541); its heap is `gameTestHeap` in run-jvm.gradle.kts.
 abstract class ServerTestLock : ClientLock() {
 	override fun slotsEnv(): String = "DEEPCHARTER_SERVER_TEST_SLOTS"
 	override fun lockName(): String = "server-test.lock"

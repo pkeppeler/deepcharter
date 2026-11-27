@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "deepcharter:block/salvage_crate_top",
+    "side": "deepcharter:block/salvage_crate_side"
+  }
+}

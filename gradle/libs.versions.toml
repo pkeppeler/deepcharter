@@ -2,19 +2,21 @@
 # check these on https://fabricmc.net/develop
 minecraft = "26.3"
 fabricLoader = "0.19.5"
-loom = "1.18.2"
-fabricApi = "0.162.0+26.3"
+loom = "1.19.4"
+fabricApi = "0.164.0+26.3"
 # GeckoLib (ADR 0030, docs/tooling/geckolib-audit.md): pinned exactly, bundled jar-in-jar, verified by checkGeckoLib
 geckolib = "5.5.7"
 geckolibSha512 = "c7c89bd6c5f2801ef1575e2e1212202f5a3eff480d73503beff12b1d60dfb751112fccf36e36c243b26b6b492261cef12d8b2c1a92a734bb0b621daa8c158fc5"
-checkstyle = "14.3.0"
-dependencyAnalysis = "3.19.2"
+checkstyle = "14.4.0"
+dependencyAnalysis = "3.20.2"
 palantirJavaFormat = "2.102.0"
-spotless = "8.10.3"
-errorprone = "2.50.0"
-errorproneGradle = "5.1.1"
-nullaway = "0.14.2"
+spotless = "8.11.0"
+errorprone = "2.52.0"
+errorproneGradle = "5.2.0"
+nullaway = "0.14.3"
 jspecify = "1.0.1"
+# Pinned above what Error Prone and Checkstyle bring (GHSA-xxph-c9ww-hj94); build.gradle.kts has the buildscript copy
+guava = "33.8.0-jre"
 
 [libraries]
 minecraft = { module = "com.mojang:minecraft", version.ref = "minecraft" }

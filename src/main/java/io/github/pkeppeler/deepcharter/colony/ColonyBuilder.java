@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.colony;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import java.util.Map;
@@ -12,10 +13,15 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkLevel;
+import net.minecraft.server.level.FullChunkStatus;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.Ticket;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -32,7 +38,7 @@ import org.jspecify.annotations.Nullable;
  * Builds the colony once, at world spawn, the first time a server starts with this mod: a flattened pad of
  * {@link ColonyTuning#padSize()} blocks a side with the company town on it, placed from the structure pieces of the
  * {@link ColonyLayout} (ADR 0030, tools/colony/town.py): the square with the Host, the Works and its headframe, the hangar, the
- * Continuity Office, the chapel, the bunkhouse, the offices and the Lamp and Pick. North is -Z.
+ * Continuity Office, the chapel, the bunkhouse, the offices and the Lamp and Pick, with its phonograph ({@link ColonyPhonograph}). North is -Z.
  *
  * <p>The pad is centred on the world spawn, or on the nearest dry ground if the spawn is in water ({@link #findDryGround}).
  * The pad's ground is the plain's: the surface's regolith, with the packed regolith and rock of its layers scattered on the pad's
@@ -47,6 +53,12 @@ import org.jspecify.annotations.Nullable;
 public final class ColonyBuilder {
     /** A block set without neighbour updates. */
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+
+    /**
+     * What fills the gap under the pad down to the ground: a block a player can dig out, so its drop is obtainable (ADR
+     * 0093).
+     */
+    public static final Block FILL = Blocks.DIRT;
 
     /** How many blocks under the surface the packed regolith goes before the rock. */
     private static final int LAYER_PACKED = 2;
@@ -99,8 +111,8 @@ public final class ColonyBuilder {
 
     /** Chooses the pad and records it, before any block is set. */
     private static ColonySite.Placed begin(MinecraftServer server, ServerLevel overworld, ColonySite site) {
-        // The server's own answer is the default until the first tick; the saved world data is the spawn the world
-        // chose.
+        // The server's own answer is the default until the first tick; the saved world data is the spawn the
+        // world chose.
         LevelData.RespawnData spawn = server.getWorldData().overworldData().getRespawnData();
         BlockPos wanted = new BlockPos(spawn.pos().getX(), 0, spawn.pos().getZ());
         BlockPos centre = findDryGround(overworld, wanted).orElseGet(() -> {
@@ -127,6 +139,7 @@ public final class ColonyBuilder {
         ColonySite.Placed started =
                 new ColonySite.Placed(ground, ColonyLayout.read(server).anchorsAt(ground), false, false);
         site.begin(started);
+        ColonyEvents.BEGUN.invoker().onBegun(server, started);
         return started;
     }
 
@@ -169,6 +182,21 @@ public final class ColonyBuilder {
         forEachPadChunk(level, centre, chunk -> {});
     }
 
+    /**
+     * Loads every chunk the box from {@code minX}, {@code minZ} to {@code maxX}, {@code maxZ} touches (block
+     * coordinates, inclusive). Each gets the ticket {@code getChunk} would give it before the first is waited for, so
+     * the worker threads generate them side by side, where {@code getChunk} alone generates one at a time while the
+     * server thread waits (#1297). On the server thread, {@code getChunkFuture} waits for its chunk too.
+     */
+    private static void loadChunks(ServerLevel level, int minX, int minZ, int maxX, int maxZ) {
+        ChunkPos min = new ChunkPos(minX >> 4, minZ >> 4);
+        ChunkPos max = new ChunkPos(maxX >> 4, maxZ >> 4);
+        ChunkPos.rangeClosed(min, max)
+                .forEach(chunk -> level.getChunkSource()
+                        .addTicket(new Ticket(TicketType.UNKNOWN, ChunkLevel.byStatus(FullChunkStatus.FULL)), chunk));
+        ChunkPos.rangeClosed(min, max).forEach(chunk -> level.getChunk(chunk.x(), chunk.z()));
+    }
+
     private static void forEachPadChunk(ServerLevel level, BlockPos centre, Consumer<LevelChunk> action) {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         for (int chunkX = (centre.getX() - half) >> 4; chunkX <= (centre.getX() + half - 1) >> 4; chunkX++) {
@@ -203,15 +231,16 @@ public final class ColonyBuilder {
                 centre.getY());
         layout.pieces().forEach(piece -> piece.place(level, centre));
         terminals(anchors);
+        set(ColonyPhonograph.position(anchors), ColonyPhonograph.state());
         // The pad's chunks are loaded already, so the Conduit's overworld part is set now and not when they load.
         forEachPadChunk(level, centre, chunk -> Conduit.place(level, chunk, started, LayerChain.SURFACE));
     }
 
-    /** Every registered terminal type that has a plinth anchor stands on its plinth, facing the square. The contract terminal's plinth is bare until #72 registers it. */
+    /** Every registered terminal type that has an anchor stands on the ground there, both halves, facing the square. */
     private void terminals(Map<ColonyAnchor, BlockPos> anchors) {
         for (TerminalType type : TerminalTypes.all()) {
             ColonyAnchor.forTerminal(type)
-                    .ifPresent(anchor -> set(
+                    .ifPresent(anchor -> setTerminal(
                             anchor.in(anchors),
                             type.block()
                                     .defaultBlockState()
@@ -254,12 +283,16 @@ public final class ColonyBuilder {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         int minX = centre.getX() - half;
         int minZ = centre.getZ() - half;
+        // Every grade reads the least margin, so it is loaded early; the final grid's box below covers the rest.
+        int least = ColonyTuning.DEFAULT.edgeMargin();
+        loadChunks(level, minX - least, minZ - least, minX + 2 * half - 1 + least, minZ + 2 * half - 1 + least);
         ColonyEdge.Margins margins = ColonyEdge.margins(
                 centre.getY(), minX, minZ, minX + 2 * half - 1, minZ + 2 * half - 1, this::naturalGround);
         int originX = minX - margins.west().width();
         int originZ = minZ - margins.north().width();
         int sizeX = margins.sizeX();
         int sizeZ = margins.sizeZ();
+        loadChunks(level, originX - 1, originZ - 1, originX + sizeX, originZ + sizeZ);
         int[][] natural = new int[sizeX][sizeZ];
         for (int i = 0; i < sizeX; i++) {
             for (int j = 0; j < sizeZ; j++) {
@@ -447,7 +480,7 @@ public final class ColonyBuilder {
                                 ? scatter(x, z, 0, SurfaceBlocks.REGOLITH.defaultBlockState())
                                 : SurfaceBlocks.REGOLITH.defaultBlockState());
                 for (int y = ground - 1; y >= bottom && !isGround(level.getBlockState(pos.set(x, y, z))); y--) {
-                    set(pos, Blocks.DIRT.defaultBlockState());
+                    set(pos, FILL.defaultBlockState());
                 }
             }
         }
@@ -456,6 +489,13 @@ public final class ColonyBuilder {
     /** The same small number for the same X and Z in every world, so ruins look worn at random but build the same every time. */
     private static int noise(int x, int z) {
         return ((x * 73856093) ^ (z * 19349663)) >>> 8 & 0xFFFF;
+    }
+
+    private void setTerminal(BlockPos pos, BlockState lower) {
+        if (!level.getBlockState(pos).equals(lower)
+                || !level.getBlockState(pos.above()).is(lower.getBlock())) {
+            TerminalBlock.place(level, pos, lower, FLAGS);
+        }
     }
 
     private void set(BlockPos pos, BlockState state) {

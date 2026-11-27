@@ -1,15 +1,14 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -28,7 +27,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodDrillScenario extends EvidenceScenario {
     private static final int X = 4000;
     private static final int Z = 4000;
-    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    private static final int FLOOR_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
     private static final int TICKS_PER_FRAME = 16;
     private static final int MAX_TICKS = 3000;
     private static final int ARRIVAL_FRAMES = 8;
@@ -44,10 +43,15 @@ public class PodDrillScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 buildShaftRoom(one);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 5);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 one.addFreshEntity(pod);
@@ -60,7 +64,7 @@ public class PodDrillScenario extends EvidenceScenario {
                     "the player riding a pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                            && TestLayers.clientIsIn(client, 1));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
@@ -83,7 +87,7 @@ public class PodDrillScenario extends EvidenceScenario {
             context.getInput().releaseKey(options -> options.keySprint);
             if (!inLayer(context, 2)) {
                 throw new AssertionError(
-                        "The pod did not drill through the crust into layer_2 within " + MAX_TICKS + " ticks");
+                        "The pod did not drill through the crust into layer 2 within " + MAX_TICKS + " ticks");
             }
             context.runOnClient(client -> ClientSession.player(client).setXRot(LOOK_DOWN));
             for (int i = 0; i < ARRIVAL_FRAMES; i++) {
@@ -95,14 +99,22 @@ public class PodDrillScenario extends EvidenceScenario {
     }
 
     private static boolean inLayer(ClientGameTestContext context, int layer) {
-        return context.computeOnClient(
-                client -> client.level != null && client.level.dimension().equals(LayerChain.dimension(layer)));
+        return context.computeOnClient(client -> client.level != null && TestLayers.clientIsIn(client, layer));
     }
 
     /** Crust rows, a row of stone under the pod, an open room above, and glowstone to light the shaft. */
     private static void buildShaftRoom(ServerLevel level) {
-        RoomCarver.carve(level, X - 5, X + 5, 0, 2, Z - 5, Z + 5, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(level, X - 5, X + 5, 3, FLOOR_Y - 1, Z - 5, Z + 5, Blocks.STONE);
+        RoomCarver.carve(
+                level,
+                X - 5,
+                X + 5,
+                TestLayers.worldY(1, 0),
+                TestLayers.worldY(1, 2),
+                Z - 5,
+                Z + 5,
+                LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(level, X - 5, X + 5, TestLayers.worldY(1, 3), FLOOR_Y - 1, Z - 5, Z + 5, Blocks.STONE);
+        RoomCarver.carvePocketBelow(level, 1, X - 5, X + 5, Z - 5, Z + 5);
         // Worldgen scatters lava through layer 1's rock, and lava beside the room would flow in and into the shaft, so
         // carve it sealed.
         RoomCarver.carve(
@@ -112,11 +124,11 @@ public class PodDrillScenario extends EvidenceScenario {
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
         for (BlockPos lamp : new BlockPos[] {
-            new BlockPos(X + 1, 3, Z - 1),
-            new BlockPos(X - 2, 3, Z),
-            new BlockPos(X + 1, 1, Z),
-            new BlockPos(X - 2, 1, Z - 1),
-            new BlockPos(X + 1, 0, Z - 1),
+            new BlockPos(X + 1, TestLayers.worldY(1, 3), Z - 1),
+            new BlockPos(X - 2, TestLayers.worldY(1, 3), Z),
+            new BlockPos(X + 1, TestLayers.worldY(1, 1), Z),
+            new BlockPos(X - 2, TestLayers.worldY(1, 1), Z - 1),
+            new BlockPos(X + 1, TestLayers.worldY(1, 0), Z - 1),
             new BlockPos(X + 5, FLOOR_Y + 2, Z),
             new BlockPos(X - 5, FLOOR_Y + 2, Z),
             new BlockPos(X, FLOOR_Y + 2, Z + 5),

@@ -4,11 +4,11 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -16,9 +16,9 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -38,7 +38,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "reacher-figure" (#250): the lampless figure, the Reacher, in the place and light where it is met.
@@ -95,12 +94,8 @@ public class ReacherFigureScenario extends EvidenceScenario {
 
     private int figureId;
     private int podId;
-    private @Nullable MockPlayer miner;
+    private final Arrival<MockPlayer> miner = new Arrival<>("miner", "the walk beat joins it");
     private int framesTaken;
-
-    private MockPlayer miner() {
-        return Objects.requireNonNull(miner, "miner: joined by the walk beat, read before it ran");
-    }
 
     @Override
     protected String name() {
@@ -168,12 +163,14 @@ public class ReacherFigureScenario extends EvidenceScenario {
                     ctx,
                     "the camera in layer " + LAYER,
                     client -> client.level != null
-                            && client.level.dimension().equals(LayerChain.dimension(LAYER))
+                            && TestLayers.clientIsIn(client, LAYER)
                             && client.gui.screen() == null);
+            serverDo(server -> buildChamber(layer(server)));
+            ClientWait.lightSettled(
+                    ctx, world.getServer(), LAYER, FLOOR.getX() + LENGTH / 2, FLOOR.getZ(), LENGTH / 2 + 1);
             serverDo(server -> {
                 ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
                 ServerLevel level = layer(server);
-                buildChamber(level);
                 PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.PROSPECTOR), level);
                 pod.setPos(at(POD));
                 pod.setYRot(POD_YAW);
@@ -214,7 +211,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
         }
 
         private static ServerLevel layer(MinecraftServer server) {
-            return ClientLight.serverLevel(server, LayerChain.dimension(LAYER));
+            return TestLayers.level(server, LAYER);
         }
 
         /** Logs the block light (0 to 15) at the pod, under the figure in both places, on the wall behind it in the lit stills and on the far wall: how far the lamp reaches. */
@@ -246,8 +243,8 @@ public class ReacherFigureScenario extends EvidenceScenario {
             settle();
             screenshot(ctx, "reacher-rock");
 
-            // In the rock, lit: the figure nearer the pod, seen side-on across the chamber, with the lamp lighting the
-            // wall
+            // In the rock, lit: the figure nearer the pod, seen side-on across the chamber, with the lamp lighting
+            // the wall
             // behind it.
             stand(LIT, TOWARD_POD);
             look(at(new Vec3(LIT.x, 2.2, 3.4)), at(LIT).add(0, 1.4, 0));
@@ -275,21 +272,21 @@ public class ReacherFigureScenario extends EvidenceScenario {
             // Beside a miner, for scale, side-on across the chamber.
             stand(LIT, TOWARD_POD);
             serverDo(server -> {
-                miner = MockPlayers.join(server, "Miner", layer(server), at(MINER), 90f);
-                miner().player().setPermanentlyInvulnerable(true);
+                miner.set(MockPlayers.join(server, "Miner", layer(server), at(MINER), 90f));
+                miner.get().player().setPermanentlyInvulnerable(true);
             });
             ClientWait.until(
                     ctx,
                     "the miner on the client",
                     client -> ClientLight.clientLevel(client)
-                                    .getEntity(miner().player().getId())
+                                    .getEntity(miner.get().player().getId())
                             != null);
             ctx.waitTicks(2); // tick-wait: the miner's skin and place reach the client
             look(at(new Vec3((LIT.x + MINER.x) / 2, 2.3, 3.6)), at(new Vec3((LIT.x + MINER.x) / 2, 2.2, 0.5)));
             settle();
             screenshot(ctx, "reacher-scale");
-            int minerId = miner().player().getId();
-            serverDo(server -> miner().leave());
+            int minerId = miner.get().player().getId();
+            serverDo(server -> miner.get().leave());
             ClientWait.until(
                     ctx,
                     "the miner gone from the client",

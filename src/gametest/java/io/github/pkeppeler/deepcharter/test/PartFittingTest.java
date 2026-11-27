@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonObject;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -7,12 +9,14 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
+import io.github.pkeppeler.deepcharter.upgrade.PartUnits;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeEvents;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.ArrayList;
@@ -29,6 +33,7 @@ import java.util.function.Function;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -39,6 +44,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for #536 (ADR 0053): tier 1 of every track but the scanner (drill, hull, engine, fuel tank, radiator, cargo bay, lights, spoil
@@ -113,7 +119,7 @@ public class PartFittingTest {
                                 player.getUUID(),
                                 "Unit " + UUID.randomUUID().toString().substring(0, 8))
                         .isPresent()) {
-            throw helper.assertionException("founding a charter should succeed");
+            throw failure(helper, "founding a charter should succeed");
         }
         return new Scene(mock, player, new ArrayList<>());
     }
@@ -139,7 +145,7 @@ public class PartFittingTest {
                         founder,
                         "Other " + UUID.randomUUID().toString().substring(0, 8))
                 .isPresent()) {
-            throw helper.assertionException("founding the other charter should succeed");
+            throw failure(helper, "founding the other charter should succeed");
         }
         return Charters.charterOfOrThrow(helper.getLevel().getServer(), founder)
                 .orElseThrow()
@@ -155,10 +161,6 @@ public class PartFittingTest {
     private static InteractionResult useUnit(Scene scene, PodEntity pod, ComponentTrack track) {
         scene.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(unit(track)));
         return UseEntity.on(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-    }
-
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
-        return helper.assertionException(format, args);
     }
 
     /** A world's inventories, chests and recipes name these ids (ADR 0053), so a rename is a decision: each is pinned by its literal. */
@@ -475,6 +477,40 @@ public class PartFittingTest {
         }
     }
 
+    /**
+     * A right click on the pod reaches the server as the one interact packet 26.3 sends, with the hit relative
+     * to the pod. Handled by the real packet listener, it passes the range check and every entity-use listener
+     * before {@code PartFitting}, and fits the part (#1404).
+     */
+    @GameTest
+    public void aUnitFitsThroughTheInteractPacketARightClickSends(GameTestHelper helper) {
+        Scene scene = scene(helper, true);
+        try {
+            CharterId charter = charterOf(helper, scene.player());
+            for (Item unit : List.of(unit(ComponentTrack.FUEL_TANK), ScannerRegistry.SCANNER_UNIT)) {
+                ComponentTrack track = PartUnits.trackOf(new ItemStack(unit)).orElseThrow();
+                PodEntity pod = pod(helper, scene, Optional.of(charter));
+                scene.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(unit));
+                scene.player()
+                        .connection
+                        .handleInteract(new ServerboundInteractPacket(
+                                pod.getId(), InteractionHand.MAIN_HAND, new Vec3(0, 1, 0), false));
+                if (PodComponents.effectiveTier(pod, track) != 1
+                        || !scene.player().getMainHandItem().isEmpty()) {
+                    throw failure(
+                            helper,
+                            "the interact packet should fit the %s unit and use it up, tier %s, hand holds %s",
+                            track,
+                            PodComponents.effectiveTier(pod, track),
+                            scene.player().getMainHandItem());
+                }
+            }
+            helper.succeed();
+        } finally {
+            scene.clean();
+        }
+    }
+
     /** The tier 1 price is gone from the table of every track, and tier 2 keeps its price: the standard ladder's, or the one the track had. */
     @GameTest
     public void theTierTwoPricesAreTheOnesTheTracksHad(GameTestHelper helper) {
@@ -488,6 +524,7 @@ public class PartFittingTest {
                 Map.entry(ComponentTrack.LIGHTS, 375L),
                 Map.entry(ComponentTrack.LINER, 1000L),
                 Map.entry(ComponentTrack.SOUNDER, 1000L),
+                Map.entry(ComponentTrack.HEAT_SHIELD, 1250L),
                 Map.entry(ComponentTrack.SCANNER, 500L),
                 Map.entry(ComponentTrack.CONSOLE, 500L));
         for (ComponentTrack track : ComponentTrack.values()) {

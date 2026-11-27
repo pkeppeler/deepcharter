@@ -172,6 +172,19 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
                         "screen.deepcharter.contract.deny",
                         ContractActions.DENY);
                 leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
+                int shareX = actionX + ACTION_WIDTH + 6;
+                addRenderableWidget(new CrtButton(
+                        shareX,
+                        closeY,
+                        contentRight(MARGIN) - shareX,
+                        ROW_HEIGHT,
+                        Component.translatable(
+                                shown.outpostsShared()
+                                        ? "screen.deepcharter.contract.outposts.toggle_on"
+                                        : "screen.deepcharter.contract.outposts.toggle_off"),
+                        button -> send(
+                                shown.outpostsShared() ? ContractActions.KEEP_OUTPOSTS : ContractActions.SHARE_OUTPOSTS,
+                                "")));
             }
         }
     }
@@ -228,7 +241,8 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
             case CREW ->
                 fitted(
                         shown.charter(),
-                        name -> Component.translatable("screen.deepcharter.contract.status.crew", name));
+                        name -> Component.translatable("screen.deepcharter.contract.status.crew", name)
+                                .append(outpostsState(shown)));
             case DIRECTOR ->
                 fitted(
                         shown.charter(),
@@ -245,6 +259,15 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
                                                                 shown.applicantCount()))
                                                 : Component.empty()));
         };
+    }
+
+    /** A space and whether the charter's outposts are open to other charters. */
+    private static Component outpostsState(ContractState shown) {
+        return Component.literal(" ")
+                .append(Component.translatable(
+                        shown.outpostsShared()
+                                ? "screen.deepcharter.contract.outposts.shared"
+                                : "screen.deepcharter.contract.outposts.private"));
     }
 
     /** The status line for {@code name}, with the name cut and ended in "..." when the line would be wider than the content: a long charter name must not run off the screen. */

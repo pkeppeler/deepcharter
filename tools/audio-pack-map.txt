@@ -2,8 +2,8 @@
 # One line per event: the id, then one or more file names (several = variants, the game picks one).
 # Ids and file names only. No audio ever goes in this file or in git.
 # Every id here must be a DeepSound in src/main/java/.../sound/DeepSound.java (SoundEventsTest checks it).
-# Not here, on purpose: the drone beds ambient.* and the Lamp Hymn hymn.* (#249) have no original, so the private pack
-# leaves them playing. The pod engine, drill, terminal and UI events below ship a sound of ours too (tools/sounds); the pack still replaces them by id.
+# Not here, on purpose: the drone beds ambient.*, the Lamp Hymn hymn.* (#249), the cave-in cave_in.* (#1293) and the chord of a machine coming
+# online, terminal.online (#1267), have no original, so the private pack leaves them playing. The pod engine, drill, terminal and UI events below ship a sound of ours too (tools/sounds); the pack still replaces them by id.
 # To give a drone a private replacement, add its id here with a source file (and drop its prefix from SoundEventsTest.hasNoOriginal).
 
 # Pod engine and movement
@@ -27,6 +27,12 @@ pod.signal_lost        2006_lava.wav.mp3
 creature.approach      2006_lava.wav.mp3
 creature.hurt          1971_clink.wav.mp3
 creature.death         2006_lava.wav.mp3
+creature.drifter_hiss   2006_lava.wav.mp3
+creature.drifter_burst  2004_jettison.wav.mp3
+creature.alarm_drone    1070.mp3
+creature.tally_click   1971_clink.wav.mp3
+creature.tally_clamp   1971_clink.wav.mp3
+creature.tally_break   1971_clink.wav.mp3
 
 # Drill
 drill.dig              1978_drill_100.wav.mp3 1979_drill_101.wav.mp3 1980_drill_102.wav.mp3 1981_drill_103.wav.mp3 1982_drill_104.wav.mp3

@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.mojang.serialization.Dynamic;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -12,12 +12,13 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
 import io.github.pkeppeler.deepcharter.pod.PodLightsTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.Findings;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -36,7 +37,6 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
@@ -44,7 +44,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +53,7 @@ import org.slf4j.LoggerFactory;
  */
 public class PodLightsTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodLightsTest.class);
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final Vec3 SPAWN = new Vec3(FLOOR_RADIUS + 0.5, FLOOR_Y + 1, FLOOR_RADIUS + 0.5);
     /** How far from a pod a test looks for light blocks where nothing else stands: the far columns of the chunk and layer tests. */
@@ -113,7 +112,7 @@ public class PodLightsTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theLightFollowsThePodAndLeavesNoTrail(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        BlockPos origin = new BlockPos(5600, 64, 5600);
+        BlockPos origin = TestLayers.pos(TestLayers.SURFACE, 5600, 64, 5600);
         CharterId charter = charter(helper);
         PodEntity[] made = {null};
         FarChunks.Deadline deadline = FarChunks.deadline();
@@ -351,7 +350,7 @@ public class PodLightsTest {
     @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 1200)
     public void unloadingThePodsChunkLeavesNoLight(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        BlockPos origin = new BlockPos(3040, 64, 3040);
+        BlockPos origin = TestLayers.pos(TestLayers.SURFACE, 3040, 64, 3040);
         int chunkX = origin.getX() >> 4;
         int chunkZ = origin.getZ() >> 4;
         CharterId charter = charter(helper);
@@ -420,16 +419,18 @@ public class PodLightsTest {
     public void crossingABreachLeavesNoLightBehind(GameTestHelper helper) {
         double x = 3500.5;
         double z = 3500.5;
-        ServerLevel one = layer(helper, 1);
-        ServerLevel two = layer(helper, 2);
+        ServerLevel one = TestLayers.level(helper, 1);
+        LayerChain.Band oneBand = TestLayers.band(one, 1);
+        ServerLevel two = TestLayers.level(helper, 2);
         openShaft(one, x, z);
         MockPlayer mock = MockPlayers.join(helper, "lights-crossing");
-        mock.teleportTo(one, new Vec3(x, 8, z), 0, 0);
+        mock.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pod = {null};
         boolean[] checked = {false};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+        Findings found = new Findings();
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), () -> {
             pod[0] = TestEntities.create(PodRegistry.POD, one);
-            pod[0].setPos(x, 8, z);
+            pod[0].setPos(x, TestLayers.worldY(1, 8), z);
             one.addFreshEntity(pod[0]);
             MinecraftServer server = one.getServer();
             if (Charters.found(server, mock.player().getUUID(), "Lights crossing " + CHARTERS.incrementAndGet())
@@ -453,15 +454,17 @@ public class PodLightsTest {
             }
             if (!checked[0]) {
                 checked[0] = true;
-                List<BlockPos> left = lightsInBox(one, BlockPos.containing(x, one.getMinY(), z), 4, one.getMinY(), 20);
+                List<BlockPos> left =
+                        lightsInBox(one, BlockPos.containing(x, oneBand.minY(), z), 4, oneBand.minY(), 20);
                 if (!left.isEmpty()
-                        || !ledgerEntriesIn(one, BlockPos.containing(x, 8, z), 40)
+                        || !ledgerEntriesIn(one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), 40)
                                 .isEmpty()) {
-                    helper.fail(Component.literal(String.format(
+                    found.note(String.format(
                             "the pod crossed but layer_1 still holds lights %s, ledger %s",
-                            left, ledgerEntriesIn(one, BlockPos.containing(x, 8, z), 40))));
+                            left, ledgerEntriesIn(one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), 40)));
                 }
             }
+            found.ensure(helper);
             if (lightsNear(two, arrived.blockPosition(), LOOK).size() != 1) {
                 throw failure(
                         helper,
@@ -670,23 +673,9 @@ public class PodLightsTest {
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(level.getMinY()),
-                column.offset(1, 0, 1).atY(level.getMinY() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

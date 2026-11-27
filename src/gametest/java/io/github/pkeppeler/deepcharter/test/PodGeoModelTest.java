@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.client.pod.BoneRole;
 import io.github.pkeppeler.deepcharter.client.pod.GeoMeasure;
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
@@ -21,7 +24,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 
@@ -50,23 +52,29 @@ public class PodGeoModelTest {
                     .map(GeoModel.Bone::role)
                     .collect(Collectors.toCollection(() -> EnumSet.noneOf(BoneRole.class)));
             Set<String> names = model.bones().stream().map(GeoModel.Bone::name).collect(Collectors.toSet());
-            require(helper, roles.contains(BoneRole.DRILL_HEAD), chassis.id() + " has no drill head");
-            require(
+            expect(helper, roles.contains(BoneRole.DRILL_HEAD), "%s has no drill head", chassis.id());
+            expect(
                     helper,
                     roles.contains(BoneRole.ROTOR) || roles.contains(BoneRole.THRUSTER),
-                    chassis.id() + " has neither a rotor nor thrusters");
-            require(
+                    "%s has neither a rotor nor thrusters",
+                    chassis.id());
+            expect(
                     helper,
                     roles.contains(BoneRole.WHEEL) || roles.contains(BoneRole.LINKS) || roles.contains(BoneRole.LEG),
-                    chassis.id() + " has neither treads, wheels nor legs");
-            require(
+                    "%s has neither treads, wheels nor legs",
+                    chassis.id());
+            expect(
                     helper,
                     names.contains("lamps") && names.contains("canopy"),
-                    chassis.id() + " needs a lamps and a canopy bone, has " + names);
-            require(
+                    "%s needs a lamps and a canopy bone, has %s",
+                    chassis.id(),
+                    names);
+            expect(
                     helper,
                     model.cutters().containsAll(List.of("tricone", "stacked", "fluted", "cluster")),
-                    chassis.id() + " should hold the four cutters of the drill tiers, holds " + model.cutters());
+                    "%s should hold the four cutters of the drill tiers, holds %s",
+                    chassis.id(),
+                    model.cutters());
             look.check(model);
         }
         helper.succeed();
@@ -77,23 +85,25 @@ public class PodGeoModelTest {
     public void theProspectorIsLongerWithTwoSeatsAndAWinch(GameTestHelper helper) throws IOException {
         GeoModel prospector = read(helper, look(helper, Chassis.PROSPECTOR).modelFile());
         Set<String> names = prospector.bones().stream().map(GeoModel.Bone::name).collect(Collectors.toSet());
-        require(helper, names.contains("winch"), "the Prospector has a winch, has " + names);
+        expect(helper, names.contains("winch"), "the Prospector has a winch, has %s", names);
         long hatches = prospector.bones().stream()
                 .filter(bone -> bone.name().equals("hatch"))
                 .flatMap(bone -> bone.cubes().stream())
                 .count();
-        require(
+        expect(
                 helper,
                 hatches == 2,
-                "the Prospector has one hatch for each of its two seats in tandem, has " + hatches);
+                "the Prospector has one hatch for each of its two seats in tandem, has %s",
+                hatches);
         GeoModel mole = read(helper, look(helper, Chassis.MOLE).modelFile());
         double[] longHull = prospector.restBounds(bone -> !GeoMeasure.inCutter(prospector, bone, null));
         double[] shortHull = mole.restBounds(bone -> !GeoMeasure.inCutter(mole, bone, null));
-        require(
+        expect(
                 helper,
                 longHull[5] - longHull[2] > 1.3 * (shortHull[5] - shortHull[2]),
-                "the Prospector's hull should be a third longer than the Mole's, %.1f and %.1f pixels"
-                        .formatted(longHull[5] - longHull[2], shortHull[5] - shortHull[2]));
+                "the Prospector's hull should be a third longer than the Mole's, %.1f and %.1f pixels",
+                longHull[5] - longHull[2],
+                shortHull[5] - shortHull[2]);
         helper.succeed();
     }
 
@@ -110,40 +120,53 @@ public class PodGeoModelTest {
             double top = chassis.height() * 16;
             GeoModel model = read(helper, look(helper, chassis).modelFile());
             double[] hull = model.restBounds(bone -> !GeoMeasure.inCutter(model, bone, null));
-            require(
+            expect(
                     helper,
                     hull[0] >= -half - slack
                             && hull[3] <= half + slack
                             && hull[5] <= half + slack
                             && hull[2] >= -half - slack,
-                    chassis.id()
-                            + "'s hull spans x %.2f..%.2f, z %.2f..%.2f, outside its %.0f-pixel bore"
-                                    .formatted(hull[0], hull[3], hull[2], hull[5], 2 * half));
+                    "%s's hull spans x %.2f..%.2f, z %.2f..%.2f, outside its %.0f-pixel bore",
+                    chassis.id(),
+                    hull[0],
+                    hull[3],
+                    hull[2],
+                    hull[5],
+                    2 * half);
             for (String cutter : model.cutters()) {
                 double[] bounds = model.restBounds(
                         bone -> !GeoMeasure.inCutter(model, bone, null) || GeoMeasure.inCutter(model, bone, cutter));
                 double[] cone = model.restBounds(bone -> GeoMeasure.inCutter(model, bone, cutter));
                 String what = chassis.id() + "'s " + cutter + " cutter";
-                require(
+                expect(
                         helper,
                         bounds[0] >= -half - slack && bounds[3] <= half + slack && bounds[5] <= half + slack,
-                        what
-                                + " at rest spans x %.2f..%.2f and back z %.2f, wider than its %.0f-pixel bore"
-                                        .formatted(bounds[0], bounds[3], bounds[5], 2 * half));
-                require(
+                        "%s at rest spans x %.2f..%.2f and back z %.2f, wider than its %.0f-pixel bore",
+                        what,
+                        bounds[0],
+                        bounds[3],
+                        bounds[5],
+                        2 * half);
+                expect(
                         helper,
                         cone[2] >= -half - 16 - slack,
-                        what + " reaches z %.2f, more than a block past the bore face".formatted(cone[2]));
-                require(
+                        "%s reaches z %.2f, more than a block past the bore face",
+                        what,
+                        cone[2]);
+                expect(
                         helper,
                         -cone[2] - half >= 9,
-                        what
-                                + " leads the bore face by only %.2f pixels: it should reach into the block it chews"
-                                        .formatted(-cone[2] - half));
-                require(
+                        "%s leads the bore face by only %.2f pixels: it should reach into the block it chews",
+                        what,
+                        -cone[2] - half);
+                expect(
                         helper,
                         bounds[1] >= -slack && bounds[4] <= top + slack,
-                        what + " at rest spans y %.2f..%.2f, outside 0..%.1f".formatted(bounds[1], bounds[4], top));
+                        "%s at rest spans y %.2f..%.2f, outside 0..%.1f",
+                        what,
+                        bounds[1],
+                        bounds[4],
+                        top);
             }
         }
         helper.succeed();
@@ -152,16 +175,17 @@ public class PodGeoModelTest {
     @GameTest
     public void theSmallestModelParses(GameTestHelper helper) {
         GeoModel model = GeoModel.parse("valid", new StringReader(VALID));
-        require(
+        expect(
                 helper,
                 model.bones().size() == 3 && model.textureWidth() == 64,
-                "the valid model should parse to 3 bones on 64 x 64, got " + model);
+                "the valid model should parse to 3 bones on 64 x 64, got %s",
+                model);
         helper.succeed();
     }
 
     @GameTest
     public void anUnknownBoneFailsAndNamesIt(GameTestHelper helper) {
-        String message = failure(helper, VALID.replace("\"drill_head\", \"parent\"", "\"drill_haed\", \"parent\""));
+        String message = messageOf(helper, VALID.replace("\"drill_head\", \"parent\"", "\"drill_haed\", \"parent\""));
         requireContains(helper, message, "'drill_haed' is not a pod bone");
         helper.succeed();
     }
@@ -198,7 +222,7 @@ public class PodGeoModelTest {
                         VALID.replace("\"texture_width\": 64", "\"texture_width\": 0"),
                         "texture_width must be above 0"));
         for (Map.Entry<String, String> entry : broken.entrySet()) {
-            requireContains(helper, failure(helper, entry.getKey()), entry.getValue());
+            requireContains(helper, messageOf(helper, entry.getKey()), entry.getValue());
         }
         helper.succeed();
     }
@@ -212,13 +236,14 @@ public class PodGeoModelTest {
 				    {"name": "drill_ring", "parent": "%s", "pivot": [0, 4, -4], "cubes": [{"origin": [-3, 1, -6], "size": [6, 6, 1], "uv": [0, 24]}]}
 				  ]}]}""";
         GeoModel onMount = GeoModel.parse("ring", new StringReader(withoutEnd + ring.formatted("drill_mount")));
-        require(
+        expect(
                 helper,
                 onMount.bones().stream().anyMatch(bone -> bone.role() == BoneRole.DRILL_RING),
-                "a drill ring on the mount should parse, got " + onMount);
+                "a drill ring on the mount should parse, got %s",
+                onMount);
         String misplaced = "drill_ring bone 'drill_ring' must be under drill_mount and not under drill_head";
-        requireContains(helper, failure(helper, withoutEnd + ring.formatted("drill_head")), misplaced);
-        requireContains(helper, failure(helper, withoutEnd + ring.formatted("body")), misplaced);
+        requireContains(helper, messageOf(helper, withoutEnd + ring.formatted("drill_head")), misplaced);
+        requireContains(helper, messageOf(helper, withoutEnd + ring.formatted("body")), misplaced);
         helper.succeed();
     }
 
@@ -230,38 +255,44 @@ public class PodGeoModelTest {
     @GameTest
     public void everyConeNearlyFillsTheBoreFaceAndTurnsSlower(GameTestHelper helper) throws IOException {
         GeoModel valid = GeoModel.parse("valid", new StringReader(VALID));
-        require(
+        expect(
                 helper,
                 valid.drillReach() == 1.0,
-                "the valid model's 2-pixel drill head should reach 1 pixel from its axis, not " + valid.drillReach());
-        require(
+                "the valid model's 2-pixel drill head should reach 1 pixel from its axis, not %s",
+                valid.drillReach());
+        expect(
                 helper,
                 valid.drillSpinScale() == 1.0,
-                "the valid model's 2-pixel drill head should turn at the full rate, not " + valid.drillSpinScale());
+                "the valid model's 2-pixel drill head should turn at the full rate, not %s",
+                valid.drillSpinScale());
         GeoModel mole = read(helper, look(helper, Chassis.MOLE).modelFile());
         GeoModel prospector = read(helper, look(helper, Chassis.PROSPECTOR).modelFile());
         for (GeoModel model : List.of(mole, prospector)) {
             for (String cutter : model.cutters()) {
                 double reach = model.drillReach(cutter);
                 double scale = model.drillSpinScale(cutter);
-                require(
+                expect(
                         helper,
                         reach >= 12.5,
-                        model.source() + "'s " + cutter
-                                + " cone reaches %.1f pixels from its axis, under the 12.5 that nearly fills the bore face"
-                                        .formatted(reach));
-                require(
+                        "%s's %s cone reaches %.1f pixels from its axis, under the 12.5 that nearly fills the bore face",
+                        model.source(),
+                        cutter,
+                        reach);
+                expect(
                         helper,
                         scale > 0 && scale < 0.5,
-                        model.source() + "'s " + cutter
-                                + " cone turns at %.3f of the full rate, not under half".formatted(scale));
+                        "%s's %s cone turns at %.3f of the full rate, not under half",
+                        model.source(),
+                        cutter,
+                        scale);
             }
         }
         for (String cutter : mole.cutters()) {
-            require(
+            expect(
                     helper,
                     prospector.drillReach(cutter) >= mole.drillReach(cutter),
-                    "the Prospector's " + cutter + " cutter should be at least as wide as the Mole's");
+                    "the Prospector's %s cutter should be at least as wide as the Mole's",
+                    cutter);
         }
         helper.succeed();
     }
@@ -274,10 +305,11 @@ public class PodGeoModelTest {
                         "\"size\": [10, 0.001, 4], \"pivot\": [0, 4, -6], \"rotation\": [0, 0, 45]")
                 .replace("\"origin\": [-1, 3, -8]", "\"origin\": [-5, 4, -8]");
         GeoModel model = GeoModel.parse("turned", new StringReader(turned));
-        require(
+        expect(
                 helper,
                 Math.abs(model.drillReach() - Math.sqrt(12.5)) < 0.01,
-                "a 10-pixel bar turned 45 degrees should reach 3.54 pixels, not " + model.drillReach());
+                "a 10-pixel bar turned 45 degrees should reach 3.54 pixels, not %s",
+                model.drillReach());
         helper.succeed();
     }
 
@@ -299,32 +331,43 @@ public class PodGeoModelTest {
                                 double yaw = Math.toRadians(degrees);
                                 double px = (x * Math.cos(yaw) - z * Math.sin(yaw)) / 16;
                                 double pz = (x * Math.sin(yaw) + z * Math.cos(yaw)) / 16;
-                                require(
+                                expect(
                                         helper,
                                         box.inflate(1e-6).contains(px, b[1] / 16, pz)
                                                 && box.inflate(1e-6).contains(px, b[4] / 16, pz),
-                                        chassis.id() + "'s " + cutter + " cutter corner (" + x + ", " + z + ") at "
-                                                + degrees + " degrees with the drill turned " + pitch
-                                                + " is outside its culling box " + box);
+                                        "%s's %s cutter corner (%s, %s) at %s degrees with the drill turned %s is outside its culling box %s",
+                                        chassis.id(),
+                                        cutter,
+                                        x,
+                                        z,
+                                        degrees,
+                                        pitch,
+                                        box);
                             }
                         }
                     }
                 }
             }
             double[] all = model.restBounds();
-            require(
+            expect(
                     helper,
                     box.minY <= all[1] / 16 + 1e-9 && box.maxY >= all[4] / 16 - 1e-9,
-                    chassis.id() + "'s culling box " + box + " does not hold its height");
-            require(
+                    "%s's culling box %s does not hold its height",
+                    chassis.id(),
+                    box);
+            expect(
                     helper,
                     box.minY <= -12.0 / 16,
-                    chassis.id() + "'s culling box " + box + " does not reach the cutter's tip under the floor");
+                    "%s's culling box %s does not reach the cutter's tip under the floor",
+                    chassis.id(),
+                    box);
             // The cone's tip is two blocks from the pod's middle: well past the hitbox's half width.
-            require(
+            expect(
                     helper,
                     box.maxX >= 2.0 - 1e-9,
-                    chassis.id() + "'s culling box " + box + " does not reach the cone's tip");
+                    "%s's culling box %s does not reach the cone's tip",
+                    chassis.id(),
+                    box);
         }
         helper.succeed();
     }
@@ -367,7 +410,7 @@ public class PodGeoModelTest {
     private static String textureFailure(GameTestHelper helper, GeoModel model, byte[] png) throws IOException {
         try {
             model.checkTexture("broken.png", new ByteArrayInputStream(png));
-            throw helper.assertionException(Component.literal("expected the texture check to fail"));
+            throw failure(helper, "expected the texture check to fail");
         } catch (IllegalArgumentException e) {
             return Objects.requireNonNull(e.getMessage(), "the failure has no message");
         }
@@ -401,27 +444,21 @@ public class PodGeoModelTest {
     static InputStream stream(GameTestHelper helper, Identifier id) {
         String path = "/assets/%s/%s".formatted(id.getNamespace(), id.getPath());
         InputStream in = PodGeoModelTest.class.getResourceAsStream(path);
-        require(helper, in != null, path + " is not on the classpath");
+        expect(helper, in != null, "%s is not on the classpath", path);
         return in;
     }
 
     /** Parses {@code json}, which must fail, and returns the message. */
-    private static String failure(GameTestHelper helper, String json) {
+    private static String messageOf(GameTestHelper helper, String json) {
         try {
             GeoModel model = GeoModel.parse("broken.geo.json", new StringReader(json));
-            throw helper.assertionException(Component.literal("expected a failure, parsed " + model));
+            throw failure(helper, "expected a failure, parsed %s", model);
         } catch (IllegalArgumentException e) {
             return Objects.requireNonNull(e.getMessage(), "the failure has no message");
         }
     }
 
     private static void requireContains(GameTestHelper helper, String message, String part) {
-        require(helper, message.contains(part), "expected the error to say '" + part + "', it says: " + message);
-    }
-
-    private static void require(GameTestHelper helper, boolean condition, String message) {
-        if (!condition) {
-            throw helper.assertionException(Component.literal(message));
-        }
+        expect(helper, message.contains(part), "expected the error to say '%s', it says: %s", part, message);
     }
 }

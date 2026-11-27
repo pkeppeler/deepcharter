@@ -40,8 +40,9 @@ import net.minecraft.world.phys.Vec3;
  * for longer, stay in creative and switch to survival when the wait is over.
  *
  * <p>A mock joined for a GameTest never outlives it: the end-of-tick sweep removes it once the
- * test is done, whether it passed, failed or timed out. A mock joined without an owner lives
- * until the server stops or {@link MockPlayer#leave} is called.
+ * test is done, whether it passed, failed or timed out. A mock joined without an owner stays until
+ * the server stops or {@link MockPlayer#leave} is called, so the test that joins one leaves it; one that stands in an
+ * unloaded chunk for {@link FarChunks#AWAIT_BUDGET_TICKS} ticks leaves by itself, with an error in the log.
  *
  * Drive a mock with {@link MockPlayer#setInput}. Call everything on the server thread.
  */
@@ -50,6 +51,8 @@ public final class MockPlayers {
     public static final Vec3 STRUCTURE_SPAWN = new Vec3(1.5, 1, 1.5);
 
     private static final List<MockPlayer> ACTIVE = new ArrayList<>();
+    /** Set when a mock left since the last end of tick (#723). Server thread only, like {@code ACTIVE}: {@code join} and {@code leave} run there. */
+    private static boolean tickListsStale;
 
     static {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -57,6 +60,11 @@ public final class MockPlayers {
                 if (mock.server() == server) {
                     mock.tick();
                 }
+            }
+            if (tickListsStale) {
+                tickListsStale = false;
+                // A tick list's stale snapshot would keep the mock that left on the heap (#723).
+                TickLists.dropStale(server.getAllLevels());
             }
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> ACTIVE.removeIf(mock -> mock.server() == server));
@@ -71,8 +79,9 @@ public final class MockPlayers {
 
     /**
      * Join a mock player at {@code spawn} in {@code level}; it stays until the server stops or {@link MockPlayer#leave}
-     * is called. The spawn is required because a bare join lands at the origin, inside the rock of the surface (the
-     * ground is at y 63), where the mock suffocates within seconds and a dead mock cannot be teleported.
+     * is called (or, in an unloaded chunk for {@link FarChunks#AWAIT_BUDGET_TICKS} ticks, leaves with an error in the
+     * log). The spawn is required because a bare join lands at the origin, inside the rock of the surface (the ground
+     * is at y 63), where the mock suffocates within seconds and a dead mock cannot be teleported.
      */
     public static MockPlayer join(MinecraftServer server, String name, ServerLevel level, Vec3 spawn) {
         return join(server, name, level, spawn, 0f);
@@ -141,7 +150,7 @@ public final class MockPlayers {
     }
 
     // GameTestHelper has no public accessor for its test, and this is the only way to know when it ends.
-    private static GameTestInfo testInfo(GameTestHelper helper) {
+    public static GameTestInfo testInfo(GameTestHelper helper) {
         try {
             Field field = GameTestHelper.class.getDeclaredField("testInfo");
             field.setAccessible(true);
@@ -154,5 +163,6 @@ public final class MockPlayers {
 
     static void forget(MockPlayer mock) {
         ACTIVE.remove(mock);
+        tickListsStale = true;
     }
 }

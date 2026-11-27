@@ -11,10 +11,14 @@
 	"entrypoints": {
 		"main": [
 			"io.github.pkeppeler.deepcharter.test.support.TestAttachments",
+			"io.github.pkeppeler.deepcharter.test.support.DedicatedServerRelease",
 			"io.github.pkeppeler.deepcharter.test.support.OddPods",
 			"io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes",
 			"io.github.pkeppeler.deepcharter.test.support.TestPacks",
 			"io.github.pkeppeler.deepcharter.test.support.WorldDataGuard"
+		],
+		"client": [
+			"io.github.pkeppeler.deepcharter.test.support.QuietTransmissions"
 		],
 		"fabric-gametest": [
 			"@SERVER_TESTS@"

@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -58,7 +59,8 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
                         .findFirst()
                         .orElseThrow();
                 BlockPos at = real.blockPosition().relative(Direction.EAST, 2);
-                real.level().setBlock(at, ContractTerminal.TYPE.block().defaultBlockState(), 3);
+                TerminalBlock.place(
+                        real.level(), at, ContractTerminal.TYPE.block().defaultBlockState(), 3);
                 return at;
             });
             UUID real = two.server()
@@ -84,6 +86,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
                     charter.name().equals(CHARTER) && charter.isDirector(real),
                     "the server has the typed charter, directed by the client, got " + charter);
 
+            aDirectorTogglesTheOutpostSharingFromTheScreen(context, two, charter);
             anotherPlayerAppliesAndIsDenied(context, two, mock, charter);
             anotherPlayerAppliesAndIsApproved(context, two, mock, real, charter);
             aDirectorLeavesAndAMemberLeaves(context, two, mock, real);
@@ -114,13 +117,13 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
      */
     private static void aLongCharterNameIsCutAndTheLineKeepsItsEnd(ClientGameTestContext context) {
         context.runOnClient(client -> {
-            TerminalView view = new TerminalView(
-                    BlockPos.ZERO, ContractTerminal.TYPE.id(), true, true, List.of(), Optional.empty());
+            TerminalView view =
+                    new TerminalView(BlockPos.ZERO, ContractTerminal.TYPE.id(), Optional.empty(), List.of());
             ContractScreen screen = (ContractScreen) TerminalScreens.create(view);
             screen.init(GUI_WIDTH, GUI_HEIGHT);
             String name = "W".repeat(LONG_NAME);
-            screen.show(
-                    new ContractState(Role.DIRECTOR, name, List.of(), 0, List.of(), 0, List.of(), 7, Optional.empty()));
+            screen.show(new ContractState(
+                    Role.DIRECTOR, name, List.of(), 0, List.of(), 0, List.of(), 7, false, Optional.empty()));
             String line = screen.statusLine().getString();
             require(
                     line.startsWith("DIRECTOR OF W") && line.contains("...") && !line.contains(name),
@@ -133,7 +136,19 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
                     "the cut line fits the content width, '" + line + "' is " + CrtText.width(client.font, line));
             require(screen.statusLine().getString().equals(line), "the second read of the line is the same");
             screen.show(new ContractState(
-                    Role.DIRECTOR, "ACME", List.of(), 0, List.of(), 0, List.of(), 7, Optional.empty()));
+                    Role.CREW, "ACME", List.of(), 0, List.of(), 0, List.of(), 0, true, Optional.empty()));
+            require(
+                    screen.statusLine().getString().equals("CREW OF ACME. OUTPOSTS SHARED."),
+                    "a crew member is told the outposts are shared, got '"
+                            + screen.statusLine().getString() + "'");
+            screen.show(new ContractState(
+                    Role.CREW, "ACME", List.of(), 0, List.of(), 0, List.of(), 0, false, Optional.empty()));
+            require(
+                    screen.statusLine().getString().equals("CREW OF ACME. OUTPOSTS PRIVATE."),
+                    "a crew member is told the outposts are private, got '"
+                            + screen.statusLine().getString() + "'");
+            screen.show(new ContractState(
+                    Role.DIRECTOR, "ACME", List.of(), 0, List.of(), 0, List.of(), 7, false, Optional.empty()));
             require(
                     screen.statusLine().getString().startsWith("DIRECTOR OF ACME. APPLICATIONS WAITING: 7."),
                     "a short name is left whole, got '" + screen.statusLine().getString() + "'");
@@ -179,6 +194,26 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
                 context.computeOnClient(client -> screen(context).statusLine().getString())
                         .contains("DIRECTOR OF " + CHARTER),
                 "the status says who directs what");
+    }
+
+    /** #752: the Director's button shows the setting and flips it on the server; the crew's status line says it too. */
+    private static void aDirectorTogglesTheOutpostSharingFromTheScreen(
+            ClientGameTestContext context, TwoPlayerServer two, Charter charter) {
+        require(
+                context.computeOnClient(client -> ContractShown.hasButton(screen(context), "SHARE OUTPOSTS: OFF")),
+                "a new charter's Director sees the sharing button off");
+        context.clickScreenButton("SHARE OUTPOSTS: OFF");
+        awaitState(context, open -> ContractShown.hasButton(open, "SHARE OUTPOSTS: ON"));
+        require(outpostsShared(two, charter), "the press opens the outposts on the server");
+        context.clickScreenButton("SHARE OUTPOSTS: ON");
+        awaitState(context, open -> ContractShown.hasButton(open, "SHARE OUTPOSTS: OFF"));
+        require(!outpostsShared(two, charter), "the second press closes them again");
+    }
+
+    private static boolean outpostsShared(TwoPlayerServer two, Charter charter) {
+        return two.server()
+                .computeOnServer(server ->
+                        Charters.findOrThrow(server, charter.id()).orElseThrow().outpostsShared());
     }
 
     private static void anotherPlayerAppliesAndIsDenied(

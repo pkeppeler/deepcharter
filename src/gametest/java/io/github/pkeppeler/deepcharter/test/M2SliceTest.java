@@ -1,7 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
@@ -31,11 +32,11 @@ import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
@@ -43,6 +44,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -75,26 +77,69 @@ import org.jspecify.annotations.Nullable;
  * added to the game fails this test until the slice covers it.
  */
 public class M2SliceTest {
+    static {
+        M2SliceEndState.watchCrossings();
+    }
+
     private static final double X = 9300.5;
     private static final double Z = 9300.5;
     private static final BlockPos TERMINAL = new BlockPos(0, 1, 0);
     private static final long FUNDS = 50_000;
 
+    /**
+     * The end state says whether a descent changed anyone's dimension: a crossing in place (both levels the same) passes it by, and one
+     * that moved a player fails it before it looks at anything else. In the campaign world no crossing moves anyone (ADR 0061).
+     */
+    @GameTest
+    public void theEndStateFailsWhenACrossingMovedAPlayer(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerLevel campaign = TestLayers.level(server, 1);
+        MockPlayer mock = MockPlayers.join(helper, "end-state-moved");
+        try {
+            mock.teleportTo(campaign, new Vec3(X, TestLayers.worldY(1, 40), Z), 0, 0);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, campaign);
+            BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, campaign, 1, 2);
+            AssertionError inPlace = endStateFailure(server, pod);
+            if (inPlace instanceof M2SliceEndState.PlayerMoved) {
+                throw failure(helper, "a crossing in place counted as a move: %s", inPlace.getMessage());
+            }
+            BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, server.overworld(), 1, 2);
+            AssertionError moved = endStateFailure(server, pod);
+            if (!(moved instanceof M2SliceEndState.PlayerMoved)) {
+                throw failure(helper, "a crossing that moved a player passed: %s", moved);
+            }
+        } finally {
+            M2SliceEndState.forgetCrossings(mock.player().getUUID());
+            mock.leave();
+        }
+        helper.succeed();
+    }
+
+    /** The end state's failure for a world where nothing of the slice was done; null when it does not fail. */
+    private static @Nullable AssertionError endStateFailure(MinecraftServer server, PodEntity prospector) {
+        try {
+            M2SliceEndState.require(server, CharterId.random(), prospector);
+            return null;
+        } catch (AssertionError failure) {
+            return failure;
+        }
+    }
+
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theScriptedSliceReachesItsEndState(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel one = layer(helper, server, 1);
-        ServerLevel two = layer(helper, server, 2);
+        ServerLevel one = TestLayers.level(server, 1);
+        ServerLevel two = TestLayers.level(server, 2);
         AtomicInteger ready = new AtomicInteger();
-        // The colony's chunk too: a pod there is found by its UUID, which a cable needs, only once the chunk ticks
-        // entities.
+        // The colony's chunk too: a pod there is found by its UUID, which a cable needs, only once the chunk
+        // ticks entities.
         List<Awaited> awaited = List.of(
-                new Awaited(one, BlockPos.containing(X, zoneY(one, 2), Z)),
-                new Awaited(two, BlockPos.containing(X, zoneY(two, 2), Z)),
+                new Awaited(one, BlockPos.containing(X, zoneY(one, 1, 2), Z)),
+                new Awaited(two, BlockPos.containing(X, zoneY(two, 2, 2), Z)),
                 new Awaited(
                         server.overworld(), Colony.placed(server).orElseThrow().center()),
-                // The Host's chunk, whose displays the end state inspects: the colony's centre is in it, and this names
-                // it.
+                // The Host's chunk, whose displays the end state inspects: the colony's centre is in it, and this
+                // names it.
                 new Awaited(
                         server.overworld(),
                         Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow()));
@@ -114,25 +159,10 @@ public class M2SliceTest {
         }
     }
 
-    private static ServerLevel layer(GameTestHelper helper, MinecraftServer server, int layer) {
-        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
-        if (level == null) {
-            throw helper.assertionException("layer %s did not load", layer);
-        }
-        return level;
-    }
-
-    private static double zoneY(ServerLevel level, int index) {
-        Zones.Span span = Zones.span(level.getMinY(), level.getHeight(), index);
+    private static double zoneY(ServerLevel level, int layer, int index) {
+        LayerChain.Band band = TestLayers.band(level, layer);
+        Zones.Span span = Zones.span(band.minY(), band.height(), index);
         return span.low() + span.size() / 2.0;
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw helper.assertionException(net.minecraft.network.chat.Component.literal(String.format(format, args)));
-        }
     }
 
     private static void expectDone(GameTestHelper helper, java.util.Optional<TerminalRefusal> refusal, String what) {
@@ -145,7 +175,7 @@ public class M2SliceTest {
     }
 
     private static void repair(GameTestHelper helper, ServerPlayer player, BlockPos terminal, TerminalType type) {
-        helper.getLevel().setBlock(terminal, type.block().defaultBlockState(), 3);
+        TerminalBlock.place(helper.getLevel(), terminal, type.block().defaultBlockState(), 3);
         for (var part : type.parts()) {
             player.getInventory().add(new net.minecraft.world.item.ItemStack(part));
             expectDone(helper, TerminalParts.insert(player, terminal, part), "putting " + part + " into " + type.id());
@@ -200,7 +230,8 @@ public class M2SliceTest {
                                 Items.STONE_PICKAXE,
                                 HandbookChaptersOneToFiveTest.ours("scrap_iron"),
                                 Items.IRON_INGOT,
-                                HandbookChaptersOneToFiveTest.ours("scanner_unit"))) {
+                                HandbookChaptersOneToFiveTest.ours("scanner_unit"),
+                                Items.TORCH)) {
                             HandbookChaptersOneToFiveTest.give(first, item);
                         }
 
@@ -221,11 +252,11 @@ public class M2SliceTest {
                         // Chapter 4: the pump, flight, the bore and home.
                         first.stopRiding();
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
+                                3);
                         mole.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
                         mole.setFuel(0f);
                         expectDone(
@@ -246,15 +277,17 @@ public class M2SliceTest {
                         mole.setPos(Vec3.atBottomCenterOf(colony.center()));
                         poll(mole);
 
-                        // Chapter 5: sell ore, buy a part.
+                        // Chapter 5: the drill puts ore in the bay (#853), sell ore, buy a part.
+                        mole.cargo().tryAdd(mole, OreRegistry.stack(OreType.IRONIUM));
+                        poll(mole);
                         first.stopRiding();
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
                         mole.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                                3);
                         first.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
                         expectDone(
                                 helper,
@@ -263,11 +296,11 @@ public class M2SliceTest {
 
                         // Chapter 5 again: a part is bought at the upgrade terminal (tier 1 of every part is crafted,
                         // so the first purchase is a tier 2).
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
+                                3);
                         CompoundTag args = new CompoundTag();
                         args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.LIGHTS.id());
                         args.putInt(UpgradeTerminal.TIER_KEY, 2); // tier 1 is crafted and not sold (#536)
@@ -295,17 +328,28 @@ public class M2SliceTest {
                         first.stopRiding();
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.REPAIR_STATION.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.REPAIR_STATION.block().defaultBlockState(),
+                                3);
                         mole.damageHull(mole.maxHull() / 2);
                         expectDone(
                                 helper,
                                 Terminals.act(first, terminal, RepairStation.REPAIR_TOTAL, new CompoundTag()),
                                 "repairing the hull");
-                        director.teleportTo(one, new Vec3(X, zoneY(one, 2), Z), 0, 0);
+                        // The descent starts in the surface band of the campaign level and passes into layer 1
+                        // in place.
+                        director.teleportTo(
+                                one,
+                                new Vec3(
+                                        X,
+                                        TestLayers.band(one, TestLayers.SURFACE).minY() + 6,
+                                        Z),
+                                0,
+                                0);
+                        BreachEvents.CROSSED.invoker().onCrossed(first, one, one, TestLayers.SURFACE, 1);
+                        director.teleportTo(one, new Vec3(X, zoneY(one, 1, 2), Z), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
 
                         // Chapter 8: the first descent into the Old Workings.
@@ -313,12 +357,12 @@ public class M2SliceTest {
 
                         // Chapter 9: find the wreck, tow it into the colony, restore it at the hangar, and fly it to
                         // the floor.
-                        director.teleportTo(two, new Vec3(X, zoneY(two, 2), Z), 0, 0);
+                        director.teleportTo(two, new Vec3(X, zoneY(two, 2, 2), Z), 0, 0);
                         PodEntity wreck = pod(
                                 helper,
                                 two,
                                 PodRegistry.PROSPECTOR,
-                                new Vec3(X + HandbookTuning.DEFAULT.findProspectorBlocks() / 2.0, zoneY(two, 2), Z));
+                                new Vec3(X + HandbookTuning.DEFAULT.findProspectorBlocks() / 2.0, zoneY(two, 2, 2), Z));
                         pods.add(wreck);
                         wreck.damageHull(wreck.maxHull());
                         HandbookTriggers.pollPlayer(server, first);
@@ -341,8 +385,11 @@ public class M2SliceTest {
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
 
                         // The hangar console restores it, for money and the catalyst.
-                        helper.getLevel()
-                                .setBlock(terminal, HangarTerminal.TYPE.block().defaultBlockState(), 3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                HangarTerminal.TYPE.block().defaultBlockState(),
+                                3);
                         wreck.setPos(Vec3.atBottomCenterOf(terminal).add(3, 0, 3));
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
                         for (int i = 0; i < 3; i++) {
@@ -356,13 +403,13 @@ public class M2SliceTest {
                         PodEntity restored = (PodEntity) Objects.requireNonNull(
                                 wreck.teleport(new net.minecraft.world.level.portal.TeleportTransition(
                                         two,
-                                        new Vec3(X, zoneY(two, 2), Z),
+                                        new Vec3(X, zoneY(two, 2, 2), Z),
                                         Vec3.ZERO,
                                         0f,
                                         0f,
                                         net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING)),
                                 "the restored wreck did not teleport");
-                        director.teleportTo(two, new Vec3(X, zoneY(two, 2), Z), 0, 0);
+                        director.teleportTo(two, new Vec3(X, zoneY(two, 2, 2), Z), 0, 0);
                         expect(
                                 helper,
                                 first.startRiding(restored, true, false),
@@ -377,11 +424,11 @@ public class M2SliceTest {
                         second.stopRiding();
 
                         // The Founder's hands: the player hands in four, the crewmate six.
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                                3);
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
                         HandbookChaptersOneToFiveTest.stand(helper, crew, terminal);
                         for (int i = 0; i < 4; i++) {

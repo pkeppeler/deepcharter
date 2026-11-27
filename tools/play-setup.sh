@@ -30,6 +30,7 @@ jar="$home/jars/$jar_name"
 clone="$home/mcpfabric"
 config="$home/mcpfabric.config.json"
 wrapper="$home/bin/mcpfabric-mcp"
+py=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/py
 
 if [[ "${1:-}" == "--print-sha256" ]]; then echo "$jar_sha256"; exit 0; fi
 
@@ -72,7 +73,7 @@ fi
 
 # 3. Bridge config: created once, flags set via a JSON tool.
 if [[ ! -f "$config" ]]; then
-  python3 -I - "$config" <<'PY'
+  "$py" - "$config" <<'PY'
 import json, sys, uuid
 cfg = {
     "host": "127.0.0.1",
@@ -91,7 +92,7 @@ with open(sys.argv[1], "w") as f:
 PY
 fi
 chmod 600 "$config"
-python3 -I - "$config" <<'PY'
+"$py" - "$config" <<'PY'
 import json, sys
 cfg = json.load(open(sys.argv[1]))
 assert cfg["host"] == "127.0.0.1" and cfg["requireAuth"] is True, "mcpfabric config violates audit condition 4"

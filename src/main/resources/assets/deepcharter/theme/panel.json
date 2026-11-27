@@ -9,6 +9,7 @@
   "glassTop": 14,
   "glassRight": 22,
   "glassBottom": 20,
+  "glassRadius": 18,
   "nameplateW": 95,
   "nameplateH": 12,
   "nameplateAnchorX": 0,

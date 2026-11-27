@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.layer.Depth;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
@@ -13,23 +13,21 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodRockBite;
 import io.github.pkeppeler.deepcharter.pod.PodRockBiteTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -42,10 +40,9 @@ import org.jspecify.annotations.Nullable;
 public class CompanyRockBiteTest {
     private static final PodRockBiteTuning TUNING = PodRockBiteTuning.DEFAULT;
     private static final int Z = 5600;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int ROOM = 8;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 900;
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     /** The pilot and the room; {@link #pod} stays null until the far chunk ticks entities, so a tick callback must check it. */
     private static final class Bite {
@@ -74,20 +71,22 @@ public class CompanyRockBiteTest {
 
     /** Builds the room and the plate, seats a pilot in a pod of {@code type} with a drill of {@code drillTier}, and holds sprint. */
     private static Bite rig(GameTestHelper helper, int x, EntityType<PodEntity> type, int drillTier, int radiatorTier) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                level.setBlock(
-                        new BlockPos(x + dx, FLOOR - 1, Z + dz), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
-            }
-        }
+        ServerLevel level = TestLayers.level(helper.getLevel().getServer(), 1);
         MockPlayer pilot = MockPlayers.join(helper, "bite-" + x);
         Vec3 at = new Vec3(x + 0.5, FLOOR, Z + 0.5);
-        pilot.teleportTo(level, at, 0f, 0f);
         Bite bite = new Bite(pilot, level);
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    level.setBlock(
+                            new BlockPos(x + dx, FLOOR - 1, Z + dz), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
+                }
+            }
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, at, 0f, 0f);
             PodEntity pod = TestEntities.create(type, level);
             pod.setPos(at);
             level.addFreshEntity(pod);
@@ -260,12 +259,5 @@ public class CompanyRockBiteTest {
             pod.discard();
             helper.succeed();
         });
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

@@ -31,6 +31,14 @@ public final class CrtText {
         return Component.literal(text).withStyle(style());
     }
 
+    /**
+     * {@code text} as a component in the terminal font whether or not the machine panel is drawn: for a panel of its own beside a vanilla
+     * screen (the parts catalogue), which is never a {@code PanelScreen} but is a terminal all the same.
+     */
+    public static Component terminal(String text) {
+        return Component.literal(text).withStyle(Style.EMPTY.withFont(new FontDescription.Resource(FONT)));
+    }
+
     /** The width of {@code text} in the terminal style. */
     public static int width(Font font, String text) {
         return font.width(of(text));

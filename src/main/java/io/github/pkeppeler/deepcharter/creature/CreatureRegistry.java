@@ -25,10 +25,47 @@ public final class CreatureRegistry {
                     .clientTrackingRange(8)
                     .build(LAMPLESS_FIGURE_KEY));
 
+    private static final ResourceKey<EntityType<?>> DRIFTER_KEY =
+            ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "drifter"));
+
+    /**
+     * A Drifter (#973): a pod-sized spore bladder. The game's spawner never makes one: {@link Drifters} places them, in the biomes of the
+     * {@link Drifters#FUNGAL_HOLLOWS} tag. Not saved, so there is nothing to version. The entity type tag {@code deepcharter:sonar_echo/empty_cave}
+     * names it as the thing sonar reads as empty cave.
+     */
+    public static final EntityType<Drifter> DRIFTER = Registry.register(
+            BuiltInRegistries.ENTITY_TYPE,
+            DRIFTER_KEY,
+            EntityType.Builder.<Drifter>of(Drifter::new, MobCategory.MONSTER)
+                    .sized(2.0f, 2.0f)
+                    .noSave()
+                    .fireImmune()
+                    .clientTrackingRange(10)
+                    .build(DRIFTER_KEY));
+
+    private static final ResourceKey<EntityType<?>> TALLY_KEY =
+            ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tally"));
+
+    /** A Tally (#917). Made by {@link Tallies}, never by the game's spawner, and not saved, so there is nothing to version. */
+    public static final EntityType<Tally> TALLY = Registry.register(
+            BuiltInRegistries.ENTITY_TYPE,
+            TALLY_KEY,
+            EntityType.Builder.<Tally>of(Tally::new, MobCategory.MONSTER)
+                    .sized(0.5f, 0.4f)
+                    .notInPeaceful()
+                    .noSave()
+                    .fireImmune()
+                    .clientTrackingRange(8)
+                    .build(TALLY_KEY));
+
     private CreatureRegistry() {}
 
     public static void register() {
         LamplessFigure.init();
         FabricDefaultAttributeRegistry.register(LAMPLESS_FIGURE, LamplessFigure.attributes());
+        Drifter.init();
+        FabricDefaultAttributeRegistry.register(DRIFTER, Drifter.attributes());
+        Tally.init();
+        FabricDefaultAttributeRegistry.register(TALLY, Tally.attributes());
     }
 }

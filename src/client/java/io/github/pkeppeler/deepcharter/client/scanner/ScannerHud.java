@@ -5,10 +5,13 @@ import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.scanner.EchoedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import java.util.List;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
@@ -47,6 +50,27 @@ public final class ScannerHud {
     public static void init() {
         ClientTickEvents.END_CLIENT_TICK.register(ScannerHud::tick);
         HudElementRegistry.addLast(ID, ScannerHud::extract);
+        HudKeepClear.register(ScannerHud::keepClear);
+    }
+
+    /**
+     * The plain panel's frame on a GUI {@code guiWidth} x {@code guiHeight}, top right: the cells, their frame and the title above them.
+     * What is drawn and what is kept clear are this one box.
+     */
+    private static HudKeepClear.Rect frame(int guiWidth, int guiHeight, ScanArea area) {
+        int cell = cellSize(guiWidth, guiHeight, area);
+        int left = cellLeft(guiWidth, guiHeight, area, -area.halfWidth()) - FRAME;
+        int right = cellLeft(guiWidth, guiHeight, area, area.halfWidth()) + cell + FRAME;
+        int top = ScannerLook.current().margin();
+        int bottom = cellTop(guiWidth, guiHeight, area, -area.down()) + cell + FRAME;
+        return new HudKeepClear.Rect("scanner panel", left, top, right - left, bottom - top);
+    }
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        ScanSlice scanned = slice;
+        if (scanned != null && CockpitHud.seated(client, guiWidth, guiHeight).isEmpty()) {
+            into.add(frame(guiWidth, guiHeight, scanned.area()));
+        }
     }
 
     /**
@@ -90,11 +114,11 @@ public final class ScannerHud {
             ticksUntilScan--;
             return;
         }
-        slice = ScanSlice.scan(client.level, pod).orElse(null);
+        slice = ScanSlice.scan(EchoedBlocks.ofTallies(client.level, pod), pod).orElse(null);
         ticksUntilScan = TUNING.rescanTicks() - 1;
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         ScanSlice scanned = slice;
         if (scanned == null || CockpitHud.seated(client).isPresent()) {
@@ -106,13 +130,12 @@ public final class ScannerHud {
         ScanArea area = scanned.area();
         int cell = cellSize(guiWidth, guiHeight, area);
         int left = cellLeft(guiWidth, guiHeight, area, -area.halfWidth());
-        int right = cellLeft(guiWidth, guiHeight, area, area.halfWidth()) + cell;
+        HudKeepClear.Rect frame = frame(guiWidth, guiHeight, area);
         int top = cellTop(guiWidth, guiHeight, area, area.up());
-        int bottom = cellTop(guiWidth, guiHeight, area, -area.down()) + cell;
 
-        graphics.fill(left - FRAME, look.margin(), right + FRAME, bottom + FRAME, look.frameColor());
+        graphics.fill(frame.x(), frame.y(), frame.right(), frame.bottom(), look.frameColor());
         graphics.text(client.font, title(scanned), left, look.margin() + 1, look.titleColor());
-        drawCells(graphics, client, scanned, cell, left, top);
+        drawCells(graphics, client, scanned, cell, left, top, left, top, top + area.rows() * cell);
     }
 
     /** Whether the ridden pod has a working scanner, so there is a map to show; the cockpit draws its scanner bezel only then. */
@@ -122,7 +145,7 @@ public final class ScannerHud {
 
     /**
      * Draws the map in the cockpit's scanner window instead of at top right: the cells as large as fit whole in {@code window}, centred in it,
-     * on the air colour. Draws nothing without a slice, that is without a working scanner.
+     * on the air colour, with the rest of the window the out-of-range raster. Draws nothing without a slice, that is without a working scanner.
      */
     public static void drawInWindow(GuiGraphicsExtractor graphics, Minecraft client, Decal window) {
         ScanSlice scanned = slice;
@@ -133,9 +156,16 @@ public final class ScannerHud {
         ScanArea area = scanned.area();
         int windowLeft = window.left(graphics.guiWidth());
         int windowTop = window.top(graphics.guiHeight());
-        graphics.fill(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height(), look.airColor());
+        // Whole-pixel cells leave a margin at tiers 2 and 3; it is the instrument's raster, not air, and the area is
+        // drawn over it.
+        int windowRight = windowLeft + window.width();
+        int windowBottom = windowTop + window.height();
+        graphics.fill(windowLeft, windowTop, windowRight, windowBottom, look.outOfRangeColor());
+        for (int y = windowTop + 1; y < windowBottom; y += 2) {
+            graphics.fill(windowLeft, y, windowRight, y + 1, look.outOfRangeLineColor());
+        }
         // A slice larger than the window (tier 4) is cut at the window's edge, never drawn over the gauges beside it.
-        graphics.enableScissor(windowLeft, windowTop, windowLeft + window.width(), windowTop + window.height());
+        graphics.enableScissor(windowLeft, windowTop, windowRight, windowBottom);
         try {
             drawCells(
                     graphics,
@@ -143,7 +173,10 @@ public final class ScannerHud {
                     scanned,
                     windowCellSize(window, area),
                     windowCellLeft(graphics.guiWidth(), window, area, -area.halfWidth()),
-                    windowCellTop(graphics.guiHeight(), window, area, area.up()));
+                    windowCellTop(graphics.guiHeight(), window, area, area.up()),
+                    windowLeft,
+                    windowTop,
+                    windowTop + window.height());
         } finally {
             graphics.disableScissor();
         }
@@ -192,11 +225,21 @@ public final class ScannerHud {
     }
 
     /**
-     * The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at ({@code left}, {@code top}). The
-     * known cells are one picture of the blocks' own textures, one blit ({@link ScannerMap}); the pod is a flat marker over it.
+     * The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at
+     * ({@code left}, {@code top}). The known cells are one picture of the blocks' own textures, one blit
+     * ({@link ScannerMap}); the pod is a flat marker over it, and the depth ruler ({@link ScannerRuler}) runs down the
+     * left edge of what shows: from {@code visibleLeft} across, {@code visibleTop} to {@code visibleBottom}.
      */
     private static void drawCells(
-            GuiGraphicsExtractor graphics, Minecraft client, ScanSlice scanned, int cell, int left, int top) {
+            GuiGraphicsExtractor graphics,
+            Minecraft client,
+            ScanSlice scanned,
+            int cell,
+            int left,
+            int top,
+            int visibleLeft,
+            int visibleTop,
+            int visibleBottom) {
         ScannerLook look = ScannerLook.current();
         ScanArea area = scanned.area();
         graphics.fill(left, top, left + area.columns() * cell, top + area.rows() * cell, look.airColor());
@@ -208,13 +251,14 @@ public final class ScannerHud {
                 ? pod.chassis().boreHeight() - 1
                 : 0;
         for (int up = 0; up <= podCellsUp; up++) {
-            fillCell(graphics, area, cell, left, top, 0, up, look.podColor());
+            fillCell(graphics, area, cell, left, top, up, look.podColor());
         }
+        ScannerRuler.draw(graphics, client, scanned, look, cell, left, top, visibleLeft, visibleTop, visibleBottom);
     }
 
     private static void fillCell(
-            GuiGraphicsExtractor graphics, ScanArea area, int cell, int left, int top, int ahead, int up, int colour) {
-        int x = left + (ahead + area.halfWidth()) * cell;
+            GuiGraphicsExtractor graphics, ScanArea area, int cell, int left, int top, int up, int colour) {
+        int x = left + area.halfWidth() * cell;
         int y = top + (area.up() - up) * cell;
         graphics.fill(x, y, x + cell, y + cell, colour);
     }

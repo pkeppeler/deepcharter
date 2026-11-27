@@ -1,19 +1,25 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodFuelSlot;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
@@ -24,11 +30,12 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.lang.reflect.Field;
@@ -56,7 +63,9 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -70,22 +79,29 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for #70: hull repair, the shop, and the eight items the shop sells.
+ * Server GameTests for #70: hull repair, the shop, and every item the shop sells.
  *
  * <p>The repair state is one per world, so a test that needs a working repair station swaps in a fresh {@link RepairState} with
  * the whole chain repaired for its own duration ({@link #withStation}), and does all its work inside its first tick.
  */
 public class RepairStationTest {
     /** The prices after issue 210 (see EconomyAffordabilityTest for why), written out so that the code cannot move them. */
-    private static final Map<Consumable, Long> SHOP_PRICES = Map.of(
-            Consumable.RESERVE_FUEL_TANK, 100L,
-            Consumable.HULL_NANOBOTS, 345L,
-            Consumable.DYNAMITE, 100L,
-            Consumable.PLASTIC_EXPLOSIVES, 300L,
-            Consumable.BLASTING_CHARGE, 40L,
-            Consumable.SHAPED_CHARGE, 100L,
-            Consumable.QUANTUM_TELEPORTER, 690L,
-            Consumable.MATTER_TRANSMITTER, 1_390L);
+    private static final Map<Consumable, Long> SHOP_PRICES = Map.ofEntries(
+            Map.entry(Consumable.RESERVE_FUEL_TANK, 100L),
+            Map.entry(Consumable.HULL_NANOBOTS, 345L),
+            Map.entry(Consumable.DYNAMITE, 100L),
+            Map.entry(Consumable.PLASTIC_EXPLOSIVES, 300L),
+            Map.entry(Consumable.BLASTING_CHARGE, 40L),
+            Map.entry(Consumable.SHAPED_CHARGE, 100L),
+            Map.entry(Consumable.QUANTUM_TELEPORTER, 690L),
+            Map.entry(Consumable.MATTER_TRANSMITTER, 1_650L),
+            Map.entry(Consumable.THROWN_FLARE, 12L),
+            Map.entry(Consumable.THROWN_DECOY, 25L),
+            Map.entry(Consumable.THROWN_CHARGE, 55L),
+            Map.entry(Consumable.TETHER, 90L),
+            Map.entry(Consumable.BOLT_DRIVER, 175L),
+            Map.entry(Consumable.BOLT, 24L),
+            Map.entry(Consumable.AIR_CANISTER, 150L));
 
     private static final long PER_HP = 1L;
     private static final int ARENA = 4;
@@ -155,6 +171,10 @@ public class RepairStationTest {
         CompoundTag args = new CompoundTag();
         args.putString(RepairStation.ITEM_KEY, consumable.itemId().toString());
         return args;
+    }
+
+    private static Optional<TerminalRefusal> serviceEngine(Station station) {
+        return Terminals.act(station.pilot().player(), station.pos(), RepairStation.SERVICE_ENGINE, new CompoundTag());
     }
 
     private static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
@@ -242,6 +262,63 @@ public class RepairStationTest {
             expectAccount(helper, station, 1_000 - 40 * PER_HP, "a full hull costs nothing");
             if (RepairTuning.DEFAULT.repairCostPerHp() != PER_HP) {
                 throw helper.assertionException("the tuned price should be $%d/HP", PER_HP);
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void serviceEngineClearsTheSootForDollarsPerLitreAndRefusesACleanEngineOrAShortAccount(
+            GameTestHelper helper) {
+        withStation(helper, station -> {
+            PodEntity pod = station.pod();
+            expectRefused(helper, serviceEngine(station), "servicing a clean engine");
+
+            EngineSoot.refuelled(pod, 12f, 1f);
+            EngineSoot.burned(pod, 8f);
+            EngineSoot.flush(pod);
+            long cost = EngineSoot.serviceCost(pod);
+            long expected = 8 * FuelTuning.DEFAULT.soot().servicePerLitre();
+            if (cost != expected) {
+                throw helper.assertionException(
+                        "8 L of soot should cost $%d at the tuned price, got $%d", expected, cost);
+            }
+            expectRefused(helper, serviceEngine(station), "servicing from an empty account");
+            if (EngineSoot.soot(pod) != 8f) {
+                throw helper.assertionException(
+                        "a refused service should leave the soot, got %s L", EngineSoot.soot(pod));
+            }
+            expectAccount(helper, station, 0, "after the refusal");
+
+            fund(helper, station, 1_000);
+            expectDone(helper, serviceEngine(station), "servicing a sooty engine");
+            expectAccount(helper, station, 1_000 - cost, "after the service");
+            if (EngineSoot.soot(pod) != 0f) {
+                throw helper.assertionException("a service should clear the soot, got %s L", EngineSoot.soot(pod));
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void serviceEngineClearsTheWholeLitresTheAccountPaysForAndRefusesWhenItPaysForNone(GameTestHelper helper) {
+        withStation(helper, station -> {
+            PodEntity pod = station.pod();
+            pod.setAttached(EngineSoot.STATE, Versioned.of(new EngineSoot.State(13f, 0f, 0f)));
+            fund(helper, station, 35);
+            expectDone(helper, serviceEngine(station), "a part service from $35");
+            expectAccount(helper, station, 5, "$35 buys 3 L at $10");
+            if (EngineSoot.soot(pod) != 10f) {
+                throw helper.assertionException("$35 should clear 3 L of 13, left %s L", EngineSoot.soot(pod));
+            }
+            expectRefused(helper, serviceEngine(station), "a service from $5, under a litre's price");
+            expectAccount(helper, station, 5, "a refused service charges nothing");
+            fund(helper, station, 995);
+            expectDone(helper, serviceEngine(station), "the rest from $1,000");
+            expectAccount(helper, station, 900, "the last 10 L cost $100");
+            if (EngineSoot.soot(pod) != 0f) {
+                throw helper.assertionException(
+                        "a full service should clear the soot, left %s L", EngineSoot.soot(pod));
             }
             helper.succeed();
         });
@@ -406,11 +483,12 @@ public class RepairStationTest {
     }
 
     @GameTest
-    public void theShopSellsTheSevenItemsAtTheirTunedPrices(GameTestHelper helper) {
+    public void theShopSellsEveryConsumableAtItsTunedPrice(GameTestHelper helper) {
         withStation(helper, station -> {
             if (SHOP_PRICES.size() != Consumable.values().length) {
                 throw helper.assertionException(
-                        "the shop sells %d items, the eight are %d", Consumable.values().length, SHOP_PRICES.size());
+                        "the shop sells %d items, the prices table lists %d",
+                        Consumable.values().length, SHOP_PRICES.size());
             }
             ServerPlayer player = station.pilot().player();
             fund(helper, station, 100_000);
@@ -428,7 +506,7 @@ public class RepairStationTest {
                         "buying " + consumable);
                 balance -= price;
                 expectAccount(helper, station, balance, "after buying " + consumable);
-                expectSpent(helper, player, consumable, 1, "after buying " + consumable);
+                expectSpent(helper, player, consumable, consumable.perPurchase(), "after buying " + consumable);
             }
             helper.succeed();
         });
@@ -472,6 +550,64 @@ public class RepairStationTest {
                     Terminals.act(player, station.pos(), RepairStation.BUY, item(Consumable.DYNAMITE)),
                     "buying with a full inventory");
             expectAccount(helper, station, Consumable.DYNAMITE.price(), "a full inventory costs nothing");
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void aFullPackWithAnEmptyOffhandRefusesEveryPurchaseAndChargesNothing(GameTestHelper helper) {
+        withStation(helper, station -> {
+            ServerPlayer player = station.pilot().player();
+            Inventory inventory = player.getInventory();
+            fund(helper, station, 1_000);
+            for (int slot = 0; slot < inventory.getNonEquipmentItems().size(); slot++) {
+                inventory.setItem(slot, new ItemStack(Blocks.DIRT));
+            }
+            inventory.setItem(Inventory.SLOT_OFFHAND, ItemStack.EMPTY);
+            for (Consumable bought : List.of(Consumable.BOLT, Consumable.BLASTING_CHARGE)) {
+                expectRefused(
+                        helper,
+                        Terminals.act(player, station.pos(), RepairStation.BUY, item(bought)),
+                        "buying " + bought + " with a full pack and an empty offhand");
+                expectAccount(helper, station, 1_000, bought + " with no room costs nothing");
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void aPackThatDoesNotFitWholeIsRefusedAndNothingIsCharged(GameTestHelper helper) {
+        withStation(helper, station -> {
+            ServerPlayer player = station.pilot().player();
+            Inventory inventory = player.getInventory();
+            Item bolt = RepairRegistry.item(Consumable.BOLT);
+            int pack = Consumable.BOLT.perPurchase();
+            fund(helper, station, 1_000);
+            for (int slot = 0; slot < inventory.getNonEquipmentItems().size(); slot++) {
+                inventory.setItem(slot, new ItemStack(Blocks.DIRT));
+            }
+            inventory.setItem(Inventory.SLOT_OFFHAND, new ItemStack(Blocks.DIRT));
+            // One bolt short of room for the pack: the stack has space, but not for all of it.
+            inventory.setItem(3, new ItemStack(bolt, bolt.getDefaultMaxStackSize() - pack + 1));
+            expectRefused(
+                    helper,
+                    Terminals.act(player, station.pos(), RepairStation.BUY, item(Consumable.BOLT)),
+                    "buying a pack of " + pack + " with room for " + (pack - 1));
+            expectAccount(helper, station, 1_000, "a pack that does not fit costs nothing");
+            if (inventory.countItem(bolt) != bolt.getDefaultMaxStackSize() - pack + 1) {
+                throw helper.assertionException(
+                        "the refused pack changed the bolts held: %s", inventory.countItem(bolt));
+            }
+            inventory.setItem(3, new ItemStack(bolt, bolt.getDefaultMaxStackSize() - pack));
+            expectDone(
+                    helper,
+                    Terminals.act(player, station.pos(), RepairStation.BUY, item(Consumable.BOLT)),
+                    "buying a pack with room for exactly " + pack);
+            expectAccount(helper, station, 1_000 - Consumable.BOLT.price(), "the pack that fits is charged once");
+            if (inventory.countItem(bolt) != bolt.getDefaultMaxStackSize()) {
+                throw helper.assertionException(
+                        "the pack should fill the stack, it holds %s", inventory.countItem(bolt));
+            }
             helper.succeed();
         });
     }
@@ -558,47 +694,63 @@ public class RepairStationTest {
             ServerLevel level = helper.getLevel();
             PodEntity pod = station.pod();
             BlockPos centre = helper.absolutePos(new BlockPos(0, 12, 8));
-            pod.setPos(Vec3.atBottomCenterOf(centre));
-            BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
-            fillArena(helper, middle);
+            // A 2-wide Mole aligned as the drill leaves it sits on a block corner, its footprint the 2 x 2 cells on the
+            // -x/-z side of centre. The cube is centred on the footprint's +x/+z cell, centre.
+            pod.setPos(centre.getX(), centre.getY(), centre.getZ());
+            // The cube sits on the row of the pod's feet (#1478), so it reaches radius rows under the pod. A pod is 2.9
+            // tall: a cube round its box's middle sits a row higher, and this test then fails on the stone it leaves
+            // under the feet.
+            fillArena(helper, centre);
             // One of each thing that must survive, at the edge of the blast and inside it.
             Block[] survivors = {HazardBlocks.COMPANY_ROCK, Blocks.LAVA, Blocks.OAK_PLANKS};
             List<BlockPos> kept = new ArrayList<>();
             for (int i = 0; i < survivors.length; i++) {
-                BlockPos inside = middle.offset(radius, i - 1, radius);
+                BlockPos inside = centre.offset(radius, i - 1, radius);
                 level.setBlock(inside, survivors[i].defaultBlockState(), 3);
                 kept.add(inside);
             }
             board(helper, station);
-            if (!useFromHotbar(station, explosive).consumesAction()) {
-                throw helper.assertionException("%s should work while piloting", explosive);
-            }
+            expect(
+                    helper,
+                    useFromHotbar(station, explosive).consumesAction(),
+                    "%s should work while piloting",
+                    explosive);
             for (int dx = -ARENA; dx <= ARENA; dx++) {
                 for (int dy = -ARENA; dy <= ARENA; dy++) {
                     for (int dz = -ARENA; dz <= ARENA; dz++) {
-                        BlockPos pos = middle.offset(dx, dy, dz);
+                        BlockPos pos = centre.offset(dx, dy, dz);
                         boolean inBlast = Math.abs(dx) <= radius && Math.abs(dy) <= radius && Math.abs(dz) <= radius;
                         boolean stone = level.getBlockState(pos).is(Blocks.STONE);
                         if (kept.contains(pos)) {
-                            if (level.getBlockState(pos).isAir()) {
-                                throw helper.assertionException(
-                                        "%s cleared %s at %s, which is not natural rock",
-                                        explosive, pos, level.getBlockState(pos));
-                            }
+                            expect(
+                                    helper,
+                                    !level.getBlockState(pos).isAir(),
+                                    "%s cleared %s at %s, which is not natural rock",
+                                    explosive,
+                                    pos,
+                                    level.getBlockState(pos));
                         } else if (inBlast && stone) {
-                            throw helper.assertionException(
+                            throw failure(
+                                    helper,
                                     "%s left stone at %s inside its %dx%dx%d blast",
-                                    explosive, pos, 2 * radius + 1, 2 * radius + 1, 2 * radius + 1);
+                                    explosive,
+                                    pos,
+                                    2 * radius + 1,
+                                    2 * radius + 1,
+                                    2 * radius + 1);
                         } else if (!inBlast && !stone) {
-                            throw helper.assertionException("%s cleared %s outside its blast", explosive, pos);
+                            throw failure(helper, "%s cleared %s outside its blast", explosive, pos);
                         }
                     }
                 }
             }
             for (BlockPos pos : kept) {
-                if (level.getBlockState(pos).isAir()) {
-                    throw helper.assertionException("%s cleared the block at %s that must survive", explosive, pos);
-                }
+                expect(
+                        helper,
+                        !level.getBlockState(pos).isAir(),
+                        "%s cleared the block at %s that must survive",
+                        explosive,
+                        pos);
             }
             helper.succeed();
         });
@@ -612,6 +764,150 @@ public class RepairStationTest {
     @GameTest
     public void plasticExplosivesClearFiveByFiveOfNaturalRock(GameTestHelper helper) {
         blast(helper, Consumable.PLASTIC_EXPLOSIVES, 2);
+    }
+
+    /**
+     * #1478: for every chassis, seated on natural rock in its own bore, a gas pocket in each cell of the slab under its footprint. Dynamite
+     * clears the whole slab with its pockets and nothing vents (the hull is untouched, as the pockets are removed and not mined), and it stops
+     * there: the row under the slab stands. Plastic explosives reach that row too, and stop one row deeper. Fails with the cube round the
+     * box's middle (the code before #1478), which left the slab under a 2.9-tall pod standing.
+     */
+    private static void underThePod(GameTestHelper helper, Consumable explosive, int rowsUnder) {
+        withStation(helper, mole -> {
+            ServerLevel level = helper.getLevel();
+            for (Chassis chassis : Chassis.all()) {
+                int width = chassis.boreWidth();
+                // The low corner of the footprint, and a pod centred on it as the drill leaves one.
+                BlockPos corner = helper.absolutePos(new BlockPos(-1, 12, 7));
+                fillArena(helper, corner);
+                for (int x = 0; x < width; x++) {
+                    for (int z = 0; z < width; z++) {
+                        for (int y = 0; y <= ARENA; y++) {
+                            // room-carver: the pod's bore in stone this test placed in the overworld test structure
+                            level.setBlock(corner.offset(x, y, z), Blocks.AIR.defaultBlockState(), 3);
+                        }
+                        level.setBlock(corner.offset(x, -1, z), HazardBlocks.GAS_POCKET.defaultBlockState(), 3);
+                    }
+                }
+                PodEntity pod = helper.spawn(PodRegistry.typeOf(chassis), new Vec3(3.5, 1, 0.5));
+                pod.setPos(corner.getX() + width / 2.0, corner.getY(), corner.getZ() + width / 2.0);
+                PodComponents.register(pod, mole.charter().id());
+                Station station = new Station(mole.pos(), mole.pilot(), mole.charter(), pod);
+                float hull = pod.hull();
+                try {
+                    board(helper, station);
+                    expect(
+                            helper,
+                            useFromHotbar(station, explosive).consumesAction(),
+                            "%s should work in a %s",
+                            explosive,
+                            chassis.id());
+                    for (int x = 0; x < width; x++) {
+                        for (int z = 0; z < width; z++) {
+                            for (int below = 1; below <= rowsUnder + 1; below++) {
+                                BlockPos cell = corner.offset(x, -below, z);
+                                boolean air = level.getBlockState(cell).isAir();
+                                if (below <= rowsUnder && !air) {
+                                    throw failure(
+                                            helper,
+                                            "%s in a %s left %s %d rows under its feet at %s",
+                                            explosive,
+                                            chassis.id(),
+                                            level.getBlockState(cell),
+                                            below,
+                                            cell);
+                                }
+                                if (below > rowsUnder && air) {
+                                    throw failure(
+                                            helper,
+                                            "%s in a %s cleared %d rows under its feet at %s, past its %d",
+                                            explosive,
+                                            chassis.id(),
+                                            below,
+                                            cell,
+                                            rowsUnder);
+                                }
+                            }
+                        }
+                    }
+                    expectHull(
+                            helper,
+                            pod,
+                            hull,
+                            explosive + " clearing gas pockets in a " + chassis.id() + " vents none");
+                } finally {
+                    mole.pilot().player().stopRiding();
+                    pod.discard();
+                }
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void dynamiteClearsTheGasInTheSlabUnderEveryChassis(GameTestHelper helper) {
+        underThePod(helper, Consumable.DYNAMITE, RepairTuning.DEFAULT.dynamiteRadius());
+    }
+
+    @GameTest
+    public void plasticExplosivesReachOneRowDeeperThanDynamite(GameTestHelper helper) {
+        int dynamite = RepairTuning.DEFAULT.dynamiteRadius();
+        int plastic = RepairTuning.DEFAULT.plasticRadius();
+        expect(
+                helper,
+                plastic == dynamite + 1,
+                "plastic reaches %d rows under the pod, dynamite %d: one more",
+                plastic,
+                dynamite);
+        underThePod(helper, Consumable.PLASTIC_EXPLOSIVES, plastic);
+    }
+
+    /**
+     * #1478: the drill lets a pod sit up to its alignment slack ({@code PodDrill.ALIGNED}, 1e-6) off a block boundary. A 2-wide Mole has
+     * no middle cell, so a cube centred on the box's middle rounded to one side or the other with that slack, and dynamite cleared a
+     * pocket beside the pod on one use and missed it on the next. The cube is placed from the footprint, so a Mole nudged either way
+     * clears the same cells.
+     */
+    @GameTest
+    public void moleDynamiteIgnoresTheAlignmentSlack(GameTestHelper helper) {
+        withStation(helper, station -> {
+            ServerLevel level = helper.getLevel();
+            PodEntity pod = station.pod();
+            // The low corner of the Mole's 2 x 2 footprint; its box's middle is on the corner cell's +x/+z edges.
+            BlockPos corner = helper.absolutePos(new BlockPos(0, 12, 8));
+            double nudge = 5e-7;
+            List<List<BlockPos>> cleared = new ArrayList<>();
+            for (double side : new double[] {-nudge, nudge}) {
+                fillArena(helper, corner);
+                pod.setPos(corner.getX() + 1 + side, corner.getY(), corner.getZ() + 1 + side);
+                board(helper, station);
+                try {
+                    expect(
+                            helper,
+                            useFromHotbar(station, Consumable.DYNAMITE).consumesAction(),
+                            "dynamite should work with the Mole %s off the boundary",
+                            side);
+                } finally {
+                    station.pilot().player().stopRiding();
+                }
+                List<BlockPos> air = new ArrayList<>();
+                for (BlockPos pos : BlockPos.betweenClosed(
+                        corner.offset(-ARENA, -ARENA, -ARENA), corner.offset(ARENA, ARENA, ARENA))) {
+                    if (level.getBlockState(pos).isAir()) {
+                        air.add(pos.immutable().subtract(corner));
+                    }
+                }
+                cleared.add(air);
+            }
+            expect(
+                    helper,
+                    cleared.get(0).equals(cleared.get(1)),
+                    "a Mole nudged %s either side of the boundary cleared %s on the low side, %s on the high side",
+                    nudge,
+                    cleared.get(0),
+                    cleared.get(1));
+            helper.succeed();
+        });
     }
 
     @GameTest
@@ -656,10 +952,7 @@ public class RepairStationTest {
 
     private static void teleportFromLayerOne(
             GameTestHelper helper, Consumable teleporter, double x, double z, double scatter, boolean withPassenger) {
-        ServerLevel one = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (one == null) {
-            throw helper.assertionException("layer 1 did not load");
-        }
+        ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
         MinecraftServer server = helper.getLevel().getServer();
         // Riders wait at the join point, inside the colony's foundation, while the far chunk loads. Creative takes no
         // damage; an unloaded mock would be immune only for vanilla's first 60 ticks.
@@ -674,15 +967,15 @@ public class RepairStationTest {
         Charter charter =
                 Charters.charterOfOrThrow(server, pilot.player().getUUID()).orElseThrow();
         MockPlayer passenger = MockPlayers.join(helper, "Stowaway");
-        BlockPos at = BlockPos.containing(x, 40, z);
+        BlockPos at = BlockPos.containing(x, TestLayers.worldY(1, 40), z);
         boolean[] used = {false};
         FarChunks.awaitEntityTicking(helper, one, at, () -> {
             // Only now: layer 1 is solid rock, and a rider put there while the chunk loads suffocates on a slow runner.
-            pilot.teleportTo(one, new Vec3(x, 40, z), 0, 0);
-            passenger.teleportTo(one, new Vec3(x, 40, z), 0, 0);
+            pilot.teleportTo(one, TestLayers.vec(1, x, 40, z), 0, 0);
+            passenger.teleportTo(one, TestLayers.vec(1, x, 40, z), 0, 0);
             pilot.player().setGameMode(GameType.SURVIVAL);
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
-            pod.setPos(x, 40, z);
+            pod.setPos(x, TestLayers.worldY(1, 40), z);
             one.addFreshEntity(pod);
             PodComponents.register(pod, charter.id());
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
@@ -790,6 +1083,45 @@ public class RepairStationTest {
     }
 
     @GameTest
+    public void aTeleportSpillsTheWholeHoldAndKeepsTheFuelSlot(GameTestHelper helper) {
+        withStation(helper, station -> {
+            PodEntity pod = station.pod();
+            pod.setFuel(PodTuning.DEFAULT.shell().fullFuel());
+            pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+            pod.cargo().setAt(pod, 1, new ItemStack(Items.COBBLESTONE, 20));
+            PodFuelSlot.container(pod).setItem(0, new ItemStack(Items.COAL, 3));
+            Vec3 departure = pod.position();
+            board(helper, station);
+            if (!useFromHotbar(station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
+                throw helper.assertionException("the transmitter should work");
+            }
+            int cobblestone = 0;
+            int ironium = 0;
+            for (ItemEntity drop :
+                    helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(departure, departure).inflate(3))) {
+                if (drop.getItem().is(Items.COBBLESTONE)) {
+                    cobblestone += drop.getItem().getCount();
+                    drop.discard();
+                } else if (OreRegistry.typeOf(drop.getItem()).equals(Optional.of(OreType.IRONIUM))) {
+                    ironium += drop.getItem().getCount();
+                    drop.discard();
+                }
+            }
+            if (pod.cargo().occupied() != 0 || cobblestone != 20 || ironium != 1) {
+                throw helper.assertionException(
+                        "nothing in the hold teleports: %s slots still held, %s cobblestone and %s ironium spilled",
+                        pod.cargo().occupied(), cobblestone, ironium);
+            }
+            if (PodFuelSlot.container(pod).getItem(0).getCount() != 3) {
+                throw helper.assertionException(
+                        "the fuel slot is fuel, not cargo, and stays: it holds %s",
+                        PodFuelSlot.container(pod).getItem(0));
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest
     public void thePilotStaysSeatedAcrossATeleportWithinOneDimension(GameTestHelper helper) {
         // The Mole has one seat and a seat is the only way onto a pod, so the pilot is the one passenger there can be.
         withStation(helper, station -> {
@@ -845,7 +1177,7 @@ public class RepairStationTest {
         });
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void aTeleportToAnUnloadedChunkLoadsItAndArrives(GameTestHelper helper) {
         withStation(helper, station -> {
             ServerLevel overworld = helper.getLevel().getServer().overworld();
@@ -870,9 +1202,11 @@ public class RepairStationTest {
                 // The chunk is loaded now: the pod must stand on its ground, not at the bottom of the world an unloaded
                 // chunk reports.
                 int surface = overworld
-                        .getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0))
+                        .getHeightmapPos(
+                                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, TestLayers.pos(TestLayers.SURFACE, x, 64, 0))
                         .getY();
-                if (surface <= overworld.getMinY() || Math.abs(station.pod().getY() - surface) > 0.01) {
+                if (surface <= TestLayers.band(overworld, TestLayers.SURFACE).minY()
+                        || Math.abs(station.pod().getY() - surface) > 0.01) {
                     throw helper.assertionException(
                             "the pod should stand at y=%d, is at y=%s",
                             surface, station.pod().getY());
@@ -894,12 +1228,15 @@ public class RepairStationTest {
             LevelData.RespawnData original = overworld.getRespawnData();
             Map<BlockPos, BlockState> saved = new HashMap<>();
             try {
-                overworld.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, new BlockPos(x, 64, 0), 0f, 0f));
+                overworld.setRespawnData(LevelData.RespawnData.of(
+                        Level.OVERWORLD, TestLayers.pos(TestLayers.SURFACE, x, 64, 0), 0f, 0f));
                 if (load) {
+                    // sync-load: the body runs in the same tick as the swap of the colony record, so the chunk must be
+                    // loaded inside it
                     overworld.getChunk(x >> 4, 0);
                 }
-                BlockPos ground =
-                        overworld.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0));
+                BlockPos ground = overworld.getHeightmapPos(
+                        Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, TestLayers.pos(TestLayers.SURFACE, x, 64, 0));
                 for (BlockPos offset : touched) {
                     BlockPos at = ground.offset(offset);
                     saved.put(at, overworld.getBlockState(at));
@@ -912,12 +1249,23 @@ public class RepairStationTest {
         });
     }
 
+    private static int ironiumBeside(ServerLevel level, Vec3 at) {
+        return level.getEntitiesOfClass(
+                        ItemEntity.class,
+                        new AABB(at, at).inflate(2),
+                        drop -> drop.getItem().is(OreRegistry.item(OreType.IRONIUM)))
+                .size();
+    }
+
     private static void expectTeleportRefused(
             GameTestHelper helper, Station station, Consumable teleporter, String why) {
         PodEntity pod = station.pod();
         Vec3 before = pod.position();
         ServerLevel level = (ServerLevel) pod.level();
         int cargo = pod.cargo().entries().size();
+        // A spill lands beside the pod and is ironium, the ore the tests load it with; items that lie there already are
+        // not this teleport's.
+        int ironiumBefore = ironiumBeside(level, before);
         board(helper, station);
         if (useFromHotbar(station, teleporter).consumesAction()) {
             throw helper.assertionException(
@@ -935,8 +1283,7 @@ public class RepairStationTest {
                     "%s: the bay held %d ore and now holds %d",
                     why, cargo, pod.cargo().entries().size());
         }
-        if (!level.getEntitiesOfClass(ItemEntity.class, pod.getBoundingBox().inflate(8))
-                .isEmpty()) {
+        if (ironiumBeside(level, before) > ironiumBefore) {
             throw helper.assertionException("%s: cargo was spilled by a refused teleport", why);
         }
         if (station.pilot().player().getVehicle() != pod) {
@@ -945,7 +1292,7 @@ public class RepairStationTest {
         expectSpent(helper, station.pilot().player(), teleporter, 1, why + ": the item is kept");
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void aTeleportOntoLavaIsRefusedAndNothingChanges(GameTestHelper helper) {
         withStation(helper, station -> {
             station.pod().cargo().tryAdd(station.pod(), OreRegistry.stack(OreType.IRONIUM));
@@ -962,7 +1309,7 @@ public class RepairStationTest {
         });
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void aTeleportIntoAWallIsRefusedAndNothingChanges(GameTestHelper helper) {
         withStation(helper, station -> {
             station.pod().cargo().tryAdd(station.pod(), OreRegistry.stack(OreType.IRONIUM));
@@ -990,7 +1337,7 @@ public class RepairStationTest {
         });
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void theQuantumTeleporterTriesOtherSpotsBeforeRefusing(GameTestHelper helper) {
         withStation(helper, station -> {
             // The exact column is lava, but the quantum scatter has other spots to try.

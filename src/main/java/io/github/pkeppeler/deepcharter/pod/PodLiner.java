@@ -163,12 +163,7 @@ public final class PodLiner {
     }
 
     private static boolean inLayer(PodEntity pod) {
-        return LayerChain.layerOf(pod.level()
-                        .dimensionTypeRegistration()
-                        .unwrapKey()
-                        .orElseThrow()
-                        .identifier())
-                .isPresent();
+        return LayerChain.layerAt(pod.level(), pod.getBlockY()).isPresent();
     }
 
     /**

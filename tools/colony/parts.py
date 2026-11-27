@@ -9,6 +9,7 @@ from piece import Piece, quaternion_axis_angle, quaternion_mul, state
 # A statue stands on the centre of its block.
 STATUE_CENTRE = 0.5
 FACING_DIR = {"north": (0, -1), "south": (0, 1), "east": (1, 0), "west": (-1, 0)}
+FACING_OPPOSITE = {"north": "south", "south": "north", "east": "west", "west": "east"}
 # The viewer's right as they read a sign facing this way.
 READING = {"north": (-1, 0), "south": (1, 0), "east": (0, -1), "west": (0, 1)}
 # The Works' storeys: a ground floor a pod drives into (Y 1 to 4), the upper floor's line (Y 5), an upper floor of player height
@@ -16,11 +17,6 @@ READING = {"north": (-1, 0), "south": (1, 0), "east": (0, -1), "west": (0, 1)}
 GROUND_TOP = 4
 FLOOR_LINE = 5
 UPPER_WINDOWS = (6, 7)
-
-
-def noise(x: int, y: int, z: int) -> int:
-    """The same small number for the same block every time, for wear and variety."""
-    return ((x * 73856093) ^ (y * 83492791) ^ (z * 19349663)) >> 4 & 0xFFFF
 
 
 @dataclass(frozen=True)
@@ -48,22 +44,31 @@ class Wall:
     def cells(self) -> range:
         return range(self.a0, self.a1 + 1)
 
+    @property
+    def inward(self) -> str:
+        """The way a block on the room side of this wall faces to look into the room."""
+        return FACING_OPPOSITE[self.facing]
+
 
 def box_walls(x0: int, z0: int, x1: int, z1: int) -> dict[str, Wall]:
     return {"north": Wall("north", z0, x0, x1), "south": Wall("south", z1, x0, x1), "west": Wall("west", x0, z0, z1),
             "east": Wall("east", x1, z0, z1)}
 
 
-def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]]) -> dict[str, Wall]:
+def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]],
+               dark: bool) -> dict[str, Wall]:
     """A hall in the Works' language: riveted plate walls from Y 1 to top, red pilasters at the corners and at the given places
-    along each wall, each of those with a sodium lamp at the top of the ground floor, a brass band on the upper floor's line, lit
-    ribbon windows on the upper floor, a row of glowing crusher hatches on the ground floor, a hazard parapet and a railed flat roof
-    at top + 1 with floodlights at its corners. Returns the four walls, for doors and signs."""
+    along each wall, each of those with a sodium lamp at the top of the ground floor outside and another inside, a brass band on the
+    upper floor's line, glass windows on the upper floor, a row of glowing crusher hatches on the ground floor, a hazard parapet and
+    a railed flat roof at top + 1 with floodlights at its corners. dark leaves the lamps inside out, a dim glow in their place
+    (dim_glow). Returns the four walls, for doors and signs."""
     walls = box_walls(x0, z0, x1, z1)
     for side, wall in walls.items():
         columns = {wall.a0, wall.a1, *pilasters.get(side, ())}
         for a in pilasters.get(side, ()):
             p.set(*wall.outside(a, GROUND_TOP), state("wall_lamp", facing=wall.facing))
+            if not dark:
+                p.set(*wall.outside(a, GROUND_TOP, -1), state("wall_lamp", facing=wall.inward))
         for a in wall.cells():
             for y in range(1, top + 1):
                 if a in columns:
@@ -71,12 +76,17 @@ def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters
                 elif y == FLOOR_LINE:
                     s = state("brass_trim")
                 elif y in UPPER_WINDOWS and top >= UPPER_WINDOWS[-1] + 1:
-                    s = state("window_ribbon_dark" if noise(*wall.cell(a, y)) % 7 == 0 else "window_ribbon_lit", facing=wall.facing)
+                    s = state("window_glass", facing=wall.facing)
                 elif y == 3 and (a - wall.a0) % 2 == 1:
                     s = state("furnace_hatch", facing=wall.facing)
                 else:
                     s = state("riveted_plate")
                 p.set(*wall.cell(a, y), s)
+    p.room(x0 + 1, 1, z0 + 1, x1 - 1, top, z1 - 1, dark)
+    if dark:
+        dim_glow(p, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 3)
+        if top > 5:
+            dim_glow(p, x0 + 1, z0 + 1, x1 - 1, z1 - 1, top - 2)
     p.fill(x0 + 1, top + 1, z0 + 1, x1 - 1, top + 1, z1 - 1, state("riveted_plate"))
     p.walls(x0, z0, x1, z1, top + 1, top + 1, state("hazard_band"))
     railing_round(p, x0, z0, x1, z1, top + 2)
@@ -102,20 +112,24 @@ def machine_house(p: Piece, x0: int, z0: int, x1: int, z1: int, y0: int, y1: int
                 else:
                     s = state("riveted_plate")
                 p.set(*wall.cell(a, y), s)
+    p.room(x0 + 1, y0, z0 + 1, x1 - 1, y1, z1 - 1)
     p.fill(x0, y1 + 1, z0, x1, y1 + 1, z1, state("grating"))
     return walls
 
 
 def cabin(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]],
-          dark: bool = False) -> dict[str, Wall]:
+          dark: bool) -> dict[str, Wall]:
     """A one-storey house in the Works' language, smaller than a hall: riveted plate with red pilasters at its corners and at the
-    given places (each with a sodium lamp), a row of lit ribbon windows on the two floors under a brass band at top - 1, a hazard
-    parapet round a flat roof. dark leaves the windows unlit (a burnt-out bar). Returns the four walls, for doors and signs."""
+    given places (each with a sodium lamp outside and another inside), a row of glass windows on the two floors under a brass band at
+    top - 1, a hazard parapet round a flat roof. dark leaves the lamps inside out (a burnt-out bar), a dim glow in their place
+    (dim_glow). Returns the four walls, for doors and signs."""
     walls = box_walls(x0, z0, x1, z1)
     for side, wall in walls.items():
         columns = {wall.a0, wall.a1, *pilasters.get(side, ())}
         for a in pilasters.get(side, ()):
             p.set(*wall.outside(a, 4), state("wall_lamp", facing=wall.facing))
+            if not dark:
+                p.set(*wall.outside(a, 4, -1), state("wall_lamp", facing=wall.inward))
         for a in wall.cells():
             for y in range(1, top + 1):
                 if a in columns:
@@ -123,15 +137,39 @@ def cabin(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dic
                 elif y == top - 1:
                     s = state("brass_trim")
                 elif y in (2, 3):
-                    unlit = dark or noise(*wall.cell(a, y)) % 7 == 0
-                    s = state("window_ribbon_dark" if unlit else "window_ribbon_lit", facing=wall.facing)
+                    s = state("window_glass", facing=wall.facing)
                 else:
                     s = state("riveted_plate")
                 p.set(*wall.cell(a, y), s)
+    p.room(x0 + 1, 1, z0 + 1, x1 - 1, top, z1 - 1, dark)
+    if dark:
+        dim_glow(p, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 3)
     p.fill(x0 + 1, top + 1, z0 + 1, x1 - 1, top + 1, z1 - 1, state("riveted_plate"))
     p.walls(x0, z0, x1, z1, top + 1, top + 1, state("hazard_band"))
     floor(p, x0, z0, x1, z1)
     return walls
+
+
+# The invisible light blocks of a dark room: level 5 at a grid, three blocks apart, at one height (y). Light loses one level a step, so
+# a block at y lights every cell of a room up to 2 rows above and below it, within 1 block of it on each side, at level 1 at least: a
+# monster spawns only at block light 0, so no cell of the room is a spawn. The room stays dark to look at, 5 where it is brightest. A room
+# taller than 5 rows takes a second layer (a hall's upper floor).
+GLOW_LEVEL = 5
+GLOW_SPACING = 3
+
+
+def dim_glow(p: Piece, x0: int, z0: int, x1: int, z1: int, y: int) -> None:
+    """Fills the room x0..x1, z0..z1 (inside its walls, floor row 1 to the row at y + 2) with a dim glow that is not a lamp: a grid of
+    minecraft:light blocks (invisible; no collision) at height y, GLOW_SPACING apart and each within one block of the room's edge."""
+    def spread(lo: int, hi: int) -> list[int]:
+        count = -(-(hi - lo + 1) // GLOW_SPACING)
+        return [min(lo + 1 + GLOW_SPACING * i, hi) for i in range(count)]
+    for x in spread(x0, x1):
+        for z in spread(z0, z1):
+            # A block on a grid point would leave its neighbours dark; furniture is added after the glow, below y.
+            if p.get(x, y, z) is not None:
+                raise ValueError(f"{p.name}: a block stands on the dim glow's grid point {(x, y, z)}")
+            p.set(x, y, z, state("minecraft:light", level=GLOW_LEVEL, waterlogged="false"))
 
 
 def floor(p: Piece, x0: int, z0: int, x1: int, z1: int, block: str = "concrete_footing") -> None:
@@ -199,7 +237,7 @@ def track(p: Piece, x: int, z0: int, z1: int, facing: str = "south") -> None:
 def ore_cars(p: Piece, x: int, z: int, count: int) -> None:
     """A train of ore cars on the track along Z, coupled end to end from x, z."""
     for i in range(count):
-        p.set(x, 1, z + i, state("ore_car", facing="south"))
+        p.set(x, 1, z + i, state("ore_car", facing="south", looted="false"))
 
 
 def lattice_post(p: Piece, x: int, z: int, y0: int, y1: int, girder: str) -> None:

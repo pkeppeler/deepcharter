@@ -48,4 +48,4 @@ Then #243 builds the one you pick, with its animations, a glowmask and part tier
 
 ## Try one in the game
 
-This round's dev switch is gone: [#243](https://github.com/pkeppeler/deepcharter/issues/243) replaced it with the real pods ([pod-concepts-3.md](pod-concepts-3.md)). The renderer of the round is in the history at commit `79422af7`, and `python3 -I tools/pod_concepts.py --concepts DIR` writes the models as they were into `DIR`.
+This round's dev switch is gone: [#243](https://github.com/pkeppeler/deepcharter/issues/243) replaced it with the real pods ([pod-concepts-3.md](pod-concepts-3.md)). The renderer of the round is in the history at commit `79422af7`, and `tools/py tools/pod_concepts.py --concepts DIR` writes the models as they were into `DIR`.

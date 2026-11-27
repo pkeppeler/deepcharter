@@ -2,10 +2,9 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    "#deepcharter:biofuel_crops",
-    "#deepcharter:biofuel_crops",
-    "#deepcharter:biofuel_crops",
-    "#deepcharter:biofuel_crops"
+    "deepcharter:stalk_meal",
+    "deepcharter:stalk_meal",
+    "deepcharter:stalk_meal"
   ],
   "result": {
     "id": "deepcharter:biofuel",

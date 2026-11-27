@@ -3,19 +3,42 @@
   "package": "io.github.pkeppeler.deepcharter.test.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "GameTestInfoMixin"
+    "BatchKeyMixin",
+    "ChunkHolderLightSuppressMixin",
+    "ChunkMapAccess",
+    "ChunkMapSaveMixin",
+    "ChunkMapUnloadMixin",
+    "ChunkTaskPriorityQueueAccess",
+    "ForceSendProbeMixin",
+    "GameTestBatchFactoryMixin",
+    "GameTestInfoMixin",
+    "GameTestTickerMixin",
+    "LightEngineGateMixin",
+    "LightSyncSendMixin",
+    "MainShutdownHookMixin",
+    "MinecraftServerAccess",
+    "ServerChunkCacheAccess",
+    "ServerChunkCacheBlockingLoadMixin",
+    "ServerGamePacketListenerAccess",
+    "ServerLevelForcedMixin",
+    "TicketAccess",
+    "TicketStorageAccess"
   ],
   "client": [
-    "BreachEffectsMixin",
+    "CardinalLightingMixin",
     "ClientGameTestImplMixin",
+    "ClientPacketListenerMixin",
+    "DrifterRendererMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudMixin",
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
-    "SpriteAnimationStateMixin",
-    "TransmissionOverlayMixin"
+    "MinecraftAttackMixin",
+    "SkyRendererMixin",
+    "SoundManagerStopProbeMixin",
+    "SpriteAnimationStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

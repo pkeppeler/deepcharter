@@ -5,6 +5,7 @@ seam check, with a red fixture for each way a texture fails it); a scene is a se
 shot at; no model culls a face (a stepped block shows through to the world if it does); the lava is animated and wraps, so no two blocks of it meet at a
 seam; and the concept packs are test packs that nothing turns on by default.
 """
+import functools
 import json
 import re
 import sys
@@ -27,6 +28,11 @@ import art  # noqa: E402
 ROOT = make.ROOT
 LAYERS = scenes.LAYERS
 SIZE = 16
+
+
+@functools.cache
+def outputs():
+    return make.outputs()
 
 
 def pixels(grid) -> bytes:
@@ -94,14 +100,15 @@ class SeamCheckTest(unittest.TestCase):
         self.assertFalse(found.seamless())
 
     def test_every_rock_texture_tiles_at_a_contrast_near_vanillas(self):
-        shipped = {p.stem: p for p in SHIPPED_TEXTURES.glob("*_shale*.png")}
-        self.assertEqual(2 * (make.ROCK_VARIANTS[1] + make.END_VARIANTS + make.RUBBLE_VARIANTS + 1), len(shipped))
+        shipped = {p.stem: p for p in [*SHIPPED_TEXTURES.glob("*_shale*.png"), *SHIPPED_TEXTURES.glob("hardpan*.png")]}
+        strata = len(make.STRATA) * (make.ROCK_VARIANTS[1] + make.END_VARIANTS)
+        self.assertEqual(2 * (make.ROCK_VARIANTS[1] + make.END_VARIANTS + make.RUBBLE_VARIANTS + 1) + strata, len(shipped))
         groups = {"mod": shipped} | {pack: tiling_textures(pack) for pack in make.PACKS}
         for pack, textures in groups.items():
             self.assertTrue(textures, f"{pack} has no rock texture to check")
             for name, path in textures.items():
                 found = measure(path)
-                ceiling = seams.MAX_INSIDE if re.fullmatch(r"(lc_rock_\d|(packed|green)_shale)_(\d|end_\d)", name) else seams.MAX_RUBBLE_INSIDE
+                ceiling = seams.MAX_INSIDE if re.fullmatch(r"(lc_rock_\d|(packed|green|black)_shale|hardpan)_(\d|end_\d)", name) else seams.MAX_RUBBLE_INSIDE
                 with self.subTest(pack=pack, texture=name):
                     self.assertLessEqual(found.wrap_ratio, 1 + seams.MARGIN, "does not run on across its wrap seams")
                     self.assertLessEqual(found.rim_ratio, 1 + seams.MARGIN, "has an edge of its own")
@@ -122,6 +129,11 @@ class SeamCheckTest(unittest.TestCase):
             plain = make.image(art.grained(make.SHADES[layer], base, make.MID[layer]))
             with self.subTest(layer=layer, top=top):
                 self.assertTrue(seams.measure(plain.pixels, SIZE).seamless())
+        for block, (ramp, side, end, _) in make.STRATA.items():
+            for base in (side, end):
+                plain = make.image(art.grained(art.ramp(ramp, 6), base, make.MID[1]))
+                with self.subTest(stratum=block, base=base):
+                    self.assertTrue(seams.measure(plain.pixels, SIZE).seamless())
 
 
 class StyleTest(unittest.TestCase):
@@ -150,7 +162,7 @@ class StyleTest(unittest.TestCase):
 
     def test_layer_1_and_2_rock_is_a_plain_cube_and_layer_3_is_the_column(self):
         self.assertEqual({1: "a", 2: "b", 3: "c"}, scenes.FORMATIONS)
-        files, _ = make.outputs()
+        files, _ = outputs()
         models = {p.stem: json.loads(b) for p, b in files.items() if p.parent.name == "block" and p.parent.parent.name == "models"}
         for layer in make.SHIPPED_LAYERS:
             for block in make.BLOCKS[layer]:
@@ -159,7 +171,7 @@ class StyleTest(unittest.TestCase):
         self.assertTrue(all("elements" in models[name] for name in models if name.startswith("lc_rock_3_")), "layer 3 is the hexagonal column")
 
     def test_a_cube_is_never_turned_or_mirrored_because_its_textures_share_their_edges_only_so(self):
-        files, _ = make.outputs()
+        files, _ = outputs()
         for layer in make.SHIPPED_LAYERS:
             entries = json.loads(files[make.MOD_ASSETS / f"deepcharter/blockstates/{make.BLOCKS[layer][0]}.json"])["variants"][""]
             with self.subTest(layer=layer):
@@ -167,7 +179,7 @@ class StyleTest(unittest.TestCase):
                 self.assertEqual(make.ROCK_VARIANTS[layer], len(entries))
 
     def test_a_rock_block_has_many_ways_to_look(self):
-        files, _ = make.outputs()
+        files, _ = outputs()
         for layer in make.SHIPPED_LAYERS:
             entries = json.loads(files[make.MOD_ASSETS / f"deepcharter/blockstates/{make.BLOCKS[layer][0]}.json"])["variants"][""]
             with self.subTest(layer=layer):
@@ -180,7 +192,7 @@ class ModelGuardTest(unittest.TestCase):
     collared column), layer 3's columns have open joints between them as their formation, and layer 3's crust has a layer of glow 0.02 pixel
     over its cracks; all are exempt by name."""
 
-    EXEMPT = re.compile(r"lc_company_rock_\d|lc_(rock|rubble)_3_\d")
+    EXEMPT = re.compile(r"lc_company_rock_\d|lc_(rock|rubble)_3_\d|columnar_basalt_\d")
     GLOW_CRUST = ("layer_concept_form_3", "lc_breach_crust_0")
 
     @staticmethod
@@ -199,7 +211,7 @@ class ModelGuardTest(unittest.TestCase):
         self.assertEqual([], shapes.faults(self.element([0, 0, 0], [16, 16, 16])))
 
     def test_every_natural_rock_model_passes(self):
-        files, _ = make.outputs()
+        files, _ = outputs()
         checked = 0
         for path, body in files.items():
             if "/models/block/" in path.as_posix() and not self.EXEMPT.fullmatch(path.stem) and not (
@@ -236,7 +248,7 @@ class GridTest(unittest.TestCase):
 class LayerConceptsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.files, cls.structures = make.outputs()
+        cls.files, cls.structures = outputs()
         cls.built = {layer: scenes.build(layer) for layer in LAYERS}
 
     def test_every_file_is_what_make_py_makes(self):
@@ -299,11 +311,12 @@ class LayerConceptsTest(unittest.TestCase):
                     for x in range(x0, x1 + 1):
                         self.assertNotIn((x, y, south - 1), blocks, "the wide wall is not flat: a block stands out of it")
 
-    def test_layers_1_and_2_have_blocks_of_their_own_and_the_packs_redraw_only_what_they_must(self):
-        """The mod's rock is its own blocks (no vanilla file is redrawn), layer 3's stand-ins are vanilla andesite and diorite, and stone and deepslate,
-        which the hall of each scene shows untouched, are never redrawn."""
+    def test_the_layers_have_blocks_of_their_own_and_the_packs_redraw_only_what_they_must(self):
+        """The mod's rock is its own blocks (no vanilla file is redrawn), layer 3's included (#972); the scenes' stand-ins for layer 3 are vanilla
+        andesite and diorite, and stone and deepslate, which the hall of each scene shows untouched, are never redrawn."""
         shipped = {p.relative_to(make.MOD_ASSETS).as_posix() for p in self.files if p.is_relative_to(make.MOD_ASSETS) and "/blockstates/" in p.as_posix()}
-        self.assertEqual({f"deepcharter/blockstates/{block}.json" for pair in make.BLOCKS.values() for block in pair}, shipped)
+        blocks = {block for pair in make.BLOCKS.values() for block in pair} | {make.COLUMNS, make.CORE} | set(make.STRATA)
+        self.assertEqual({f"deepcharter/blockstates/{block}.json" for block in blocks}, shipped)
         redrawn_by_grain = {f"minecraft/blockstates/{n}.json" for n in make.LAYER_3}
         pack = make.pack_dir(make.GRAIN) / "assets"
         redrawn = {p.relative_to(pack).as_posix() for p in self.files if p.is_relative_to(pack) and "/blockstates/" in p.as_posix()}
@@ -348,7 +361,7 @@ class LayerConceptsTest(unittest.TestCase):
             self.assertEqual({"minecraft:visual/block_light_tint"}, changed, "the two kinds of light differ only in the lamp tint")
         self.assertEqual(len(LAYERS), len({a["fog_color"] for a in make.ATMOSPHERE.values()}))
         for pack in make.PACKS:
-            assets = [p for p in self.files if make.pack_dir(pack) in p.parents and "biome" in p.as_posix()]
+            assets = [p for p in self.files if make.pack_dir(pack) in p.parents and "biome" in p.relative_to(ROOT).as_posix()]
             self.assertEqual([], assets, "a pack must not carry its own atmosphere")
         self.assertEqual([], [p for p in (ROOT / "src/main/resources").rglob("lc_layer_*")], "the atmosphere ships in the mod")
 

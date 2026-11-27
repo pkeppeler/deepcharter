@@ -29,12 +29,12 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Surface and colony
 
-- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). Vanilla night monsters are replaced by the creatures session's work; until then the surface has none. The surface has no ore and no vanilla ore is promised near it: early metal is salvage (see Bootstrap in section 4, [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)), and the first ores are the layers'. The only life on it is pale fungal stalks on crater floors. No villages or settlements besides the colony. No Nether or End; the depths replace them.
+- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). No monster lives on it, vanilla or ours: the colony's emptiness is the dread ([CREATURES.md](CREATURES.md#surface), decided in the creatures session on 2026-11-21, which replaced the plan to reskin the vanilla night monsters). The surface has no ore and no vanilla ore is promised near it: early metal is salvage (see Bootstrap in section 4, [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)), and the first ores are the layers'. The only life on it is pale fungal stalks on crater floors and in patches among the salvage crates (#855). No villages or settlements besides the colony. No Nether or End; the depths replace them.
 - **Never called Mars:** the world may look like Mars, but the game never calls it Mars (lore guardrail).
 - **Colony:** one derelict mining colony per world, at spawn, named Prosperity. Its terminals are repaired once per world: when any charter fixes one, every charter can use it. The contract terminal works from the start.
 - **Conduit:** an undiggable Company pipe runs from the colony's ore processor straight down through every layer, at the same coordinates in each, ending in the Furnace. It is a landmark and the story's first clue ([LORE.md](LORE.md#8-prosperity)).
 - **Width:** unlimited, no border.
-- **Performance:** world height drives cost, because Minecraft generates whole columns. Keep layers about 256 blocks or less, and uncharted worlds 2048 tall. If world files grow large, add a tool to trim unvisited chunks.
+- **Performance:** world height drives cost, because Minecraft generates whole columns. Keep layers about 256 blocks or less, and deep dimensions no taller than they need (up to 4,064, one dimension's limit, [ADR 0085](adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). If world files grow large, add a tool to trim unvisited chunks.
 
 ### Layers
 
@@ -51,9 +51,9 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Seams and grained crust
 
-- Below the campaign world, the worlds are 2048 tall. Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
-- The swap happens inside a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed.
-- Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam cannot be told from a decoy.
+- Below the campaign world, the worlds are up to 4,064 tall, the limit of one dimension ([ADR 0085](adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md)). Each joins the next at a **seam**: a fast background swap. The pod carries all its riders.
+- A seam at a layer boundary sits in a **grained crust** (working name; the lore session names it). It has a vertical grain and flexes on a slow pulse. Rules: no sideways digging, placed blocks crumble, fluids are absorbed, and anything that stops in it is squeezed. A seam mid-layer sits in a plain slab of ordinary rock, with none of these rules.
+- Seed-chosen **decoys** (set so that about a third of restricted crusts are seams) follow the same rules, so a seam at a layer boundary cannot be told from a decoy.
 
 ### Story layers
 
@@ -76,7 +76,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Uncharted layers
 
-- Below the ramp, without limit: a chain of 2048-tall worlds. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
+- Below the ramp, without limit: a chain of deep dimensions, each up to 4,064 tall. Remixes of story-layer themes, each much harder than the one above; rewards grow far more slowly than difficulty.
 - A bragging-rights grind for the records board.
 - The altimeter reads "UNCHARTED".
 - No rated materials exist for them, so no outpost there can be made habitable.
@@ -91,7 +91,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Darkness
 
-- Each layer sets its own ambient light, darker with depth.
+- The darkness comes from each zone biome's ambient colour, darker with depth; the dimension's own ambient light is 0.
 - Pod lights are a component track. On foot, the suit lamp runs on a battery.
 - The original was fully lit; Minecraft's real darkness adds to the dread.
 
@@ -99,7 +99,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Bootstrap
 
-- Start from the colony's salvage and fungal "wood". This replaces "start like normal Minecraft" on the user's art direction ([art direction](design/art-direction.md) section 11, decided with the user on 2026-10-08, issue #225, PR #234; built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)). Salvage crates supply wood, cloth and scrap (scrap iron and scrap copper, melted in a furnace) and redstone. They are littered round the colony within a set block radius, not only at it (none stand on the pad or its margin): the radius is one number, `min_inclusive` and `max_exclusive` of `data/deepcharter/worldgen/density_function/surface/yard.json`: a ring from 100 to 160 blocks, which starts past the colony's pad and its graded margin. Hardy alien fungal stalks on crater floors, and in the caves of layer 1, are gatherable stand-ins for trees: a stalk presses into four planks, burns, and chars to charcoal. A new player reaches tools, a light and the first terminal repair with no tree and no ore.
+- Start from the colony's salvage and fungal "wood". This replaces "start like normal Minecraft" on the user's art direction ([art direction](design/art-direction.md) section 11, decided with the user on 2026-10-08, issue #225, PR #234; built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)). Salvage crates supply wood, cloth and scrap (scrap iron and scrap copper, melted in a furnace) and redstone. They are littered round the colony within a set block radius, not only at it (none stand on the pad or its margin): the radius is one number, `min_inclusive` and `max_exclusive` of `data/deepcharter/worldgen/density_function/surface/yard.json`: a ring from 100 to 160 blocks, which starts past the colony's pad and its graded margin. Hardy alien fungal stalks on crater floors, in patches among the crates, and in the caves of layer 1, are gatherable stand-ins for trees: a stalk presses into four planks, burns, and chars to charcoal. A new player reaches tools, a light and the first terminal repair with no tree and no ore.
 - Craft the first scanner too: a **scanner unit** from 4 iron, 2 copper and 2 redstone, about four crates' worth of the yard ([mechanics.md](design/mechanics.md#the-crafted-scanner-483-a)). It is the tier 1 part of the first mining pod, made like the Mole's own parts (SPEC section 7, Scanner); the upgrade terminal does not sell it.
 - Repair the colony's terminals one by one (fuel pump, then ore processor, then upgrade terminal, and so on). Each is a crafting goal; the employer gets in touch as they come back online.
 - The first charter also repairs the founding pod (the Mole) in the colony hangar.
@@ -120,9 +120,9 @@ After the bootstrap, progression is money: sell ore at terminals, buy pod upgrad
 
 The **Employee Handbook** is a company-issued onboarding manual.
 
-- **Getting it:** issued when you sign your Employment Contract. It is bound to you, so it cannot be lost. Open it from the item or a keybind.
+- **Getting it:** every player is given it on joining, before any charter, and gets another if it is lost. It is bound to you. Open it from the item or a keybind.
 - **Terminals:** colony and outpost terminals also show the charter's open Directives.
-- **Scope:** onboarding only, the bootstrap and layers 1–2. A linear, explicit tutorial: no cryptic wording, no side chapters, no helpdesk.
+- **Scope:** the onboarding chapters cover the bootstrap and layers 1–2 as a linear, explicit tutorial: no cryptic wording, no side chapters, no helpdesk. The Directives are shown as a **quest map**, and earlier miners' pencil paths continue it past layer 2 ([ADR 0065](adr/0065-the-handbooks-directives-are-a-quest-map-and-earlier-miners-pencil-paths-continue-it-past-layer-2.md)).
 
 ### Chapters
 
@@ -141,21 +141,30 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - **Voice:** the employer's cheerful corporate voice. Previous miners' handwritten margin notes tell a different story. The handbook is "revised" five times as the story turns. Revisions change its tone, never its rules. Text, margin notes and revisions: [lore/handbook.md](lore/handbook.md).
 - **Visibility:** show only the road just ahead, and never spoil.
   - The current Directives are explicit.
-  - The next chapter shows its title and Directive list.
-  - Anything further ahead appears only as CLASSIFIED.
+  - The next chapter shows its title and Directive list on its own tab. The current chapter's map does not preview it.
+  - Anything further ahead is a redacted shape with a CLASSIFIED stamp.
 
 ### After layer 2
 
 - The official chapters end with "Further documentation is restricted to Senior Personnel."
 - From then on the back section fills only with **Notes** found in the world: wreck logs, torn pages, miners' scribbles.
 - A Note picked up by anyone in a charter goes into every member's handbook, unread for each person.
+- Using a Note in the world opens it to read, charter or not. A player on no charter is told to found one at the contract terminal to file it.
+- Each Note also draws a **pencil path** on the pencil sheet (below), from earlier miners. It completes when the charter reaches the place the Note points to: a cache, a wreck or another Note. The place is the payoff; there is no claim button. A pencil path is not a Directive.
+- The paths sit on one fixed **pencil sheet** after the last chapter (nothing drags or zooms), in Roz's green pencil: a box for the Note, a dashed line, an x at the place. The sheet exists once a Note has drawn a path.
+- The first version ships two paths from existing Notes: N07, the prayer card, to the Prospector's wreck, and N10, Ines's log, to the Kells' shaft. More come with lore sessions. A wax cylinder found where a path ends ([#864](https://github.com/pkeppeler/deepcharter/issues/864)) is a payoff of the same kind, added with the cylinder.
 - Revisions may also add stamped pages: a disciplinary notice, the Chairmen's Book or the Ledger. They carry no rules ([lore/handbook.md](lore/handbook.md#revisions)).
 
 ### Directives and progress
 
-- **Directives** are the handbook's objectives. They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
+- **Directives** are the handbook's objectives, shown as a **quest map**: a tab down the side for the intro and one for each chapter on every page, and each chapter a fixed flowchart sheet: nothing on it drags, pans or zooms (playtest 3, #962). They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
+- A step's card shows its instruction, a link to its chapter page and, when the step asks for an item (obtained or crafted), that item with its count and progress. It never lists the item's ingredients. A click on the item opens its recipe, as in the GregTech: New Horizons questbook (BetterQuesting). The chapter text pages stay as the manual.
+- The handbook has a controls page after the contents: how to use the handbook, the parts catalogue, the pod and the scanner, with each key read live from the player's bindings, so a rebind shows.
+- A completed step shows a themed popup. Nothing is pinned on screen. The book opens where the player left it, and L opens it as well as H.
 - Directives give no rewards. The employer's transmission bonuses still exist separately.
 - Progress is shared by the charter, with personal read marks for each player.
+- **Before a charter:** founding carries the founder's Directive progress, recipe discoveries and found Notes into the new charter. Joining takes the charter's Directive progress and adds the joiner's discoveries and Notes to it.
+- Terminals might show the same map later, in CRT style (an idea).
 
 ### Three channels
 
@@ -169,14 +178,22 @@ One job each. They can point at each other; a transmission can unlock a handbook
 
 ### The world is a mystery; the rules never are
 
-There are no Directives after layer 2. Each new mechanic is explained the first time you meet it:
+There are no Directives after layer 2, only pencil paths. Each new mechanic is explained the first time you meet it:
 
-- A **Spec sheet** when you buy or craft something, for example a pad's power cost or a material's heat rating.
+- A **Spec sheet** when you craft or buy something, for example a pad's power cost or a material's heat rating: a small corner slip names it and the key that opens it, so a first craft never stops play. It is the item's page in the **parts catalogue**, and can be looked up any time after.
 - A one-time HUD or scanner warning on first exposure, such as "PRESSURE EXCEEDS HULL RATING".
 
 The story stays in Transmissions and Notes.
 
 Implementation: [ADR 0005](adr/0005-build-our-own-handbook.md); research in [research/handbook-build-vs-reuse.md](research/handbook-build-vs-reuse.md).
+
+### Parts catalogue
+
+Our own EMI-style viewer, styled as a Company parts catalogue ([ADR 0066](adr/0066-we-build-our-own-parts-catalogue-and-the-server-sends-each-player-only-their-charters-known-recipes.md)). It sits beside inventory screens. R on a hovered item shows its recipes, U its uses. It has search, favourites and a "craftable now" filter. Vanilla's recipe book is hidden.
+
+- A recipe is **known** per charter. It becomes known when a quest step that asks for its item becomes current, or when anyone in the charter obtains the item or one of its ingredients. Vanilla items follow the same rule.
+- Only what the campaign world yields exists. A recipe that needs or makes an item the world has none of is disabled, vanilla's included, and such items are left out of the catalogue and the creative tabs. A tag ingredient such as "any planks" shows only the members the world yields ([ADR 0093](adr/0093-recipes-and-items-the-campaign-world-does-not-yield-are-removed-by-a-derived-allowlist.md)).
+- Unknown recipes still craft. The server sends each player only their charter's known recipes.
 
 ## 6. Charters
 
@@ -234,9 +251,10 @@ The original's rules, in 3D.
 
 ### Fuel and stranded
 
-- Fuel is the clock. It drains even idle, faster while moving and drilling. A beep warns when low.
+- Fuel is the clock. It drains even idle while anyone is aboard, faster while moving and drilling. A parked pod with nobody aboard burns none. A beep warns when low.
 - Early fuel is crafted (coal, charcoal, biofuel). Later it is bought at the pump.
-- Running dry leaves the pod stranded: powered off and dark until rescue or a reserve tank.
+- Running dry leaves the pod stranded: powered off and dark until it is refuelled (a fuel item or a reserve tank) or a crewmate tows it home.
+- No one else rescues a stranded pod, for free or for a fee. Not getting stranded is the player's job, and the game guarantees no way out ([ADR 0104](adr/0104-a-stranded-pod-is-the-players-to-get-home-and-the-company-sends-no-crew.md), user decisions of 2026-11-25 and 2026-11-26).
 
 ### Scanner
 
@@ -259,7 +277,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 | Role | Job |
 |------|-----|
 | Pilot | The legs: movement, flight, fuel. |
-| Navigator | The eyes: active sonar. Pings cost power; echoes are ambiguous (ore, gas, empty cave, something that moved) and must be read. Marks targets on the pilot's HUD. Only the navigator sees past the headlights. |
+| Navigator | The eyes: active sonar. Pings cost power and are loud enough to draw creatures; echoes are ambiguous (ore, gas, empty cave, something that moved) and must be read. Marks targets on the pilot's HUD. Only the navigator sees past the headlights. |
 | Operator | The hands: manipulator arm (grabs artifacts and wall ore the drill would destroy) and charge launcher (clears cave-ins, used in boss fights). A turret comes later. |
 
 - **Seats follow the chassis ladder:** the Mole has 1 seat (pilot), the Prospector adds the navigator, the Badger adds the operator.
@@ -278,14 +296,15 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 ## 9. On foot
 
 - Hybrid play: leave the pod to explore caverns, fight and build.
-- **Hardness:** below layer 1, rock cannot be broken by hand tools, only by pod drills.
+- **Hardness:** the way through pod-only blocks (the breach crust, the grained crust, Company rock, and rock below layer 1) is a pod drill. Any hand tool (pickaxe, axe, shovel, hoe, sword or spear) can brute-force one, in any layer, at 60 seconds a block and a ruinous cost that Unbreaking and Mending cannot lower: a diamond or better tool pays half its durability, and a lesser tool (wood, stone, iron, gold, copper) is destroyed as the block goes. It drops nothing, and the game says what the player is doing wrong ([ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
 - **Environment:** heat, pressure and toxic air outside the pod, worse with depth.
 - **Suit timer:** how long you can stay on foot outside a pod or habitable outpost.
 - **Suit:** upgraded separately: oxygen and toxins, heat, pressure, lamp battery.
+- **Food:** the world has no crops at the start, so the Company feeds a new hand: every player starts with a few sealed Company rations, the ore cars on the colony's track still hold the last shift's tins (a one-time find each), the canteen in the Lamp and Pick gives a ration every time it is used, and a salvage crate sometimes holds one. A fungal stalk cooks into a poor meal on a campfire or in a smoker, so food is renewable ([mechanics.md](design/mechanics.md#company-rations-838-a)).
 
 ## 10. Hazards
 
-- Baseline from the original: Company Rock (a plain drill refuses it; a bought blasting charge clears it, [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md); a shaped charge clears a column of it and a tier 3 drill bites it slowly, [ADR 0052](adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)), visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
+- Baseline from the original: Company Rock (a plain drill refuses it, and a hand tool breaks it only at the ruinous cost of [ADR 0069](adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md); a bought blasting charge clears it, [ADR 0050](adr/0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md); a shaped charge clears a column of it and a tier 3 drill bites it slowly, [ADR 0052](adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)), visible lava, invisible gas pockets (damage grows with depth), fall damage, earthquakes. Each layer adds its own.
 - Earthquakes (in certain layers) and local cave-ins block a stretch of shaft, small or large, rather than erasing it.
 - Ways to clear a blockage:
   1. Climb out and plant explosives, with the suit timer running.
@@ -293,7 +312,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
   3. Crewmates clearing from above.
   4. Emergency teleport items.
 - The original's dynamite and plastic explosives (3×3 and 5×5) return as consumables. Neither clears Company Rock. The blasting charge does: set from the seat under the pod, a fuse, a blast. So does its dearer cousin, the shaped charge, which clears the whole Company Rock column under the pod.
-- Hazards never delete player-built blocks.
+- Hazards never delete player-built blocks. Creatures have their own rule (section 13).
 
 ## 11. Getting back up
 
@@ -309,6 +328,7 @@ Staged.
 - Every depth has environment ratings: heat, pressure, flooding, quake bracing.
 - An outpost built from materials below its depth's rating is uninhabitable (heat leaks in, water seeps in, the suit timer keeps running inside) but never destroyed.
 - Rated materials come from that layer's own resources.
+- Rated materials also hold against creatures. A creature breaks only placed blocks it can reach that are not rated for the depth, and it does so while nobody is near, so a rated shell keeps everything inside it safe. The game says so on the outpost's spec sheet, its terminal and a placement readout ([ADR 0072](adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
 
 ### Pads
 
@@ -325,12 +345,17 @@ The Behemoth's anchor mode is a temporary outpost.
 
 ## 13. Creatures and combat
 
-**Details deferred** to a dedicated creatures and combat session. Lore hooks: [LORE.md section 14](LORE.md#14-hooks-for-the-creatures-session).
+Settled 2026-11-21 in the creatures session ([#13](https://github.com/pkeppeler/deepcharter/issues/13)). The full design, with the bestiary, bosses and combat kit: [CREATURES.md](CREATURES.md). Lore hooks: [LORE.md section 14](LORE.md#14-hooks-for-the-creatures-session).
 
 - Rare, unsettling creatures in each layer, plus layer bosses. Dread wins over action.
-- Bosses mix pod fights and on-foot fights, by layer.
-- Pod combat uses mining gear first (drill, explosives, charge launcher), turrets later.
-- On foot: normal Minecraft combat plus suit gear.
+- **Three families, each with one draw.** Moloch's things come to the dark and take (fuel, cargo, hunger, lamp battery) but never damage a hull or a person. The Sleeper's defences come to the drill (noise, heat, resonance) and hurt; killing one raises the zone's alarm. Gnawers, post-game only, come to the haul and eat.
+- **Every mob costs you in the pod and on foot**, and gives you a reason to avoid it. Encounters are rare and costly, seldom lethal: an ordinary mob can cost you the run, a boss can leave a wreck.
+- **Encounters scale by pods, not people.** Solo play is tuned with robots in the empty seats.
+- **Layer bosses** in layers 3 to 7 guard a chassis wreck or catalyst. They gate the upgrade ladder, not the descent, and each charter fights each one once. Bosses mix pod fights and on-foot fights, by layer.
+- **The finale:** phase 1 on foot, where the Chairman can be hurt only in the light of the crew's own lamps; phase 2 in pods, where only the drill and explosives hurt Head Office, which is built from what the charter sold and eats the cargo it takes.
+- Pod combat uses mining gear first (drill, explosives, charge launcher), turrets later (from layer 6). On foot: normal Minecraft combat plus suit gear.
+- **Placed blocks:** creatures break only exposed blocks not rated for the depth, even while nobody is near (section 11, [ADR 0072](adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
+- The surface has no monsters, and nothing of Moloch's lives below the Ramp.
 
 ## 14. Story and transmissions
 
@@ -345,11 +370,11 @@ Original lore with the original game's shape (a cheerful employer, vanishing min
 | 3 | 6–7 | The Chairman takes over the charter's account: orders to turn back, every threat with a receipt; THE EYES. |
 | Finale | 8 | Head Office, the reveal, the two-phase boss and the choice. |
 
-- **Employer:** H. Colom & Co. H. COLOM reversed is MOLOCH: the hidden-name trick, with clues in layers 1, 5 and 7 and the reveal on screen in layer 8.
+- **Employer:** H. Colom & Co. H. COLOM reversed is MOLOCH, and the name is in plain sight ([ADR 0098](adr/0098-the-name-is-in-plain-sight-the-secret-is-the-title-and-the-hiring.md)): the game drops the pretence in layers 5 and 8. The reveal is that "H. Colom" is a title worn by a former Director, and that it is hiring.
 - **The reveal:** the Company is the lure of a parasite in the heart of a vast sleeping creature whose body is the deep. Everything sold goes down the Conduit to the parasite's Furnace ([LORE.md](LORE.md#3-the-spine)).
 - **The finale is a choice** ([ADR 0031](adr/0031-the-finale-is-won-by-renunciation.md), [LORE.md](LORE.md#12-the-finale)). The fight breaks the boss but cannot kill him, and he offers the charter a **Controlling Interest**.
-  - **Renunciation**, the true ending: anyone in the charter throws it into the Furnace, which kills the boss. The charter loses its whole account, and every crew member receives an **Unnumbered Lamp**, a suit lamp that never runs out.
-  - **Signing**, by the Director only, is final and permanent. The Director becomes the Chairman, with a payout and a recurring dividend. He carries the Controlling Interest for good, and his suit lamp never works again. The epilogue is grim.
+  - **Renunciation**, the true ending: every online charter member lets go of it at the Furnace together, and offline members do not count ([ADR 0096](adr/0096-renunciation-needs-the-whole-online-crew-signing-stays-the-directors.md)). It kills the boss. The charter loses its whole account, and every crew member receives an **Unnumbered Lamp**, a suit lamp that never runs out.
+  - **Signing**, by the Director only, is final and permanent. The Director becomes the Chairman, with a payout and a recurring dividend, both paid into the charter's shared account. He carries the Controlling Interest for good, and his suit lamp never works again. The epilogue is grim.
 - **Post-game hook:** the Ramp is the wall around the creature's heart, the Motherload. Both endings lead to the uncharted layers below it ([LORE.md](LORE.md#13-post-game)). A splice is the creature stirring ("the depths moved").
 - Every change after the finale is presentation for that charter only, never a world edit.
 - **Transmissions** go to the whole charter. Most trigger at the charter's deepest point reached; the bootstrap repairs and the finale beats trigger on events.
@@ -392,7 +417,7 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 - Gore stays out by default ([LORE.md guardrail 7](LORE.md#guardrails)); lift it only on the user's say.
 - Finale numbers and rules: the dividend's size and cadence, and how the Chairman's dead suit lamp and the Unnumbered Lamp sit with the suit lamp's battery track.
 - Records board extras proposed by the lore: a Continuity Events column, and a lamp or mask mark for each charter after the finale.
-- Creatures and combat session.
+- Creature numbers: encounter cadence per zone, alarm, boss health per pod, and the rate of loss at an outpost while nobody is near ([CREATURES.md](CREATURES.md#11-open-questions)).
 - What happens to dropped items and mobs that fall to a seam.
 - Numbers tuning: layer thicknesses, drill speeds, and the prices past layer 2. The early prices (parts, scanner, lights, the Mole and Prospector, repairs) were scaled to a run's income in [PR 206](https://github.com/pkeppeler/deepcharter/pull/206).
 - Duration and size of earthquake and cave-in blockages, per layer.

@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.market.MarketTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -17,12 +17,10 @@ import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,12 +55,6 @@ public class SalvageRenewalTest {
 
     private static Item item(String path) {
         return BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     /** The mean of each item over {@value #SAMPLED_CRATES} crates broken, from the real table. */
@@ -127,8 +119,8 @@ public class SalvageRenewalTest {
     @GameTest
     public void thePressNeedsTheHopperWhichTakesAWholeRunToBuy(GameTestHelper helper) {
         Run firstRun = EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);
-        // The hopper's tier 1 is a crafted unit (#536); its recipe is tuned to the minutes its old $100 took to earn
-        // (FirstTierPartsCostTest).
+        // The hopper's tier 1 is a crafted unit (#536); its recipe is tuned to the minutes its old $100 took to
+        // earn (FirstTierPartsCostTest).
         long hopper = HOPPER_OLD_PRICE;
         LOGGER.info("[renewal] the hopper took ${} to earn, a stock run nets ${}", hopper, Math.round(firstRun.net()));
         if (firstRun.toAfford(hopper) != 1) {

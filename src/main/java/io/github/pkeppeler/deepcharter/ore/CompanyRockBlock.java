@@ -46,7 +46,11 @@ public final class CompanyRockBlock extends Block {
     /** As for an ore (ADR 0055): a placed block takes the rock of its layer, and a level that is no layer keeps the default host. */
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return LayerBlocks.layerGroundOf(context.getLevel())
+        return LayerBlocks.placedGroundOf(
+                        context.getLevel(),
+                        context.getClickedPos()
+                                .relative(context.getClickedFace().getOpposite()),
+                        context.getClickedPos().getY())
                 .map(ground -> in(ground.defaultBlockState()))
                 .orElseGet(this::defaultBlockState);
     }

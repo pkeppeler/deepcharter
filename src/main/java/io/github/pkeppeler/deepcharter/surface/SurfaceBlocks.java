@@ -8,6 +8,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.ColorRGBA;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -21,10 +22,14 @@ import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntPr
  * looks are blockstate variants in the resource pack: how many textures a block has is data, not code.
  */
 public final class SurfaceBlocks {
-    /** Loose plains topsoil. */
+    /** The dust a falling regolith block kicks up: the average of the four regolith textures. */
+    private static final int REGOLITH_DUST = 0x94482F;
+
+    /** Loose plains topsoil: it falls like sand when nothing holds it (#836). The packed layer and the rock under it do not. */
     public static final Block REGOLITH = registerBlock(
             id("regolith"),
-            key -> new Block(
+            key -> new RegolithBlock(
+                    new ColorRGBA(REGOLITH_DUST),
                     BlockBehaviour.Properties.of().setId(key).strength(0.5F).sound(SoundType.GRAVEL)));
 
     /** The packed layer under the topsoil. */
@@ -78,6 +83,16 @@ public final class SurfaceBlocks {
                         .strength(1.0F)
                         .sound(SoundType.STEM)
                         .noOcclusion()));
+        // The thick trunk and the cap of a great stalk: full cubes of the stalk's own bark, end and shelf looks, each a
+        // stalk's drop.
+        registerWoodBlock(
+                id("great_stalk"),
+                key -> new GreatStalkBlock(
+                        BlockBehaviour.Properties.of().setId(key).strength(1.5F).sound(SoundType.STEM), false));
+        registerWoodBlock(
+                id("great_stalk_cap"),
+                key -> new GreatStalkBlock(
+                        BlockBehaviour.Properties.of().setId(key).strength(1.0F).sound(SoundType.FUNGUS), true));
         // Planks pressed from stalk: any recipe that takes planks takes them.
         registerWoodBlock(
                 id("stalk_planks"),

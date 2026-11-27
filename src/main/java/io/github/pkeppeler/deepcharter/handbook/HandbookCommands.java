@@ -70,7 +70,7 @@ public final class HandbookCommands {
                 .contains(directive)) {
             context.getSource()
                     .sendFailure(
-                            Component.translatable("deepcharter.handbook.complete.no_charter", directive.toString()));
+                            Component.translatable("deepcharter.handbook.complete.unreadable", directive.toString()));
             return 0;
         }
         context.getSource()

@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -63,8 +64,9 @@ public final class Wrecks {
     }
 
     /**
-     * Server only: moves every ore in the wreck's bay to {@code player}, dropping what does not fit. Anyone may do this.
-     * Tells the player what happened, and returns how many ore moved. Unreadable cargo is left alone and reported, not thrown.
+     * Server only: moves everything in the wreck's hold to {@code player}, ore and the crew's stores alike, dropping
+     * what does not fit. Anyone may do this. Tells the player what happened, and returns how many stacks moved.
+     * Unreadable cargo is left alone and reported, not thrown.
      */
     public static int salvage(ServerPlayer player, PodEntity pod) {
         if (!isWreck(pod)) {
@@ -75,24 +77,22 @@ public final class Wrecks {
             player.sendSystemMessage(Component.translatable("deepcharter.wreck.salvage.unreadable"));
             return 0;
         }
-        List<PodCargo.Entry> ore = cargo.entries();
-        if (ore.isEmpty()) {
+        List<ItemStack> held = cargo.takeAll(pod);
+        if (held.isEmpty()) {
             player.sendSystemMessage(Component.translatable("deepcharter.wreck.salvage.empty"));
             return 0;
         }
-        cargo.dump(pod);
-        for (PodCargo.Entry entry : ore) {
-            ItemStack stack = entry.stack().copy();
-            // Ore does not stack, so a free slot is the only room. Checked first because a creative player's add()
-            // discards what does not fit.
+        for (ItemStack stack : held) {
+            // A free slot takes any whole stack. Checked first because a creative player's add() discards what does
+            // not fit.
             if (player.getInventory().getFreeSlot() < 0) {
                 player.spawnAtLocation(player.level(), stack);
             } else {
                 player.getInventory().add(stack);
             }
         }
-        player.sendSystemMessage(Component.translatable("deepcharter.wreck.salvage.success", ore.size()));
-        return ore.size();
+        player.sendSystemMessage(Component.translatable("deepcharter.wreck.salvage.success", held.size()));
+        return held.size();
     }
 
     static void onHullDepleted(PodEntity pod) {
@@ -168,7 +168,8 @@ public final class Wrecks {
         }
         if (!Charters.isReadable(server)) {
             DeepCharter.LOGGER.error(
-                    "The wreck of pod {} is reported to nobody, because the saved charters cannot be read; the first charters error logged carries the cause",
+                    "The wreck of pod {} is reported to nobody, because the saved charters cannot be read; the first"
+                            + " charters error logged carries the cause",
                     pod.getUUID());
             return charters;
         }
@@ -183,8 +184,9 @@ public final class Wrecks {
     private static void report(ServerLevel level, Charter charter, PodEntity pod) {
         MinecraftServer server = level.getServer();
         BlockPos pos = pod.blockPosition();
-        OptionalInt layer = LayerChain.layerOf(
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
+        OptionalInt layer = LayerChain.layerAt(level, pos.getY()).stream()
+                .mapToInt(Band::layer)
+                .findFirst();
         Component message = layer.isPresent()
                 ? Component.translatable(
                         "deepcharter.wreck.report.layer", layer.getAsInt(), pos.getX(), pos.getY(), pos.getZ())

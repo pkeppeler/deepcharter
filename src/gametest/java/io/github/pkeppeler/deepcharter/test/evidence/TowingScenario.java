@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
@@ -12,7 +15,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -50,8 +52,6 @@ public class TowingScenario extends EvidenceScenario {
     private static final float WATCH_WEST = 90f;
     private static final float WATCH_PITCH = 15f;
     private static final float SHAFT_PITCH = 48f;
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     @Override
     protected String name() {

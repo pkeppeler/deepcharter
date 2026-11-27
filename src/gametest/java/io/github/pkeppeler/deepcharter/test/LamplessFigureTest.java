@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -14,22 +14,22 @@ import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -46,10 +46,8 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #83, the placeholder lampless figure. Most tests build a short rail corridor in a far chunk of the
@@ -61,7 +59,7 @@ public class LamplessFigureTest {
 
     private static final int FIRST_SLOT_X = 6008;
     private static final int SLOT_Z_SPACING = 64;
-    private static final int FLOOR_Y = 100;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 100);
     private static final int WALK_TICKS = 400;
     private static final int WINDOW_TICKS = 20;
     /** Blocks of path in {@link #WINDOW_TICKS} below which the figure has stopped; it walks about three times as far. */
@@ -205,6 +203,7 @@ public class LamplessFigureTest {
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             buildCorridor(level, origin);
             figure[0] = spawnFigure(level, origin, 0, Direction.SOUTH);
+            // level-height: the void under the test world, not a layer
             figure[0].setPos(figure[0].getX(), level.getMinY() - 100, figure[0].getZ());
         });
     }
@@ -267,14 +266,14 @@ public class LamplessFigureTest {
                 () -> run.step(helper, () -> {
                     MockPlayer mock = MockPlayers.join(helper, "figure-approach");
                     mock.teleportTo(level, new Vec3(origin.getX() - 1.5, origin.getY(), origin.getZ() + 0.5), 0f, 0f);
-                    run.player = mock.player();
+                    run.player.set(mock.player());
                 }));
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             buildCorridor(level, origin);
-            run.figure = spawnFigure(level, origin, -4, Direction.SOUTH);
+            run.figure.set(spawnFigure(level, origin, -4, Direction.SOUTH));
         });
         run.onDone = () -> {
-            ServerPlayer player = Objects.requireNonNull(run.player, "player: joined by the cause, read before it ran");
+            ServerPlayer player = run.player.get();
             if (player.getHealth() != player.getMaxHealth()) {
                 throw failure(
                         helper, "the player's health went from %s to %s", player.getMaxHealth(), player.getHealth());
@@ -291,7 +290,7 @@ public class LamplessFigureTest {
                 helper, () -> run.step(helper, () -> level.setBlock(origin.offset(2, 1, 0), light(LIT_LEVEL), 3)));
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             buildCorridor(level, origin);
-            run.figure = spawnFigure(level, origin, -4, Direction.SOUTH);
+            run.figure.set(spawnFigure(level, origin, -4, Direction.SOUTH));
         });
     }
 
@@ -372,12 +371,15 @@ public class LamplessFigureTest {
                 if (!level.getBlockState(feet).is(BlockTags.RAILS)) {
                     throw failure(helper, "the second figure stands at %s, which is not a rail", feet.toShortString());
                 }
-                if (level.getBrightness(LightLayer.BLOCK, feet) >= TUNING.litBlockLight()) {
+                // light-wait-ok: waits on the game-time respawn delay, not on light; the check fails only on light that
+                // is already there, so a lagging engine reads dark and passes
+                int light = level.getBrightness(LightLayer.BLOCK, feet);
+                if (light >= TUNING.litBlockLight()) {
                     throw failure(
                             helper,
                             "the second figure appeared at %s, where the light is %d",
                             feet.toShortString(),
-                            level.getBrightness(LightLayer.BLOCK, feet));
+                            light);
                 }
                 killedAt[0] = level.getGameTime();
                 figure[0].kill(level);
@@ -416,12 +418,12 @@ public class LamplessFigureTest {
         });
     }
 
-    /** A level holds {@code maxPerLevel} figures however many sites ask. The End has no fades, no tick spawns and no other figure test. */
+    /** A level holds {@code maxPerBand} figures however many sites ask. The End has no fades, no tick spawns and no other figure test. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void aLevelHoldsNoMoreFiguresThanItsCap(GameTestHelper helper) {
         ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), Level.END);
         List<StructureSite> sites = new ArrayList<>();
-        for (int i = 0; i <= TUNING.maxPerLevel(); i++) {
+        for (int i = 0; i <= TUNING.maxPerBand(); i++) {
             sites.add(new StructureSite(StructureKind.RAILS, slot(10 + i), true, 4, 0L));
         }
         int[] ready = {0};
@@ -438,14 +440,14 @@ public class LamplessFigureTest {
                 int inLevel = level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> true)
                         .size();
                 spawned.forEach(LamplessFigure::discard);
-                if (spawned.size() != TUNING.maxPerLevel() || inLevel != TUNING.maxPerLevel()) {
+                if (spawned.size() != TUNING.maxPerBand() || inLevel != TUNING.maxPerBand()) {
                     throw failure(
                             helper,
                             "%d sites asked: %d figures were spawned and %d stood in the level, not %d",
                             sites.size(),
                             spawned.size(),
                             inLevel,
-                            TUNING.maxPerLevel());
+                            TUNING.maxPerBand());
                 }
                 helper.succeed();
             });
@@ -453,20 +455,24 @@ public class LamplessFigureTest {
     }
 
     @GameTest
-    public void onlyTheRailLevelLooksForSitesAndOnlyOnTheInterval(GameTestHelper helper) {
+    public void onlyTheCampaignLevelLooksForSitesAndOnlyOnTheInterval(GameTestHelper helper) {
         int interval = TUNING.spawnIntervalTicks();
         for (long time : new long[] {0, interval, 7L * interval}) {
-            expectSpawnTick(helper, LayerChain.dimension(StructureKind.RAILS.layer()), time, true);
+            expectSpawnTick(
+                    helper,
+                    TestLayers.level(helper, StructureKind.RAILS.layer()).dimension(),
+                    time,
+                    true);
         }
         for (long time : new long[] {1, interval - 1, interval + 1, 7L * interval + 3}) {
-            expectSpawnTick(helper, LayerChain.dimension(StructureKind.RAILS.layer()), time, false);
+            expectSpawnTick(
+                    helper,
+                    TestLayers.level(helper, StructureKind.RAILS.layer()).dimension(),
+                    time,
+                    false);
         }
-        for (ResourceKey<Level> other : List.of(
-                Level.OVERWORLD,
-                Level.NETHER,
-                Level.END,
-                LayerChain.dimension(1),
-                LayerChain.dimension(StructureKind.RAILS.layer() + 1))) {
+        // The campaign level holds every layer, so it is the one level that looks; the others never do.
+        for (ResourceKey<Level> other : List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
             expectSpawnTick(helper, other, 0, false);
             expectSpawnTick(helper, other, interval, false);
         }
@@ -475,15 +481,15 @@ public class LamplessFigureTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
     public void aLoadedRailSiteOfLayerTwoGetsOneFigureWhenAPlayerIsNear(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(
-                helper.getLevel().getServer(), LayerChain.dimension(StructureKind.RAILS.layer()));
+        ServerLevel level = TestLayers.level(helper.getLevel().getServer(), StructureKind.RAILS.layer());
+        LayerChain.Band levelBand = TestLayers.band(level, StructureKind.RAILS.layer());
         BlockPos conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT)
                 .orElseThrow(() -> failure(helper, "the colony was not built"));
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.RAILS,
-                level.getMinY(),
-                level.getHeight(),
+                levelBand.minY(),
+                levelBand.height(),
                 RAIL_SITE_CELL,
                 RAIL_SITE_CELL,
                 conduit);
@@ -499,7 +505,7 @@ public class LamplessFigureTest {
             List<? extends LamplessFigure> here = figuresIn(level, site);
             int inLevel = level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> true)
                     .size();
-            if (here.size() > TUNING.maxPerSite() || inLevel > TUNING.maxPerLevel()) {
+            if (here.size() > TUNING.maxPerSite() || inLevel > TUNING.maxPerBand()) {
                 throw failure(helper, "%d figures on the rail site and %d in the level", here.size(), inLevel);
             }
             if (level.getGameTime() - firstSeen[0] >= 3L * TUNING.spawnIntervalTicks() && here.size() == 1) {
@@ -511,7 +517,6 @@ public class LamplessFigureTest {
             for (int chunkX = bounds.minX() >> 4; chunkX <= bounds.maxX() >> 4; chunkX++) {
                 for (int chunkZ = bounds.minZ() >> 4; chunkZ <= bounds.maxZ() >> 4; chunkZ++) {
                     FarChunks.force(helper, level, chunkX, chunkZ);
-                    level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
                 }
             }
             MockPlayer mock = MockPlayers.join(helper, "figure-watcher");
@@ -525,22 +530,20 @@ public class LamplessFigureTest {
      * walking, whole and alive, for {@link #NO_FADE_TICKS}: the cause does not fade it (#485).
      */
     private static final class StayRun {
-        @Nullable
-        LamplessFigure figure;
-
-        @Nullable
-        ServerPlayer player;
+        final Arrival<LamplessFigure> figure = new Arrival<>("figure", "the far chunk ticks");
+        final Arrival<ServerPlayer> player = new Arrival<>("player", "the cause joins it");
 
         Runnable onDone = () -> {};
         private int ticks;
         private int causeAt = -1;
 
         void step(GameTestHelper helper, Runnable cause) {
-            if (figure == null) {
+            if (!figure.isPresent()) {
                 return;
             }
+            LamplessFigure walker = figure.get();
             ticks++;
-            if (figure.fadeFraction() > 0 || !figure.isAlive() || figure.isRemoved()) {
+            if (walker.fadeFraction() > 0 || !walker.isAlive() || walker.isRemoved()) {
                 throw failure(
                         helper,
                         "the figure faded or went %d ticks in (%d ticks after the cause)",
@@ -554,7 +557,7 @@ public class LamplessFigureTest {
                 causeAt = ticks;
                 cause.run();
             } else if (ticks - causeAt >= NO_FADE_TICKS) {
-                figure.discard();
+                walker.discard();
                 onDone.run();
                 helper.succeed();
             }
@@ -593,7 +596,9 @@ public class LamplessFigureTest {
 
     private static void expectSpawnTick(
             GameTestHelper helper, ResourceKey<Level> dimension, long gameTime, boolean expected) {
-        if (LamplessFigures.isSpawnTick(dimension, gameTime) != expected) {
+        // A level the server does not have (a third layer) never ticks.
+        ServerLevel level = helper.getLevel().getServer().getLevel(dimension);
+        if (level == null ? expected : LamplessFigures.isSpawnTick(level, gameTime) != expected) {
             throw failure(
                     helper,
                     "%s at game time %d: a spawn tick should be %s",
@@ -631,8 +636,8 @@ public class LamplessFigureTest {
             for (int v = -3; v <= 3; v++) {
                 for (int y = -1; y <= 4; y++) {
                     boolean shell = y == -1 || y == 4 || Math.abs(u) == HALF + 1 || Math.abs(v) == 3;
-                    // room-carver: a corridor closed by its own stone shell in the overworld test structure, not layer
-                    // rock
+                    // room-carver: a corridor closed by its own stone shell in the overworld test structure, not
+                    // layer rock
                     level.setBlock(origin.offset(v, y, u), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
                 }
             }
@@ -652,11 +657,5 @@ public class LamplessFigureTest {
 
     private static BlockState light(int level) {
         return Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, level);
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

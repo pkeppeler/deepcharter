@@ -4,7 +4,8 @@
 # Records that the PR's CURRENT head commit passed review: posts the comment
 # `review-passed <sha>` and adds the `review-passed` label. First runs the merge gate's
 # closing-reference, demo and feature-map checks (tools/lib/pr-body-checks.sh) and refuses, naming
-# the fix; it does not wait for CI. tools/merge-pr.sh refuses if the head has moved since.
+# the fix; it does not wait for CI. Refuses when GitHub's head sha differs from origin's branch tip.
+# tools/merge-pr.sh refuses if the head has moved since.
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
@@ -22,11 +23,19 @@ origin=$(git remote get-url origin)
 [[ $origin =~ github\.com[:/]$repo(\.git)?$ ]] \
   || { echo "REFUSED: origin is '$origin', not $repo" >&2; exit 1; }
 
-sha=$(gh pr view "$pr" -R "$repo" --json headRefOid --jq .headRefOid)
+read -r sha branch <<<"$(pr_get "$pr" '.head.sha + " " + .head.ref')"
 [[ $sha =~ ^[0-9a-f]+$ ]] || { echo "REFUSED: PR #$pr has no readable head commit" >&2; exit 1; }
+
+# GitHub's head sha can lag the pushed branch right after a push; a pass pinned to the old sha is voided
+# by the next read.
+remote_line=$(git ls-remote origin "refs/heads/$branch") || { echo "REFUSED: PR #$pr: could not read origin/$branch" >&2; exit 1; }
+remote_sha=${remote_line%%[[:space:]]*}
+[[ -n $remote_sha ]] || { echo "REFUSED: PR #$pr: origin has no branch $branch" >&2; exit 1; }
+[[ $remote_sha == "$sha" ]] \
+  || { echo "REFUSED: PR #$pr has head $sha on GitHub but origin/$branch is at $remote_sha (wait and retry)" >&2; exit 1; }
 
 check_pr_body_and_labels
 
-gh pr comment "$pr" -R "$repo" --body "review-passed $sha"
-gh pr edit "$pr" -R "$repo" --add-label review-passed
+gh api -X POST "repos/$repo/issues/$pr/comments" -f body="review-passed $sha" >/dev/null
+gh api -X POST "repos/$repo/issues/$pr/labels" -f 'labels[]=review-passed' >/dev/null
 echo "Marked PR #$pr review-passed at $sha"

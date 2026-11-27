@@ -1,8 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -10,12 +10,12 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -40,7 +40,7 @@ import org.jspecify.annotations.Nullable;
 public class ShapedChargeTest {
     private static final RepairTuning TUNING = RepairTuning.DEFAULT;
     private static final int Z = 5400;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int BED = 16;
     private static final int ROOM = 14;
     /** Blocks east that the pod is moved to leave the blast: its box then starts over chargeReach from the footprint, and the pod stays in its chunk (x is a multiple of 16). */
@@ -66,16 +66,19 @@ public class ShapedChargeTest {
 
     private static void scene(
             GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<PodEntity> afterSet, Verify verify) {
-        ServerLevel level = layer(helper);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
-        build.accept(level);
+        ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer pilot = MockPlayers.join(helper, "shaped-" + x);
-        pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
-        pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Built once the chunk ticks, so its lava is poured into a ticking chunk (#1089) and RoomSeal's read of the
+            // shell loads nothing on the server thread.
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
+            build.accept(level);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, at, 0f, 0f);
+            pilot.player().setGameMode(GameType.SURVIVAL);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
@@ -188,6 +191,33 @@ public class ShapedChargeTest {
                 });
     }
 
+    /** The jet ends on the crust under Company rock, the breach crust or the grained one, and opens neither (#1022). */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aShapedChargeStopsAtTheCrustUnderTheRockAndOpensNeither(GameTestHelper helper) {
+        int x = 4400;
+        scene(
+                helper,
+                x,
+                level -> {
+                    rock(level, x - 1, -1, 2);
+                    level.setBlock(cell(x - 1, -3, -1), LayerBlocks.BREACH_CRUST.defaultBlockState(), 2);
+                    rock(level, x, -1, 2);
+                    level.setBlock(cell(x, -3, -1), LayerBlocks.GRAINED_CRUST.defaultBlockState(), 2);
+                },
+                pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()),
+                (helper2, level, pod, hull) -> {
+                    for (int column = x - 1; column <= x; column++) {
+                        for (int dy = -1; dy >= -2; dy--) {
+                            expectAir(helper2, level, cell(column, dy, -1), "the rock over the crust");
+                        }
+                    }
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x - 1, -3, -1), LayerBlocks.BREACH_CRUST, "breach crust under rock");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x, -3, -1), LayerBlocks.GRAINED_CRUST, "grained crust under rock");
+                });
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
     public void aShapedChargeClearsNoMoreThanItsDepthAndNoRockButCompanyRock(GameTestHelper helper) {
         int x = 4080;
@@ -255,7 +285,7 @@ public class ShapedChargeTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 700)
     public void aShapedChargeIsRefusedAndKeptWhereABlastingChargeIsAndWhenTheRunEndsOnLava(GameTestHelper helper) {
         int x = 4272;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         MockPlayer pilot = MockPlayers.join(helper, "shaped-refused");
@@ -336,18 +366,19 @@ public class ShapedChargeTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aShapedChargeIsRefusedWhenOnlyTheFarColumnOfTheFootprintEndsOnLava(GameTestHelper helper) {
         int x = 4336;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         rock(level, x - 1, -1, 3); // a run that ends on stone
         rock(level, x, 0, 2); // the last column of the footprint: its run ends on lava
-        level.setBlock(cell(x, -3, 0), Blocks.LAVA.defaultBlockState(), 2);
         MockPlayer pilot = MockPlayers.join(helper, "shaped-far-lava");
         pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
         pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Poured once the chunk ticks (#1089).
+            level.setBlock(cell(x, -3, 0), Blocks.LAVA.defaultBlockState(), 2);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
@@ -390,20 +421,5 @@ public class ShapedChargeTest {
         }
         pilot.player().getInventory().clearContent();
         return Component.translatable("message.deepcharter.repair." + key);
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
-        return level;
     }
 }

@@ -20,8 +20,12 @@ public final class ColonyKit {
     public static final Block GRATING =
             ColonyBlocks.register("grating", SoundType.METAL, properties -> new Block(properties.noOcclusion()));
 
-    public static final Block WINDOW_RIBBON_LIT = window("window_ribbon_lit", 10);
-    public static final Block WINDOW_RIBBON_DARK = window("window_ribbon_dark", 0);
+    /** A real window: clear panes in a frame, so the view and the light of the room behind it come through. */
+    public static final Block WINDOW_GLASS = ColonyBlocks.register(
+            "window_glass",
+            SoundType.GLASS,
+            properties -> new KitFacingBlock(properties.noOcclusion(), Block.box(0, 0, 0, 16, 16, 16)));
+
     public static final Block FURNACE_HATCH = window("furnace_hatch", 9);
     public static final Block GAUGE_PANEL = window("gauge_panel", 3);
 
@@ -38,8 +42,15 @@ public final class ColonyKit {
             "mine_track",
             SoundType.METAL,
             properties -> new KitFacingBlock(properties.noOcclusion().noCollision(), Block.box(0, 0, 0, 16, 3, 16)));
-    /** A car on its own length of track, so it takes a track block's place. */
-    public static final Block ORE_CAR = facing("ore_car", SoundType.METAL, 0, Block.box(1, 0, 0, 15, 16, 16));
+    /** A car on its own length of track, so it takes a track block's place. Its tins are a one-time find ({@link OreCarBlock}). */
+    public static final Block ORE_CAR = ColonyBlocks.register(
+            "ore_car",
+            SoundType.METAL,
+            properties -> new OreCarBlock(properties.noOcclusion(), Block.box(1, 0, 0, 15, 16, 16)));
+
+    /** The Lamp and Pick's ration dispenser: a ration on every use ({@link CanteenBlock}). Gives no light. */
+    public static final Block CANTEEN = ColonyBlocks.register(
+            "canteen", SoundType.METAL, properties -> new CanteenBlock(properties, Block.box(0, 0, 0, 16, 16, 16)));
 
     public static final Block STEEL_BEAM = pillar("steel_beam", 12);
     public static final Block LATTICE_GIRDER = pillar("lattice_girder", 16);

@@ -40,7 +40,7 @@ Rules for all areas:
 
 - **Decision:** regolith plains, craters and terraced mesas, from our own generator. No living flora or fauna, no water.
 - **Living things:** none, except the bootstrap's gatherable fungal stalks (section 11), the same prop as the "dry white stalks" below.
-- **Limits (ADR 0029):** about one material-rule condition per block, no sea and no aquifers, and every feature is measured against the 1.15x per-column bar.
+- **Limits (ADR 0029):** about one material-rule condition per block, no sea and no aquifers, and every feature is measured against the 1.15x bar, which holds each band to one layer's CPU per filled row ([ADR 0086](../adr/0086-each-campaign-band-is-held-to-one-layers-cost-per-row-and-the-whole-worlds-ratio-is-only-tracked.md)).
 - **Material, palette, silhouette:** iron-oxide reds and ochres, dust beige, black basalt outcrops. Low contrast, so the land stays behind everything else. Long flat horizons broken by mesas and crater rims. Dead props only (survey stakes, dry white stalks, a fallen mast), each one measured.
 - **Tools:** vanilla worldgen JSON with density functions (`distance_to_point` for craters, `floor` and `round` for terraces) and weighted block-model variants (tooling-options "Surface").
 - **Skin and data:** `data/minecraft/dimension/overworld.json`, `data/deepcharter/worldgen/**`, regolith blocks in `assets/deepcharter/{blockstates,models,textures}/block/`. New block ids need one registration line each.
@@ -81,6 +81,23 @@ Rules for all areas:
 - **Skin and data:** `data/deepcharter/worldgen/biome/*.json`, `assets/deepcharter/post_effect/*.json`, `shaders/post/*.fsh`.
 - **Concept round 1 (#241):** three looks for the rock, Company Rock, lava and crust, for you to pick from: [layer-concepts.md](layer-concepts.md). The user's answer: Strata for layer 1, Fractured for layer 2, Columnar for layer 3. **Concept round 2 (#447):** the texture of each layer's rock, three options to pick from: [layer-concepts-2.md](layer-concepts-2.md).
 - **Not chosen:** pure black everywhere (layers lose their identity). The anatomy palette (the lore's hidden reading) stays a texture detail at most.
+- **Biome-only limits (#744):** the layer's fog, ambient colour, sky light factor, music and bed rules live in the zone biomes, so one dimension type can serve every band of the campaign world ([ADR 0059](../adr/0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md), with the cutover checklist). A biome cannot set `ambient_light`, `cardinal_light` or `has_skylight`. Measured by `LayerAtmosphereClientTest` (luminance 0 to 255 at 854 x 480; `campaign_sample` is the campaign type: skylight, default cardinal light, no ambient light, the sky timeline; the biome is a layer 1 zone biome). #744 read a test type without the timeline: floor 19.8 (1.05x), surface-biome shaft 102.8:
+
+  | Scene | Today's layer | campaign_sample (#761) |
+  |---|---|---|
+  | Lit room wall (light block 8) | 15.0 | 15.3 (1.02x) |
+  | Lit room floor | 18.8 | 21.4 (1.14x) |
+  | Lit room ceiling | 24.9 | 14.0 (0.56x) |
+  | Unlit wall | 9.7 | 9.9 |
+  | Bottom of a 21-block shaft under open sky | not possible | 10.5 at dusk and at night; a sealed room of the same shape in the campaign type reads 9.3 (a surface biome: 29.0 at dusk, 10.2 at night) |
+
+  Every scene is cut in layer 1's packed shale (#798; the shaft was vanilla stone until then: 21.8, and 64.2 and 24.0 for the surface biome). The first four rows read the 80 x 80 pixels in the middle of the screen and did not change. The #798 stills (`CampaignAtmosphereScenario`) build their own rooms and read within 0.5 of these rows; they show today's sealed room at 10.5.
+
+  - **Cardinal light.** The default has down 0.5 and up 1.0; the nether value has 0.9 for both. This explains the ceiling (0.56x). It predicts 1.11x for the floor; 1.14x was measured in `campaign_sample` (1.05x in #744's test type).
+  - **Ambient light** has no visible effect on blocks. It feeds `Lightmap.getBrightness` (entity brightness, the HUD vignette) and the pathfinding light value: 0.06 at light 0 in layer 1 and 0.02 in layer 2, against 0. Read on the client by `LayerAtmosphereClientTest` (#761): `Lightmap.getBrightness` at light 0, layer 1 against the campaign type (a function read, not a rendered entity).
+  - **Sky light in a shaft.** The server keeps sky light 15 in an open shaft (0 in a sealed room). The biome's factor of 0 hides it from the lightmap, so the picture is right. Spawn light checks, plant growth, undead burning and daylight sensors read the raw value: not measured.
+  - **A biome edge is soft.** The camera blends biomes. Sky light factor at a layer biome's edge, by blocks below the edge (negative: above it): -8: 0.94, -4: 0.70, 0: 0.32, 2: 0.20, 4: 0.07, 6: 0.03, 8: 0.002, 12 and more: 0. The surface floor stays open, so the top 8 or so blocks of layer 1 are a mix. A biome fill in a test that is shorter than the blend lets the next biome in.
+  - **The sky timeline overrides the biome, unless the biome layer of [ADR 0062](../adr/0062-the-campaign-world-applies-the-biome-layer-again-after-the-timelines-and-the-weather.md) is applied after it.** Measured in #744, in the surface's own type, a layer 1 biome reads factor 0.62 and fog 20 to 150 at sky time 0 (its own: 0 and 8 to 64), and the same shaft renders at 67.9 against the sealed room's 21.8.
 
 ## 7. UI and HUD
 
@@ -109,7 +126,7 @@ Rules for all areas:
 - **Tools:** numpy and scipy, ffmpeg filter graphs, Bfxr2 or jsfxr for blips. This Mac's ffmpeg cannot write mono Vorbis yet, so positional sounds fall back to stereo.
 - **Skin and data:** `assets/deepcharter/sounds.json` plus OGG files, `ambient_sounds` in biome data, recipes in `tools/`.
 - **Not chosen:** diegetic sound only (long silences, less range).
-- **Built in [#249](https://github.com/pkeppeler/deepcharter/issues/249)** ([ADR 0057](../adr/0057-every-shipped-sound-is-built-from-a-committed-recipe-and-a-layers-drone-lives-in-its-biome-data.md)): the surface, layer 1 and layer 2 each have a drone bed in their biomes' `ambient_sounds` (the surface: wind and dust hiss, a far metallic groan; layer 1: a sub-bass drone with one pair of tones beating every ten seconds, creaks, rare knocks; layer 2: lower, a beat every twenty-four seconds, a thin ringing, heavier knocks, more of them in the deeper zones), and no vanilla music plays on the surface or in a layer. The Lamp Hymn is a seven-note reed motif of our own, played to one player on founding or joining a charter, going down a breach and coming up into the colony: slower (0.8, 1.2 and 1.75 seconds a beat) and more worn (pitch drift, tape wobble, clipping, fewer bits) with each layer. The pod engines and rotor, the drill, the terminal's power-on and hum and the UI clicks and chirps are ours too. Every sound is stereo, because this Mac's encoder writes no mono Vorbis. Every OGG is made by a recipe in `tools/sounds/`, which a test checks.
+- **Built in [#249](https://github.com/pkeppeler/deepcharter/issues/249)** ([ADR 0057](../adr/0057-every-shipped-sound-is-built-from-a-committed-recipe-and-a-layers-drone-lives-in-its-biome-data.md)): the surface, layer 1 and layer 2 each have a drone bed in their biomes' `ambient_sounds` (the surface: wind and dust hiss, a far metallic groan; layer 1: a sub-bass drone with one pair of tones beating every ten seconds, creaks, rare knocks; layer 2: lower, a beat every twenty-four seconds, a thin ringing, heavier knocks, more of them in the deeper zones), and no vanilla music plays on the surface or in a layer. The Lamp Hymn is a seven-note reed motif of our own, played to one player on founding or joining a charter, going down a breach and coming up into the colony: slower (0.8, 1.2 and 1.75 seconds a beat) and more worn (pitch drift, tape wobble, clipping, fewer bits) with each layer. Its first three notes, on the colony reed, mark a finished handbook chapter (#1267). The pod engines and rotor, the drill, the terminal's power-on, its rising chord as a repaired machine comes online (#1267) and its hum, and the UI clicks and chirps are ours too. Every sound is stereo, because this Mac's encoder writes no mono Vorbis. Every OGG is made by a recipe in `tools/sounds/`, which a test checks.
 
 ## 10. The lampless figure
 
@@ -121,7 +138,7 @@ Rules for all areas:
 
 ## 11. Bootstrap
 
-- **Decision (replaces SPEC section 4's "start like normal Minecraft"):** colony salvage plus fungal "wood". Salvage crates and wrecked prefabs supply wood, cloth and scrap. Crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. Fungal stalks and scattered salvage crates are surface features, measured against ADR 0029's 1.15× bar.
+- **Decision (replaces SPEC section 4's "start like normal Minecraft"):** colony salvage plus fungal "wood". Salvage crates and wrecked prefabs supply wood, cloth and scrap. Crates are littered around the colony within a set block radius, not only at it. Hardy alien fungus stalks in craters and caves are gatherable stand-ins for trees. Fungal stalks and scattered salvage crates are surface features, measured against the 1.15× bar (ADR 0029, per band since [ADR 0086](../adr/0086-each-campaign-band-is-held-to-one-layers-cost-per-row-and-the-whole-worlds-ratio-is-only-tracked.md)).
 - **Material, palette, silhouette:** crates stencilled with the Company mark; pale, hardy stalks that look like they should not grow here.
 - **Tools:** loot tables, worldgen features, handbook chapter data.
 - **Skin and data:** `data/deepcharter/loot_table/**`, `data/deepcharter/worldgen/**`, `data/deepcharter/handbook/**` (chapter 1 directives change).
@@ -156,7 +173,7 @@ SPEC sections 2, 3, 4 and 15 changed in PR #234, and [ADR 0030](../adr/0030-art-
 
 - **Section 3, "vanilla-style frontier":** replaced by our own bare regolith surface.
 - **Section 3, trees and animals:** removed. The surface has no trees and no animals.
-- **Section 3, "vanilla night monsters":** removed from the SPEC. The creatures session replaces them; until then the surface has none.
+- **Section 3, "vanilla night monsters":** removed by the creatures session (#13, 2026-11-21): the surface has no monsters ([CREATURES.md](../CREATURES.md#surface)).
 - **Section 3, "vanilla ores near the surface for the bootstrap":** removed. Early ore access (iron and the like) was decided with the bootstrap in [#245](https://github.com/pkeppeler/deepcharter/issues/245): the surface has none, and salvage supplies the metal ([ADR 0047](../adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)).
 - **Section 4, "start like normal Minecraft":** replaced by salvage plus fungal wood.
 - **Section 15, "consistent with vanilla (16×)":** now 16× with GTNH-style layers.

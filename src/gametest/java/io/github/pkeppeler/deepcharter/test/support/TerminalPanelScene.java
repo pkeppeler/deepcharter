@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import java.util.List;
@@ -60,13 +61,22 @@ public final class TerminalPanelScene {
         BlockPos upgrade = here.relative(Direction.NORTH, 2);
         BlockPos repair = here.relative(Direction.SOUTH, 2);
         BlockPos pump = here.offset(3, 0, 3);
-        server.overworld().setBlock(hangar, HangarTerminal.TYPE.block().defaultBlockState(), 3);
-        server.overworld()
-                .setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
-        server.overworld()
-                .setBlock(upgrade, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
-        server.overworld().setBlock(repair, TerminalTypes.REPAIR_STATION.block().defaultBlockState(), 3);
-        server.overworld().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(), hangar, HangarTerminal.TYPE.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                processor,
+                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                3);
+        TerminalBlock.place(
+                server.overworld(),
+                upgrade,
+                TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
+                3);
+        TerminalBlock.place(
+                server.overworld(), repair, TerminalTypes.REPAIR_STATION.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(), pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
         PodEntity pod = TestEntities.create(PodRegistry.POD, server.overworld());
         pod.setPos(here.getX() + 0.5, here.getY(), here.getZ() + 5.5);
         server.overworld().addFreshEntity(pod);
@@ -86,17 +96,24 @@ public final class TerminalPanelScene {
             require(Charters.found(server, UUID.randomUUID(), name).isEmpty(), "founding " + name + " should succeed");
         }
         BlockPos terminal = player.blockPosition().relative(Direction.EAST, 2);
-        server.overworld().setBlock(terminal, ContractTerminal.TYPE.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(), terminal, ContractTerminal.TYPE.block().defaultBlockState(), 3);
         return terminal;
     }
 
-    /** In a world where the player is on a charter and nobody has repaired anything: an ore processor, which opens the generic terminal screen offline. Returns it. */
+    /**
+     * In a world where the player is on a charter and nobody has repaired anything: an ore processor, which opens its
+     * repair screen. Returns it.
+     */
     public static BlockPos setUpOffline(MinecraftServer server) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
         require(Charters.found(server, player.getUUID(), "Riggs and Sons").isEmpty(), "founding should succeed");
         BlockPos terminal = player.blockPosition().relative(Direction.EAST, 2);
-        server.overworld()
-                .setBlock(terminal, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                terminal,
+                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                3);
         return terminal;
     }
 }

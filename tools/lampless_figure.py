@@ -2,8 +2,8 @@
 """Writes the lampless figure (#250): the Reacher, a counterfeit miner, with its texture and its animations.
 
 Usage:
-  python3 -I tools/lampless_figure.py           write the model, texture and animations into src/main/resources
-  python3 -I tools/lampless_figure.py --check   exit 1 if a written file differs from what this script makes
+  tools/py tools/lampless_figure.py           write the model, texture and animations into src/main/resources
+  tools/py tools/lampless_figure.py --check   exit 1 if a written file differs from what this script makes
 
 Art direction section 10: almost a miner, but too tall and thin, with joints in the wrong places; matte black, even in the
 lamp beam; an empty lamp bracket on the helmet; no face; edges slightly smeared; wrong, not gory. The Reacher's wrongness is in
@@ -663,7 +663,7 @@ def main(argv=None):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
     if stale:
-        print("stale, run python3 -I tools/lampless_figure.py: " + ", ".join(str(p) for p in stale), file=sys.stderr)
+        print("stale, run tools/py tools/lampless_figure.py: " + ", ".join(str(p) for p in stale), file=sys.stderr)
         return 1
     return 0
 

@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.test.support.Inputs;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.UUID;
@@ -63,8 +64,8 @@ public class TowLineGroundScenario extends EvidenceScenario {
 
     private void drive(ClientGameTestContext context, TwoPlayerServer two, UUID tower, float yaw, int ticks) {
         two.server().runOnServer(server -> {
-            two.mock().player().setYRot(yaw);
-            two.mock().setInput(TowStage.FORWARD);
+            TowStage.turn(two, yaw);
+            two.mock().setInput(Inputs.FORWARD);
         });
         for (int done = 0; done < ticks; done += TowStage.TICKS_PER_FRAME) {
             context.waitTicks(TowStage.TICKS_PER_FRAME);

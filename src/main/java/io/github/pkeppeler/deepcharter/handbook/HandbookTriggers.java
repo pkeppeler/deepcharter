@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.hangar.HangarEvents;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -54,6 +55,8 @@ import net.minecraft.world.level.Level;
  *   <li>A scanner fitted from the crafted unit ({@link UpgradeEvents#FITTED}) or bought ({@link UpgradeEvents#BOUGHT}), a hull repaired at the repair station, the first breach crossed
  *       ({@link BreachEvents#CROSSED}) and a Prospector restored ({@link HangarEvents#RESTORED}) complete the directive of the
  *       player who did it.</li>
+ *   <li>A pod with a pilot whose bay holds ore (drilled in, as the player's pack is too heavy to haul it) is polled on the same ticks,
+ *       until the pilot's charter has hauled ore (#853).</li>
  *   <li>A pod with a pilot who has a working scanner is polled on the same ticks, until its charter has found ore: the scanner's own
  *       slice, read from the chunks that are loaded, holds an ore. A towed Prospector is polled the same way: once it is in the
  *       colony, its tower's players tow it home.</li>
@@ -75,6 +78,7 @@ public final class HandbookTriggers {
     private static final Identifier FLY_MOLE = directive("fuel_is_life/fly_mole");
     private static final Identifier DRILL_DOWN = directive("fuel_is_life/drill_down");
     private static final Identifier RETURN_TO_COLONY = directive("fuel_is_life/return_to_colony");
+    private static final Identifier HAUL_ORE = directive("every_sale_counts/haul_ore");
     private static final Identifier SELL_ORE = directive("every_sale_counts/sell_ore");
     private static final Identifier BUY_COMPONENT = directive("every_sale_counts/buy_component");
     private static final Identifier INSTALL_COMPONENT = directive("every_sale_counts/install_component");
@@ -236,8 +240,8 @@ public final class HandbookTriggers {
         if (pod.chassis().equals(Chassis.PROSPECTOR) && PodTowing.isTowed(pod)) {
             towedProspector(pod);
         }
-        // The scan reads thousands of blocks: it runs once for the pod, and only when a rider's charter still lacks the
-        // directive.
+        // The scan reads thousands of blocks: it runs once for the pod, and only when a rider's charter still lacks
+        // the directive.
         Supplier<Boolean> seesOre = Suppliers.memoize(() -> ScanSlice.hasOre(new LoadedBlocks(pod.level()), pod));
         for (Entity passenger : pod.getPassengers()) {
             if (passenger instanceof ServerPlayer player) {
@@ -251,6 +255,9 @@ public final class HandbookTriggers {
         Set<Identifier> done = HandbookProgress.completedFor(server, player.getUUID());
         if (!done.contains(FIND_ORE) && seesOre.get()) {
             Directives.fire(player, FIND_ORE);
+        }
+        if (!done.contains(HAUL_ORE) && !pod.cargo().entries().isEmpty()) {
+            Directives.fire(player, HAUL_ORE);
         }
         if (pod.chassis().equals(Chassis.MOLE)) {
             pilotedMole(pod, player, done);
@@ -295,10 +302,23 @@ public final class HandbookTriggers {
         }
     }
 
-    /** Below the colony's ground by the tuned depth, or in a layer under the overworld, which is deeper still. */
+    /**
+     * Below the colony's ground by the tuned depth, or in a layer, which is deeper still: the layer is the band at the pod's Y, so a
+     * pod in a layer band of the campaign world counts, and one in the surface band does not until it is that far down. A level outside
+     * the chain (the Nether, the End) counts at any height.
+     */
     private static boolean deepEnough(PodEntity pod, ColonySite.Placed colony) {
-        return pod.level().dimension() != Level.OVERWORLD
+        Level level = pod.level();
+        if (LayerChain.layerAt(level, pod.getBlockY()).isPresent()) {
+            return true;
+        }
+        return !isOverworldBand(level, pod.getBlockY())
                 || pod.getY() <= colony.groundY() - HandbookTuning.DEFAULT.drillDownBlocks();
+    }
+
+    /** Whether {@code y} in {@code level} is in the surface band of the chain, which the colony's ground is measured in. */
+    private static boolean isOverworldBand(Level level, int y) {
+        return LayerChain.bandAt(level, y).filter(band -> !band.isLayer()).isPresent();
     }
 
     /** On the colony's pad: inside its square, from just under the ground to the height it is cleared to. */

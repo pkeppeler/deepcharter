@@ -9,13 +9,14 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+py=$root/tools/py
 hook="$root/.claude/hooks/no-pattern-kill.sh"
 failures=0
 
 # run <command>: print the hook's exit code, a newline, then its stderr.
 run() {
   local json err code
-  json=$(python3 -I -c 'import json, sys; print(json.dumps({"tool_name": "Bash", "tool_input": {"command": sys.argv[1]}}))' "$1")
+  json=$("$py" -c 'import json, sys; print(json.dumps({"tool_name": "Bash", "tool_input": {"command": sys.argv[1]}}))' "$1")
   code=0
   err=$(printf '%s' "$json" | bash "$hook" 2>&1 >/dev/null) || code=$?
   printf '%s\n%s' "$code" "$err"
@@ -42,7 +43,7 @@ allowed 'kill -9 ${server_pid}'
 allowed 'sleep 100 & pid=$!; kill $pid'
 allowed 'kill -l'
 allowed 'grep -n pkill file'
-allowed 'gh issue view 396'
+allowed 'gh api repos/pkeppeler/deepcharter/issues/396'
 allowed 'git commit -m "stop using pkill and killall; kill $(pgrep x) is refused"'
 allowed "echo 'pkill -f x'"
 allowed 'ls killall.txt'
@@ -124,6 +125,18 @@ done
 # The refusal names the Gradle alternative.
 out=$(run 'pkill java')
 if [[ $out == *'./gradlew --stop'* ]]; then echo "ok   message mentions gradlew --stop"; else echo "FAIL message lacks gradlew --stop: $out"; failures=$((failures + 1)); fi
+
+# Without uv the guard fails closed: exit 2 and a message, so a pkill is not let through by a broken guard.
+nouv=$(mktemp -d)
+trap 'rm -rf "$nouv"' EXIT
+code=0
+err=$(printf '%s' '{"tool_name": "Bash", "tool_input": {"command": "pkill java"}}' | PATH="$nouv" "$(command -v bash)" "$hook" 2>&1 >/dev/null) || code=$?
+if [[ $code == 2 && $err == *'no-pattern-kill: uv missing, refusing Bash calls'* && $err == *'brew install uv'* ]]; then
+  echo "ok   no uv: refuses with exit 2 and the install hint"
+else
+  echo "FAIL no uv -> exit $code: $err"
+  failures=$((failures + 1))
+fi
 
 [[ $failures == 0 ]] || { echo "$failures failure(s)"; exit 1; }
 echo "all passed"

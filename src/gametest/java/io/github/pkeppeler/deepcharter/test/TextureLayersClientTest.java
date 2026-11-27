@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
@@ -68,7 +69,9 @@ public class TextureLayersClientTest implements FabricClientGameTest {
             BlockPos floor = singleplayer
                     .getServer()
                     .computeOnServer(server -> player(server).blockPosition().above(30));
-            BlockPos terminal = floor.offset(0, 2, DISTANCE);
+            // The cabinet's block: its monitor, and the screen the test reads, is the block above, at the camera's
+            // eye level.
+            BlockPos terminal = floor.offset(0, 1, DISTANCE);
             singleplayer.getServer().runOnServer(server -> build(player(server).level(), floor));
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 
@@ -117,7 +120,8 @@ public class TextureLayersClientTest implements FabricClientGameTest {
         ServerPlayer player = player(level.getServer());
         player.getAbilities().flying = true;
         player.onUpdateAbilities();
-        // The eye is level with the middle of the terminal two blocks up: yaw 0 faces south (+z).
+        // The eye is level with the middle of the terminal's monitor, its upper half two blocks up: yaw 0 faces
+        // south (+z).
         player.teleportTo(
                 level,
                 floor.getX() + 0.5,
@@ -129,11 +133,13 @@ public class TextureLayersClientTest implements FabricClientGameTest {
                 true);
     }
 
-    /** Puts {@code state} at {@code pos}, facing the camera, and waits until the client has it, its light has settled and the camera is still. */
+    /** Puts {@code state}, both halves of the terminal, at {@code pos} and over it, facing the camera, and waits until the client has it, its light has settled and the camera is still. */
     private static void place(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos pos, BlockState state) {
         BlockState facing = state.setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH);
-        singleplayer.getServer().runOnServer(server -> player(server).level().setBlock(pos, facing, Block.UPDATE_ALL));
+        singleplayer
+                .getServer()
+                .runOnServer(server -> TerminalBlock.place(player(server).level(), pos, facing, Block.UPDATE_ALL));
         boolean active = singleplayer
                 .getServer()
                 .computeOnServer(
@@ -144,6 +150,9 @@ public class TextureLayersClientTest implements FabricClientGameTest {
                 client -> {
                     BlockState shown = ClientLight.clientLevel(client).getBlockState(pos);
                     return shown.is(facing.getBlock())
+                            && ClientLight.clientLevel(client)
+                                    .getBlockState(pos.above())
+                                    .is(facing.getBlock())
                             && shown.getValue(TextureProperties.ACTIVE) == active
                             && Math.abs(Mth.wrapDegrees(
                                             ClientSession.player(client).getYRot()))

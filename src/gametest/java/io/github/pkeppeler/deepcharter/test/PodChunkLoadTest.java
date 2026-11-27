@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -11,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -25,7 +29,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -39,7 +42,7 @@ import net.minecraft.world.phys.Vec3;
  * its own site, far from every other test's blocks, in the overworld.
  */
 public class PodChunkLoadTest {
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     /** No neighbour updates: a block set at a chunk edge with them loads the chunk next door, which would load it before the test starts. */
     private static final int BUILD_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
@@ -62,8 +65,6 @@ public class PodChunkLoadTest {
     private static final int DRILL_TICKS = 300;
     /** Pod ticks for the drill to bore through a slab of stone and out the gas pocket in it. */
     private static final int GAS_DRILL_TICKS = 400;
-
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     /** A chunk of the overworld, with a spot at its east edge where a pod's box and bore cross into the chunk next door. */
     private record Site(int slot) {
@@ -131,9 +132,11 @@ public class PodChunkLoadTest {
                 () -> {
                     BlockPos edgeCell = new BlockPos(site.minX() + 15, FLOOR_Y, site.minZ() + 9);
                     if (!level.getBlockState(edgeCell).is(Blocks.STONE)) {
-                        throw helper.assertionException("the drill should wait to bore the edge cell "
-                                + edgeCell.toShortString() + " until the chunk next to it is loaded, it left "
-                                + level.getBlockState(edgeCell));
+                        throw failure(
+                                helper,
+                                "the drill should wait to bore the edge cell %s until the chunk next to it is loaded, it left %s",
+                                edgeCell.toShortString(),
+                                level.getBlockState(edgeCell));
                     }
                 });
     }
@@ -161,16 +164,22 @@ public class PodChunkLoadTest {
                 },
                 () -> {
                     if (!level.getBlockState(pocket).isAir()) {
-                        throw helper.assertionException("the pod should have drilled out the gas pocket, it left "
-                                + level.getBlockState(pocket));
+                        throw failure(
+                                helper,
+                                "the pod should have drilled out the gas pocket, it left %s",
+                                level.getBlockState(pocket));
                     }
                     if (!level.getBlockState(pocket.east()).is(Blocks.STONE)) {
-                        throw helper.assertionException("the blast should leave the rock in the edge column, it left "
-                                + level.getBlockState(pocket.east()));
+                        throw failure(
+                                helper,
+                                "the blast should leave the rock in the edge column, it left %s",
+                                level.getBlockState(pocket.east()));
                     }
                     if (!level.getBlockState(pocket.below()).isAir()) {
-                        throw helper.assertionException("the blast should clear the rock under the pocket, it left "
-                                + level.getBlockState(pocket.below()));
+                        throw failure(
+                                helper,
+                                "the blast should clear the rock under the pocket, it left %s",
+                                level.getBlockState(pocket.below()));
                     }
                 });
     }
@@ -187,7 +196,7 @@ public class PodChunkLoadTest {
         PodEntity pod = litPod(helper, level, Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(2, 1, 2))));
         try {
             if (!rider.player().startRiding(pod, true, false)) {
-                throw helper.assertionException("the rider could not mount the pod");
+                throw failure(helper, "the rider could not mount the pod");
             }
             pod.setPos(site.edge());
             expectUnloaded(helper, level, site, true, "before the hook");
@@ -211,8 +220,8 @@ public class PodChunkLoadTest {
     private static void tickAtTheEdge(
             GameTestHelper helper, ServerLevel level, Site site, int ticks, Supplier<PodEntity> spawn, Runnable check) {
         ChunkPos home = site.chunk();
-        // force-ok: a radius-0 ticket keeps the neighbours unloaded; FarChunks.force would load them; removed in the
-        // finally
+        // force-ok: a radius-0 ticket keeps the neighbours unloaded; FarChunks.force would load them; removed in
+        // the finally
         level.getChunkSource().addTicketWithRadius(TicketType.FORCED, home, 0);
         PodEntity[] pod = {null};
         int[] ticked = {0};
@@ -255,21 +264,29 @@ public class PodChunkLoadTest {
     /** Sleeps a moment so the generation threads get the time, and fails once the wall-clock budget for the chunk has run out. */
     private static void waitForTheChunk(GameTestHelper helper, Site site, long deadline) {
         if (System.nanoTime() - deadline > 0) {
-            throw helper.assertionException("chunk " + site.chunk() + " was still unloaded " + LOAD_BUDGET_SECONDS
-                    + " s after its forced ticket was added, and the test was waiting for it to load");
+            throw failure(
+                    helper,
+                    "chunk %s was still unloaded %s s after its forced ticket was added, and the test was waiting for it to load",
+                    site.chunk(),
+                    LOAD_BUDGET_SECONDS);
         }
         try {
             Thread.sleep(LOAD_POLL_MILLIS);
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            throw helper.assertionException("interrupted while waiting for chunk " + site.chunk() + " to load");
+            throw failure(helper, "interrupted while waiting for chunk %s to load", site.chunk());
         }
     }
 
     /** Discards every pod standing in the site's chunk, the one under test and any that tow or ride it. */
     private static void discardPods(ServerLevel level, Site site) {
         AABB column = new AABB(
-                site.minX() - 2, level.getMinY(), site.minZ() - 2, site.minX() + 18, level.getMaxY(), site.minZ() + 18);
+                site.minX() - 2,
+                TestLayers.band(level, TestLayers.SURFACE).minY(),
+                site.minZ() - 2,
+                site.minX() + 18,
+                TestLayers.band(level, TestLayers.SURFACE).maxY(),
+                site.minZ() + 18);
         for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, column)) {
             pod.discard();
         }
@@ -291,7 +308,7 @@ public class PodChunkLoadTest {
     private static PodEntity sprintingPod(GameTestHelper helper, ServerLevel level, MockPlayer pilot, Vec3 at) {
         PodEntity pod = litPod(helper, level, at);
         if (!pilot.player().startRiding(pod, true, false)) {
-            throw helper.assertionException("the pilot could not mount the pod");
+            throw failure(helper, "the pilot could not mount the pod");
         }
         pilot.setInput(SPRINT);
         return pod;
@@ -304,7 +321,7 @@ public class PodChunkLoadTest {
         Optional<?> refusal =
                 Charters.found(server, founder, "Chunk" + founder.toString().substring(0, 8));
         if (refusal.isPresent()) {
-            throw helper.assertionException("founding a charter was refused: " + refusal.get());
+            throw failure(helper, "founding a charter was refused: %s", refusal.get());
         }
         CharterId charter =
                 Charters.charterOfOrThrow(server, founder).orElseThrow().id();
@@ -331,7 +348,7 @@ public class PodChunkLoadTest {
             }
         }
         if (!loaded.isEmpty()) {
-            throw helper.assertionException("chunks " + loaded + " were loaded " + when);
+            throw failure(helper, "chunks %s were loaded %s", loaded, when);
         }
     }
 }

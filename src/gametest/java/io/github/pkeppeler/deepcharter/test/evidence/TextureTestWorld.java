@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -21,6 +20,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
@@ -185,7 +186,7 @@ final class TextureTestWorld {
      */
     void buildCavern() {
         serverDo(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel level = TestLayers.level(server, 1);
             buildWall(level, ROOM, HALF_WIDTH, WALL_BLOCKS);
             level.setBlock(ROOM.offset(0, 2, 0), lamp(LAMP), Block.UPDATE_ALL);
         });
@@ -194,7 +195,7 @@ final class TextureTestWorld {
     /** A sealed room like the cavern, whose south wall holds the ores in a checkerboard of plain rock, lit two blocks out. */
     void buildSeamWall() {
         serverDo(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel level = TestLayers.level(server, 1);
             buildWall(level, SEAM_ROOM, 4, SEAM_BLOCKS);
             level.setBlock(SEAM_ROOM.offset(0, 1, WALL - 2), lamp(LAMP), Block.UPDATE_ALL);
         });
@@ -206,7 +207,7 @@ final class TextureTestWorld {
      */
     void buildReferenceWall() {
         serverDo(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel level = TestLayers.level(server, 1);
             Map<BlockPos, Block> blocks = new HashMap<>();
             OreType[] ores = OreType.values();
             for (int column = 0; column < ores.length; column++) {
@@ -230,7 +231,7 @@ final class TextureTestWorld {
                 room.offset(-halfWidth, 0, -WALL - 5),
                 room.offset(halfWidth, HEIGHT - 1, WALL - 1),
                 Blocks.AIR.defaultBlockState());
-        Block rock = LayerBlocks.groundOf(level);
+        Block rock = LayerBlocks.groundOf(level, room.getY());
         for (int dx = -halfWidth - 1; dx <= halfWidth + 1; dx++) {
             for (int dy = -1; dy <= HEIGHT; dy++) {
                 level.setBlock(room.offset(dx, dy, WALL), rock.defaultBlockState(), Block.UPDATE_ALL);
@@ -248,7 +249,7 @@ final class TextureTestWorld {
      */
     void buildTerminalRoom() {
         serverDo(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel level = TestLayers.level(server, 1);
             loadChunks(level, TERMINAL_ROOM, 1);
             RoomCarver.carve(
                     level,
@@ -289,7 +290,7 @@ final class TextureTestWorld {
     /** A 3 x 3 shaft bored straight down through the layer's own rock, with a lamp at its middle every four blocks. */
     void buildShaft() {
         serverDo(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel level = TestLayers.level(server, 1);
             loadChunks(level, SHAFT, 2);
             RoomCarver.carve(
                     level, SHAFT.offset(-1, -SHAFT_DEPTH, -1), SHAFT.offset(1, 0, 1), Blocks.AIR.defaultBlockState());
@@ -307,12 +308,10 @@ final class TextureTestWorld {
         view(1, wall.add(0.5, 0, -2), wall.add(0.5, 0, 0), 20);
         still(variant + "-cavern-wall-close");
         // The lamp out: only what glows of itself shows (D's glints).
-        serverDo(server -> ClientLight.serverLevel(server, LayerChain.dimension(1))
-                .setBlock(ROOM.offset(0, 2, 0), lamp(0), Block.UPDATE_ALL));
+        serverDo(server -> TestLayers.level(server, 1).setBlock(ROOM.offset(0, 2, 0), lamp(0), Block.UPDATE_ALL));
         view(1, wall.add(0, 0.1, -6), wall, 20);
         still(variant + "-cavern-wall-no-lamp");
-        serverDo(server -> ClientLight.serverLevel(server, LayerChain.dimension(1))
-                .setBlock(ROOM.offset(0, 2, 0), lamp(LAMP), Block.UPDATE_ALL));
+        serverDo(server -> TestLayers.level(server, 1).setBlock(ROOM.offset(0, 2, 0), lamp(LAMP), Block.UPDATE_ALL));
     }
 
     /** The wall of the bored shaft at mid distance: from just under its mouth, by its north wall, down at its south wall. */
@@ -451,20 +450,12 @@ final class TextureTestWorld {
         serverDo(server -> {
             ServerPlayer player = player(server);
             player.setNoGravity(true);
-            player.teleportTo(
-                    ClientLight.serverLevel(server, LayerChain.dimension(layer)),
-                    eye.x,
-                    eye.y - EYE,
-                    eye.z,
-                    Set.of(),
-                    yaw,
-                    pitch,
-                    true);
+            player.teleportTo(TestLayers.level(server, layer), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
         });
         ClientWait.until(
                 ctx,
                 "the camera at " + eye + " in layer " + layer,
-                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                client -> TestLayers.clientIsIn(client, layer)
                         && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                         && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - yaw)) < 0.01f
                         && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f);
@@ -541,5 +532,9 @@ final class TextureTestWorld {
 
     void serverDo(Consumer<MinecraftServer> action) {
         sp.getServer().runOnServer(action::accept);
+    }
+
+    TestServerContext server() {
+        return sp.getServer();
     }
 }

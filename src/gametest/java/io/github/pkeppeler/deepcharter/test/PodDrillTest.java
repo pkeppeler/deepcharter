@@ -1,10 +1,15 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_LEFT;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.RIGHT;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -18,7 +23,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -26,10 +31,10 @@ import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -37,7 +42,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Input;
@@ -45,7 +49,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for pod drilling, driven by a mock pilot's input in layer_1 (and layer_2, for the
@@ -62,31 +65,22 @@ public class PodDrillTest {
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + DRILL_MARGIN_TICKS;
     private static final int Z = 3000;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final float EAST = -90f;
-
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
+    /** The columns of the alignment tests, 64 apart; no other test stages from here. */
+    private static final int ALIGN_X = 9300;
 
     /**
      * A mock pilot, and the pod it sits in once the far chunk ticks entities. The pilot joins and moves there at
-     * once, which keeps the chunk loaded; {@link #pod} stays null until the chunk ticks, so a callback must check
-     * {@link #ready} before it reads the pod.
+     * once, which keeps the chunk loaded; {@link #pod} arrives when the chunk ticks, so a callback must check
+     * {@link Arrival#isPresent} before it reads the pod.
      */
     private static final class Rig {
         private final MockPlayer pilot;
-        private @Nullable PodEntity pod;
+        private final Arrival<PodEntity> pod = new Arrival<>("pod", "the far chunk ticks");
 
         private Rig(MockPlayer pilot) {
             this.pilot = pilot;
-        }
-
-        PodEntity pod() {
-            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
-        }
-
-        boolean ready() {
-            return pod != null;
         }
 
         /** Like the longer {@code await}, with nothing to do to the pod first. */
@@ -112,13 +106,15 @@ public class PodDrillTest {
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
+                // The pod faces where the test says; the pilot's own view does not steer it.
+                pod.setYRot(yaw);
                 level.addFreshEntity(pod);
                 if (!pilot.player().startRiding(pod)) {
                     throw failure(helper, "the pilot could not mount the pod");
                 }
                 prepare.accept(pod);
                 pilot.setInput(input);
-                rig.pod = pod;
+                rig.pod.set(pod);
             });
             return rig;
         }
@@ -127,23 +123,24 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aDownwardBoreIsExactlyTwoByTwoByN(GameTestHelper helper) {
         int x = 3000;
-        int floor = 60;
+        int floor = FLOOR;
         int n = 3;
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         // Off the block grid on purpose: the pod must centre itself, and bore the nearest 2 x 2.
         Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.8), 0f, "drill-bore", SPRINT);
         boolean[] released = {false};
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
+            PodEntity pod = rig.pod.get();
             if (!released[0] && count(level, x - 1, x, floor - n, floor - 1, Z, Z + 1, Blocks.AIR) == 4 * n) {
                 rig.pilot.releaseInput();
                 released[0] = true;
             }
             // Landed: the pod has sunk into the bore and rests on its floor.
-            if (released[0] && rig.pod().onGround() && rig.pod().getY() < floor - n + 0.1) {
+            if (released[0] && pod.onGround() && pod.getY() < floor - n + 0.1) {
                 // Bore x in {x-1, x}, z in {Z, Z+1}, y in {floor-n .. floor-1}: nothing else may have changed.
                 for (int bx = x - 4; bx <= x + 3; bx++) {
                     for (int bz = Z - 4; bz <= Z + 4; bz++) {
@@ -164,15 +161,187 @@ public class PodDrillTest {
                         }
                     }
                 }
-                if (Math.abs(rig.pod().getX() - x) > 0.01 || Math.abs(rig.pod().getZ() - (Z + 1)) > 0.01) {
+                if (Math.abs(pod.getX() - x) > 0.01 || Math.abs(pod.getZ() - (Z + 1)) > 0.01) {
                     throw failure(
                             helper,
                             "the pod should end centred in its bore at (%d, %d), it is at %s",
                             x,
                             Z + 1,
-                            rig.pod().position());
+                            pod.position());
                 }
-                rig.pod().discard();
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /** The pod faces 35 degrees off east at the wall: it turns to the grid before the bore, then bores straight. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSidewaysBoreTurnsThePodToTheGridFirst(GameTestHelper helper) {
+        int x = ALIGN_X;
+        int floor = FLOOR;
+        int height = Chassis.MOLE.boreHeight();
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        wall(level, x + 2, x + 5, Z, floor, floor + 10);
+        Rig rig = Rig.await(
+                helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST + 35f, "drill-turns-to-grid", FORWARD_LEFT);
+        boolean[] turning = {false};
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            // The pod slides along the wall while it turns, so the slab is wherever it ends: any two columns of the
+            // wall's face.
+            boolean bored =
+                    count(level, x + 2, x + 2, floor, floor + height - 1, Z - 3, Z + 3, Blocks.AIR) == 2 * height;
+            if (pod.drilling() && pod.getYRot() != EAST) {
+                turning[0] = true;
+                if (bored) {
+                    throw failure(helper, "the slab was bored while the pod was still turned to %s", pod.getYRot());
+                }
+            }
+            if (bored) {
+                if (pod.getYRot() != EAST) {
+                    throw failure(
+                            helper, "the bore should leave the pod on the grid, facing east, yaw %s", pod.getYRot());
+                }
+                if (!turning[0]) {
+                    throw failure(helper, "the pod never showed a turn to the grid before the bore");
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /** Sprint alone drills down; the pod ends up facing the nearest compass direction, not the way it was left. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aDownwardBoreTurnsThePodToTheNearestCardinal(GameTestHelper helper) {
+        int x = ALIGN_X + 64;
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.8), 20f, "drill-down-turns", SPRINT);
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            if (count(level, x - 1, x, floor - 1, floor - 1, Z, Z + 1, Blocks.AIR) == 4) {
+                if (pod.getYRot() != 0f) {
+                    throw failure(helper, "the pod should face the nearest cardinal (south), yaw %s", pod.getYRot());
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /** Back is for reversing out of trouble: it never drills, and never turns the pod to face the wall behind it. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void backingIntoARockNeverDrillsOrTurns(GameTestHelper helper) {
+        int x = ALIGN_X + 128;
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        wall(level, x + 2, x + 5, Z, floor, floor + 10);
+        float west = 90f;
+        Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), west, "drill-back", BACK);
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            if (pod.drilling() || pod.getYRot() != west) {
+                throw failure(
+                        helper, "reversing drilled (%s) or turned the pod (yaw %s)", pod.drilling(), pod.getYRot());
+            }
+            if (pod.tickCount > 80) {
+                if (count(level, x + 2, x + 5, floor, floor + 10, Z - 3, Z + 3, Blocks.AIR) != 0) {
+                    throw failure(helper, "the wall behind the reversing pod was bored");
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /** Between two walls the pod straightens to the grid and A and D cannot turn it: tunnels stay straight. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPodInATightBoreStraightensAndIgnoresSteering(GameTestHelper helper) {
+        int x = ALIGN_X + 192;
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        box(level, x - 2, x - 2, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        box(level, x + 1, x + 1, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z - 2.5), 25f, "drill-tight-bore", FORWARD_LEFT);
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            if (pod.tickCount > 8) {
+                if (pod.getYRot() != 0f) {
+                    throw failure(
+                            helper,
+                            "in a bore as wide as the pod it should stand square to it, yaw %s at %s",
+                            pod.getYRot(),
+                            pod.position());
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /**
+     * In a pod-wide bore one press of D turns the pod a quarter to the next compass direction, and W then bores that
+     * branch.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPressOfDInATightBoreTurnsAQuarterAndWBoresTheBranch(GameTestHelper helper) {
+        int x = ALIGN_X + 256;
+        int floor = FLOOR;
+        int height = Chassis.MOLE.boreHeight();
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        box(level, x - 2, x - 2, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        box(level, x + 1, x + 1, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        // Facing south, square in the corridor; D is pressed for two ticks once it stands. D turns clockwise, so the
+        // next compass direction is west; the turn is under way after the key is let go. The pod faces open side
+        // space once turned, so a held D would go on steering freely there, as it does anywhere out of a bore.
+        Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z - 2.5), 0f, "drill-branch", Input.EMPTY);
+        float west = 90f;
+        boolean[] drove = {false};
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            // Landed first: a bore holds a pod that stands on the ground.
+            if (pod.tickCount == 5) {
+                rig.pilot.setInput(RIGHT);
+            }
+            if (pod.tickCount == 7) {
+                rig.pilot.releaseInput();
+            }
+            if (pod.tickCount == 30) {
+                if (pod.getYRot() != west) {
+                    throw failure(
+                            helper, "one press of D should turn the pod a quarter to the west, yaw %s", pod.getYRot());
+                }
+                rig.pilot.setInput(FORWARD);
+                drove[0] = true;
+            }
+            if (drove[0]
+                    && count(level, x - 2, x - 2, floor, floor + height - 1, Z - 3, Z + 3, Blocks.AIR) == 2 * height) {
+                if (pod.getYRot() != west) {
+                    throw failure(helper, "the branch should leave the pod facing west, yaw %s", pod.getYRot());
+                }
+                pod.discard();
                 helper.succeed();
             }
         });
@@ -181,19 +350,19 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drillingSidewaysNeedsGroundUnderThePod(GameTestHelper helper) {
         int x = 3064;
-        int floor = 60;
+        int floor = FLOOR;
         int height = Chassis.MOLE.boreHeight();
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         wall(level, x + 2, x + 5, Z, floor, floor + 10);
         // A wall of stone two blocks east, and a pod that starts four blocks up: it meets the wall while falling.
         Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor + 4, Z + 0.3), EAST, "drill-ground", FORWARD);
         int[] airborneAgainstWall = {0};
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
-            PodEntity pod = rig.pod();
+            PodEntity pod = rig.pod.get();
             if (!pod.onGround() && pod.horizontalCollision) {
                 airborneAgainstWall[0]++;
                 if (pod.drilling()) {
@@ -213,7 +382,7 @@ public class PodDrillTest {
                         || count(level, x + 3, x + 5, floor, floor + 10, Z - 3, Z + 3, Blocks.AIR) != 0) {
                     throw failure(helper, "the sideways bore is not exactly the 2 x %d in front of the pod", height);
                 }
-                rig.pod().discard();
+                pod.discard();
                 helper.succeed();
             }
         });
@@ -221,33 +390,35 @@ public class PodDrillTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aWallUnderTheCeilingIsNeverBored(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
-        int ceiling = level.getMaxY();
+        ServerLevel level = TestLayers.level(helper, 1);
+        // A layer's top is the surface band's floor, which a pod may bore; the ceiling row is the top of the world.
+        int ceiling = TestLayers.band(level, TestLayers.SURFACE).maxY();
         int x = 3128;
         int floor = ceiling - 1;
         room(level, x, floor, 4);
         wall(level, x + 2, x + 3, Z, floor, ceiling);
         Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-ceiling", FORWARD);
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
-            if (rig.pod().drilling()) {
+            PodEntity pod = rig.pod.get();
+            if (pod.drilling()) {
                 throw failure(helper, "the pod started drilling a slab that reaches the ceiling row");
             }
-            if (rig.pod().tickCount < 150) {
+            if (pod.tickCount < 150) {
                 return;
             }
-            if (!rig.pod().horizontalCollision) {
+            if (!pod.horizontalCollision) {
                 throw failure(
                         helper,
                         "the pod is not pressing against the wall, so the test proved nothing: %s",
-                        rig.pod().position());
+                        pod.position());
             }
             if (count(level, x + 2, x + 3, floor, ceiling, Z - 3, Z + 3, Blocks.AIR) != 0) {
                 throw failure(helper, "a block at or under the ceiling was broken");
             }
-            rig.pod().discard();
+            pod.discard();
             helper.succeed();
         });
     }
@@ -255,8 +426,8 @@ public class PodDrillTest {
     /** The control for the test above: the same wall one row lower is bored, so the ceiling rule is not a blanket refusal. */
     @GameTest(maxTicks = MAX_TICKS)
     public void aWallOneRowBelowTheCeilingIsBored(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
-        int top = level.getMaxY() - 1;
+        ServerLevel level = TestLayers.level(helper, 1);
+        int top = TestLayers.band(level, TestLayers.SURFACE).maxY() - 1;
         int x = 3192;
         // The slab is as tall as the Mole's box, and its top row is the last row under the ceiling.
         int height = Chassis.MOLE.boreHeight();
@@ -265,21 +436,21 @@ public class PodDrillTest {
         wall(level, x + 2, x + 3, Z, floor, top);
         Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-below-ceiling", FORWARD);
         helper.succeedWhen(() -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 throw failure(helper, "waiting for the far chunk to tick entities");
             }
             if (count(level, x + 2, x + 2, floor, top, Z - 1, Z, Blocks.AIR) != 2 * height) {
                 throw failure(helper, "the wall one row below the ceiling was not bored");
             }
-            rig.pod().discard();
+            rig.pod.get().discard();
         });
     }
 
     @GameTest(maxTicks = MAX_TICKS)
     public void drillingIsSlowerDeeperDown(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
-        int shallowFloor = 150;
-        int deepFloor = 20;
+        ServerLevel level = TestLayers.level(helper, 1);
+        int shallowFloor = TestLayers.worldY(1, 150);
+        int deepFloor = TestLayers.worldY(1, 20);
         int shallowX = 3256;
         int deepX = 3320;
         stoneBed(level, shallowX, shallowFloor);
@@ -289,19 +460,19 @@ public class PodDrillTest {
         int[] shallowTicks = {-1};
         int[] deepTicks = {-1};
         TestTicks.each(helper, () -> {
-            if (!shallow.ready() || !deep.ready()) {
-                return;
-            }
+            // Each pod is timed on its own, not once both exist: the first would be read late (#1083).
             if (shallowTicks[0] < 0
+                    && shallow.pod.isPresent()
                     && level.getBlockState(new BlockPos(shallowX, shallowFloor - 1, Z))
                             .isAir()) {
-                shallowTicks[0] = shallow.pod().tickCount;
+                shallowTicks[0] = shallow.pod.get().tickCount;
                 shallow.pilot.releaseInput();
             }
             if (deepTicks[0] < 0
+                    && deep.pod.isPresent()
                     && level.getBlockState(new BlockPos(deepX, deepFloor - 1, Z))
                             .isAir()) {
-                deepTicks[0] = deep.pod().tickCount;
+                deepTicks[0] = deep.pod.get().tickCount;
                 deep.pilot.releaseInput();
             }
             if (shallowTicks[0] < 0 || deepTicks[0] < 0) {
@@ -318,8 +489,8 @@ public class PodDrillTest {
             }
             expectNear(helper, shallowTicks[0], expectedTicks(level, shallowFloor - 1), "shallow");
             expectNear(helper, deepTicks[0], expectedTicks(level, deepFloor - 1), "deep");
-            shallow.pod().discard();
-            deep.pod().discard();
+            shallow.pod.get().discard();
+            deep.pod.get().discard();
             helper.succeed();
         });
     }
@@ -342,8 +513,8 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void oreGoesToCargoAndStoneIsDestroyed(GameTestHelper helper) {
         int x = 3384;
-        int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         level.setBlock(
                 new BlockPos(x - 1, floor - 1, Z - 1),
@@ -353,14 +524,15 @@ public class PodDrillTest {
                 new BlockPos(x, floor - 1, Z), OreBlocks.of(OreType.EINSTEINIUM).defaultBlockState(), 3);
         Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), 0f, "drill-ore", SPRINT);
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
+            PodEntity pod = rig.pod.get();
             if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
                 return;
             }
             rig.pilot.releaseInput();
-            List<Item> kept = rig.pod().cargo().entries().stream()
+            List<Item> kept = pod.cargo().entries().stream()
                     .map(entry -> entry.stack().getItem())
                     .toList();
             if (kept.size() != 2
@@ -368,13 +540,10 @@ public class PodDrillTest {
                     || !kept.contains(OreRegistry.item(OreType.EINSTEINIUM))) {
                 throw failure(helper, "cargo should hold exactly the Ironium and the Einsteinium, it holds %s", kept);
             }
-            if (rig.pod().cargoUsed() != 2) {
-                throw failure(
-                        helper,
-                        "the synced cargo count is %d, expected 2",
-                        rig.pod().cargoUsed());
+            if (pod.cargoUsed() != 2) {
+                throw failure(helper, "the synced cargo count is %d, expected 2", pod.cargoUsed());
             }
-            rig.pod().discard();
+            pod.discard();
             helper.succeed();
         });
     }
@@ -382,8 +551,8 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aFullBayLosesTheOreAndDrillingGoesOn(GameTestHelper helper) {
         int x = 3448;
-        int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         level.setBlock(
                 new BlockPos(x, floor - 1, Z), OreBlocks.of(OreType.EINSTEINIUM).defaultBlockState(), 3);
@@ -396,17 +565,18 @@ public class PodDrillTest {
             }
         });
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
+            PodEntity pod = rig.pod.get();
             if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
                 return;
             }
             rig.pilot.releaseInput();
-            List<Item> kept = rig.pod().cargo().entries().stream()
+            List<Item> kept = pod.cargo().entries().stream()
                     .map(entry -> entry.stack().getItem())
                     .toList();
-            if (rig.pod().cargoUsed() != slots
+            if (pod.cargoUsed() != slots
                     || kept.size() != slots
                     || kept.contains(OreRegistry.item(OreType.EINSTEINIUM))) {
                 throw failure(
@@ -415,7 +585,7 @@ public class PodDrillTest {
                         slots,
                         kept);
             }
-            rig.pod().discard();
+            pod.discard();
             helper.succeed();
         });
     }
@@ -424,56 +594,56 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodOnALedgeInTheThirdColumnCentresAndDrillsDown(GameTestHelper helper) {
         int x = 3640;
-        int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         // Only column x+1 reaches the pod; under columns x-1 and x the ground is three blocks lower.
         RoomCarver.carve(level, x - 1, x, floor - 3, floor - 1, Z - 4, Z + 4, Blocks.AIR);
         Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z), 0f, "drill-ledge", SPRINT);
         helper.succeedWhen(() -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 throw failure(helper, "waiting for the far chunk to tick entities");
             }
+            PodEntity pod = rig.pod.get();
             if (count(level, x - 1, x, floor - 4, floor - 4, Z - 1, Z, Blocks.AIR) != 4) {
                 throw failure(
-                        helper,
-                        "the pod on the ledge did not bore the 2 x 2 below it, it is at %s",
-                        rig.pod().position());
+                        helper, "the pod on the ledge did not bore the 2 x 2 below it, it is at %s", pod.position());
             }
             if (count(level, x + 1, x + 1, floor - 1, floor - 1, Z - 1, Z, Blocks.STONE) != 2) {
                 throw failure(helper, "the bore took the ledge column too");
             }
             rig.pilot.releaseInput();
-            rig.pod().discard();
+            pod.discard();
         });
     }
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodAgainstAWallInTheThirdColumnCentresAndDrillsSideways(GameTestHelper helper) {
         int x = 3704;
-        int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         // A one-column wall the pod's hitbox touches but its 2 x 2 bore does not, then a full wall behind it.
         box(level, x + 2, x + 2, floor, floor + 10, Z + 1, Z + 1, Blocks.STONE);
         wall(level, x + 4, x + 5, Z, floor, floor + 10);
         Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-edge", FORWARD);
         helper.succeedWhen(() -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 throw failure(helper, "waiting for the far chunk to tick entities");
             }
+            PodEntity pod = rig.pod.get();
             if (count(level, x + 4, x + 4, floor, floor + 1, Z - 1, Z, Blocks.AIR) != 4) {
                 throw failure(
                         helper,
                         "the pod did not bore the full wall behind the one-column wall, it is at %s",
-                        rig.pod().position());
+                        pod.position());
             }
             if (!level.getBlockState(new BlockPos(x + 2, floor, Z + 1)).is(Blocks.STONE)
                     || !level.getBlockState(new BlockPos(x + 4, floor, Z + 1)).is(Blocks.STONE)) {
                 throw failure(helper, "the bore reached a column outside the pod's 2 x 2");
             }
             rig.pilot.releaseInput();
-            rig.pod().discard();
+            pod.discard();
         });
     }
 
@@ -511,7 +681,7 @@ public class PodDrillTest {
 
     /** A pod with no sounder bores a pocket as soon as the slab is done; {@code sideways} says whether the pocket is in the wall or under the pod. The check gets the hull the blast cost and the whole blast. */
     private void boreAPocket(GameTestHelper helper, int x, boolean sideways, BiConsumer<Float, Float> check) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, FLOOR, 4);
         BlockPos pocket;
         Rig rig;
@@ -528,18 +698,19 @@ public class PodDrillTest {
         }
         float[] start = {Float.NaN};
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
+            PodEntity pod = rig.pod.get();
             if (Float.isNaN(start[0])) {
-                start[0] = rig.pod().hull();
+                start[0] = pod.hull();
             }
             if (!level.getBlockState(pocket).is(HazardBlocks.GAS_POCKET)) {
-                float whole = GasHazard.damage(
-                        Depth.feet(Depth.of(level, pocket.getY())), PodComponents.radiatorRatio(rig.pod()));
-                float lost = start[0] - rig.pod().hull();
+                float whole =
+                        GasHazard.damage(Depth.feet(Depth.of(level, pocket.getY())), PodComponents.radiatorRatio(pod));
+                float lost = start[0] - pod.hull();
                 rig.pilot.releaseInput();
-                rig.pod().discard();
+                pod.discard();
                 check.accept(lost, whole);
                 helper.succeed();
             }
@@ -573,19 +744,21 @@ public class PodDrillTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void theLastCrustRowCrossesThePodAndItsPilotIntoTheNextLayer(GameTestHelper helper) {
+    public void theLastCrustRowCrossesThePodAndItsPilotIntoTheNextLayerInPlace(GameTestHelper helper) {
         int x = 3512;
-        ServerLevel one = layer(helper, 1);
-        RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
+        ServerLevel one = TestLayers.level(helper, 1);
+        int floor = TestLayers.band(one, 1).minY();
+        RoomCarver.carve(one, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(one, x - 2, x + 2, floor + 1, floor + 8, Z - 2, Z + 2, Blocks.AIR);
+        RoomCarver.carvePocketBelow(one, 1, x - 2, x + 2, Z - 2, Z + 2);
         float[] hullBefore = {Float.NaN};
-        Rig rig =
-                Rig.await(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
+        Rig rig = Rig.await(
+                helper, one, new Vec3(x, floor + 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
-            if (!rig.pilot.player().level().dimension().equals(LayerChain.dimension(2))) {
+            if (!TestLayers.isIn(rig.pilot.player(), 2)) {
                 return;
             }
             rig.pilot.releaseInput();
@@ -607,10 +780,10 @@ public class PodDrillTest {
             if (Math.abs(crossed.getX() - x) > 1 || Math.abs(crossed.getZ() - Z) > 1) {
                 throw failure(helper, "the pod arrived at %s, expected near (%d, %d)", crossed.position(), x, Z);
             }
-            if (count(one, x - 1, x, 0, 0, Z - 1, Z, Blocks.AIR) != 4) {
+            if (count(one, x - 1, x, floor, floor, Z - 1, Z, Blocks.AIR) != 4) {
                 throw failure(helper, "the crust under the pod was not broken");
             }
-            if (!one.getBlockState(new BlockPos(x + 1, 0, Z)).is(LayerBlocks.BREACH_CRUST)) {
+            if (!one.getBlockState(new BlockPos(x + 1, floor, Z)).is(LayerBlocks.BREACH_CRUST)) {
                 throw failure(helper, "the bore took crust outside the pod's 2 x 2");
             }
             crossed.discard();
@@ -620,29 +793,37 @@ public class PodDrillTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
-        int x = 3576;
-        ServerLevel two = layer(helper, 2);
-        RoomCarver.carve(two, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(two, x - 2, x + 2, 3, 10, Z - 2, Z + 2, Blocks.AIR);
-        Rig rig = Rig.await(helper, two, new Vec3(x, 3, Z), 0f, "drill-last-crust", SPRINT);
+        lastCrustIsNotDrilled(helper, 3576, LayerBlocks.BREACH_CRUST);
+    }
+
+    /** A grained floor under the last layer leads nowhere either, whatever that floor's layer data says (#1022). */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theLastLayersGrainedCrustIsNotDrilled(GameTestHelper helper) {
+        lastCrustIsNotDrilled(helper, 4216, LayerBlocks.GRAINED_CRUST);
+    }
+
+    private static void lastCrustIsNotDrilled(GameTestHelper helper, int x, Block crust) {
+        ServerLevel two = TestLayers.level(helper, CampaignBands.lastLayer());
+        int floor = TestLayers.band(two, CampaignBands.lastLayer()).minY();
+        RoomCarver.carve(two, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, crust);
+        RoomCarver.carve(two, x - 2, x + 2, floor + 3, floor + 10, Z - 2, Z + 2, Blocks.AIR);
+        Rig rig = Rig.await(helper, two, new Vec3(x, floor + 3, Z), 0f, "lastcrust-" + x, SPRINT);
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
-            if (rig.pod().drilling()) {
+            PodEntity pod = rig.pod.get();
+            if (pod.drilling()) {
                 throw failure(helper, "the pod drills the floor of the last layer, which leads nowhere");
             }
-            if (rig.pod().tickCount < 100) {
+            if (pod.tickCount < 100) {
                 return;
             }
-            if (!rig.pod().onGround()
-                    || !two.getBlockState(new BlockPos(x, 2, Z)).is(LayerBlocks.BREACH_CRUST)) {
-                throw failure(
-                        helper,
-                        "the pod should be standing on intact crust, it is at %s",
-                        rig.pod().position());
+            if (!pod.onGround()
+                    || !two.getBlockState(new BlockPos(x, floor + 2, Z)).is(crust)) {
+                throw failure(helper, "the pod should be standing on intact crust, it is at %s", pod.position());
             }
-            rig.pod().discard();
+            pod.discard();
             helper.succeed();
         });
     }
@@ -683,7 +864,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void progressIsLostWhenATowedPodIsPulledOffItsSlabAndBack(GameTestHelper helper) {
         double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         int x = 3960;
         // The tower stands a whole line from the pod, 6.9 blocks and more, so the room is wide enough to hold it in
         // open air.
@@ -718,17 +899,17 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void progressIsKeptWhenAPodIsNudgedWithinItsSlab(GameTestHelper helper) {
         int x = 4024;
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, FLOOR, 4);
         int needed = expectedTicks(level, FLOOR - 1);
         Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), 0f, "drill-nudged", SPRINT);
         int[] started = {-1};
         boolean[] nudged = {false};
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
-            PodEntity pod = rig.pod();
+            PodEntity pod = rig.pod.get();
             if (started[0] < 0 && pod.drilling()) {
                 started[0] = pod.tickCount;
             }
@@ -761,7 +942,7 @@ public class PodDrillTest {
             String name,
             BiConsumer<PodEntity, Integer> away,
             BiPredicate<PodEntity, Integer> back) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, FLOOR, 4);
         boreInterruptedBy(helper, level, x, name, pod -> {}, away, back, () -> {});
     }
@@ -786,10 +967,10 @@ public class PodDrillTest {
         int[] movedAt = {-1};
         int[] backAt = {-1};
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
-            PodEntity pod = rig.pod();
+            PodEntity pod = rig.pod.get();
             if (started[0] < 0 && pod.drilling()) {
                 started[0] = pod.tickCount;
             }
@@ -877,20 +1058,5 @@ public class PodDrillTest {
             }
         }
         return found;
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 }

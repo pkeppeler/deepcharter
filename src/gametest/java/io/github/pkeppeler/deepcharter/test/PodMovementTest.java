@@ -1,5 +1,15 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK_LEFT;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_BACK;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.LEFT;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.RIGHT;
+
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodMovement;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -7,37 +17,39 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.entity.player.Input;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /** Server GameTests for pod movement and flight rules, driven by a mock pilot's input. */
 public class PodMovementTest {
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final double EPSILON = 1e-6;
+    /** A rig pod thrown down this fast lands hard through the ground cushion (#1432), which brakes a crewed sink. */
+    private static final double HARD_SINK = 1.5;
+
     private static final float SOUTH = 0f;
     private static final float WEST = 90f;
 
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-    private static final Input FORWARD_RIGHT = new Input(true, false, false, true, false, false, false);
-    private static final Input RIGHT = new Input(false, false, false, true, false, false, false);
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
-    private static final Input FORWARD_JUMP = new Input(true, false, false, false, true, false, false);
+    /** Where the pilot looks: never the pod's facing, because the pilot's view does not steer a pod. */
+    private static final float PILOT_LOOKS = 137f;
 
-    /** A pod standing on a small stone floor, with a mock pilot seated and looking along {@code yaw}. */
+    /** A pod standing on a small stone floor and facing {@code yaw}, with a mock pilot seated and looking elsewhere. */
     private record Rig(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
         static Rig build(GameTestHelper helper, double height, float yaw) {
             PodEntity pod = buildEmpty(helper, height);
             MockPlayer pilot = MockPlayers.join(helper, "pod-pilot");
-            pilot.teleportTo(helper.getLevel(), pod.position(), yaw, 0f);
+            pod.setYRot(yaw);
+            pilot.teleportTo(helper.getLevel(), pod.position(), PILOT_LOOKS, 0f);
             if (!pilot.player().startRiding(pod)) {
-                throw helper.assertionException("the pilot could not mount the pod");
+                throw failure(helper, "the pilot could not mount the pod");
             }
             return new Rig(helper, pod, pilot);
         }
@@ -69,16 +81,23 @@ public class PodMovementTest {
     }
 
     @GameTest
-    public void forwardDrivesTheCameraAxis(GameTestHelper helper) {
+    public void forwardDrivesAlongThePodsFacingNotThePilotsView(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, WEST);
         Vec3 start = rig.pod.position();
         rig.pilot.setInput(FORWARD);
-        helper.runAfterDelay(10, () -> {
+        // Five ticks keep the pod on the small floor at the cruise speed.
+        helper.runAfterDelay(5, () -> {
             try {
                 Vec3 moved = rig.pod.position().subtract(start);
                 if (moved.x > -1.0 || Math.abs(moved.z) > EPSILON) {
-                    throw helper.assertionException(
-                            "facing west, forward should drive the pod west along x only, moved %s", moved);
+                    throw failure(
+                            helper,
+                            "the pod faces west, so forward drives it west along x only, whatever the pilot looks at;"
+                                    + " moved %s",
+                            moved);
+                }
+                if (rig.pod.getYRot() != WEST) {
+                    throw failure(helper, "driving forward must not turn the pod, its yaw is %s", rig.pod.getYRot());
                 }
                 helper.succeed();
             } finally {
@@ -88,18 +107,26 @@ public class PodMovementTest {
     }
 
     @GameTest
-    public void diagonalInputMovesAlongOneAxisOnly(GameTestHelper helper) {
+    public void backReversesSlowlyWithoutTurning(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);
         Vec3 start = rig.pod.position();
-        rig.pilot.setInput(FORWARD_RIGHT);
+        rig.pilot.setInput(BACK);
         helper.runAfterDelay(10, () -> {
             try {
                 Vec3 moved = rig.pod.position().subtract(start);
-                boolean alongX = Math.abs(moved.x) > 1.0 && Math.abs(moved.z) < EPSILON;
-                boolean alongZ = Math.abs(moved.z) > 1.0 && Math.abs(moved.x) < EPSILON;
-                if (!alongX && !alongZ) {
-                    throw helper.assertionException(
-                            "forward and right together must move along one axis, moved %s", moved);
+                double topSpeed = PodTuning.DEFAULT.movement().horizontalSpeed() * 10;
+                if (moved.z > -0.5 || Math.abs(moved.x) > EPSILON) {
+                    throw failure(helper, "the pod faces south, so back drives it north along z only, moved %s", moved);
+                }
+                if (-moved.z > topSpeed * 0.6) {
+                    throw failure(
+                            helper,
+                            "reversing is slower than driving forward (%s in 10 ticks), moved %s",
+                            topSpeed,
+                            moved);
+                }
+                if (rig.pod.getYRot() != SOUTH) {
+                    throw failure(helper, "reversing must not turn the pod, its yaw is %s", rig.pod.getYRot());
                 }
                 helper.succeed();
             } finally {
@@ -108,25 +135,144 @@ public class PodMovementTest {
         });
     }
 
-    @GameTest
-    public void switchingAxisLeavesNoDiagonalDrift(GameTestHelper helper) {
+    @GameTest(maxTicks = 100)
+    public void leftAndRightSteerTheYawLikeABoat(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);
-        rig.pilot.setInput(FORWARD);
-        helper.runAfterDelay(5, () -> {
-            Vec3 mid = rig.pod.position();
+        rig.pilot.setInput(LEFT);
+        helper.runAfterDelay(10, () -> {
+            float left = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
             rig.pilot.setInput(RIGHT);
-            helper.runAfterDelay(5, () -> {
+            helper.runAfterDelay(20, () -> {
                 try {
-                    Vec3 moved = rig.pod.position().subtract(mid);
-                    if (Math.abs(moved.z) > EPSILON || Math.abs(moved.x) < 0.5) {
-                        throw helper.assertionException(
-                                "after switching to strafe the pod should move along x only, moved %s", moved);
+                    float right = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+                    if (left > -10f || left < -90f) {
+                        throw failure(
+                                helper, "ten ticks of A should turn the pod left (a lower yaw), yaw change %s", left);
+                    }
+                    if (right <= left + 20f) {
+                        throw failure(
+                                helper,
+                                "D should turn the pod back and on, yaw change %s after A gave %s",
+                                right,
+                                left);
                     }
                     helper.succeed();
                 } finally {
                     rig.finish();
                 }
             });
+        });
+    }
+
+    @GameTest(maxTicks = 100)
+    public void steeringSpeedsUpToTheBoatsTurnRate(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        rig.pilot.setInput(RIGHT);
+        float[] last = {SOUTH};
+        float[] first = {0f};
+        int[] ticks = {0};
+        TestTicks.each(helper, () -> {
+            float turned = Mth.wrapDegrees(rig.pod.getYRot() - last[0]);
+            last[0] = rig.pod.getYRot();
+            if (++ticks[0] == 3) {
+                first[0] = turned;
+            }
+            if (ticks[0] < 50) {
+                return;
+            }
+            try {
+                // Vanilla's boat adds 1 degree a tick of turn rate and keeps 0.9 of it: it settles at 10 degrees
+                // a tick.
+                if (first[0] > 4f || turned < 8f || turned > 10.5f) {
+                    throw failure(
+                            helper,
+                            "the turn rate should build up (%s on the third tick) to about 10 degrees a tick, it is %s",
+                            first[0],
+                            turned);
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    @GameTest
+    public void drivingFollowsTheHeadingAfterATurn(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        // A bare D turns the pod while it creeps, so the pod stays on the small floor at the cruise speed.
+        rig.pilot.setInput(RIGHT);
+        helper.runAfterDelay(6, () -> {
+            rig.pilot.setInput(FORWARD);
+            helper.runAfterDelay(2, () -> {
+                Vec3 before = rig.pod.position();
+                helper.runAfterDelay(2, () -> {
+                    try {
+                        float turned = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+                        Vec3 step = rig.pod.position().subtract(before).multiply(1, 0, 1);
+                        Vec3 facing = Vec3.directionFromRotation(0, rig.pod.getYRot());
+                        if (turned < 10f || step.normalize().dot(facing) < 0.99) {
+                            throw failure(
+                                    helper,
+                                    "after turning right (%s degrees) the pod drives along its new facing %s, it moved"
+                                            + " %s",
+                                    turned,
+                                    facing,
+                                    step);
+                        }
+                        helper.succeed();
+                    } finally {
+                        rig.finish();
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * The boat reverses with S whatever A or D do, and turns while it does: so does the pod (unlike W with S, which
+     * cancels).
+     */
+    @GameTest(maxTicks = 100)
+    public void backWithLeftReversesWhileTurning(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        Vec3 start = rig.pod.position();
+        rig.pilot.setInput(BACK_LEFT);
+        helper.runAfterDelay(10, () -> {
+            try {
+                Vec3 moved = rig.pod.position().subtract(start);
+                float turned = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+                if (moved.z > -0.2 || turned > -10f) {
+                    throw failure(
+                            helper,
+                            "S with A backs the pod up (north) and turns it left, moved %s, turned %s",
+                            moved,
+                            turned);
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    @GameTest
+    public void forwardAndBackTogetherCancel(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        Vec3 start = rig.pod.position();
+        rig.pilot.setInput(FORWARD_BACK);
+        helper.runAfterDelay(10, () -> {
+            try {
+                if (rig.pod.position().distanceTo(start) > EPSILON) {
+                    throw failure(
+                            helper,
+                            "W with S is no throttle, the pod moved %s",
+                            rig.pod.position().subtract(start));
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
         });
     }
 
@@ -141,9 +287,11 @@ public class PodMovementTest {
                 helper.runAfterDelay(5, () -> {
                     try {
                         if (rig.pod.position().distanceTo(stopped) > EPSILON) {
-                            throw helper.assertionException(
+                            throw failure(
+                                    helper,
                                     "the pod should stand still with no input, drifted from %s to %s",
-                                    stopped, rig.pod.position());
+                                    stopped,
+                                    rig.pod.position());
                         }
                         helper.succeed();
                     } finally {
@@ -163,17 +311,22 @@ public class PodMovementTest {
             double peak = rig.pod.getY();
             if (peak - startY < 1.0 || !rig.pod.flying()) {
                 rig.finish();
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "holding jump should climb at least a block with the rotor on, rose %s, flying %s",
-                        peak - startY, rig.pod.flying());
+                        peak - startY,
+                        rig.pod.flying());
             }
             rig.pilot.releaseInput();
             helper.runAfterDelay(8, () -> {
                 try {
                     if (rig.pod.getY() >= peak - 0.2 || rig.pod.flying()) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "releasing jump should let the pod fall, peak %s now %s, flying %s",
-                                peak, rig.pod.getY(), rig.pod.flying());
+                                peak,
+                                rig.pod.getY(),
+                                rig.pod.flying());
                     }
                     helper.succeed();
                 } finally {
@@ -192,8 +345,10 @@ public class PodMovementTest {
         helper.runAfterDelay(10, () -> {
             try {
                 if (rig.pod.getY() - startY > EPSILON || rig.pod.flying()) {
-                    throw helper.assertionException(
-                            "a pod loaded to its engine power should not lift, rose %s", rig.pod.getY() - startY);
+                    throw failure(
+                            helper,
+                            "a pod loaded to its engine power should not lift, rose %s",
+                            rig.pod.getY() - startY);
                 }
                 helper.succeed();
             } finally {
@@ -205,19 +360,20 @@ public class PodMovementTest {
     @GameTest(maxTicks = 100)
     public void hardLandingDamagesHullAndNotThePilot(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 12, SOUTH);
+        rig.pod.setDeltaMovement(0, -HARD_SINK, 0);
         float hullBefore = rig.pod.hull();
         float healthBefore = rig.pilot.player().getHealth();
         helper.runAfterDelay(50, () -> {
             try {
                 if (!rig.pod.onGround()) {
-                    throw helper.assertionException("the pod should have landed by now, at y %s", rig.pod.getY());
+                    throw failure(helper, "the pod should have landed by now, at y %s", rig.pod.getY());
                 }
                 if (rig.pod.hull() >= hullBefore) {
-                    throw helper.assertionException(
-                            "a fall of about 12 blocks should damage the hull, hull %s", rig.pod.hull());
+                    throw failure(helper, "a fall of about 12 blocks should damage the hull, hull %s", rig.pod.hull());
                 }
                 if (rig.pilot.player().getHealth() != healthBefore) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "the seated pilot should take no fall damage, health %s",
                             rig.pilot.player().getHealth());
                 }
@@ -234,9 +390,11 @@ public class PodMovementTest {
         helper.runAfterDelay(30, () -> {
             try {
                 if (!pod.onGround() || pod.getDeltaMovement().y != 0) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "a landed pod should rest with no vertical speed, onGround %s, velocity %s",
-                            pod.onGround(), pod.getDeltaMovement());
+                            pod.onGround(),
+                            pod.getDeltaMovement());
                 }
                 helper.succeed();
             } finally {
@@ -254,9 +412,12 @@ public class PodMovementTest {
         helper.runAfterDelay(30, () -> {
             try {
                 if (pod.getY() != startY || pod.getDeltaMovement().y != 0) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "a pod with no gravity should hold at y %s with no vertical speed, got y %s, velocity %s",
-                            startY, pod.getY(), pod.getDeltaMovement());
+                            startY,
+                            pod.getY(),
+                            pod.getDeltaMovement());
                 }
                 helper.succeed();
             } finally {
@@ -286,15 +447,22 @@ public class PodMovementTest {
                 double speed = pod.getDeltaMovement().y;
                 double dropped = startY - pod.getY();
                 if (Math.abs(speed - expected) > 0.002) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "after %s ticks the speed should have decayed from %s to about %s, it is %s",
-                            coastTicks, launch, expected, speed);
+                            coastTicks,
+                            launch,
+                            expected,
+                            speed);
                 }
                 // The distance a coast of this length covers is the launch speed summed with the drag, 2.8 blocks here.
                 if (dropped < 2.5 || dropped > 3.1 || pod.getY() - (FLOOR_Y + 1) < 2) {
-                    throw helper.assertionException(
-                            "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y %s",
-                            dropped, pod.getY());
+                    throw failure(
+                            helper,
+                            "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y"
+                                    + " %s",
+                            dropped,
+                            pod.getY());
                 }
                 helper.succeed();
             } finally {
@@ -313,8 +481,7 @@ public class PodMovementTest {
         helper.runAfterDelay(5, () -> {
             try {
                 if (pod.getY() >= startY) {
-                    throw helper.assertionException(
-                            "a pod with gravity should fall from y %s, got y %s", startY, pod.getY());
+                    throw failure(helper, "a pod with gravity should fall from y %s, got y %s", startY, pod.getY());
                 }
                 helper.succeed();
             } finally {
@@ -333,9 +500,11 @@ public class PodMovementTest {
         helper.runAfterDelay(10, () -> {
             try {
                 if (rig.pod.getY() <= startY) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "a no-gravity pod should still climb on thrust from y %s, got y %s",
-                            startY, rig.pod.getY());
+                            startY,
+                            rig.pod.getY());
                 }
                 helper.succeed();
             } finally {
@@ -356,9 +525,12 @@ public class PodMovementTest {
                 if (rig.pod.getY() > limit + EPSILON
                         || rig.pod.getY() < limit - 0.2
                         || rig.pod.getDeltaMovement().y > 0) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "the pod should stop against the ceiling at y %s, y %s, velocity %s",
-                            limit, rig.pod.getY(), rig.pod.getDeltaMovement());
+                            limit,
+                            rig.pod.getY(),
+                            rig.pod.getDeltaMovement());
                 }
                 helper.succeed();
             } finally {
@@ -381,7 +553,7 @@ public class PodMovementTest {
             } finally {
                 pod.setCargoMass(0f);
             }
-            throw helper.assertionException("a negative cargo mass must throw, not add lift");
+            throw failure(helper, "a negative cargo mass must throw, not add lift");
         } finally {
             pod.discard();
             clearFloor(helper);
@@ -395,11 +567,10 @@ public class PodMovementTest {
         helper.runAfterDelay(30, () -> {
             try {
                 if (!pod.onGround()) {
-                    throw helper.assertionException("the pod should have landed by now, at y %s", pod.getY());
+                    throw failure(helper, "the pod should have landed by now, at y %s", pod.getY());
                 }
                 if (pod.hull() != hullBefore) {
-                    throw helper.assertionException(
-                            "a drop of about 2 blocks should not damage the hull, hull %s", pod.hull());
+                    throw failure(helper, "a drop of about 2 blocks should not damage the hull, hull %s", pod.hull());
                 }
                 helper.succeed();
             } finally {
@@ -418,8 +589,11 @@ public class PodMovementTest {
         helper.runAfterDelay(10, () -> {
             try {
                 if (rig.pod.position().distanceTo(start) > EPSILON || rig.pod.flying()) {
-                    throw helper.assertionException(
-                            "a stranded pod should ignore input, moved from %s to %s", start, rig.pod.position());
+                    throw failure(
+                            helper,
+                            "a stranded pod should ignore input, moved from %s to %s",
+                            start,
+                            rig.pod.position());
                 }
                 helper.succeed();
             } finally {

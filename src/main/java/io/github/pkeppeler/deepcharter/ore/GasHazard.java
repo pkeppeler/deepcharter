@@ -2,11 +2,14 @@ package io.github.pkeppeler.deepcharter.ore;
 
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
+import io.github.pkeppeler.deepcharter.pod.PodCues;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
@@ -68,10 +71,12 @@ public final class GasHazard {
             for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius))) {
                 float radiator = PodComponents.radiatorRatio(pod);
                 float blast = damage(depthFeet, radiator);
-                pod.damageHull(pod == drilling ? PodSounder.drilledBlast(pod, blast * drillingShare) : blast);
+                float taken = pod == drilling ? PodSounder.drilledBlast(pod, blast * drillingShare) : blast;
+                PodCues.hurtHull(
+                        pod, taken, "deepcharter.ore.gas_blast", DeepSound.POD_EXPLOSION, ParticleTypes.SNEEZE, 24);
             }
-            // A blast at the edge of the loaded chunks clears the rock it can reach without loading one; the rest
-            // stays.
+            // A blast at the edge of the loaded chunks clears the rock it can reach without loading one; the
+            // rest stays.
             LoadedBlocks blocks = new LoadedBlocks(level);
             for (BlockPos cell :
                     BlockPos.betweenClosed(pos.offset(-radius, -radius, -radius), pos.offset(radius, radius, radius))) {

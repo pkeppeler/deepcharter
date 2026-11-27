@@ -1,9 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreType;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +18,11 @@ import net.minecraft.world.phys.Vec3;
  * from a distance, and a pair of ores close up. The recording pans along the wall in layer 1, then in layer 2.
  */
 public class OreHostScenario extends EvidenceScenario {
-    private static final BlockPos ROOM = new BlockPos(2700, LAYER_ROOM_Y, 2700);
+    /** The room's floor in {@code layer}: the same column, the same height over the layer's floor. */
+    private static BlockPos room(int layer) {
+        return new BlockPos(2700, TestLayers.worldY(layer, LAYER_ROOM_LOCAL_Y), 2700);
+    }
+
     private static final int HALF_WIDTH = 6;
     /** A light as bright as a pod lamp gets, two blocks from the wall, so the rock reads in a still. */
     private static final int LAMP = 15;
@@ -57,14 +60,14 @@ public class OreHostScenario extends EvidenceScenario {
             blocks.put(new BlockPos(-6 + 2 * i, i % 2 == 0 ? 0 : 2, 0), OreBlocks.of(ores[i]));
         }
         world.serverDo(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
-            TextureTestWorld.buildWall(level, ROOM, HALF_WIDTH, blocks);
-            level.setBlock(ROOM.offset(0, 2, 1), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
+            ServerLevel level = TestLayers.level(server, layer);
+            TextureTestWorld.buildWall(level, room(layer), HALF_WIDTH, blocks);
+            level.setBlock(room(layer).offset(0, 2, 1), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
         });
     }
 
     private void stills(TextureTestWorld world, int layer) {
-        Vec3 wall = Vec3.atBottomCenterOf(ROOM).add(0, 2, TextureTestWorld.WALL);
+        Vec3 wall = Vec3.atBottomCenterOf(room(layer)).add(0, 2, TextureTestWorld.WALL);
         world.view(layer, wall.add(0, 0.1, -8), wall, 60);
         world.still("layer-" + layer + "-ore-range");
         // The first two ores of the row: ironium (down) and bronzium (up), the cheap clumps.
@@ -74,7 +77,7 @@ public class OreHostScenario extends EvidenceScenario {
     }
 
     private void pan(ClientGameTestContext context, TextureTestWorld world, int layer) {
-        Vec3 wall = Vec3.atBottomCenterOf(ROOM).add(0, 1.6, TextureTestWorld.WALL);
+        Vec3 wall = Vec3.atBottomCenterOf(room(layer)).add(0, 1.6, TextureTestWorld.WALL);
         for (int i = 0; i < PAN_FRAMES; i++) {
             double x = -6.0 + 12.0 * i / (PAN_FRAMES - 1);
             world.view(layer, wall.add(x, 0, -3.2), wall.add(x, 0, 0), PAN_TICKS);

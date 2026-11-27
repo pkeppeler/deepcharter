@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
@@ -13,7 +13,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -21,13 +21,13 @@ import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -37,10 +37,8 @@ import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -60,31 +58,20 @@ public class PodLinerTest {
     private static final AtomicInteger OWNERS = new AtomicInteger();
 
     private static final int Z = 3416;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int RADIUS = 4;
     private static final int PLENTY = 200;
     private static final int DRILL_TICKS = 2600;
     private static final int RING_TICKS = 400;
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
-    /**
-     * A bed of stone with the pod's room above it, walled so that the only open cells beside the pod are those of the east column (x + 1, the
-     * pod's two Z). With {@code column} that column runs down through the bed, so a ring that reaches below the pod has cells to line there.
-     */
-    private static void shaft(ServerLevel level, int x, int depth, boolean column) {
-        shaftWithoutLava(level, x, depth, column);
-        // A liner lines only what lava can reach (#432): a source in the wall beside the east column floods it. A ring
-        // test lays its ring on the
-        // first tick, before the lava has flowed a block. A drilling pod has a source in view for each ring: the first
-        // ring bricks the lava
-        // that is in its view, so the next stretch has a source of its own, 4 slabs further down than the ring before
-        // it can see.
+    /** Pours the shaft's lava once the chunk ticks, so its overdue flow cannot flood the ring on the first tick (#1083). */
+    private static void pourLava(ServerLevel level, int x, boolean column) {
         for (BlockPos pocket : lavaPockets(x, column)) {
             level.setBlock(pocket, Blocks.LAVA.defaultBlockState(), 3);
         }
     }
 
-    /** The wall cells that hold the lava of {@link #shaft}: level with the pod's feet, or at 5, 9 and 12 slabs under them where the pod drills down the column. */
+    /** The wall cells that hold the lava of {@link #pourLava}: level with the pod's feet, or at 5, 9 and 12 slabs under them where the pod drills down the column. */
     private static List<BlockPos> lavaPockets(int x, boolean column) {
         return column
                 ? List.of(
@@ -94,6 +81,10 @@ public class PodLinerTest {
                 : List.of(new BlockPos(x + 2, FLOOR, Z));
     }
 
+    /**
+     * A bed of stone with the pod's room above it, walled so that the only open cells beside the pod are those of the east column (x + 1, the
+     * pod's two Z). With {@code column} that column runs down through the bed, so a ring that reaches below the pod has cells to line there.
+     */
     private static void shaftWithoutLava(ServerLevel level, int x, int depth, boolean column) {
         RoomCarver.carve(
                 level, x - RADIUS, x + RADIUS + 1, FLOOR - depth, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
@@ -166,11 +157,13 @@ public class PodLinerTest {
             int rack,
             Consumer<ServerLevel> setup,
             Consumer<PodLining.State> check) {
-        ServerLevel level = layer(helper);
-        shaft(level, x, 8, false);
-        setup.accept(level);
+        ServerLevel level = TestLayers.level(helper, 1);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
+            setup.accept(level);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), tier, rack);
             armed.pod.setAttached(
                     PodLiner.STATE,
@@ -198,7 +191,7 @@ public class PodLinerTest {
     public void aTierOneRingCostsABrickForEachCellAndLeavesTheRestOfTheRack(GameTestHelper helper) {
         int x = 5204;
         ringTest(helper, x, 1, 10, level -> {}, state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 4 || state.bricks() != 6 || state.dry()) {
                 throw failure(
                         helper,
@@ -214,7 +207,7 @@ public class PodLinerTest {
     public void aTierTwoRingCostsABrickForTwoCells(GameTestHelper helper) {
         int x = 5252;
         ringTest(helper, x, 2, 10, level -> {}, state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 4 || state.bricks() != 8 || state.dry()) {
                 throw failure(
                         helper,
@@ -230,7 +223,7 @@ public class PodLinerTest {
     public void aTierOneRingWithTooFewBricksLinesWhatTheRackPaysForAndMarksItDry(GameTestHelper helper) {
         int x = 5300;
         ringTest(helper, x, 1, 3, level -> {}, state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 3 || state.bricks() != 0 || !state.dry()) {
                 throw failure(
                         helper,
@@ -246,7 +239,7 @@ public class PodLinerTest {
     public void aTierTwoRingWithOneBrickLinesTwoCellsAndMarksItDry(GameTestHelper helper) {
         int x = 5348;
         ringTest(helper, x, 2, 1, level -> {}, state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 2 || state.bricks() != 0 || !state.dry()) {
                 throw failure(
                         helper,
@@ -262,7 +255,7 @@ public class PodLinerTest {
     public void aRingWithAnEmptyRackPlacesNothingAndMarksItDry(GameTestHelper helper) {
         int x = 5396;
         ringTest(helper, x, 1, 0, level -> {}, state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 0 || !state.dry()) {
                 throw failure(
                         helper,
@@ -292,7 +285,7 @@ public class PodLinerTest {
     public void aRingWithNoLavaToReachItLaysNothingAndLeavesTheRackFull(GameTestHelper helper) {
         int x = 6020;
         ringTest(helper, x, 2, 10, lavaOnlyAt(x, null), state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 0 || state.bricks() != 10 || state.dry()) {
                 throw failure(
                         helper,
@@ -312,7 +305,7 @@ public class PodLinerTest {
     public void aRingJoinedToLavaByOpenCellsIsLinedLavaFourBlocksAboveTheBox(GameTestHelper helper) {
         int x = 6068;
         ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x, LAST_CELL_IN_VIEW, Z)), state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 4 || state.bricks() != 6) {
                 throw failure(
                         helper,
@@ -328,7 +321,7 @@ public class PodLinerTest {
     public void lavaFiveBlocksAboveTheBoxDoesNotCallForARing(GameTestHelper helper) {
         int x = 6116;
         ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x, LAST_CELL_IN_VIEW + 1, Z)), state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 0 || state.bricks() != 10) {
                 throw failure(
                         helper,
@@ -356,7 +349,7 @@ public class PodLinerTest {
     public void aRingJoinedToLavaThreeBlocksBesideItIsLined(GameTestHelper helper) {
         int x = 6212;
         ringTest(helper, x, 1, 10, lavaDownACorridorTo(x, x + 4), state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 4 || state.bricks() != 6) {
                 throw failure(
                         helper,
@@ -372,7 +365,7 @@ public class PodLinerTest {
     public void lavaFourBlocksBesideTheRingDoesNotCallForARing(GameTestHelper helper) {
         int x = 6260;
         ringTest(helper, x, 1, 10, lavaDownACorridorTo(x, x + 5), state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 0 || state.bricks() != 10) {
                 throw failure(
                         helper,
@@ -388,7 +381,7 @@ public class PodLinerTest {
     public void lavaSealedBehindRockDoesNotCallForARing(GameTestHelper helper) {
         int x = 6164;
         ringTest(helper, x, 1, 10, lavaOnlyAt(x, new BlockPos(x + 3, FLOOR, Z)), state -> {
-            ServerLevel level = layer(helper);
+            ServerLevel level = TestLayers.level(helper, 1);
             if (bricksIn(level, ringCells(x)) != 0 || state.bricks() != 10) {
                 throw failure(
                         helper,
@@ -414,7 +407,7 @@ public class PodLinerTest {
                     level.setBlock(ore, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
                 },
                 state -> {
-                    ServerLevel level = layer(helper);
+                    ServerLevel level = TestLayers.level(helper, 1);
                     if (!level.getBlockState(companyRock).is(HazardBlocks.COMPANY_ROCK)
                             || !level.getBlockState(ore).is(OreBlocks.of(OreType.IRONIUM))
                             || bricksIn(level, ringCells(x)) != 2
@@ -431,10 +424,12 @@ public class PodLinerTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
     public void aRingThatIsNotDueIsNotLined(GameTestHelper helper) {
         int x = 5492;
-        ServerLevel level = layer(helper);
-        shaft(level, x, 8, false);
+        ServerLevel level = TestLayers.level(helper, 1);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), 1, 10);
             armed.pod.setAttached(
                     PodLiner.STATE,
@@ -457,10 +452,12 @@ public class PodLinerTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RING_TICKS)
     public void aPodInAnotherColumnThanItsAnchorIsDueAtOnce(GameTestHelper helper) {
         int x = 5540;
-        ServerLevel level = layer(helper);
-        shaft(level, x, 8, false);
+        ServerLevel level = TestLayers.level(helper, 1);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), 1, 10);
             // The anchor is at the pod's own height in the column beside: a sidestep puts the pod in a new column, and
             // the ring is due with no slab sunk.
@@ -497,12 +494,15 @@ public class PodLinerTest {
 
     /** Pods the ring tests arm and then keep from lining: it holds a due ring, a rack and a column of open cells, and nothing may line for 12 ticks. */
     private void ringHeld(GameTestHelper helper, int x, Consumer<PodEntity> hold, Consumer<MockPlayer> afterMount) {
-        ServerLevel level = layer(helper);
-        shaft(level, x, 8, false);
+        ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer pilot = owner(helper);
-        pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);
@@ -562,15 +562,18 @@ public class PodLinerTest {
      * {@code blocked} of the ring's 4 open cells (so the ring has {@code 4 - blocked} cells). Runs the ring and compares what is left.
      */
     private void packSplit(GameTestHelper helper, int x, int tier, int rack, int pack, int blocked, Left expected) {
-        ServerLevel level = layer(helper);
-        shaft(level, x, 8, false);
-        for (BlockPos cell : ringCells(x).subList(0, blocked)) {
-            level.setBlock(cell, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
-        }
+        ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer pilot = owner(helper);
-        pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaftWithoutLava(level, x, 8, false);
+            pourLava(level, x, false);
+            for (BlockPos cell : ringCells(x).subList(0, blocked)) {
+                level.setBlock(cell, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
+            }
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);
@@ -733,6 +736,11 @@ public class PodLinerTest {
             this.pod = pod;
         }
 
+        /** True once the liner has an anchor, which {@link #start} is read from. */
+        boolean started() {
+            return last != null;
+        }
+
         void tick() {
             Optional<PodLiner.Anchor> now =
                     Versioned.readable(pod, PodLiner.STATE).orElseThrow().anchor();
@@ -755,33 +763,29 @@ public class PodLinerTest {
 
     private static final class Rig {
         private final MockPlayer pilot;
-        private @Nullable Seated seated;
+        private final Arrival<Seated> seated = new Arrival<>("seated", "the far chunk ticks");
 
         private Rig(MockPlayer pilot) {
             this.pilot = pilot;
         }
 
-        Seated seated() {
-            return Objects.requireNonNull(seated, "seated: set once the far chunk ticks, read before ready()");
-        }
-
         PodEntity pod() {
-            return seated().pod();
+            return seated.get().pod();
         }
 
         Watch watch() {
-            return seated().watch();
+            return seated.get().watch();
         }
 
-        boolean ready() {
-            return seated != null;
-        }
-
-        static Rig await(GameTestHelper helper, ServerLevel level, Vec3 at, int tier, boolean sprint) {
+        static Rig await(GameTestHelper helper, ServerLevel level, Vec3 at, int tier, boolean sprint, Runnable build) {
             MockPlayer pilot = owner(helper);
-            pilot.teleportTo(level, at, 0f, 0f);
             Rig rig = new Rig(pilot);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+                // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the
+                // server thread.
+                build.run();
+                // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+                pilot.teleportTo(level, at, 0f, 0f);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);
@@ -793,22 +797,24 @@ public class PodLinerTest {
                 if (sprint) {
                     pilot.setInput(SPRINT);
                 }
-                rig.seated = new Seated(pod, new Watch(pod));
+                rig.seated.set(new Seated(pod, new Watch(pod)));
             });
             return rig;
         }
     }
 
     private void drillTenSlabs(GameTestHelper helper, int tier, int x, List<Ring> expected) {
-        ServerLevel level = layer(helper);
-        shaft(level, x, 14, true);
-        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true);
+        ServerLevel level = TestLayers.level(helper, 1);
+        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true, () -> {
+            shaftWithoutLava(level, x, 14, true);
+            pourLava(level, x, true);
+        });
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.seated.isPresent()) {
                 return;
             }
             rig.watch().tick();
-            if (rig.pod().blockPosition().getY() > rig.watch().start - 10) {
+            if (!rig.watch().started() || rig.pod().blockPosition().getY() > rig.watch().start - 10) {
                 return;
             }
             rig.pilot.releaseInput();
@@ -818,10 +824,13 @@ public class PodLinerTest {
             if (!rings.equals(expected)) {
                 throw failure(
                         helper,
-                        "tier %s over 10 slabs should lay %s (the depth below the start, the bricks), it laid %s",
+                        "tier %s over 10 slabs should lay %s (the depth below the start, the bricks), it laid %s (start %s, pod at %s after %s ticks)",
                         tier,
                         expected,
-                        rings);
+                        rings,
+                        rig.watch().start,
+                        rig.pod().position(),
+                        rig.pod().tickCount);
             }
             rig.pod().discard();
             helper.succeed();
@@ -845,17 +854,19 @@ public class PodLinerTest {
 
     /** A room of open air with a stone bed 8 blocks under the pod, which the pod falls onto, and a lava source high on its east side. */
     private void fall(GameTestHelper helper, int tier, int x, Consumer<List<Ring>> check) {
-        ServerLevel level = layer(helper);
-        RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR - 8, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
-        RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.AIR);
-        // Lava high on the east wall: in the liner's view at the landing and in the fall, and a stream that has not
-        // reached the pod when it lands.
-        level.setBlock(new BlockPos(x + 4, FLOOR + 6, Z), Blocks.LAVA.defaultBlockState(), 3);
-        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR + 8, Z), tier, false);
+        ServerLevel level = TestLayers.level(helper, 1);
+        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR + 8, Z), tier, false, () -> {
+            RoomCarver.carve(
+                    level, x - RADIUS, x + RADIUS + 1, FLOOR - 8, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
+            RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.AIR);
+            // Lava high on the east wall: in the liner's view at the landing and in the fall, and a stream that has not
+            // reached the pod when it lands.
+            level.setBlock(new BlockPos(x + 4, FLOOR + 6, Z), Blocks.LAVA.defaultBlockState(), 3);
+        });
         boolean[] airborne = {false};
         int[] settled = {0};
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.seated.isPresent()) {
                 return;
             }
             rig.watch().tick();
@@ -915,19 +926,5 @@ public class PodLinerTest {
             pod.discard();
             helper.succeed();
         });
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
-        return level;
     }
 }

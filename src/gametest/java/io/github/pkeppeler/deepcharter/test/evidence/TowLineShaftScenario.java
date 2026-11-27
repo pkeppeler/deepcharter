@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.test.support.Inputs;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.UUID;
@@ -44,8 +45,8 @@ public class TowLineShaftScenario extends EvidenceScenario {
             two.server().runOnServer(server -> {
                 ServerLevel level = server.overworld();
                 int top = FLOOR_Y + ROCK_HEIGHT;
-                // A floor and a wall behind the shaft reach past the camera's view, so it never sees the edge of the
-                // stage.
+                // A floor and a wall behind the shaft reach past the camera's view, so it never sees the edge of
+                // the stage.
                 TowStage.fill(level, X - 40, X + 40, FLOOR_Y - 4, FLOOR_Y - 1, Z - 40, Z + 70, Blocks.STONE);
                 TowStage.fill(level, X + 22, X + 23, FLOOR_Y, FLOOR_Y + 60, Z - 40, Z + 70, Blocks.STONE);
                 TowStage.fill(level, X - 14, X + 14, FLOOR_Y, FLOOR_Y + 40, Z - 14, Z + 24, Blocks.AIR);
@@ -69,7 +70,7 @@ public class TowLineShaftScenario extends EvidenceScenario {
             screenshot(context, "pods-in-the-tunnel");
 
             // South along the tunnel until the Mole is at the foot of the shaft, against the tunnel's end.
-            two.server().runOnServer(server -> two.mock().setInput(TowStage.FORWARD));
+            two.server().runOnServer(server -> two.mock().setInput(Inputs.FORWARD));
             for (int ticks = 0;
                     TowStage.where(two, tower).z < Z + TUNNEL_LENGTH - 1.1 && ticks < MAX_DRIVE_TICKS;
                     ticks += TowStage.TICKS_PER_FRAME) {
@@ -78,7 +79,7 @@ public class TowLineShaftScenario extends EvidenceScenario {
             }
             screenshot(context, "line-taut-at-the-foot-of-the-shaft");
             // Up the shaft and out of its top.
-            two.server().runOnServer(server -> two.mock().setInput(TowStage.JUMP));
+            two.server().runOnServer(server -> two.mock().setInput(Inputs.JUMP));
             boolean shot = false;
             for (int ticks = 0;
                     TowStage.where(two, tower).y < FLOOR_Y + ROCK_HEIGHT + ABOVE_THE_ROCK && ticks < MAX_CLIMB_TICKS;

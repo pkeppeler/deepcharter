@@ -1,17 +1,16 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -53,7 +52,7 @@ public class PodChargeScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 RoomCarver.carve(one, X - 9, X + 9, FLOOR_Y - 9, FLOOR_Y + 10, Z - 13, Z + 13, Blocks.STONE);
                 RoomCarver.carve(
                         one,
@@ -84,9 +83,18 @@ public class PodChargeScenario extends EvidenceScenario {
                         one.setBlock(new BlockPos(X + x, FLOOR_Y + 8, Z + z), Blocks.GLOWSTONE.defaultBlockState(), 3);
                     }
                 }
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 13);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 one.addFreshEntity(pod);
@@ -99,7 +107,7 @@ public class PodChargeScenario extends EvidenceScenario {
                     "the pilot seated in the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                            && TestLayers.clientIsIn(client, 1));
             ClientWait.until(
                     context,
                     "the pod resting on its slab",
@@ -212,7 +220,7 @@ public class PodChargeScenario extends EvidenceScenario {
 
     private static boolean blasted(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             for (int dx = -1; dx <= 0; dx++) {
                 for (int dz = -1; dz <= 0; dz++) {
                     for (int dy = -2; dy <= -1; dy++) {
@@ -229,7 +237,7 @@ public class PodChargeScenario extends EvidenceScenario {
 
     private static boolean beside(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             return one.getBlockState(new BlockPos(X + 1, FLOOR_Y - 1, Z)).is(HazardBlocks.COMPANY_ROCK)
                     && one.getBlockState(new BlockPos(X - 3, FLOOR_Y - 1, Z + 2))
                             .is(HazardBlocks.COMPANY_ROCK)

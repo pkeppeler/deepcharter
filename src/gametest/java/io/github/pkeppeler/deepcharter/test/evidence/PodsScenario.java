@@ -1,5 +1,9 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
@@ -17,6 +21,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
@@ -41,7 +46,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -135,10 +139,6 @@ public class PodsScenario extends EvidenceScenario {
 
     private static final float FIRST_PERSON_PITCH = 20f;
 
-    private static final Input DRIVE = new Input(true, false, false, false, false, false, false);
-    private static final Input BORE_DOWN = new Input(false, false, false, false, false, false, true);
-    private static final Input LIFT = new Input(false, false, false, false, true, false, false);
-
     private int framesTaken;
     private final List<Consumer<Minecraft>> clientUndo = new ArrayList<>();
     private final List<Consumer<MinecraftServer>> serverUndo = new ArrayList<>();
@@ -196,8 +196,10 @@ public class PodsScenario extends EvidenceScenario {
     /** The first air over the ground at x, z, found by looking down the column from the sky, in a chunk loaded for it. */
     private static int groundY(ServerLevel level, int x, int z) {
         LevelChunk chunk = level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, level.getMaxY(), z);
-        while (pos.getY() > level.getMinY() && chunk.getBlockState(pos).isAir()) {
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(
+                x, TestLayers.band(level, TestLayers.SURFACE).maxY(), z);
+        while (pos.getY() > TestLayers.band(level, TestLayers.SURFACE).minY()
+                && chunk.getBlockState(pos).isAir()) {
             pos.move(0, -1, 0);
         }
         return pos.getY() + 1;
@@ -506,8 +508,8 @@ public class PodsScenario extends EvidenceScenario {
                                 && shown.getControllingPassenger() == null);
             }
 
-            // ------------------------------------------------------------------------------------------------ the
-            // showcase
+            // ------------------------------------------------------------------------------------------------
+            // the showcase
 
             /** The turntable of {@code subject} and its stills, then its lit still if it can be lit. */
             private void showcase(Subject subject) {
@@ -548,14 +550,12 @@ public class PodsScenario extends EvidenceScenario {
                     turnParked(FACING_CAMERA + i * 360f / TURN_FRAMES);
                     ctx.waitTick();
                     takeFrame();
-                    if (i == 0) {
-                        shot(subject, "front");
-                    } else if (i == THREEQUARTER_FRAME) {
-                        shot(subject, "threequarter");
-                    } else if (i == TURN_FRAMES / 4) {
-                        shot(subject, "side");
-                    } else if (i == TURN_FRAMES / 2) {
-                        shot(subject, "back");
+                    switch (i) {
+                        case 0 -> shot(subject, "front");
+                        case THREEQUARTER_FRAME -> shot(subject, "threequarter");
+                        case TURN_FRAMES / 4 -> shot(subject, "side");
+                        case TURN_FRAMES / 2 -> shot(subject, "back");
+                        default -> {}
                     }
                 }
                 turnParked(FACING_CAMERA);
@@ -616,7 +616,7 @@ public class PodsScenario extends EvidenceScenario {
                 Vec3 cutter = new Vec3(1.6 * scale, 0.1, 0);
                 look(start.add(chewOffset), start.add(cutter), middle);
                 settle();
-                serverDo(server -> stage.pilot().setInput(DRIVE));
+                serverDo(server -> stage.pilot().setInput(FORWARD));
                 for (int i = 0; i < APPROACH_FRAMES; i++) {
                     ctx.waitTicks(TICKS_PER_APPROACH_FRAME); // tick-wait: the clip is cut at fixed frames
                     takeFrame();
@@ -630,15 +630,15 @@ public class PodsScenario extends EvidenceScenario {
                         shot(subject, "chewing-the-ledge");
                     }
                 }
-                // Back to the open pad, then bore the floor: the cutter swings under the belly and the pod sinks into
-                // its
+                // Back to the open pad, then bore the floor: the cutter swings under the belly and the pod sinks
+                // into its
                 // lamp-lit shaft.
                 releasePilot();
                 Vec3 floor = start.add(0, 0, -6);
                 placeDriven(floor);
                 look(floor.add(2.9 * scale, 1.5 * scale, -2.6 * scale), floor.add(0.2, 0.2, 0), middle);
                 settle();
-                serverDo(server -> stage.pilot().setInput(BORE_DOWN));
+                serverDo(server -> stage.pilot().setInput(SPRINT));
                 for (int i = 0; i < FLOOR_FRAMES; i++) {
                     ctx.waitTick();
                     takeFrame();
@@ -647,7 +647,7 @@ public class PodsScenario extends EvidenceScenario {
                     }
                 }
                 // And fly up out of the hole.
-                serverDo(server -> stage.pilot().setInput(LIFT));
+                serverDo(server -> stage.pilot().setInput(JUMP));
                 for (int i = 0; i < FLY_FRAMES; i++) {
                     Vec3 pod = serverGet(server -> driven().position());
                     Vec3 at = pod.add(3.6 * scale, 1.0, -3.4 * scale);
@@ -682,8 +682,8 @@ public class PodsScenario extends EvidenceScenario {
                 serverDo(server -> stage.pilot().releaseInput());
             }
 
-            // ------------------------------------------------------------------------------------------------ the
-            // ground
+            // ------------------------------------------------------------------------------------------------
+            // the ground
 
             /** The pads whole again, the last clip's shaft filled, and the ledge put back: the last clip chewed it. */
             private void rebuildGround() {

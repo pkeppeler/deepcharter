@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
@@ -13,16 +13,18 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.IntConsumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -31,7 +33,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -42,10 +43,8 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * #539, ADR 0056: Company rock looks the part of its layer (the {@code host} state, as an ore's, ADR 0055: worldgen sets it, and in layer 2 the joints
@@ -61,7 +60,7 @@ public class CompanyRockLookTest {
 
     private static final int X = 3456;
     private static final int Z = 5300;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int ROOM = 14;
     /** Blocks east that the pod is moved to leave the blast, as in {@code BlastingChargeTest}. */
     private static final double FAR = 9.5;
@@ -82,25 +81,35 @@ public class CompanyRockLookTest {
         return layer == 1 ? Host.PACKED_SHALE : Host.GREEN_SHALE;
     }
 
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void generatedCompanyRockInEachLayerSitsInThatLayersRock(GameTestHelper helper) {
+        List<FarChunks.At> chunks = new ArrayList<>();
+        for (int layer = 1; layer <= 2; layer++) {
+            chunks.addAll(FarChunks.rect(
+                    TestLayers.level(helper, layer),
+                    FIRST_CHUNK,
+                    FIRST_CHUNK,
+                    FIRST_CHUNK + SIDE - 1,
+                    FIRST_CHUNK + SIDE - 1));
         }
-        return level;
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> generatedCompanyRockSitsInThatLayersRock(helper));
     }
 
-    @GameTest(maxTicks = 6000)
-    public void generatedCompanyRockInEachLayerSitsInThatLayersRock(GameTestHelper helper) {
+    private static void generatedCompanyRockSitsInThatLayersRock(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
+            LayerChain.Band levelBand = TestLayers.band(level, layer);
             Map<Host, Integer> found = new EnumMap<>(Host.class);
             for (int cx = FIRST_CHUNK; cx < FIRST_CHUNK + SIDE; cx++) {
                 for (int cz = FIRST_CHUNK; cz < FIRST_CHUNK + SIDE; cz++) {
-                    level.getChunk(cx, cz, ChunkStatus.FULL);
                     for (int x = cx << 4; x < (cx << 4) + 16; x++) {
                         for (int z = cz << 4; z < (cz << 4) + 16; z++) {
-                            for (int y = level.getMinY(); y < level.getMinY() + level.getHeight(); y++) {
+                            for (int y = levelBand.minY();
+                                    y
+                                            < levelBand.minY()
+                                                    + TestLayers.band(level, layer)
+                                                            .height();
+                                    y++) {
                                 BlockState state = level.getBlockState(new BlockPos(x, y, z));
                                 if (state.is(companyRock())) {
                                     found.merge(state.getValue(OreBlock.HOST), 1, Integer::sum);
@@ -114,14 +123,16 @@ public class CompanyRockLookTest {
                 }
             }
             int total = found.values().stream().mapToInt(Integer::intValue).sum();
-            int right = found.getOrDefault(expectedHost(layer), 0);
+            Set<Host> hosts = OreHostTest.generatedHosts(layer);
+            int right =
+                    hosts.stream().mapToInt(host -> found.getOrDefault(host, 0)).sum();
             if (total < AT_LEAST || right != total) {
                 throw failure(
                         helper,
                         "layer_%s should hold at least %s Company rock, all in %s, it holds %s",
                         layer,
                         AT_LEAST,
-                        expectedHost(layer),
+                        hosts,
                         found);
             }
         }
@@ -132,8 +143,8 @@ public class CompanyRockLookTest {
     public void aCompanyRockItemPlacedInALayerTakesThatLayersRock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "company-rock-place");
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
-            BlockPos floor = new BlockPos(7500, 80, 3000 + layer * 8);
+            ServerLevel level = TestLayers.level(helper, layer);
+            BlockPos floor = TestLayers.pos(layer, 7500, 80, 3000 + layer * 8);
             mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above(4)), 0, 0);
             mock.player().setGameMode(GameType.SURVIVAL);
             RoomCarver.carve(
@@ -206,7 +217,7 @@ public class CompanyRockLookTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aChargeWidensTheJointsInTwoStepsAndThenClearsTheRock(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         RoomCarver.carve(level, X - ROOM, X + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, LayerBlocks.GREEN_SHALE);
         RoomCarver.carve(level, X - ROOM, X + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         BlockState rock = company().in(LayerBlocks.GREEN_SHALE.defaultBlockState());
@@ -281,7 +292,7 @@ public class CompanyRockLookTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void widenedJointsCloseAgainWhenNoBlastFollows(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         BlockPos pos = new BlockPos(X + 64, FLOOR, Z + 64);
         RoomCarver.carve(
                 level,
@@ -375,7 +386,7 @@ public class CompanyRockLookTest {
     public void aBlastingChargeWidensOnlyTheCompanyRockItWillClear(GameTestHelper helper) {
         int z = Z + 120;
         int depth = TUNING.chargeDepth();
-        ServerLevel level = layer(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         BlockState rock = company().in(LayerBlocks.GREEN_SHALE.defaultBlockState());
         RoomCarver.carve(level, X - ROOM, X + ROOM, FLOOR - 8, FLOOR - 1, z - ROOM, z + ROOM, LayerBlocks.GREEN_SHALE);
         RoomCarver.carve(level, X - ROOM, X + ROOM, FLOOR, FLOOR + 10, z - ROOM, z + ROOM, Blocks.AIR);
@@ -425,7 +436,7 @@ public class CompanyRockLookTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aShapedChargeInLayerOneWidensOnlyTheRunItWillClear(GameTestHelper helper) {
         int z = Z + 240;
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         BlockState rock = company().in(LayerBlocks.PACKED_SHALE.defaultBlockState());
         RoomCarver.carve(
                 level, X - ROOM, X + ROOM, FLOOR - 12, FLOOR - 1, z - ROOM, z + ROOM, LayerBlocks.PACKED_SHALE);
@@ -475,12 +486,5 @@ public class CompanyRockLookTest {
                         }
                     }
                 });
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

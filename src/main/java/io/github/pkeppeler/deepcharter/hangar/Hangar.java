@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.hangar;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -13,8 +14,10 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
+import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,6 +27,7 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -43,6 +47,8 @@ import net.minecraft.world.phys.Vec3;
  * <p>Every method here is safe on a callback path: unreadable hangar data is logged once and skipped.
  */
 public final class Hangar {
+    /** T06, "The Mole is flying again!": the founding Mole handed to its charter, or a refurbished Mole bought. */
+    public static final Identifier MOLE_TRANSMISSION = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t06");
     /** The console stands this far from the hangar anchor, at its east side facing the bay. */
     private static final BlockPos CONSOLE_OFFSET = new BlockPos(5, 0, -3);
 
@@ -91,7 +97,7 @@ public final class Hangar {
                     .block()
                     .defaultBlockState()
                     .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST);
-            level.setBlock(console, state, 3);
+            TerminalBlock.place(level, console, state, 3);
         }
     }
 
@@ -219,6 +225,11 @@ public final class Hangar {
                     "Could not give the founding Mole to charter {}: it stays as it is, and the hangar tries again when it loads",
                     founder,
                     e);
+            return;
+        }
+        // The Mole is the founder's now: Personnel says so (T06), to a charter that still exists.
+        if (Charters.readableFind(server, founder).isPresent()) {
+            Transmissions.fire(server, founder, MOLE_TRANSMISSION);
         }
     }
 }

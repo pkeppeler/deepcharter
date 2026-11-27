@@ -1,7 +1,10 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -24,14 +27,15 @@ import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.Serials;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
+import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -64,7 +68,6 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #82: the Prospector is a two-seat chassis with its own hitbox, a 3 x 3 bore and a tier 3 cap; wrecks of it
@@ -81,15 +84,13 @@ public class ProspectorChassisTest {
     private static final int DRILL_TICKS = FarChunks.AWAIT_BUDGET_TICKS + DRILL_MARGIN_TICKS;
     private static final int BORE_X = 3400;
     private static final int BORE_Z = 3000;
-    private static final int BORE_FLOOR = 60;
+    private static final int BORE_FLOOR = TestLayers.worldY(1, 60);
     private static final int BORE_DEPTH = 3;
     private static final int DRIVE_TICKS = 40;
     /** Ticks a pod needs, once its chunk ticks, to fall through the shaft and cross. */
     private static final int CROSSING_TICKS = 200;
 
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
     private static final Input FORWARD_AND_SPRINT = new Input(true, false, false, false, false, false, true);
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
     private static final long PRICE = 1_390;
     private static final int CATALYSTS = 3;
 
@@ -280,7 +281,7 @@ public class ProspectorChassisTest {
 
     @GameTest(maxTicks = DRILL_TICKS)
     public void aProspectorBoresThreeByThree(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(
                 level, BORE_X - 5, BORE_X + 5, BORE_FLOOR - 8, BORE_FLOOR - 1, BORE_Z - 5, BORE_Z + 5, Blocks.STONE);
         RoomCarver.carve(
@@ -351,27 +352,33 @@ public class ProspectorChassisTest {
         });
     }
 
-    @GameTest(maxTicks = 12000)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 12000)
     public void everyWreckSiteHoldsAnUnownedProspectorWreckAndOnlyPROSPECTOR0002HasALampAndN10(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel level = layer(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
+        LayerChain.Band levelBand = TestLayers.band(level, 2);
         BlockPos conduit = conduit(helper);
         StructureSite ordinary = StructureSite.in(
                 level.getSeed(),
                 StructureKind.WRECK,
-                level.getMinY(),
-                level.getHeight(),
+                levelBand.minY(),
+                levelBand.height(),
                 WRECK_CELL,
                 WRECK_CELL,
                 conduit);
-        StructureSite prospector =
-                LayerStructures.prospector(server).orElseThrow(() -> failure(helper, "no Prospector site"));
+        StructureSite prospector = LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                .orElseThrow(() -> failure(helper, "no Prospector site"));
         if (prospector.equals(ordinary)) {
             throw failure(helper, "cell %d is the Prospector's own site, so it cannot be the ordinary one", WRECK_CELL);
         }
-        generate(level, ordinary);
-        generate(level, prospector);
+        List<FarChunks.At> chunks = new ArrayList<>(chunksOf(level, ordinary));
+        chunks.addAll(chunksOf(level, prospector));
+        boolean[] generated = {false};
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> generated[0] = true);
         helper.succeedWhen(() -> {
+            if (!generated[0]) {
+                throw helper.assertionException("the wreck sites' chunks are not loaded yet");
+            }
             // Loading the chunks again must not add a second pod to either site.
             generate(level, ordinary);
             generate(level, prospector);
@@ -437,8 +444,9 @@ public class ProspectorChassisTest {
                             "restoring the Prospector on the advance alone");
                     expect(
                             helper,
-                            !Wrecks.isWreck(wreck) && FoundingMoleHangarTest.balance(helper, owner) == 0,
-                            "the Prospector is restored for its $1,390");
+                            !Wrecks.isWreck(wreck)
+                                    && FoundingMoleHangarTest.balance(helper, owner) == Transmission.Bonus.B3.amount(),
+                            "the Prospector is restored for its $1,390, and T17 pays B3");
                     expect(
                             helper,
                             FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == 0,
@@ -596,8 +604,10 @@ public class ProspectorChassisTest {
                             "the first charter restoring a second Prospector with no Cicatrium");
                     expect(
                             helper,
-                            Wrecks.isWreck(two) && FoundingMoleHangarTest.balance(helper, first) == PRICE,
-                            "the refused restore took nothing");
+                            Wrecks.isWreck(two)
+                                    && FoundingMoleHangarTest.balance(helper, first)
+                                            == PRICE + Transmission.Bonus.B3.amount(),
+                            "the refused restore took nothing (the first restore's T17 paid B3)");
 
                     // The second charter gets its own advance for the other wreck.
                     FoundingMoleHangarTest.expectDone(
@@ -648,8 +658,9 @@ public class ProspectorChassisTest {
                             "restoring the Prospector");
                     expect(
                             helper,
-                            FoundingMoleHangarTest.balance(helper, owner) == FoundingMoleHangarTest.RICH - PRICE,
-                            "restoring a Prospector costs $1,390, the account holds %s",
+                            FoundingMoleHangarTest.balance(helper, owner)
+                                    == FoundingMoleHangarTest.RICH - PRICE + Transmission.Bonus.B3.amount(),
+                            "restoring a Prospector costs $1,390 and T17 pays B3, the account holds %s",
                             FoundingMoleHangarTest.balance(helper, owner));
                     expect(
                             helper,
@@ -970,16 +981,17 @@ public class ProspectorChassisTest {
     public void aProspectorCrossesABreachWithBothRidersInTheirSeats(GameTestHelper helper) {
         double x = 3700.5;
         double z = 3700.5;
-        ServerLevel one = layer(helper, 1);
-        openShaft(one, x, z);
+        ServerLevel one = TestLayers.level(helper, 1);
         MockPlayer pilot = MockPlayers.join(helper, "prospector-cross-pilot");
         MockPlayer navigator = MockPlayers.join(helper, "prospector-cross-navigator");
-        pilot.teleportTo(one, new Vec3(x, 8, z), 0, 0);
-        navigator.teleportTo(one, new Vec3(x, 8, z), 0, 0);
+        pilot.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
+        navigator.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pod = {null};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(2, 8), z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            openShaft(one, x, z);
             pod[0] = TestEntities.create(PodRegistry.PROSPECTOR, one);
-            pod[0].setPos(x, 8, z);
+            pod[0].setPos(x, TestLayers.worldY(2, 8), z);
             one.addFreshEntity(pod[0]);
             if (!pilot.player().startRiding(pod[0], true, false)
                     || !navigator.player().startRiding(pod[0], true, false)) {
@@ -988,11 +1000,14 @@ public class ProspectorChassisTest {
         });
         helper.succeedWhen(() -> {
             if (pod[0] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(
+                        helper,
+                        "waiting for the chunk at %s to tick entities",
+                        BlockPos.containing(x, TestLayers.worldY(2, 8), z));
             }
             expect(
                     helper,
-                    pilot.player().level().dimension().equals(LayerChain.dimension(2)),
+                    TestLayers.isIn(pilot.player(), 2),
                     "the pilot should have crossed to layer 2, is in %s",
                     pilot.player().level().dimension());
             expect(
@@ -1023,19 +1038,20 @@ public class ProspectorChassisTest {
     public void aTowedProspectorKeepsBothRidersInTheirSeatsAcrossABreach(GameTestHelper helper) {
         double x = 3800.5;
         double z = 3800.5;
-        ServerLevel one = layer(helper, 1);
-        openShaft(one, x, z);
+        ServerLevel one = TestLayers.level(helper, 1);
         MockPlayer pilot = MockPlayers.join(helper, "prospector-tow-pilot");
         MockPlayer navigator = MockPlayers.join(helper, "prospector-tow-navigator");
-        pilot.teleportTo(one, new Vec3(x, 10, z), 0, 0);
-        navigator.teleportTo(one, new Vec3(x, 10, z), 0, 0);
+        pilot.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
+        navigator.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
         PodEntity[] pods = {null, null};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(2, 8), z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            openShaft(one, x, z);
             pods[0] = TestEntities.create(PodRegistry.POD, one);
-            pods[0].setPos(x, 8, z);
+            pods[0].setPos(x, TestLayers.worldY(2, 8), z);
             one.addFreshEntity(pods[0]);
             pods[1] = TestEntities.create(PodRegistry.PROSPECTOR, one);
-            pods[1].setPos(x, 10, z);
+            pods[1].setPos(x, TestLayers.worldY(2, 10), z);
             one.addFreshEntity(pods[1]);
             PodTowing.attach(pods[0], pods[1]);
             if (!pilot.player().startRiding(pods[1], true, false)
@@ -1045,12 +1061,14 @@ public class ProspectorChassisTest {
         });
         helper.succeedWhen(() -> {
             if (pods[1] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(
+                        helper,
+                        "waiting for the chunk at %s to tick entities",
+                        BlockPos.containing(x, TestLayers.worldY(2, 8), z));
             }
             expect(
                     helper,
-                    pilot.player().level().dimension().equals(LayerChain.dimension(2))
-                            && navigator.player().level().dimension().equals(LayerChain.dimension(2)),
+                    TestLayers.isIn(pilot.player(), 2) && TestLayers.isIn(navigator.player(), 2),
                     "both riders of the towed Prospector should have crossed to layer 2, they are in %s and %s",
                     pilot.player().level().dimension(),
                     navigator.player().level().dimension());
@@ -1110,13 +1128,17 @@ public class ProspectorChassisTest {
                 .contains(T17);
     }
 
-    /** Loads every chunk the site touches, so that a fresh one is drawn. */
-    private static void generate(ServerLevel level, StructureSite site) {
+    /** Every chunk the site touches. */
+    private static List<FarChunks.At> chunksOf(ServerLevel level, StructureSite site) {
         BoundingBox box = site.bounds();
-        for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
-            for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {
-                level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
-            }
+        return FarChunks.overBlocks(level, box.minX(), box.minZ(), box.maxX(), box.maxZ());
+    }
+
+    /** Asks for every chunk the site touches again, so that one that is loaded already must not be drawn twice. */
+    private static void generate(ServerLevel level, StructureSite site) {
+        for (FarChunks.At chunk : chunksOf(level, site)) {
+            // sync-load: the chunks are loaded and forced by the caller's wait; asking for them again is the case
+            level.getChunk(chunk.chunkX(), chunk.chunkZ(), ChunkStatus.FULL);
         }
     }
 
@@ -1180,8 +1202,8 @@ public class ProspectorChassisTest {
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(level.getMinY()),
-                column.offset(1, 0, 1).atY(level.getMinY() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }
@@ -1201,14 +1223,6 @@ public class ProspectorChassisTest {
         return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
     }
 
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
-    }
-
     private static int air(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2) {
         int found = 0;
         for (int x = x1; x <= x2; x++) {
@@ -1223,12 +1237,6 @@ public class ProspectorChassisTest {
         return found;
     }
 
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        FoundingMoleHangarTest.expect(helper, condition, format, args);
-    }
-
     private static void expectThrows(GameTestHelper helper, Runnable body, String what) {
         try {
             body.run();
@@ -1236,11 +1244,5 @@ public class ProspectorChassisTest {
             return;
         }
         throw failure(helper, "%s should throw", what);
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return FoundingMoleHangarTest.failure(helper, format, args);
     }
 }

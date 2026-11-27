@@ -10,11 +10,12 @@ package io.github.pkeppeler.deepcharter.creature;
  * @param spawnRangeBlocks     a rail site spawns a figure when a player is within this many blocks of its centre
  * @param spawnClearanceBlocks how far from every player a rail figure may appear
  * @param maxPerSite           figures on one rail site
- * @param maxPerLevel          figures in one level, however they came
- * @param respawnDelayTicks    ticks after a figure was killed before the level spawns another
+ * @param maxPerBand           figures in one band of a level (a layer dimension is one band), however they came
+ * @param respawnDelayTicks    ticks after a figure was killed before its band spawns another
  * @param maxHealth            the figure's health: what the cutter, or a person's hand, has to take off it
  * @param cling                what a figure does to a dark pod
  * @param natural              how figures appear in the open dark of the layers
+ * @param foot                 what a figure does to a person on foot
  */
 public record CreatureTuning(
         float walkSpeed,
@@ -24,13 +25,14 @@ public record CreatureTuning(
         double spawnRangeBlocks,
         double spawnClearanceBlocks,
         int maxPerSite,
-        int maxPerLevel,
+        int maxPerBand,
         int respawnDelayTicks,
         float maxHealth,
         Cling cling,
-        Natural natural) {
+        Natural natural,
+        Foot foot) {
     public static final CreatureTuning DEFAULT =
-            new CreatureTuning(0.22f, 3, 5, 100, 96, 16, 1, 5, 400, 12f, Cling.DEFAULT, Natural.DEFAULT);
+            new CreatureTuning(0.22f, 3, 5, 100, 96, 16, 1, 5, 400, 12f, Cling.DEFAULT, Natural.DEFAULT, Foot.DEFAULT);
 
     public CreatureTuning {
         if (walkSpeed <= 0
@@ -41,7 +43,7 @@ public record CreatureTuning(
                 || spawnRangeBlocks <= 0
                 || spawnClearanceBlocks <= 0
                 || maxPerSite < 1
-                || maxPerLevel < maxPerSite
+                || maxPerBand < maxPerSite
                 || respawnDelayTicks < 0
                 || maxHealth <= 0) {
             throw new IllegalArgumentException("creature tuning out of range: " + this);
@@ -101,6 +103,32 @@ public record CreatureTuning(
                     || layerOneChancePerTry > chancePerTry
                     || roomBlocks < 1) {
                 throw new IllegalArgumentException("natural spawn tuning out of range: " + this);
+            }
+        }
+    }
+
+    /**
+     * A person on foot in the dark, with no light in either hand, draws a figure. It clings, weighs on them like ore and drains their
+     * hunger down to a floor, and lets go only when it dies (ADR 0046, amended for #916). It never hurts them.
+     *
+     * @param senseBlocks    a person this close that is in the dark draws a figure that is not clinging
+     * @param reachBlocks    a figure this close to the person (the gap between the two boxes) takes hold
+     * @param loadMass       units of ore mass that a grip weighs, in {@code OreTuning} terms: the slowdown is {@code loadMass} times
+     *                       {@code slowdownPerMass}
+     * @param secondsPerPoint seconds a grip takes to drain one point of hunger (half a drumstick)
+     * @param hungerFloor    food level at or below which a grip takes nothing; above 0, so a grip never starves anyone
+     */
+    public record Foot(double senseBlocks, double reachBlocks, float loadMass, float secondsPerPoint, int hungerFloor) {
+        public static final Foot DEFAULT = new Foot(16, 1.5, 20f, 6f, 6);
+
+        public Foot {
+            if (senseBlocks <= 0
+                    || reachBlocks <= 0
+                    || loadMass <= 0
+                    || secondsPerPoint <= 0
+                    || hungerFloor < 1
+                    || hungerFloor > 20) {
+                throw new IllegalArgumentException("foot cling tuning out of range: " + this);
             }
         }
     }

@@ -78,11 +78,20 @@ class Piece:
         self.name = name
         self.blocks: dict[tuple[int, int, int], State] = {}
         self.displays: list[dict] = []
+        # The rooms inside the piece's buildings, each the box (low corner, high corner, inclusive) of air inside its walls, and whether it
+        # is meant to look dark.
+        self.rooms: list[tuple[tuple[int, int, int], tuple[int, int, int], bool]] = []
 
     # ------------------------------------------------------------------------------------------------ blocks
 
     def set(self, x: int, y: int, z: int, s: State) -> None:
         self.blocks[(int(x), int(y), int(z))] = s
+
+    def room(self, x0: int, y0: int, z0: int, x1: int, y1: int, z1: int, dark: bool = False) -> None:
+        """Records the box x0..x1, y0..y1, z0..z1 as a room: the air inside a building's walls, from its floor row to the row under its
+        roof. The layout file lists every room, and ColonyInteriorLightTest checks that no cell of one is at block light 0 and that a
+        dark one holds no lamp."""
+        self.rooms.append(((x0, y0, z0), (x1, y1, z1), dark))
 
     def get(self, x: int, y: int, z: int) -> State | None:
         return self.blocks.get((x, y, z))

@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "deepcharter:block/great_stalk_cap_top",
+    "bottom": "deepcharter:block/great_stalk_cap_under",
+    "side": "deepcharter:block/great_stalk_cap_side"
+  }
+}

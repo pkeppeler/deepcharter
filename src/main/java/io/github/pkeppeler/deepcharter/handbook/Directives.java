@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.charter.Charters;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -24,7 +23,7 @@ public final class Directives {
 
     /**
      * Completes {@code directive} for {@code player}'s whole charter. A directive that is already done stays done. A player on
-     * no charter completes nothing. A directive no chapter defines completes nothing and is logged once: a feature may call
+     * no charter completes it for themselves ({@link PersonalHandbookData}). A directive no chapter defines completes nothing and is logged once: a feature may call
      * this before the chapter that defines the directive exists. While the saved charters or progress are unreadable this logs
      * once and does nothing, so a gameplay callback that calls it never throws.
      */
@@ -40,8 +39,7 @@ public final class Directives {
             }
             return;
         }
-        if (HandbookProgress.readableData(server).isEmpty()
-                || Charters.readableCharterOf(server, player.getUUID()).isEmpty()) {
+        if (HandbookProgress.readableData(server).isEmpty()) {
             return;
         }
         HandbookRegistry.DIRECTIVE_TRIGGER.trigger(player, directive);

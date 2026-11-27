@@ -11,15 +11,25 @@ val runVmArgs = project.extra["runVmArgs"] as () -> Map<String, List<String>>
 
 addVmArgToRuns(exitOnOom)
 
-// Server GameTest heap. No -Xmx was set, so the JVM took a quarter of RAM: 4 GB on the 16 GB Mac, and the suite (1050 tests) ran
-// out of it at about 80% (#541). Two leaks filled it. GameTestHelper.onEachTick queued one lambda per remaining tick (#548;
-// TestTicks.each replaced it). Chunks that FarChunks forced stayed forced to the end of the run, and each forced chunk pins the
-// proto chunks around it, so one layer level held 34,000 chunks (#569; FarChunks.force lets go when the test finishes).
-// Measured 2026-10-15 (-Xlog:gc; 1110 tests for the 1 GB and 1.5 GB sweep, 1132 for the peak): 1 GB fails (Full GCs at 1022M), 1.5 GB passes with 6 Full GCs, 2 GB passes with none.
-// The live set is 300 to 550 MB, peaking at 1.13 GB while one batch of about 50 tests runs. 2G is below 2x the peak (2.3 GB), so
-// it cannot be lowered. POI is not the holder (#636). Re-measure when the suite grows by a tenth.
-val gameTestHeap = "-Xmx2G"
+// Server GameTest heap (#541, #805, #807, #816, #957, #1026). CI died of OutOfMemoryError at 2G with peaks of 1.23 to 1.45 GB (#805), so keep the
+// heap at 2x the measured peak or more, and re-measure when the suite grows by a tenth, a test adds a tall world to a campaign environment, or a
+// batch cap (TestBatches) rises. Method: a forced GC every 1.5 s (jcmd GC.class_histogram) over a full run. Mechanisms: ChunkMapUnloadMixin,
+// ChunkMapSaveMixin, FarChunks.force, CampaignEnvironments, TestBatches.
+// Measured 2026-11-22 (1479 tests, 4 vCPU, 3 runs at 3G with the caps): peaks of 1250, 1352 and 1365 MB. Batches of 50 peaked at 1.5 to 1.7 GB.
+// Measured 2026-11-24 (1650 tests, 4 vCPU, forced GC every 1.5 s, 1 run each): peaks of 1781 MB at 20 tests a batch, 1759 at 30 and 1907 at 40 (#823),
+// so 4G meets the 2x above (1907 MB x 2 <= 4096). CI's standard runners have 16 GB. Raise it again before the next cap raise or tall test world.
+val gameTestHeap = "-Xmx4096m"
 addVmArgToRun("gameTest", gameTestHeap)
+
+// Client GameTest heap, 4G (the default is a quarter of RAM). At 4G the live set after each class's forced full GC peaked at about 0.84 GB
+// (run 45308464189, 3 shards). A 3G trial (run 45316304043) made G1 compact twice in the heaviest shard, with live up to 1.07 GB, so 4G stays.
+// Watch the live set after a full collection, not the peak: G1 grows the heap to Xmx before it collects hard. Per-class table: PR #1148.
+// Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac, so the default two
+// client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest action prints the peak and
+// the live set from it.
+val clientGameTestHeap = "-Xmx4G"
+addVmArgToRun("clientGameTest", clientGameTestHeap)
+addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")
 
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
 // 0 without it. The second half fails if the JVM ever stops honouring the flag; the first, if a run drops it.
@@ -57,10 +67,14 @@ tasks.register("checkRunJvmOom") {
 	val bare = probeDir.map { it.file("bare.exit") }
 	val flag = exitOnOom
 	val heap = gameTestHeap
+	val clientHeap = clientGameTestHeap
 	doLast {
 		val missing = runArgs.get().filterValues { flag !in it }.keys
 		if (missing.isNotEmpty()) {
 			throw GradleException("run(s) $missing lack $flag: an OutOfMemoryError there would not end the JVM, so the build could pass after one (#541)")
+		}
+		if (clientHeap !in runArgs.get().getValue("clientGameTest")) {
+			throw GradleException("the clientGameTest run lacks $clientHeap: its heap would be a quarter of RAM, which the tall campaign world outgrows (#803)")
 		}
 		if (heap !in runArgs.get().getValue("gameTest")) {
 			throw GradleException("the gameTest run lacks $heap: its heap would be the JVM default (a quarter of RAM), which the suite outgrows (#541)")

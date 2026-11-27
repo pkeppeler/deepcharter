@@ -193,7 +193,13 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
 
     /** The share of the full drill spin that the cutter {@code appearance} shows turns at. */
     private float spinScaleOf(Appearance appearance) {
-        return appearance.cutter() == null ? (float) geo.drillSpinScale() : spinScales.get(appearance.cutter());
+        String cutter = appearance.cutter();
+        if (cutter == null) {
+            return (float) geo.drillSpinScale();
+        }
+        return Objects.requireNonNull(
+                spinScales.get(cutter),
+                () -> "no spin scale for cutter " + cutter + ", the constructor fills one per geo.cutters()");
     }
 
     @Override
@@ -210,8 +216,8 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
         state.cabHidden = FrontCameraFeed.hidesCab(pod);
         state.hot = hasHotMask && pod.hullBurning();
         motions.computeIfAbsent(pod, ignored -> new PodMotion())
-                .advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));
-        // The pod turns as its motion says (towards where it drives or drills), not as its entity yaw does.
+                .advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance), partialTick);
+        // The server steers the pod, so the model faces the entity's yaw.
         state.addGeckolibData(DataTickets.ENTITY_BODY_YAW, state.heading);
         state.beam = PodBeams.beamFor(pod, state);
     }
@@ -245,8 +251,8 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
         PodGeoRenderState state = renderPassInfo.renderState();
         pose.apply(state, snapshots);
         if (state.cabHidden) {
-            // The pilot looks through the front camera: nothing of the pod's own body, cab or cutter stands in the
-            // view.
+            // The pilot looks through the front camera: nothing of the pod's own body, cab or cutter stands in
+            // the view.
             geo.bones().forEach(bone -> snapshots.ifPresent(bone.name(), snapshot -> snapshot.skipRender(true)));
         }
         for (String name : hiddenBones(state.appearance())) {

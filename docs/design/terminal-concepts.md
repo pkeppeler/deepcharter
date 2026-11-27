@@ -31,9 +31,9 @@
 
 **Surface.** A light edge on the top left and a dark edge on the bottom right of every part (a bevel of three tones, not one line), a soft shadow where the bezel meets the glass, rivets and screws that are domes with a highlight and a drop shadow, brushed or cast grain, grime that runs below the hardware, chipped paint on the corners, and buttons that sink when hovered.
 
-**Sprites.** 13 files, about 20 KB: the frame 152 x 110, the glass 32 x 32, three buttons 12 x 12, three knob pips, the nameplate and four decals.
+**Sprites.** 13 files, about 20 KB: the frame 152 x 110, the glass 40 x 40, three buttons 12 x 12, three knob pips, the nameplate and four decals.
 
-**Risk, and what to watch.** The porthole's corner arcs are part of the frame's corner cells, so the content stays 6 pixels inside the glass edge or its corners are clipped. A GUI shorter than 240 pixels has less room for the hinge and the latch edge (they tile, but the wheel and the gauge are fixed).
+**Risk, and what to watch.** The porthole's corner arcs are part of the frame's corner cells, so the content stays 6 pixels inside the glass edge or its corners are clipped. The glass sprite and its scanlines are cut to the same arc (`glassRadius`, 18), so a ring of the glass `k` pixels in has the corner radius 18 less `k` and runs beside the bezel's. A GUI shorter than 240 pixels has less room for the hinge and the latch edge (they tile, but the wheel and the gauge are fixed).
 
 **References** (read on 2026-10-10):
 
@@ -72,7 +72,7 @@ What changed:
 
 ```sh
 tools/record-evidence.sh terminal-panel     # stills of the seven screens, no test pack
-python3 tools/terminal_concepts.py --preview DIR
+tools/py tools/terminal_concepts.py --preview DIR
 ```
 
 To change the design, edit `tools/terminal_concepts.py` and run it. A test fails when a committed sprite differs from what the generator makes.

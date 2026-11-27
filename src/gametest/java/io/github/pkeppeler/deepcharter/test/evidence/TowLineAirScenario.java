@@ -42,8 +42,8 @@ public class TowLineAirScenario extends EvidenceScenario {
             UUID[][] pods = {null};
             two.server().runOnServer(server -> {
                 ServerLevel level = server.overworld();
-                // A floor and a wall behind the flight reach past the camera's view, so it never sees the edge of the
-                // stage.
+                // A floor and a wall behind the flight reach past the camera's view, so it never sees the edge of
+                // the stage.
                 TowStage.fill(level, X - 45, X + 45, FLOOR_Y - 4, FLOOR_Y - 1, Z - 80, Z + 120, Blocks.STONE);
                 TowStage.fill(level, X - 26, X - 25, FLOOR_Y, FLOOR_Y + 50, Z - 80, Z + 120, Blocks.STONE);
                 TowStage.fill(level, X - 10, X + 10, FLOOR_Y, FLOOR_Y + 40, Z - 14, Z + 60, Blocks.AIR);
@@ -75,7 +75,7 @@ public class TowLineAirScenario extends EvidenceScenario {
 
     /** Flies {@link #LEG_TICKS} ticks along {@code yaw}, holding height. */
     private void leg(ClientGameTestContext context, TwoPlayerServer two, UUID tower, float yaw) {
-        two.server().runOnServer(server -> two.mock().player().setYRot(yaw));
+        two.server().runOnServer(server -> TowStage.turn(two, yaw));
         for (int done = 0; done < LEG_TICKS; done += TowStage.TICKS_PER_FRAME) {
             fly(context, two, tower, true);
         }

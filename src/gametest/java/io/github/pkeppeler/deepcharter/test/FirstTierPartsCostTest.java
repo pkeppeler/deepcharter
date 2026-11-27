@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.BootstrapCost.Needs;
@@ -21,14 +21,12 @@ import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,12 +149,6 @@ public class FirstTierPartsCostTest {
 
     private static final double PART_SHARE_MAX = 1.5;
 
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
     private static String unitPath(ComponentTrack track) {
         return track.id() + "_unit";
     }
@@ -187,18 +179,15 @@ public class FirstTierPartsCostTest {
 
     /** The run of a Mole with tier 2 parts in layer 2, whose ore is the liner's and heat shield's. */
     private static Run layerTwoRun() {
-        return EarlyRunModel.run(
-                Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+        return EarlyRunModel.layerTwoRun(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2));
     }
 
     /** The run of a Mole with tier 2 parts in layer 2, which the layer 2 hazard answers were priced against (EconomyAffordabilityTest). */
     private static Pace layerTwo() {
         Zone zone = Zone.load("upper_levels");
         PodStats stats = EarlyRunModel.mole(2, 2, 2);
-        Run run = EarlyRunModel.run(zone, stats, EarlyRunModel.layerOneBlocks());
-        return new Pace(
-                run.net(),
-                EarlyRunModel.runSeconds(zone, stats, EarlyRunModel.layerOneBlocks(), run) + RUN_OVERHEAD_SECONDS);
+        Run run = EarlyRunModel.layerTwoRun(zone, stats);
+        return new Pace(run.net(), EarlyRunModel.layerTwoRunSeconds(zone, stats, run) + RUN_OVERHEAD_SECONDS);
     }
 
     private static Pace paceOf(ComponentTrack track) {
@@ -258,8 +247,8 @@ public class FirstTierPartsCostTest {
                 }
             }
         }
-        // The kit is what the stock Mole needs, and it must not ask for a unit: a unit's recipe and the kit's share no
-        // part.
+        // The kit is what the stock Mole needs, and it must not ask for a unit: a unit's recipe and the kit's share
+        // no part.
         for (Item part : BootstrapCost.kitParts()) {
             for (String cell : BootstrapCost.cells(BootstrapCost.recipe(BootstrapCost.path(part)))) {
                 if (cell.contains("_unit")) {
@@ -438,14 +427,24 @@ public class FirstTierPartsCostTest {
                     case FUEL_TANK -> tiers[0] = 1;
                     case DRILL -> tiers[1] = 1;
                     case CARGO_BAY -> tiers[2] = 1;
-                    default -> {}
+                    case HULL,
+                            ENGINE,
+                            RADIATOR,
+                            SCANNER,
+                            LIGHTS,
+                            SPOIL_HOPPER,
+                            LINER,
+                            SOUNDER,
+                            BRACE,
+                            HEAT_SHIELD,
+                            CONSOLE -> {}
                 }
                 bought++;
             }
         }
 
-        // After: the crates and the furnace and the bench for each unit, and the ore of a hazard answer at its run's
-        // pace.
+        // After: the crates and the furnace and the bench for each unit, and the ore of a hazard answer at its
+        // run's pace.
         Needs bag = BootstrapCost.kit();
         Spread before = BootstrapCost.crates(level, bag);
         double afterMinutes = 0;

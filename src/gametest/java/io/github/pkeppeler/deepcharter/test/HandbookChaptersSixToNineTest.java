@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import com.google.gson.JsonObject;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
@@ -14,6 +16,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTriggers;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
+import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.hangar.HangarEvents;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
@@ -29,15 +32,16 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -135,6 +139,7 @@ public class HandbookChaptersSixToNineTest {
         CANON.put(
                 base + "company_property.text.1",
                 "Somewhere in the Old Workings lies the Prospector, a two-seat pod that went missing some years ago. Find her, tow her home and restore her, and she's yours to fly. She has a navigator's seat, so bring a friend! Then take her down to the floor of the Workings. You've earned it.");
+        CANON.put(base + "company_property.text.1.margin", "If you hear the song and there's no radio, leave. —R.");
         CANON.put(
                 base + "company_property.margin",
                 "Ines's pod. Read her log, then decide if you still want the job. —R.");
@@ -168,23 +173,10 @@ public class HandbookChaptersSixToNineTest {
         return directives;
     }
 
-    private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
-        if (!condition) {
-            throw helper.assertionException(format, args);
-        }
-    }
-
-    private static ServerLevel layer(MinecraftServer server, int layer) {
-        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
-        if (level == null) {
-            throw new IllegalStateException("dimension " + LayerChain.dimension(layer) + " did not load");
-        }
-        return level;
-    }
-
     /** A Y inside zone {@code index} of the layer (0 is the top third, 2 the bottom). */
-    private static double zoneY(ServerLevel level, int index) {
-        Zones.Span span = Zones.span(level.getMinY(), level.getHeight(), index);
+    private static double zoneY(ServerLevel level, int layer, int index) {
+        LayerChain.Band band = TestLayers.band(level, layer);
+        Zones.Span span = Zones.span(band.minY(), band.height(), index);
         return span.low() + span.size() / 2.0;
     }
 
@@ -312,6 +304,47 @@ public class HandbookChaptersSixToNineTest {
         helper.succeed();
     }
 
+    /**
+     * The margin note that teaches the warning in the dark (#861) is beside the Prospector's paragraph, on the page a player reads once the
+     * breach into the Old Workings is made, which is where the wrecks are, and not before.
+     */
+    @GameTest
+    public void theSongsMarginNoteOpensWithTheProspectorsChapterAfterTheBreachAndNotBefore(GameTestHelper helper) {
+        JsonObject lang = HandbookChaptersOneToFiveTest.lang();
+        String key = "deepcharter.handbook.chapter.deepcharter.company_property.text.1.margin";
+        expect(helper, lang.has(key), "the language file should have %s", key);
+        expect(
+                helper,
+                lang.get(key).getAsString().equals("If you hear the song and there's no radio, leave. —R."),
+                "the margin note should be verbatim, got %s",
+                lang.get(key).getAsString());
+        expect(
+                helper,
+                lang.has("deepcharter.handbook.chapter.deepcharter.company_property.text.1"),
+                "the margin is beside a text page, which needs a text.1");
+        List<List<Identifier>> chapters = new ArrayList<>();
+        for (String chapter : ORDER) {
+            chapters.add(Objects.requireNonNull(PINNED.get(chapter)).stream()
+                    .map(Identifier::parse)
+                    .toList());
+        }
+        int prospector = ORDER.indexOf("deepcharter:company_property");
+        Set<Identifier> done = new LinkedHashSet<>();
+        for (int i = 0; i < prospector - 1; i++) {
+            done.addAll(chapters.get(i));
+        }
+        expect(
+                helper,
+                HandbookVisibility.of(chapters, done).get(prospector) != HandbookVisibility.FULL,
+                "the Prospector's chapter (and its text pages) open before the breach into the Workings is made");
+        done.addAll(chapters.get(prospector - 1));
+        expect(
+                helper,
+                HandbookVisibility.of(chapters, done).get(prospector) == HandbookVisibility.FULL,
+                "the Prospector's chapter did not open once the breach into the Workings was made");
+        helper.succeed();
+    }
+
     /** The chapter text, its margin notes and its directive lines are the canon, word for word, and the end page follows unchanged. */
     @GameTest
     public void theTextOfChaptersSixToNineIsTheCanonWordForWord(GameTestHelper helper) {
@@ -355,16 +388,16 @@ public class HandbookChaptersSixToNineTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aTwoPlayerCharterCompletesChaptersSixToNineInOrder(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel one = layer(server, 1);
-        ServerLevel two = layer(server, 2);
+        ServerLevel one = TestLayers.level(server, 1);
+        ServerLevel two = TestLayers.level(server, 2);
         AtomicInteger ready = new AtomicInteger();
         Runnable arrived = () -> {
             if (ready.incrementAndGet() == 2) {
                 runTheChapters(helper, server, one, two);
             }
         };
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(9100.5, zoneY(one, 2), 9100.5), arrived);
-        FarChunks.awaitEntityTicking(helper, two, BlockPos.containing(9100.5, zoneY(two, 2), 9100.5), arrived);
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(9100.5, zoneY(one, 1, 2), 9100.5), arrived);
+        FarChunks.awaitEntityTicking(helper, two, BlockPos.containing(9100.5, zoneY(two, 2, 2), 9100.5), arrived);
     }
 
     private static void runTheChapters(
@@ -412,7 +445,8 @@ public class HandbookChaptersSixToNineTest {
                                 Items.STONE_AXE,
                                 HandbookChaptersOneToFiveTest.ours("scrap_iron"),
                                 Items.IRON_INGOT,
-                                HandbookChaptersOneToFiveTest.ours("scanner_unit"))) {
+                                HandbookChaptersOneToFiveTest.ours("scanner_unit"),
+                                Items.TORCH)) {
                             HandbookChaptersOneToFiveTest.give(first, item);
                         }
                         for (String directive : through(5)) {
@@ -431,11 +465,11 @@ public class HandbookChaptersSixToNineTest {
                         pods.add(mole);
                         PodComponents.register(mole, charter);
                         mole.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
+                                3);
                         CompoundTag args = new CompoundTag();
                         args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.HULL.id());
                         args.putInt(UpgradeTerminal.TIER_KEY, 2); // tier 1 is crafted and not sold (#536)
@@ -486,11 +520,11 @@ public class HandbookChaptersSixToNineTest {
                         // Chapter 7: the hull is repaired at the station, and the crew reaches the Deep Claim.
                         first.stopRiding();
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.REPAIR_STATION.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.REPAIR_STATION.block().defaultBlockState(),
+                                3);
                         mole.damageHull(mole.maxHull() / 2);
                         HandbookChaptersOneToFiveTest.expectDone(
                                 helper,
@@ -509,7 +543,7 @@ public class HandbookChaptersSixToNineTest {
                                 "standing on the surface",
                                 both,
                                 through(6, directive("staying_safe", "repair_hull")));
-                        director.teleportTo(one, new Vec3(9100.5, zoneY(one, 0), 9100.5), 0, 0);
+                        director.teleportTo(one, new Vec3(9100.5, zoneY(one, 1, 0), 9100.5), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
                         HandbookChaptersOneToFiveTest.expectCompleted(
                                 helper,
@@ -517,7 +551,7 @@ public class HandbookChaptersSixToNineTest {
                                 "the top of the Claim",
                                 both,
                                 through(6, directive("staying_safe", "repair_hull")));
-                        director.teleportTo(one, new Vec3(9100.5, zoneY(one, 2), 9100.5), 0, 0);
+                        director.teleportTo(one, new Vec3(9100.5, zoneY(one, 1, 2), 9100.5), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
                         HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 7", both, through(7));
                         HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 7);
@@ -526,7 +560,7 @@ public class HandbookChaptersSixToNineTest {
                         BreachEvents.CROSSED.invoker().onCrossed(first, two, one, 2, 1);
                         BreachEvents.CROSSED.invoker().onCrossed(first, two, two, 2, 3);
                         PodEntity carried =
-                                podIn(helper, one, PodRegistry.POD, new Vec3(9100.5, zoneY(one, 2), 9100.5));
+                                podIn(helper, one, PodRegistry.POD, new Vec3(9100.5, zoneY(one, 1, 2), 9100.5));
                         pods.add(carried);
                         BreachEvents.CROSSED.invoker().onCrossed(carried, one, two, 1, 2);
                         BreachEvents.CROSSED.invoker().onCrossed(drifter.player(), one, two, 1, 2);
@@ -537,21 +571,21 @@ public class HandbookChaptersSixToNineTest {
                                 both,
                                 through(7));
                         BreachEvents.CROSSED.invoker().onCrossed(first, one, two, 1, 2);
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 0), 9100.5), 0, 0);
+                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 0), 9100.5), 0, 0);
                         HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 8", both, through(8));
                         HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 8);
 
                         // Chapter 9: find the Prospector in the Workings, tow it to the colony, restore it, and take it
                         // to the floor.
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2), 9100.5), 0, 0);
+                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5), 0, 0);
                         double near = HandbookTuning.DEFAULT.findProspectorBlocks() / 2.0;
                         double far = HandbookTuning.DEFAULT.findProspectorBlocks() + 6.0;
                         PodEntity farWreck = podIn(
-                                helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + far, zoneY(two, 2), 9100.5));
+                                helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + far, zoneY(two, 2, 2), 9100.5));
                         PodEntity workingProspector = podIn(
-                                helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + near, zoneY(two, 2), 9100.5));
+                                helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + near, zoneY(two, 2, 2), 9100.5));
                         PodEntity moleWreck =
-                                podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2), 9100.5 + near));
+                                podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5 + near));
                         pods.addAll(List.of(farWreck, workingProspector, moleWreck));
                         farWreck.damageHull(farWreck.maxHull());
                         moleWreck.damageHull(moleWreck.maxHull());
@@ -563,7 +597,7 @@ public class HandbookChaptersSixToNineTest {
                                 both,
                                 through(8));
                         PodEntity wreck = podIn(
-                                helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 - near, zoneY(two, 2), 9100.5));
+                                helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 - near, zoneY(two, 2, 2), 9100.5));
                         pods.add(wreck);
                         wreck.damageHull(wreck.maxHull());
                         expect(helper, Wrecks.isWreck(wreck), "the Prospector should be a wreck");
@@ -648,21 +682,24 @@ public class HandbookChaptersSixToNineTest {
                                 helper, server, "restoring the Prospector", both, restored);
                         expect(
                                 helper,
-                                completed(server, drifter).isEmpty(),
-                                "a player on no charter completes nothing, got %s",
+                                completed(server, drifter)
+                                        .equals(Set.of(
+                                                id(directive("company_property", "restore_prospector")),
+                                                id(directive("first_breach", "breach_workings")))),
+                                "a player on no charter earns only their own credit, got %s",
                                 completed(server, drifter));
 
                         // The floor of the Workings counts only from a Prospector's seat.
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2), 9100.5), 0, 0);
+                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
                         PodEntity workingMole =
-                                podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2), 9100.5));
+                                podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5));
                         pods.add(workingMole);
                         expect(helper, first.startRiding(workingMole, true, false), "the player should board the Mole");
                         HandbookTriggers.pollPlayer(server, first);
                         first.stopRiding();
-                        workingProspector.setPos(9100.5, zoneY(two, 0), 9100.5);
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 0), 9100.5), 0, 0);
+                        workingProspector.setPos(9100.5, zoneY(two, 2, 0), 9100.5);
+                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 0), 9100.5), 0, 0);
                         expect(
                                 helper,
                                 first.startRiding(workingProspector, true, false),
@@ -675,8 +712,8 @@ public class HandbookChaptersSixToNineTest {
                                 both,
                                 restored);
                         first.stopRiding();
-                        workingProspector.setPos(9100.5, zoneY(two, 2), 9100.5);
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2), 9100.5), 0, 0);
+                        workingProspector.setPos(9100.5, zoneY(two, 2, 2), 9100.5);
+                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5), 0, 0);
                         expect(
                                 helper,
                                 first.startRiding(workingProspector, true, false),
@@ -740,7 +777,7 @@ public class HandbookChaptersSixToNineTest {
 
     /**
      * A player who is on no charter, and one on another charter, complete nothing for the charter whose pod, terminal or crossing it
-     * was not: each event credits the charter of the player who did the deed, and no charter at all if there is none.
+     * was not: each event credits the charter of the player who did the deed, and the player alone if there is none (#843).
      */
     @GameTest
     public void eachTriggerCreditsOnlyTheCharterOfThePlayerWhoDidTheDeed(GameTestHelper helper) {
@@ -762,7 +799,9 @@ public class HandbookChaptersSixToNineTest {
             TerminalEvents.ACTED
                     .invoker()
                     .onActed(server, TerminalTypes.REPAIR_STATION, drifter.player(), RepairStation.REPAIR_TOTAL);
-            BreachEvents.CROSSED.invoker().onCrossed(drifter.player(), layer(server, 1), layer(server, 2), 1, 2);
+            BreachEvents.CROSSED
+                    .invoker()
+                    .onCrossed(drifter.player(), TestLayers.level(server, 1), TestLayers.level(server, 2), 1, 2);
             HangarEvents.RESTORED.invoker().onRestored(server, drifter.player(), pod);
             HandbookTriggers.pollPlayer(server, drifter.player());
             expect(helper, drifter.player().startRiding(pod, true, false), "the drifter should board the pod");
@@ -770,13 +809,19 @@ public class HandbookChaptersSixToNineTest {
             expectNothingNew(helper, server, "a drifter on no charter", member, memberBefore);
             expect(
                     helper,
-                    completed(server, drifter).isEmpty(),
-                    "a player on no charter completes nothing, got %s",
+                    completed(server, drifter)
+                            .equals(Set.of(
+                                    id(directive("seeing_below", "install_scanner")),
+                                    id(directive("seeing_below", "find_ore")),
+                                    id(directive("first_breach", "breach_workings")),
+                                    id(directive("meet_the_mole", "board_mole")),
+                                    id(directive("staying_safe", "repair_hull")))),
+                    "a player on no charter earns only their own credit, got %s",
                     completed(server, drifter));
             drifter.player().stopRiding();
 
-            // A scanner that another charter stamped does nothing on the member's pod, so the member finds no ore with
-            // it.
+            // A scanner that another charter stamped does nothing on the member's pod, so the member finds no ore
+            // with it.
             rival.player().setGameMode(GameType.SURVIVAL);
             PodEntity foreign = helper.spawn(PodRegistry.POD, 4, 1, 4);
             foreignParts = foreign;
@@ -812,7 +857,9 @@ public class HandbookChaptersSixToNineTest {
             TerminalEvents.ACTED
                     .invoker()
                     .onActed(server, TerminalTypes.UPGRADE_TERMINAL, rival.player(), RepairStation.REPAIR);
-            BreachEvents.CROSSED.invoker().onCrossed(rival.player(), layer(server, 1), layer(server, 2), 1, 2);
+            BreachEvents.CROSSED
+                    .invoker()
+                    .onCrossed(rival.player(), TestLayers.level(server, 1), TestLayers.level(server, 2), 1, 2);
             expectNothingNew(helper, server, "the rival's deeds", member, memberBoarded);
             Set<Identifier> rivals = completed(server, rival);
             for (String done : List.of(
@@ -853,7 +900,7 @@ public class HandbookChaptersSixToNineTest {
     public void theOreCheckNeverLoadsAChunkAndReadsAnUnloadedOneAsAir(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = helper.getLevel();
-        BlockPos origin = new BlockPos(7_200, 64, 7_200);
+        BlockPos origin = TestLayers.pos(TestLayers.SURFACE, 7_200, 64, 7_200);
         int chunkX = origin.getX() >> 4;
         int chunkZ = origin.getZ() >> 4;
         int[] phase = {0};
@@ -1043,7 +1090,9 @@ public class HandbookChaptersSixToNineTest {
                             .onActed(server, TerminalTypes.REPAIR_STATION, pilot.player(), action);
                 }
                 if (chartersReadable[0]) {
-                    BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), layer(server, 1), layer(server, 2), 1, 2);
+                    BreachEvents.CROSSED
+                            .invoker()
+                            .onCrossed(pilot.player(), TestLayers.level(server, 1), TestLayers.level(server, 2), 1, 2);
                 }
                 HangarEvents.RESTORED.invoker().onRestored(server, pilot.player(), wrecked);
                 HandbookTriggers.pollPlayer(server, pilot.player());

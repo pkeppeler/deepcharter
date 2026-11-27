@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.theme;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 import java.util.Map;
@@ -15,30 +16,40 @@ import org.jspecify.annotations.Nullable;
  *
  * @param crt the terminal screens, their widgets and the CRT drawing helpers
  * @param handbook the handbook paper
+ * @param questMap the flowchart of a chapter, drawn on the handbook paper
  * @param scanner the scanner minimap
  * @param hud the pod readout, the altimeter and the account line
  * @param transmission the transmission panel
  * @param breach the fade and jitter of a crossing
- * @param cargo the pod cargo screen
  * @param pod the paint palette of the pods' hulls
  * @param panel the machine panel round the terminals, on in the mod; a pack restyles it or switches it off
  * @param cockpit the cockpit HUD of a seated pilot: the Ribbon, until a pack turns it off
  * @param tow the chain links of the tow line between two pods
  * @param beam the fake light beams of a lit pod's headlamp and the colony floodlights
+ * @param catalogue the size and place of the parts catalogue and its recipe panel, beside the inventory
+ * @param readout the block name and hint above the hotbar
+ * @param sonar the navigator's sonar scope
+ * @param suit the suit gauge: the timer of a person on foot
+ * @param continuity the Continuity Event: the skull that laughs at a person who has died, and its timings
  */
 public record UiTheme(
         CrtTuning crt,
         HandbookScreenTuning handbook,
+        QuestMapTuning questMap,
         ScannerLook scanner,
         HudLook hud,
         TransmissionLook transmission,
         BreachLook breach,
-        CargoLook cargo,
         PodPaintLook pod,
         PanelLook panel,
         CockpitLook cockpit,
         TowChainLook tow,
-        BeamLook beam) {
+        BeamLook beam,
+        CatalogueLook catalogue,
+        ReadoutLook readout,
+        SonarLook sonar,
+        SuitLook suit,
+        ContinuityLook continuity) {
     /** The areas, each one a file {@code theme/<name>.json}. */
     static final Set<String> AREAS = Set.of(
             "crt",
@@ -47,12 +58,16 @@ public record UiTheme(
             "hud",
             "transmission",
             "breach",
-            "cargo",
             "pod",
             "panel",
             "cockpit",
             "tow",
-            "beam");
+            "beam",
+            "catalogue",
+            "readout",
+            "sonar",
+            "suit",
+            "continuity");
 
     private static volatile @Nullable UiTheme current;
 
@@ -86,16 +101,21 @@ public record UiTheme(
         UiTheme theme = new UiTheme(
                 CrtTuning.of(area(areas, "crt")),
                 HandbookScreenTuning.of(area(areas, "handbook")),
+                QuestMapTuning.of(area(areas, "handbook")),
                 ScannerLook.of(area(areas, "scanner")),
                 HudLook.of(area(areas, "hud")),
                 TransmissionLook.of(area(areas, "transmission")),
                 BreachLook.of(area(areas, "breach")),
-                CargoLook.of(area(areas, "cargo")),
                 PodPaintLook.of(area(areas, "pod")),
                 PanelLook.of(area(areas, "panel")),
                 CockpitLook.of(area(areas, "cockpit")),
                 TowChainLook.of(area(areas, "tow")),
-                BeamLook.of(area(areas, "beam")));
+                BeamLook.of(area(areas, "beam")),
+                CatalogueLook.of(area(areas, "catalogue")),
+                ReadoutLook.of(area(areas, "readout")),
+                SonarLook.of(area(areas, "sonar")),
+                SuitLook.of(area(areas, "suit")),
+                ContinuityLook.of(area(areas, "continuity")));
         if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
             throw new IllegalArgumentException(area(areas, "transmission")
                             .conflict(

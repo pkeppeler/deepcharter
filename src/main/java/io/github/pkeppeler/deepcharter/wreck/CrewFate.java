@@ -70,7 +70,7 @@ final class CrewFate {
         if (member instanceof ServerPlayer player) {
             markToWakeAtOffice(player, level.getServer());
         }
-        member.kill(level);
+        kill(member, level);
         if (isStillAlive(member)) {
             PENDING.add(new Pending(member, level, new int[] {RETRY_TICKS}));
         }
@@ -82,7 +82,7 @@ final class CrewFate {
                 PENDING.remove(pending);
                 continue;
             }
-            pending.member().kill(pending.level());
+            kill(pending.member(), pending.level());
             if (!isStillAlive(pending.member())) {
                 PENDING.remove(pending);
             } else if (--pending.ticksLeft()[0] <= 0) {
@@ -95,6 +95,15 @@ final class CrewFate {
                         pending.member().getName().getString(),
                         RETRY_TICKS);
             }
+        }
+    }
+
+    /** A kill as {@code Entity.kill} makes, in the wreck's own damage type, so the Continuity Event names it (#1337). */
+    private static void kill(Entity member, ServerLevel level) {
+        if (member instanceof LivingEntity living) {
+            living.hurtServer(level, level.damageSources().source(WreckRegistry.HULL_LOSS), Float.MAX_VALUE);
+        } else {
+            member.kill(level);
         }
     }
 

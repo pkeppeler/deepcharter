@@ -20,6 +20,7 @@ import net.minecraft.network.codec.StreamCodec;
  * @param revivableCount every such charter, listed or not
  * @param applicants for {@link Role#DIRECTOR}: the names of the players waiting for an answer, at most {@link ContractTerminalTuning#listedRows()}
  * @param applicantCount every application waiting, listed or not
+ * @param outpostsShared for a Director or crew member: whether the charter's outposts are open to other charters; false otherwise
  * @param notice     the translation key of the refusal the last request met, or empty
  */
 public record ContractState(
@@ -31,6 +32,7 @@ public record ContractState(
         int revivableCount,
         List<String> applicants,
         int applicantCount,
+        boolean outpostsShared,
         Optional<String> notice) {
     /** Longest name or key sent: a player name is at most 16 characters, and a charter name is capped by {@code CharterTuning}. */
     private static final int MAX_TEXT = 128;
@@ -64,6 +66,8 @@ public record ContractState(
             ContractState::applicants,
             ByteBufCodecs.VAR_INT,
             ContractState::applicantCount,
+            ByteBufCodecs.BOOL,
+            ContractState::outpostsShared,
             ByteBufCodecs.optional(ByteBufCodecs.stringUtf8(MAX_TEXT)),
             ContractState::notice,
             ContractState::new);
@@ -94,6 +98,7 @@ public record ContractState(
                 revivableCount,
                 applicants,
                 applicantCount,
+                outpostsShared,
                 Optional.of(key));
     }
 }

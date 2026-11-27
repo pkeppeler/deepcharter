@@ -5,6 +5,7 @@ set -euo pipefail
 
 tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 root=$(cd "$tools/.." && pwd)
+py=$tools/py
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -32,7 +33,8 @@ echo '{"schemaVersion":1,"id":"deepcharter"}' >"$fake/fabric.mod.json"
 # The script writes to <repo>/build/dist, so run a copy of the tools, docs and gradle.properties.
 repo=$work/repo
 mkdir -p "$repo/tools" "$repo/docs"
-cp "$tools/package-friends-build.sh" "$repo/tools/"
+cp "$tools/package-friends-build.sh" "$tools/py" "$repo/tools/"
+cp "$root/.python-version" "$repo/"
 cp "$root/docs/PLAYING.md" "$repo/docs/"
 cp "$root/gradle.properties" "$repo/"
 script=$repo/tools/package-friends-build.sh
@@ -58,7 +60,7 @@ index=$work/modrinth.index.json
 unzip -p "$mrpack" modrinth.index.json >"$index"
 audit=$root/docs/tooling/sodium-lithium-audit.md
 validate_index() {
-  python3 -I - "$index" "$audit" "$label" <<'PY'
+  "$py" - "$index" "$audit" "$label" <<'PY'
 import json, re, sys
 
 index = json.load(open(sys.argv[1]))

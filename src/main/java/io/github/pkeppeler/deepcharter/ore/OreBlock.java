@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.ore;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import java.util.Arrays;
 import java.util.Locale;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -15,10 +14,18 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
  * rock it replaces, and a placed ore takes the rock of the layer it is placed in.
  */
 public final class OreBlock extends Block {
-    /** The rocks an ore can sit in: the layers' own, in layer order. */
+    /**
+     * The rocks an ore can sit in: the layers' own, then the strata layer 1 gained around its packed shale (#1277). A
+     * world saves a host by its name, so a name never changes; the order of the values does not matter to a save.
+     */
     public enum Host implements StringRepresentable {
         PACKED_SHALE(LayerBlocks.PACKED_SHALE),
-        GREEN_SHALE(LayerBlocks.GREEN_SHALE);
+        GREEN_SHALE(LayerBlocks.GREEN_SHALE),
+        BASALT_CORE(LayerBlocks.BASALT_CORE),
+        HARDPAN(LayerBlocks.HARDPAN),
+        BLACK_SHALE(LayerBlocks.BLACK_SHALE);
+
+        private static final Host[] VALUES = values();
 
         private final Block rock;
 
@@ -28,11 +35,13 @@ public final class OreBlock extends Block {
 
         /** The host of an ore that replaces {@code rock}. */
         static Host of(BlockState rock) {
-            return Arrays.stream(values())
-                    .filter(host -> rock.is(host.rock))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            rock + " is not a rock an ore can sit in; give its layer a Host (ADR 0055)"));
+            for (Host host : VALUES) {
+                if (rock.is(host.rock)) {
+                    return host;
+                }
+            }
+            throw new IllegalArgumentException(
+                    rock + " is not a rock an ore can sit in; give its layer a Host (ADR 0055)");
         }
 
         @Override
@@ -65,7 +74,11 @@ public final class OreBlock extends Block {
      */
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return LayerBlocks.layerGroundOf(context.getLevel())
+        return LayerBlocks.placedGroundOf(
+                        context.getLevel(),
+                        context.getClickedPos()
+                                .relative(context.getClickedFace().getOpposite()),
+                        context.getClickedPos().getY())
                 .map(ground -> in(ground.defaultBlockState()))
                 .orElseGet(this::defaultBlockState);
     }

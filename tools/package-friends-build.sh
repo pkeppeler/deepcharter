@@ -118,7 +118,7 @@ cp "$jar" "$pack/overrides/mods/$jar_name"
   printf '  "dependencies": { "minecraft": "%s", "fabric-loader": "%s" }\n' "$minecraft_version" "$loader_version"
   printf '}\n'
 } >"$pack/modrinth.index.json"
-python3 -I -m json.tool "$pack/modrinth.index.json" >/dev/null
+"$root/tools/py" -m json.tool "$pack/modrinth.index.json" >/dev/null
 (cd "$pack" && zip -q -X -r "$dist/deepcharter-friends-$version.mrpack" modrinth.index.json overrides)
 
 # Server zip

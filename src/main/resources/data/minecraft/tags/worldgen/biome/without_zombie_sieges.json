@@ -1,0 +1,19 @@
+{
+  "replace": false,
+  "values": [
+    "deepcharter:basalt_field",
+    "deepcharter:deep_claim",
+    "deepcharter:garden",
+    "deepcharter:mesa_country",
+    "deepcharter:prospectors_run",
+    "deepcharter:quiet",
+    "deepcharter:regolith_plains",
+    "deepcharter:salvage_yard",
+    "deepcharter:shift_change",
+    "deepcharter:spore_fields",
+    "deepcharter:stone_benches",
+    "deepcharter:topsoil_claims",
+    "deepcharter:unbuilt_depth",
+    "deepcharter:upper_levels"
+  ]
+}

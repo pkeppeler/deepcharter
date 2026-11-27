@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
@@ -9,8 +9,6 @@ import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Run;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,12 +55,6 @@ public class RetainedEconomyTest {
     /** A deep run meets at most this many figures on average, or the Retained are the whole run and not a hazard in it. */
     private static final double LAYER_TWO_GRABS_MAX = 5;
 
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
     /** Seconds the cutter takes to kill a figure: a bite as the drill starts and one each {@code biteTicks}, until the health is gone. */
     private static double killSeconds(CreatureTuning tuning) {
         int bites = (int) Math.ceil(tuning.maxHealth() / tuning.cling().biteDamage());
@@ -77,6 +69,14 @@ public class RetainedEconomyTest {
     /** Litres a grip nobody answers takes: the tank down to the floor. */
     private static double unansweredLitres(PodStats stats, CreatureTuning tuning) {
         return stats.tankLitres() * (1 - tuning.cling().floorPercent() / 100.0);
+    }
+
+    /**
+     * The litres a run burns at the burn a grab was priced against, which is what the economy was tuned in before #963 slowed it to a seventh
+     * ({@link EarlyRunModel#PRICING_RUN_TANK_SHARE}): a share of it is a share of the tank, which a grab drains litre for litre.
+     */
+    private static double runLitres(Run run) {
+        return run.litres() / EarlyRunModel.PRICING_RUN_TANK_SHARE;
     }
 
     private static Run runWithLoss(Zone zone, PodStats stats, int shaft, double litresLost) {
@@ -100,11 +100,11 @@ public class RetainedEconomyTest {
         // the litres the run burns.
         double cuedLitres = killedLitres(tuning, CUED_REACTION_SECONDS);
         double uncuedLitres = killedLitres(tuning, UNCUED_REACTION_SECONDS);
-        double cuedShare = cuedLitres / whole.litres();
-        double uncuedShare = uncuedLitres / whole.litres();
+        double cuedShare = cuedLitres / runLitres(whole);
+        double uncuedShare = uncuedLitres / runLitres(whole);
         double unansweredLitres = unansweredLitres(stock, tuning);
         Run unanswered = runWithLoss(zone, stock, 0, unansweredLitres);
-        double unansweredShare = unansweredLitres / whole.litres();
+        double unansweredShare = unansweredLitres / runLitres(whole);
         long lights = LIGHTS_OLD_PRICE;
         double unansweredLoss = whole.net() - Math.max(0, unanswered.net());
         LOGGER.info(
@@ -189,12 +189,12 @@ public class RetainedEconomyTest {
     /**
      * Figures placed in a run in a layer whose roll passes {@code chance}: the pinned rate, held down by the two limits the tuning sets. The
      * delay after a kill allows one placement per {@code respawnDelayTicks}; and the figures that are not met are not killed, so they stand
-     * until the cap, which leaves {@code maxPerLevel / (1 - MEET_SHARE)} placements before the level is full.
+     * until the cap, which leaves {@code maxPerBand / (1 - MEET_SHARE)} placements before the level is full.
      */
     private static double placedPerRun(CreatureTuning tuning, double chance) {
         double perMinute =
                 Math.min(PLACED_PER_MINUTE_PER_CHANCE * chance, 60.0 * TICKS_PER_SECOND / tuning.respawnDelayTicks());
-        return Math.min(perMinute * RUN_MINUTES, tuning.maxPerLevel() / (1 - MEET_SHARE));
+        return Math.min(perMinute * RUN_MINUTES, tuning.maxPerBand() / (1 - MEET_SHARE));
     }
 
     /** Grabs a run of {@code RUN_MINUTES} meets in a layer whose roll passes {@code chance} of the spawner's tries. */
@@ -210,7 +210,7 @@ public class RetainedEconomyTest {
     public void theFiguresRiseWithDepthAndStayFairInLayerOne(GameTestHelper helper) {
         CreatureTuning tuning = CreatureTuning.DEFAULT;
         PodStats stock = PodStats.base();
-        double whole = EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0).litres();
+        double whole = runLitres(EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0));
         double grabLitres = killedLitres(tuning, CUED_REACTION_SECONDS);
         double oneGrabs = grabsPerRun(tuning, tuning.natural().layerOneChancePerTry());
         double twoGrabs = grabsPerRun(tuning, tuning.natural().chancePerTry());
@@ -238,11 +238,11 @@ public class RetainedEconomyTest {
                     LAYER_TWO_GRABS_MIN,
                     LAYER_TWO_GRABS_MAX);
         }
-        if (placedPerRun(tuning, tuning.natural().chancePerTry()) >= tuning.maxPerLevel() / (1 - MEET_SHARE)) {
+        if (placedPerRun(tuning, tuning.natural().chancePerTry()) >= tuning.maxPerBand() / (1 - MEET_SHARE)) {
             throw failure(
                     helper,
                     "the cap of %d binds a layer 2 run: the model's placements stop at the cap, not at the roll",
-                    tuning.maxPerLevel());
+                    tuning.maxPerBand());
         }
         if (twoGrabs <= oneGrabs) {
             throw failure(

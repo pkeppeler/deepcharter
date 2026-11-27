@@ -2,6 +2,7 @@
   "block.deepcharter.brace": "Lattice Brace",
   "block.deepcharter.brass_trim": "Brass Trim",
   "block.deepcharter.cable": "Winding Cable",
+  "block.deepcharter.canteen": "Canteen Dispenser",
   "block.deepcharter.colony_sculpture": "Colony Sculpture",
   "block.deepcharter.company_lamp": "Company Lamp",
   "block.deepcharter.concrete_footing": "Concrete Footing",
@@ -23,6 +24,15 @@
   "block.deepcharter.steel_beam": "Steel Beam",
   "block.deepcharter.steel_ladder": "Steel Ladder",
   "block.deepcharter.wall_lamp": "Company Wall Lamp",
-  "block.deepcharter.window_ribbon_dark": "Dark Ribbon Window",
-  "block.deepcharter.window_ribbon_lit": "Lit Ribbon Window"
+  "block.deepcharter.window_glass": "Company Window",
+  "colony.deepcharter.canteen.dispensed": "The canteen clanks and drops a ration. The Company provides.",
+  "colony.deepcharter.ore_car.empty": "Empty. The last shift was thorough.",
+  "colony.deepcharter.ore_car.found": "The last shift's ration tins, still sealed. Two for you.",
+  "deepcharter.world_format.refused": "This world was made in an older world format than this version of Deep Charter can open. Its saved terrain does not fit, so it is not opened and nothing in it is changed. Start a new world. For the details, see the \"Old worlds\" note in PLAYING.md.",
+  "deepcharter.world_format.refused.title": "This world cannot be opened",
+  "deepcharter.world_format.unreadable": "This world's format stamp cannot be read by this version of Deep Charter, so the world is not opened and nothing in it is changed. Update Deep Charter, or start a new world. For the details, see the \"Old worlds\" note in PLAYING.md.",
+  "hint.deepcharter.right_click_ration": "Right-click for a ration",
+  "hint.deepcharter.right_click_search": "Right-click to search",
+  "item.deepcharter.company_ration": "Company Ration",
+  "item.deepcharter.stalk_meal": "Stalk Mash"
 }

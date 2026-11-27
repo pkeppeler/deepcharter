@@ -29,8 +29,8 @@ class CommittedFiles(unittest.TestCase):
         _, files = lf.build()
         for path, data in files.items():
             with self.subTest(path=path.name):
-                self.assertTrue(path.exists(), f"{path} is missing: run python3 -I tools/lampless_figure.py")
-                self.assertEqual(path.read_bytes(), data, f"{path} is stale: run python3 -I tools/lampless_figure.py")
+                self.assertTrue(path.exists(), f"{path} is missing: run tools/py tools/lampless_figure.py")
+                self.assertEqual(path.read_bytes(), data, f"{path} is stale: run tools/py tools/lampless_figure.py")
 
     def test_the_mod_holds_a_model_a_texture_a_glowmask_and_an_animation_and_no_lamp_pack(self):
         _, files = lf.build()

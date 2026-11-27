@@ -398,25 +398,9 @@ Motherload's own shop screens are riveted, grimy metal panels with rounded CRT b
 - **`minecraft:audio/ambient_sounds`** (26.3 jar; [wiki](https://minecraft.wiki/w/Environment_attribute)) has `loop`, `mood` and `additions`. The layers use `background_music` but not this yet. It is a free, data-only channel for dread: a drone `loop`, distant unexplained sounds as `mood` (tune `tick_delay`; [Ambience](https://minecraft.wiki/w/Ambience)), pressure creaks as `additions`.
 - OGG files reload with F3+T; the biome wiring needs a world reopen.
 
-### Tools (ranked by fit for drones, creaks and machine sounds)
+### Tools
 
-| Tool | Licence | Latest | Headless | Use |
-|---|---|---|---|---|
-| **numpy + scipy** | BSD-3 | scipy 1.18.1 | Scripts | Detuned sub-bass, slow beating, filtered brown noise, gliding creaks |
-| **ffmpeg filters** | LGPL/GPL | 8.1 installed | `aevalsrc`, `anoisesrc`, filters, **`afir` convolution reverb**, `acrossfade` for loop seams ([filters](https://ffmpeg.org/ffmpeg-filters.html)) | Baked cave reverb and distance muffling |
-| **[Bfxr2](https://github.com/increpare/bfxr2)** | MIT | commit 2026-10-05 | `render_cli.js --in x.bfxr --out y.wav` | Machine motors, impacts, seamless loops, interface ticks |
-| [jsfxr](https://www.npmjs.com/package/jsfxr) | Unlicense | 1.4.1 | Node API, params as JSON | Terminal and scanner blips |
-| [rFXGen](https://github.com/raysan5/rfxgen) | zlib | 5.0 | CLI, mono output | UI and alerts |
-| pedalboard | GPL-3.0 | 0.9.26 | Python | Reverb and filters from Python |
-| SoX / sox_ng | GPL-2.0 | sox_ng 14.8.1 | CLI | Reverb, synth, spectrogram |
-| SuperCollider, Csound, Pure Data | GPL-3.0, LGPL-2.1, BSD-3 | Active | Offline render (SuperCollider on macOS unverified) | Excellent drones; heavier tools |
-| ChipTone | Closed, output CC0 | — | No CLI | Manual only |
-
-Tool licences cover the tools, not the audio they render ([GPL FAQ](https://www.gnu.org/licenses/gpl-faq.html#GPLOutput)).
-
-**Local AI audio (user decision):** [Stable Audio Open](https://huggingface.co/stabilityai/stable-audio-open-1.0) 1.0 is trained on CC-licensed Freesound and FMA audio and is free under $1M revenue with attribution ([licence](https://stability.ai/community-license-agreement)). The 341M "Small" model targets on-device CPUs, so it plausibly fits a 16 GB M2 (unverified). Meta's AudioGen weights are CC-BY-NC, so exclude them.
-
-**Free libraries:** [Kenney](https://kenney.nl/support) (CC0) and [Freesound](https://freesound.org/help/faq/) CC0 and CC-BY files are safe with credits; avoid NC and Sampling+. [OpenAIR](https://www.openair.hosted.york.ac.uk/?page_id=2) impulse responses give real cave reverb for `afir`. Sonniss GDC bundles allow embedding but not redistribution, and a jar is trivially extractable, so that is a grey area.
+The options (synthesis and processing tools, AI generation, recorded sources), with licences, installs, determinism and how each fits the recipe system, are in [sound-tooling-options.md](../tooling/sound-tooling-options.md). Today's recipes use numpy, scipy and ffmpeg filters (`afir` convolution reverb, `acrossfade` for loop seams; [filters](https://ffmpeg.org/ffmpeg-filters.html)), and Bfxr2 or jsfxr for terminal blips. Tool licences cover the tools, not the audio they render ([GPL FAQ](https://www.gnu.org/licenses/gpl-faq.html#GPLOutput)).
 
 **Runtime reverb (ranked by fit):**
 
@@ -541,7 +525,7 @@ Nothing below has been run. Each needs a read-only audit like [mcpfabric-audit.m
 - A Vorbis encoder for mono positional sounds: `vorbis-tools`, an ffmpeg with libvorbis, or Python `soundfile`.
 - A `uv`-locked Python environment with Pillow and numpy (Pillow is not in the system Python).
 - Optional: a GIMP 3.2 upgrade (2.10.38 is installed), ImageMagick, sox_ng, Node packages for jsfxr or Bfxr2.
-- Optional: a local image model (mflux, Draw Things or ComfyUI, plus several GB of weights). Optional: Stable Audio Open, which needs a Hugging Face account and licence acceptance.
+- Optional: a local image model (mflux, Draw Things or ComfyUI, plus several GB of weights). Optional: Stable Audio 3 (MLX weights are ungated; accept the licence on use), see [sound-tooling-options.md](../tooling/sound-tooling-options.md).
 - WorldEdit or Litematica jars in the dev run directory (dev only).
 
 **Public-facing**

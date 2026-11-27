@@ -18,8 +18,10 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
@@ -27,6 +29,7 @@ import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.food.FoodData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
@@ -38,6 +41,8 @@ import org.jspecify.annotations.Nullable;
  * layers (never a boss, ADR 0046): it never attacks anyone, and it does not fade for a light or for a person near it. It walks on
  * whatever happens and comes to a dark pod, one with a pilot, power and no lights. It grabs the hull and takes fuel, and does not let go
  * until it is dead (ADR 0046, amended for #485): the pod's cutter bites it while the pod drills, and a person's blow hurts it too.
+ * A person on foot in the dark with no light in either hand draws one too, which clings, weighs on them like ore and drains their
+ * hunger to a floor until it is dead ({@link FootGrips}, ADR 0046 amended for #916).
  * A lit lamp in the helmet, tiny and dim, shows them from afar. It is not saved: a figure whose chunk unloads is gone, and the level makes another.
  */
 public class LamplessFigure extends PathfinderMob {
@@ -58,12 +63,20 @@ public class LamplessFigure extends PathfinderMob {
     private static final int DEATH_ASH = 30;
     /** How far off the hull the figure stands, beyond the half width of the pod. */
     private static final double HULL_GAP = 0.3;
+    /** The game's own exhaustion for one point of hunger. */
+    private static final float EXHAUSTION_PER_POINT = 4f;
+
+    private static final float TICKS_PER_SECOND = 20f;
 
     private Direction heading = Direction.NORTH;
     /** The pod this figure holds, null when it holds none. Server only. */
     private @Nullable PodEntity grip;
     /** The pod this figure walks to, null when none draws it. Server only. */
     private @Nullable PodEntity target;
+    /** The person on foot this figure holds, null when it holds none. Server only. */
+    private @Nullable ServerPlayer held;
+    /** The person on foot this figure walks to, null when none draws it. Server only. */
+    private @Nullable ServerPlayer quarry;
     /** Whether the game's spawner made this figure: only those go when no player is near, so that the level's cap is not held by figures nobody will meet. Naturals have a cap and a delay of their own. */
     private boolean natural;
     /** Whether the pilot of a pod has been told that this figure comes. Server only. */
@@ -131,23 +144,107 @@ public class LamplessFigure extends PathfinderMob {
     protected void customServerAiStep(ServerLevel level) {
         super.customServerAiStep(level);
         CreatureTuning tuning = CreatureTuning.DEFAULT;
-        PodEntity held = grip;
-        if (held != null) {
-            cling(held, tuning.cling());
+        PodEntity gripped = grip;
+        if (gripped != null) {
+            cling(gripped, tuning.cling());
+            return;
+        }
+        ServerPlayer person = held;
+        if (person != null) {
+            clingToPerson(person, level, tuning);
             return;
         }
         boolean checking = tickCount % tuning.senseCheckTicks() == 0;
         if (checking) {
             target = nearestDarkPod(level, tuning.cling());
+            quarry = target == null ? nearestDarkPerson(level, tuning.foot()) : null;
             if (target != null && !cued) {
                 cued = warn(target);
+            } else if (quarry != null && !cued) {
+                cued = warnPerson(quarry);
             }
         }
         if (target != null && !target.isRemoved()) {
             approach(level, target, tuning.cling(), checking);
+        } else if (quarry != null && !quarry.isRemoved()) {
+            approachPerson(quarry, tuning, checking);
         } else {
             wander();
         }
+    }
+
+    /** A person on foot hears it and reads it before it arrives, and the first time is told the rule. True once told. */
+    private boolean warnPerson(ServerPlayer person) {
+        person.sendOverlayMessage(Component.translatable("creature.deepcharter.foot_approach"));
+        person.level()
+                .playSound(
+                        null,
+                        person.getX(),
+                        person.getY(),
+                        person.getZ(),
+                        DeepSound.CREATURE_APPROACH.event(),
+                        SoundSource.HOSTILE);
+        FootGrips.explainFirstExposure(person);
+        return true;
+    }
+
+    private void approachPerson(ServerPlayer person, CreatureTuning tuning, boolean checking) {
+        if (person.getBoundingBox().inflate(tuning.foot().reachBlocks()).intersects(getBoundingBox())) {
+            // The person was picked up to a look ago: they may have lit a light, boarded a pod or been taken by
+            // another figure.
+            if (!FootGrips.draws(person)) {
+                quarry = null;
+                return;
+            }
+            latchOnto(person);
+        } else if (checking) {
+            getNavigation().moveTo(person.getX(), person.getY(), person.getZ(), 1.0);
+        }
+    }
+
+    private void latchOnto(ServerPlayer person) {
+        held = person;
+        quarry = null;
+        side = pickSide(person);
+        getNavigation().stop();
+        setNoGravity(true);
+        noPhysics = true;
+        entityData.set(CLINGING, true);
+        FootGrips.take(person, this);
+        person.sendOverlayMessage(Component.translatable("creature.deepcharter.foot_grab"));
+    }
+
+    /**
+     * Holds the person and drains their hunger down to the floor, until it dies or the person is gone (dead, left, in another level,
+     * or creative or spectator). It never takes the food level below the floor, so it never starves anyone.
+     */
+    private void clingToPerson(ServerPlayer person, ServerLevel level, CreatureTuning tuning) {
+        if (level.getDifficulty() == Difficulty.PEACEFUL
+                || person.isRemoved()
+                || !person.isAlive()
+                || person.level() != level
+                || person.isCreative()
+                || person.isSpectator()) {
+            release();
+            return;
+        }
+        CreatureTuning.Foot foot = tuning.foot();
+        FoodData food = person.getFoodData();
+        if (food.getFoodLevel() > foot.hungerFloor()) {
+            food.addExhaustion(EXHAUSTION_PER_POINT / (foot.secondsPerPoint() * TICKS_PER_SECOND));
+        }
+        holdTo(person, tuning.cling());
+    }
+
+    /** The nearest person on foot that this figure would take hold of, or null. */
+    private @Nullable ServerPlayer nearestDarkPerson(ServerLevel level, CreatureTuning.Foot foot) {
+        // Players come from the level's own list (a player's chunk is always loaded), so this is no entity query. The
+        // distance test runs first: the light and hand checks in draws() cost more.
+        double sense = foot.senseBlocks();
+        return level.players().stream()
+                .filter(person -> person.distanceToSqr(this) <= sense * sense && FootGrips.draws(person))
+                .min(Comparator.comparingDouble(person -> person.distanceToSqr(this)))
+                .orElse(null);
     }
 
     /** The pilot hears it and reads it before it arrives: a pod drives faster than it walks. True once a pilot has been told. */
@@ -188,15 +285,18 @@ public class LamplessFigure extends PathfinderMob {
         }
     }
 
+    /** The side of {@code target} the figure holds: the way it came from, never up or down. */
+    private Direction pickSide(Entity target) {
+        Direction found = Direction.getApproximateNearest(getX() - target.getX(), 0, getZ() - target.getZ());
+        return found.getAxis().isVertical() ? Direction.NORTH : found;
+    }
+
     private void latch(PodEntity pod) {
         grip = pod;
         target = null;
         biteIn = 0;
         bitten = false;
-        side = Direction.getApproximateNearest(getX() - pod.getX(), 0, getZ() - pod.getZ());
-        if (side.getAxis().isVertical()) {
-            side = Direction.NORTH;
-        }
+        side = pickSide(pod);
         getNavigation().stop();
         setNoGravity(true);
         noPhysics = true;
@@ -238,23 +338,29 @@ public class LamplessFigure extends PathfinderMob {
         }
     }
 
-    /** Closes on its place on the hull, side by side with the pod, and faces the pod. */
-    private void holdTo(PodEntity pod, CreatureTuning.Cling cling) {
-        double reach = pod.getBbWidth() / 2 + HULL_GAP;
-        Vec3 place = new Vec3(pod.getX() + side.getStepX() * reach, pod.getY(), pod.getZ() + side.getStepZ() * reach);
+    /** Closes on its place beside what it holds, a hull or a person, side by side, and faces it. */
+    private void holdTo(Entity target, CreatureTuning.Cling cling) {
+        double reach = target.getBbWidth() / 2 + HULL_GAP;
+        Vec3 place = new Vec3(
+                target.getX() + side.getStepX() * reach, target.getY(), target.getZ() + side.getStepZ() * reach);
         Vec3 gap = place.subtract(position());
         double distance = gap.length();
         setPos(distance <= cling.latchSpeed() ? place : position().add(gap.scale(cling.latchSpeed() / distance)));
         setDeltaMovement(Vec3.ZERO);
         // Yaw 0 looks toward +z and yaw 90 toward -x, so the direction to the pod (dx, dz) is atan2(-dx, dz): the
         // figure looks at the pod, not away from it (#506).
-        float yaw = (float) (Mth.atan2(getX() - pod.getX(), pod.getZ() - getZ()) * Mth.RAD_TO_DEG);
+        float yaw = (float) (Mth.atan2(getX() - target.getX(), target.getZ() - getZ()) * Mth.RAD_TO_DEG);
         setYRot(yaw);
         setYHeadRot(yaw);
         setYBodyRot(yaw);
     }
 
     private void release() {
+        ServerPlayer person = held;
+        if (person != null) {
+            FootGrips.release(person, this);
+        }
+        held = null;
         grip = null;
         setNoGravity(false);
         noPhysics = false;
@@ -264,8 +370,8 @@ public class LamplessFigure extends PathfinderMob {
     /** The nearest pod in sense that this figure would grab, or null. */
     private @Nullable PodEntity nearestDarkPod(ServerLevel level, CreatureTuning.Cling cling) {
         double sense = cling.senseBlocks();
-        // entity-query: round a ticking figure, for a pod with a pilot; a pod it does not see only goes undrawn this
-        // check
+        // entity-query: round a ticking figure, for a pod with a pilot; a pod it does not see only goes undrawn
+        // this check
         return level
                 .getEntitiesOfClass(
                         PodEntity.class,
@@ -290,12 +396,14 @@ public class LamplessFigure extends PathfinderMob {
 
     /**
      * Whether a pod draws a figure: a person aboard, power, no lights, and fuel above the floor. A parked pod is left alone, and so is a
-     * wreck (no power) and a lit pod.
+     * wreck (no power) and a lit pod. A pod within the reach of a burning flare ({@link DrawSources}) counts as lit, though it frees no one a
+     * figure already holds.
      */
     public static boolean draws(PodEntity pod) {
         return pod.getFirstPassenger() instanceof Player
                 && PodEvents.isPowered(pod)
                 && !PodLights.isLit(pod)
+                && !(pod.level() instanceof ServerLevel level && DrawSources.litByFlare(level, pod.position()))
                 && pod.fuel() > CreatureTuning.DEFAULT.cling().floorPercent();
     }
 
@@ -328,10 +436,28 @@ public class LamplessFigure extends PathfinderMob {
         if (grip != null && grip.getControllingPassenger() instanceof ServerPlayer pilot) {
             pilot.sendOverlayMessage(Component.translatable("creature.deepcharter.dead"));
         }
+        if (held != null) {
+            held.sendOverlayMessage(Component.translatable("creature.deepcharter.foot_dead"));
+        }
         release();
-        level.sendParticles(ParticleTypes.LARGE_SMOKE, getX(), getY() + 1.0, getZ(), DEATH_SMOKE, 0.3, 0.8, 0.3, 0.02);
-        level.sendParticles(ParticleTypes.ASH, getX(), getY() + 1.0, getZ(), DEATH_ASH, 0.4, 0.9, 0.4, 0.02);
-        LamplessFigures.killed(level, natural);
+        dissolve(level, this);
+        LamplessFigures.killed(level, natural, getBlockY());
+    }
+
+    /** The smoke and ash a dead body goes up in: a Retained's, and a person's at a Continuity Event (#1337). */
+    public static void dissolve(ServerLevel level, Entity body) {
+        level.sendParticles(
+                ParticleTypes.LARGE_SMOKE,
+                body.getX(),
+                body.getY() + 1.0,
+                body.getZ(),
+                DEATH_SMOKE,
+                0.3,
+                0.8,
+                0.3,
+                0.02);
+        level.sendParticles(
+                ParticleTypes.ASH, body.getX(), body.getY() + 1.0, body.getZ(), DEATH_ASH, 0.4, 0.9, 0.4, 0.02);
     }
 
     @Override
@@ -394,6 +520,8 @@ public class LamplessFigure extends PathfinderMob {
         return entityData.get(LAMP);
     }
 
+    // const-param: the lamp state is a creature-design knob the creatures session owns; some Retained carry a lamp per
+    // LORE section 11
     public void setLamp(boolean lamp) {
         entityData.set(LAMP, lamp);
     }

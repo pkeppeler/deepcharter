@@ -2,7 +2,7 @@
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
-Usage: python3 -I tools/tests/gate_checks.py room_carver
+Usage: tools/py tools/tests/gate_checks.py room_carver
 """
 import unittest
 
@@ -91,6 +91,17 @@ public class FloodedRoomFixture {{
 """
 
 
+# A layer dimension reached through TestLayers.layerDimension counts as touching one.
+VIA_ACCESSOR = """
+public class AccessorRoomFixture {
+    void room(MinecraftServer server) {
+        ServerLevel level = TestLayers.layerDimension(server, 1);
+        level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+    }
+}
+"""
+
+
 # A marker that is bare, trailing bare, inside a string, inside a text block or after a quote char literal does not count.
 # label: (body of the flooded room, line the gate reports)
 BAD_MARKERS = {
@@ -110,6 +121,7 @@ CASES = {
     "clean": Case(fixture({}), None),
     **{f"violation/{label}": Case(fixture({"FloodedRoomFixture.java": flooded_room(f"        {statement}")}), None)
        for label, statement in VIOLATIONS.items()},
+    "accessor": Case(fixture({"AccessorRoomFixture.java": VIA_ACCESSOR}), None),
     **{f"marker/{label}": Case(fixture({"FloodedRoomFixture.java": flooded_room(body)}), None)
        for label, (body, _) in BAD_MARKERS.items()},
 }
@@ -133,6 +145,11 @@ class RoomCarverGateTest(unittest.TestCase):
                 self.assertIn("RoomCarver.carve", result.message)
                 self.assertNotIn("MarkedWriteFixture", result.message)
                 self.assertNotIn("SurfaceOnlyFixture", result.message)
+
+    def test_air_write_in_a_file_that_reaches_a_layer_dimension_through_test_layers_fails(self):
+        result = outcome("accessor")
+        self.assertFalse(result.ok, "the gate should fail the build")
+        self.assertIn("AccessorRoomFixture:5 writes air in a file that touches a layer dimension", result.message)
 
     def test_marker_without_a_reason_or_in_a_string_does_not_count(self):
         for label, (_, line) in BAD_MARKERS.items():

@@ -7,7 +7,7 @@ import json
 import subprocess
 import tempfile
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Literal
 
@@ -19,10 +19,12 @@ EXCHANGE = REPO / "build/gate-checks"
 @dataclass(frozen=True)
 class Case:
     """One tree for the scan: `files` (relative to the test package) are written into a fresh tree, or a Path is scanned where it is.
-    `gate` names a gate to run over the tree instead of the gametest entrypoint scan (`entity_query`, `fixed_pos`, `record_holder`, `null_marked`, `null_marked_roots`)."""
+    `gate` names a gate to run over the tree instead of the gametest entrypoint scan (`entity_query`, `fixed_pos`, `record_holder`, `keep_clear`, `orphan_comment`, `null_marked`, `null_marked_roots`)."""
     files: Mapping[str, str] | Path
     client_tests: str | None
-    gate: Literal["entity_query", "fixed_pos", "record_holder", "null_marked", "null_marked_roots"] | None = None
+    gate: Literal["entity_query", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "null_marked", "null_marked_roots"] | None = None
+    client_shard: str | None = None
+    client_weights: Mapping[str, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -34,12 +36,36 @@ class Result:
 
 
 RESULTS: Mapping[str, Result] | None = None
+READ: set[str] = set()
+FIELDS = frozenset(field.name for field in fields(Result))
+
+
+class Observed(Result):
+    """A Result that records its case in READ on the first access to one of its fields, so fetching a case without asserting on it does not count."""
+
+    def __init__(self, name: str, wrapped: Result):
+        super().__init__(wrapped.ok, wrapped.message, wrapped.server, wrapped.client)
+        object.__setattr__(self, "_name", name)
+
+    def __getattribute__(self, attribute: str):
+        if attribute in FIELDS:
+            READ.add(object.__getattribute__(self, "_name"))
+        return super().__getattribute__(attribute)
 
 
 def result(name: str) -> Result:
     if RESULTS is None:
         raise RuntimeError("no gate-check results yet; run through tools/tests/gate_checks.py")
-    return RESULTS[name]
+    return Observed(name, RESULTS[name])
+
+
+def unread_message(cases: Mapping[str, Case]) -> str | None:
+    """Names each case whose result no assertion read: a fixture that is built and run but proves nothing."""
+    unread = [name for name in cases if name not in READ]
+    if not unread:
+        return None
+    lines = [f"  {name.partition('/')[0]}: {name.partition('/')[2]}" for name in unread]
+    return "gate_checks: fixture cases no assertion reads (assert each, or delete it):\n" + "\n".join(lines)
 
 
 def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
@@ -55,7 +81,7 @@ def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
                     path = root / PACKAGE / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(body)
-            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "gate": case.gate})
+            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "clientShard": case.client_shard, "clientWeights": case.client_weights, "gate": case.gate})
         # Fixed paths: the properties are inputs of Gradle's configuration cache, so a new path each run would add a cache entry each run.
         cases_file = EXCHANGE / "cases.json"
         results_file = EXCHANGE / "results.json"

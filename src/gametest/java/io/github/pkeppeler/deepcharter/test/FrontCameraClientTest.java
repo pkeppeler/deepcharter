@@ -1,11 +1,12 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 import io.github.pkeppeler.deepcharter.client.pod.FrontCameraFeed;
 import io.github.pkeppeler.deepcharter.client.pod.FrontCameraFeed.Inputs;
 import io.github.pkeppeler.deepcharter.client.pod.FrontCameraFeed.State;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook.CameraLook;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
@@ -16,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -32,7 +34,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LightBlock;
 
 /**
  * Client GameTest for the front camera's feed (#448, docs/design/cockpit-concepts-2.md): the feed's state follows the hazards (a hit leaves static that fades, lava heats the
@@ -40,7 +44,10 @@ import net.minecraft.world.level.block.Blocks;
  * left out of the picture from the seat while the feed is live, has it back while the feed is down, and shows static over the picture after a hit.
  */
 public class FrontCameraClientTest implements FabricClientGameTest {
-    private static final int FEET_Y = 150;
+    private static final int FEET_Y = TestLayers.worldY(1, 150);
+    private static final int LAMP_OFFSET = 5;
+    private static final int LAMP_HEIGHT = 3;
+    private static final int LAMP_LEVEL = 12;
     private static final int ROOM_RADIUS = 8;
     private static final int ROOM_HEIGHT = 30;
     private static final int LAVA_RADIUS = 2;
@@ -193,18 +200,10 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         return dropped;
     }
 
-    private static void require(boolean condition, String message) {
-        if (!condition) {
-            throw new AssertionError(message);
-        }
-    }
-
     private PodEntity seatedPod(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         PodEntity[] made = {null};
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.setGameMode(GameType.SURVIVAL);
+            ServerLevel one = TestLayers.level(server, 1);
             RoomCarver.carve(
                     one,
                     -ROOM_RADIUS,
@@ -214,6 +213,22 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                     -ROOM_RADIUS,
                     ROOM_RADIUS,
                     Blocks.AIR);
+            // The campaign type has no ambient light of its own (a layer's dark is its biome's), so the room carries
+            // lamps to be seen by.
+            for (int dx : new int[] {-LAMP_OFFSET, LAMP_OFFSET}) {
+                for (int dz : new int[] {-LAMP_OFFSET, LAMP_OFFSET}) {
+                    one.setBlock(
+                            new BlockPos(dx, FEET_Y + LAMP_HEIGHT, dz),
+                            Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, LAMP_LEVEL),
+                            Block.UPDATE_ALL);
+                }
+            }
+        });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(0.5, FEET_Y, 0.5);
@@ -230,7 +245,9 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                 "the pilot seated in the pod in layer 1",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                        && TestLayers.clientIsIn(client, 1)
+                        // The campaign level is tall: the loading screen outlasts the arrival.
+                        && client.gui.screen() == null);
         return made[0];
     }
 
@@ -271,11 +288,12 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         if (hiddenInThirdPerson) {
             throw new AssertionError(
-                    "In third person the pod is outside the view and is drawn: the camera hides the cab only from the seat in first person");
+                    "In third person the pod is outside the view and is drawn: the camera hides the cab only from the"
+                            + " seat in first person");
         }
         int[] otherId = {0};
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             PodEntity other = TestEntities.create(PodRegistry.POD, one);
             other.setPos(0.5 + OTHER_POD_EAST, FEET_Y, 0.5);
             other.setNoGravity(true);
@@ -296,8 +314,7 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         }
         singleplayer.getServer().runOnServer(server -> {
             server.getPlayerList().getPlayers().getFirst().stopRiding();
-            TestEntities.require(ClientLight.serverLevel(server, LayerChain.dimension(1)), otherId[0])
-                    .discard();
+            TestEntities.require(TestLayers.level(server, 1), otherId[0]).discard();
         });
         ClientWait.until(
                 context,
@@ -395,7 +412,9 @@ public class FrontCameraClientTest implements FabricClientGameTest {
             client.gui.toastManager().clear();
         });
         ClientWait.until(
-                context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
+                context,
+                "every section in view rendered",
+                client -> client.gui.screen() == null && client.levelRenderer.hasRenderedAllSections());
         context.waitTicks(5); // tick-wait: the pod and the view settle for a few frames
         Path file = context.takeScreenshot(name);
         try {

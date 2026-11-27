@@ -37,12 +37,13 @@ H. Colom & Company has reopened Prosperity, a mining colony that emptied in one 
 1. The Company and its Chairman get the jokes. The dead never do.
 2. **The lure never goes dark.** No story beat ever blocks selling, buying or upgrading. The Chairman's threats come with a receipt. This protects pillar 1.
 3. The handbook can change its tone, never its rules.
-4. Faith is quiet and unnamed. No denomination, no quoted scripture, no sermons. It shows in the miners' private lives: a candle, a hymn, a prayer card.
+4. Faith is quiet and unnamed. No denomination, no sermons. It shows in the miners' private lives: a candle, a hymn, a prayer card. Period recordings of hymns, choirs and prayers are welcome as found material, heard and never explained; our own text still doesn't preach.
 5. The thing at the bottom is never named, gendered or explained in game text. The game hints; it never explains.
 6. **No children in the deep.** In scripture, Moloch is the idol children were sacrificed to. We keep his shape and his hunger and nothing else: no child characters, victims or sacrifice imagery. Miners may mention their families.
 7. **No gore** (the default; the user may lift it). Horror comes from wrongness and absence: an empty cab, a loop counter, a punch clock still ticking.
 8. Every story change after the finale is presentation for that charter only, never a world edit.
 9. Homage, not copy. Beats may echo the original game (a retiring miner, an altimeter's rating, a strike that goes wrong), but no line or distinctive phrase is reused. No Natas, no Mars.
+10. **The Company addresses the whole charter.** Lore is for every player, whoever finds the note. The Company speaks to the charter and its crew, as "you" (the charter and its crew) or by `[CHARTER]`. It names the Director only where the role acts: approving applicants, outposts, and the finale's deed (signing, and the Chairman beat).
 
 ## 3. The spine
 
@@ -61,14 +62,14 @@ You fight your way to the Furnace and break its body, but that does not kill it.
 - Seal motto: *NIHIL REDDITUR* ("nothing is returned"), presented as a no-refunds policy.
 - Slogan: *Deeper Together!*
 
-**The name.** H. COLOM reversed, letter by letter, is MOLOCH. The initial is part of the trick: "nobody knows what the H stands for," because it stands for nothing. It is the last letter of his name. The clue ladder:
+**The name.** H. COLOM reversed, letter by letter, is MOLOCH, and the story does not hide it ([ADR 0098](adr/0098-the-name-is-in-plain-sight-the-secret-is-the-title-and-the-hiring.md)). It is dramatic irony: the player knows, and the characters act as if nobody does. The secret the story protects is that "H. Colom" is a title worn by a former Director, and that it is hiring (the next bullets). The name's beats, none of them a puzzle:
 
-| Where | Clue | Channel |
+| Where | Beat | Channel |
 |-------|------|---------|
-| Layer 1 (the handbook, from hour one) | Beside the Founder's letter: *"Twenty years here and nobody knows what the H stands for. —R."* | Margin note |
-| Layer 5 | Every Company transmission echoes with its sender reversed: `H. COLOM & CO. ↩ .OC & MOLOC .H` | Transmission header |
-| Layer 7 | Roz: *"It isn't an initial, you know. It's the end of his name."* | Transmission T41 |
-| Layer 8 | The sender field's letters slide into MOLOCH while he speaks. | Transmission T50 |
+| Layer 1 (the handbook, from hour one) | Beside the Founder's letter: *"Twenty years here and nobody knows what the H stands for. —R."* A wink for sharp players. | Margin note |
+| Layer 5 | Every Company transmission echoes with its sender reversed: `H. COLOM & CO. ↩ .OC & MOLOC .H`. The game drops the pretence. | Transmission header |
+| Layer 7 | Roz points at the masks and the open seat, not at the name: *"There's one opening, and it's been yours since the day you signed on."* | Transmission T41 |
+| Layer 8 | The sender field's letters slide into MOLOCH while he speaks. The pretence ends on screen. | Transmission T50 |
 
 **Moloch.** A parasite older than any colony, fastened to the Sleeper's hide. Over ages it burrowed toward the heart, leaving cold furnaces behind it (the Ossuary). It now sits in the heart cavity, but it has never broken the wall around the heart (the Ramp). Its body is the Furnace and everything built in it. At the centre of Head Office stands a mountain-sized bronze figure with open hands and a furnace mouth in its chest, built from every delivery ever made.
 
@@ -113,16 +114,18 @@ What it explains:
 
 - **Lamps.** A lamp is life, and quietly, faith.
   - The Retained are lampless. "Things come to dark pods."
-    - A Retained never attacks anyone. It comes to a dark pod (one with a pilot and no lights), clings to the hull and drains the fuel, and does not let go until it is killed (the drill kills it from the seat; a person on foot can kill it too). A lit pod is left alone, but light does not make a Retained fade or free a pod it holds, and neither does a person near it. The user's calls (pkeppeler, 2026-10-11, #449 and #485): "them grabbing and draining a pod, its gas, but not attacking is good"; and they "must be killed", or they keep draining the fuel.
+    - A Retained never attacks anyone. It comes to a dark pod (one with a pilot and no lights), clings to the hull and drains the fuel, and does not let go until it is killed (the drill kills it from the seat; a person on foot can kill it too). A lit pod is left alone, but light does not make a Retained fade or free a pod it holds, and neither does a person near it. The user's calls (pkeppeler, 2026-10-11, #449 and #485): "them grabbing and draining a pod, its gas, but not attacking is good"; and they "must be killed", or they keep draining the fuel. The creatures session (2026-11-21) added that a Retained clings the same way to a person in the dark: it slows them and drains their hunger, never their health ([CREATURES.md](CREATURES.md#the-retained)).
     - Each carries a tiny, dim lamp in the bracket of its helmet, and is seen from far off in the dark. They are "even creepier": a lamp that gives no light to the one who carries it, a counterfeit of a miner's, in the bracket that the Company left empty. (The figure of Prospector's Run has none lit: Tomas comes back without his lamp.) The user's calls (pkeppeler, 2026-10-11, #449 and #506): the pole, the hand and the ribs were rejected, and the lamp is "a tiny, dim light in its helmet"; and they are "not rare" once the player is fairly deep.
   - The colony chapel's candle has burned for 38 years with nobody tending it. Nobody ever comments.
   - Ines left the Prospector's lights on for her brother; one is still burning.
   - Convoy Nine's lamps are still lit under the water.
   - Moloch's glow is counterfeit light.
   - Renunciation gives every crew member a lamp that never goes out. Signing puts the Director's out forever.
-- **Hands.** The Founder's open bronze hands hold nothing. The Company needs your hands because it has none. At the end, you open your hand and let go.
+- **Wax.** The oldest voices ever caught on a surface, a scale, a girl's song and a few lines of a play, turn on wax cylinders. The label gives a title and a year and nothing more, and nobody says whose voices they are. A cylinder turns up now and then among a wreck's scrap. Sometimes the Lamp and Pick's phonograph plays at night, and nobody was there to start it.
+  - A wreck's cabin phonograph plays an old French song for whoever comes close. Deeper, the same song sometimes comes faint out of the dark, from where no radio is. Roz's margin says what to do; no text says why.
+- **Hands.** The Founder's open bronze hands hold nothing. The Company needs your hands because it has none. At the end, the crew opens their hands together and lets go.
 - **Rest.** The Company promises retirement and never pays it. Hal is always retiring on Friday. Renunciation ends in rest.
-- **Hidden names.** H. COLOM is one. The catalysts are another (a proposal; the numbers pass decides which materials are catalysts): they sound like Motherload ores and decode to Latin anatomy. Cicatrium (layer 2, scar), Mycium (3, fungus), Lymphium (4), Nervium (5), Haemium (6, blood), Ossium (7, bone), Cordium (8, heart).
+- **Hidden names.** H. COLOM is not one: its name is in plain sight (section 4). The catalysts are the hidden names (a proposal; the numbers pass decides which materials are catalysts): they sound like Motherload ores and decode to Latin anatomy. Cicatrium (layer 2, scar), Mycium (3, fungus), Lymphium (4), Nervium (5), Haemium (6, blood), Ossium (7, bone), Cordium (8, heart).
 - **Echoes for writers, never quoted in game:**
   - Scripture: Psalm 115:4–8 (hands that handle not; those who make idols become like them), Isaiah 44:9–20 (the idol-maker's half-log), 1 Kings 18:27 (mocking the idol), Job 41 ("out of his mouth go burning lamps"), Ecclesiastes 5:10 (silver never satisfies), Matthew 25:1–13 (the lamps), Luke 14:33 (forsake all), Matthew 11:28 (rest).
   - Tolkien: Moria ("too greedily and too deep"), Gandalf's nameless things gnawing the world, Isengard's furnaces, the Dead Marshes, the Ringwraiths.
@@ -201,7 +204,7 @@ Zones: **Topsoil Claims → Stone Benches → Deep Claim.**
 Zones: **Upper Levels → Shift Change → Prospector's Run.**
 
 - **Upper Levels:** collapsed galleries, timber props, ore carts loaded and never hauled.
-- **Shift Change:** the colony's underground rail hub. A punch clock still ticking; 400 time cards: all but one punched IN at 23:00 on the Friday, none OUT. The unpunched card is Roz's.
+- **Shift Change:** the colony's underground rail hub. A punch clock still ticking, which now and then calls an hour, and not always the hour; 400 time cards: all but one punched IN at 23:00 on the Friday, none OUT. The unpunched card is Roz's.
 - **Prospector's Run:** the rail line to the breach, the Prospector wreck with one light still on, and **something moving in the dark**: a lampless figure walking the rails. It never attacks. It never stops. More of them walk the caverns and shafts of layers 1 and 2, rare, and some carry a lamp; they come to a dark pod, cling to it and drain its fuel (section 6). They are the deep's ordinary mob, a thing to avoid: not a boss.
 - Relays with loop counters. Personnel: *"Crosstalk is a known fault on the Company side. No action is required!"*
 - The handbook ends here: *"Further documentation is restricted to Senior Personnel,"* and Roz's margin: *"Nobody's ever been promoted."*
@@ -274,18 +277,18 @@ Zones: **Intake → the Works → the Boardroom.** The Ramp lies below.
 
 ## 12. The finale
 
-Combat details belong to the creatures session ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); this is the story's shape. The Retained are not the finale's fight: they are the ordinary mob of layers 1 and 2 (section 6, #449). The boss is the Chairman.
+Combat details are in [CREATURES.md](CREATURES.md#7-the-finale), from the creatures session ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); this is the story's shape. The Retained are not the finale's fight: they are the ordinary mob of layers 1 and 2 (section 6, #449). The boss is the Chairman.
 
 1. **Phase 1, the Chairman.** Fell in a frock coat and the smiling bronze mask, hands always open. The sender field's letters slide into MOLOCH. He is pompous and ridiculous, and mocking him is the right response.
 2. **Phase 2, Head Office stands up.** The bronze figure rises, built from what *this charter* sold, so each charter fights its own. You break it with drill and charge, but you cannot kill it: everything it is made of was given to it.
 3. **The offer.** The mask crawls out of the wreck, small and hollow, with Moloch speaking through it: *"…Every notice said turn back. You came anyway. That is what we look for in a Chairman. The position is yours. Take it. All of it."* The **Controlling Interest** drops: a physical deed. The wreck of Head Office, the richest haul in the game, is part of what is offered.
 4. **Signing** (the Director only, at the Boardroom table). Final and permanent.
    - The Director becomes the Chairman. The deed binds to him, impossible to lose, and his suit lamp goes dark for good. Both follow him even if he leaves the charter.
-   - The wreck's wealth and a recurring dividend are credited, from the labour of the Retained, who never rest. Every dividend notice asks for more.
+   - The wreck's wealth and a recurring dividend are credited to the **charter's shared account**, so the whole crew lives off the labour of the Retained, who never rest. Every dividend notice asks for more.
    - The Furnace relights. The Retained turn to face their new Chairman. Moloch wears a new mask.
    - For that charter, the altimeter reads YOU ARE ON COMPANY PREMISES everywhere, including the surface.
    - Last exchange: Hal asks, *"Is it Friday?"* The Company answers, *"No."*
-5. **Renunciation** (anyone in the charter holding the deed throws it into the Furnace). The true ending, and the only thing that kills him.
+5. **Renunciation** (done together). The holder holds the deed out at the Furnace's edge. The fire takes it only when every online charter member stands at the edge and lets go too, each by their own action in the world. Anyone who steps back cancels it, and nothing burns until the last hand lets go. The true ending, and the only thing that kills him.
    - An idol given nothing cannot live. The mask burns in its own fire, and the wreck of Head Office slumps into it.
    - Every coin in the charter's account goes with it. Serial numbers burn off every pod and component: the parts read UNNUMBERED, and they are yours. (Binding to the charter is unchanged; the rules never change.)
    - The Retained lay down their tools and sit down where they stand, one by one: rest. Hal: *"Is it Friday? Feels like Friday."* His channel closes after 38 years.
@@ -294,7 +297,7 @@ Combat details belong to the creatures session ([#13](https://github.com/pkeppel
    - Light rises from the crack, and every crew member receives an **Unnumbered Lamp**: no serial number, nobody's property, and it never goes out. It belongs to the player, not the charter.
    - Roz's lamp does not go out either. It walks down toward the Ramp.
 
-**Deed rules** (design intent): only members of the charter that broke Head Office can hold its deed. The deed cannot leave the Boardroom; if its holder dies or leaves, it returns to the table. Nothing ends until someone signs or burns it.
+**Deed rules** (design intent): only members of the charter that broke Head Office can hold its deed. The deed cannot leave the Boardroom; if its holder dies or leaves, it returns to the table. Nothing ends until the Director signs it or the whole online crew burns it together. Offline members do not count, so a member who quit cannot block the true ending ([ADR 0096](adr/0096-renunciation-needs-the-whole-online-crew-signing-stays-the-directors.md)).
 
 ## 13. Post-game
 
@@ -316,3 +319,5 @@ Three families:
 - **The gnawers:** post-game only.
 
 Fixed beats: something moving in the dark (layers 1 and 2, never attacks a person, comes to dark pods and drains their fuel, some carry a lamp), listeners drawn to resonance (layer 5), THE EYES that never attack (layer 7), and the two-phase finale (layer 8).
+
+The creatures session built on these hooks: [CREATURES.md](CREATURES.md).

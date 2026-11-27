@@ -1,0 +1,7 @@
+{
+  "parent": "deepcharter:block/terminal_item",
+  "textures": {
+    "front": "deepcharter:block/hangar_console_front",
+    "front_glow": "deepcharter:block/hangar_console_front_glow"
+  }
+}

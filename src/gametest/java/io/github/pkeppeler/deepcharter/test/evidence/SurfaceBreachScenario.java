@@ -1,12 +1,12 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -15,22 +15,21 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
- * Evidence scenario "m2-surface-breach": a player stands on the surface, drops through the open floor of the
- * overworld into layer 1, then climbs out of the top of layer 1 and arrives back in the overworld. The crossing
- * is recorded frame by frame, and stills show the surface and the pocket the return opens in the rock.
+ * Evidence scenario "m2-surface-breach": a player stands on the surface, then in the campaign level drops through a shaft in the floor
+ * of the surface band into layer 1, and climbs out of the top of layer 1 back into the surface band. Each crossing is in place and is
+ * recorded frame by frame, and stills show the surface and the shaft.
  */
 public class SurfaceBreachScenario extends EvidenceScenario {
     private static final double X = 2000.5;
     private static final double Z = 2000.5;
-    /** The shaft in the overworld is open from the floor up to this many blocks above it. */
+    /** The shaft in the surface band is open from the floor up to this many blocks above it. */
     private static final int SHAFT_HEIGHT = 16;
 
-    private static final int ROCK_RADIUS = 10;
-    private static final int ROCK_HEIGHT = 12;
     /** Frames of the surface at the start, before the fall. */
     private static final int SURFACE_FRAMES = 10;
 
@@ -55,8 +54,8 @@ public class SurfaceBreachScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setPermanentlyInvulnerable(true);
-                // A transmission goes to a charter: the climb out into the surface brings the surface-arrival
-                // transmission.
+                // A transmission goes to a charter: the climb out into the surface brings the
+                // surface-arrival transmission.
                 if (Charters.found(server, player.getUUID(), "Surface Crew").isPresent()) {
                     throw new AssertionError("founding the charter should succeed");
                 }
@@ -73,11 +72,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                 server.getPlayerList().getPlayers().getFirst().teleportTo(surface, X, y, Z, Set.of(), 0, -10, true);
             });
             ClientWait.until(
-                    context,
-                    "the client on the surface",
-                    client -> ClientLight.clientLevel(client)
-                            .dimension()
-                            .equals(LayerChain.dimension(LayerChain.SURFACE)));
+                    context, "the client on the surface", client -> TestLayers.clientIsIn(client, LayerChain.SURFACE));
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, "overworld-surface");
             for (int i = 0; i < SURFACE_FRAMES; i++) {
@@ -85,59 +80,56 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                 context.waitTick();
             }
 
-            // Down the overworld's open floor, looking at it.
+            // Down the open floor of the surface band, looking at it: the campaign level holds the surface and layer 1
+            // as bands, so the
+            // fall is a crossing in place. The shaft is cut in the surface band's rock, over a pocket in the top of
+            // layer 1.
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel surface = server.overworld();
+                ServerLevel level = TestLayers.level(server, 1);
                 BlockPos column = BlockPos.containing(X, 0, Z);
-                for (int y = surface.getMinY(); y <= surface.getMinY() + SHAFT_HEIGHT; y++) {
-                    // room-carver: opens the overworld floor, which is the surface and not layer rock
-                    surface.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
-                }
-                // Generate the arrival area in layer 1 now so the client has less to wait for after the crossing.
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-                for (int dx = -2; dx <= 2; dx++) {
-                    for (int dz = -2; dz <= 2; dz++) {
-                        one.getChunk(column.getX() / 16 + dx, column.getZ() / 16 + dz);
-                    }
-                }
+                int floor = TestLayers.band(level, TestLayers.SURFACE).minY();
+                RoomCarver.carvePocketBelow(
+                        level, TestLayers.SURFACE, column.getX(), column.getX(), column.getZ(), column.getZ());
+                RoomCarver.carve(
+                        level,
+                        column.atY(floor),
+                        column.atY(floor + SHAFT_HEIGHT),
+                        Blocks.AIR.defaultBlockState(),
+                        Block.UPDATE_ALL);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.teleportTo(surface, X, surface.getMinY() + SHAFT_HEIGHT - 1, Z, Set.of(), 0, 70, true);
+                player.teleportTo(level, X, floor + SHAFT_HEIGHT - 1, Z, Set.of(), 0, 70, true);
+                player.setNoGravity(true);
             });
-            recordUntilFadeEnds(context, "falling into layer 1");
+            ClientWait.until(
+                    context,
+                    "the client in the surface band",
+                    client -> TestLayers.clientIsIn(client, LayerChain.SURFACE));
+            context.waitTicks(SETTLE_TICKS);
+            // The crossing is read from the band last seen, which the server has now noted; gravity takes the player
+            // down the shaft.
+            singleplayer
+                    .getServer()
+                    .runOnServer(server ->
+                            server.getPlayerList().getPlayers().getFirst().setNoGravity(false));
+            recordUntilInLayerOne(context, "falling into layer 1");
             screenshot(context, "layer-1-arrival");
 
             // Up and out of the top of layer 1.
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel surface = server.overworld();
-                BlockPos column = BlockPos.containing(X, 0, Z);
-                for (int dx = -2; dx <= 2; dx++) {
-                    for (int dz = -2; dz <= 2; dz++) {
-                        surface.getChunk(column.getX() / 16 + dx, column.getZ() / 16 + dz);
-                    }
-                }
-                // The dev world is flat, with its ground right at the floor. Give the return real rock to open a pocket
-                // in.
-                for (int dx = -ROCK_RADIUS; dx <= ROCK_RADIUS; dx++) {
-                    for (int dz = -ROCK_RADIUS; dz <= ROCK_RADIUS; dz++) {
-                        for (int y = surface.getMinY(); y < surface.getMinY() + ROCK_HEIGHT; y++) {
-                            surface.setBlock(column.offset(dx, 0, dz).atY(y), Blocks.STONE.defaultBlockState(), 3);
-                        }
-                    }
-                }
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.getAbilities().mayfly = true;
                 player.getAbilities().flying = true;
                 player.onUpdateAbilities();
             });
             climbOutOfLayerOne(context, singleplayer);
-            recordUntilTransmissionTyped(context, "climbing back to the overworld");
-            // Look around the pocket, once the client has the chunks around it.
+            recordUntilTransmissionTyped(context, "climbing back to the surface band");
+            // Look around the shaft, once the client has the chunks around it.
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(player.level(), player.getX(), player.getY(), player.getZ(), Set.of(), 40, 15, true);
             });
             context.waitTicks(SETTLE_TICKS);
-            screenshot(context, "overworld-floor-pocket");
+            screenshot(context, "surface-floor-shaft");
         }
     }
 
@@ -145,10 +137,13 @@ public class SurfaceBreachScenario extends EvidenceScenario {
         while (singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             ServerLevel level = player.level();
-            if (!level.dimension().equals(LayerChain.dimension(1))) {
+            if (!TestLayers.isIn(player, 1)) {
                 return false;
             }
-            double y = Math.min(player.getY() + CLIMB_STEP, level.getMaxY() + LayerTuning.DEFAULT.pocketRadius());
+            // The crossing up is a few rows over the surface floor (ADR 0061), and the climb stops there.
+            double y = Math.min(
+                    player.getY() + CLIMB_STEP,
+                    TestLayers.band(level, TestLayers.SURFACE).minY() + LayerTuning.DEFAULT.crustThickness() + 1);
             player.teleportTo(level, X, y, Z, Set.of(), 0, -80, true);
             return true;
         })) {
@@ -159,21 +154,22 @@ public class SurfaceBreachScenario extends EvidenceScenario {
         }
     }
 
-    /** Records a frame per tick until the fade of the crossing that just happened has come and gone. Entering layer 1 has no transmission. */
-    private void recordUntilFadeEnds(ClientGameTestContext context, String what) {
-        boolean faded = false;
+    /** Records a frame per tick until the player has crossed into layer 1, and a few more. A crossing in place has no fade to wait for. */
+    private void recordUntilInLayerOne(ClientGameTestContext context, String what) {
+        int arrivedAt = -1;
         for (int tick = 0; tick < PATIENCE; tick++) {
             if (context.computeOnClient(client -> client.gui.screen() == null)) {
                 frame(context);
             }
-            float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-            faded |= alpha > 0;
-            if (faded && alpha == 0) {
+            if (arrivedAt < 0 && context.computeOnClient(client -> TestLayers.clientIsIn(client, 1))) {
+                arrivedAt = tick;
+            }
+            if (arrivedAt >= 0 && tick - arrivedAt >= TAIL_FRAMES) {
                 return;
             }
             context.waitTick();
         }
-        throw new AssertionError("The fade never ended within " + PATIENCE + " frames of " + what);
+        throw new AssertionError("The player never reached layer 1 within " + PATIENCE + " frames of " + what);
     }
 
     /** Records a frame per tick until the transmission of the crossing that just happened has finished typing. */

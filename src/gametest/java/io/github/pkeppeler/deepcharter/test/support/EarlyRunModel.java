@@ -4,8 +4,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.outpost.OutpostTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
 import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
@@ -26,6 +28,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.OptionalDouble;
 import net.minecraft.world.level.block.Blocks;
 
 /**
@@ -34,6 +37,10 @@ import net.minecraft.world.level.block.Blocks;
  *
  * <p>A run is a vertical bore of {@code n} slabs from the bottom of an old shaft, and the climb back up. {@code n} is the most
  * slabs that the tank pays for. Its assumptions are the ones marked (A) below.
+ *
+ * <p>A run starts at one of two places ({@link Start}). A layer 1 run starts at the surface, with fuel bought and ore sold at the colony.
+ * A layer 2 run ({@link #layerTwoRun}) starts at the charter's outpost on the layer 1 floor (#320): the pod is already at the
+ * bottom of the shaft with a full tank, it climbs only the slabs it bored, and the outpost pays the fuel and the ore at its own prices.
  */
 public final class EarlyRunModel {
     /** (A) The share of the expected ore that a player really gets: bore steps that miss a vein, a company rock to go round, a dead end. */
@@ -42,7 +49,32 @@ public final class EarlyRunModel {
     /** (A) Blocks per tick that a pilot braking down a shaft holds the pod at: under the 0.7 landing speed, with room for the pilot's overshoot. */
     public static final double DRIVE_DOWN_SINK = 0.6;
 
+    /**
+     * (A) The share of a tank that one pricing run burns. The prices are counted in runs, and a run was a whole tank at the original's burn rates.
+     * Issue 963 slowed the burn to a seventh so that a first tank lasts minutes of play, and left the drill and the ore alone, so what a run earns
+     * for the minute it takes is as it was: a run stays the trip a seventh of the tank pays for, and "runs to afford" keeps its meaning. A pilot
+     * who burns the whole tank makes seven runs of ore, but the bay is full long before, so the model keeps the old run.
+     */
+    public static final double PRICING_RUN_TANK_SHARE = 1.0 / 7.0;
+
     private static final int TICKS_PER_SECOND = 20;
+
+    /** Where a run starts and ends: the surface (the colony's terminals, the whole shaft to climb) or the outpost at the bottom of the shaft. */
+    private enum Start {
+        SURFACE,
+        OUTPOST;
+
+        /** The dollars a litre costs where the run refuels. */
+        long pricePerLitre() {
+            long colony = FuelTuning.DEFAULT.pricePerLitre();
+            return this == OUTPOST ? colony * OutpostTuning.DEFAULT.fuelPriceFactor() : colony;
+        }
+
+        /** The share of the colony's price that ore sells for where the run sells. */
+        double sellShare() {
+            return this == OUTPOST ? OutpostTuning.DEFAULT.sellPercent() / 100.0 : 1.0;
+        }
+    }
 
     private EarlyRunModel() {}
 
@@ -152,11 +184,7 @@ public final class EarlyRunModel {
 
     /** Blocks of layer 1, which a run in layer 2 climbs through twice (the shaft is already bored). */
     public static int layerOneBlocks() {
-        return json("/data/deepcharter/dimension/layer_1.json")
-                .getAsJsonObject("generator")
-                .getAsJsonObject("biome_source")
-                .get("height")
-                .getAsInt();
+        return CampaignBands.layer(1).height();
     }
 
     /** The stats of a Mole with the given part tiers (0 for stock), as PodComponents would scale them. */
@@ -194,19 +222,46 @@ public final class EarlyRunModel {
 
     /** As {@link #run(Zone, PodStats, int, float)} for a pod of {@code chassis}: each slab it bores has the chassis' {@link Chassis#slabCells} cells, and so that many chances of ore. */
     public static Run run(Chassis chassis, Zone zone, PodStats stats, int shaftBlocks, float extraMass) {
+        return run(Start.SURFACE, chassis, zone, stats, shaftBlocks, extraMass);
+    }
+
+    /**
+     * A run in layer 2, below layer 1's open shaft, that starts at the charter's outpost on the layer 1 floor (#320). (A) The pod is at the
+     * bottom of the shaft with a full tank, which it bought at the outpost's pump at the end of its last run; it bores straight down
+     * from there, climbs back only the slabs it bored (the crossing puts it in the outpost's hall), and sells to the outpost's terminal. Fuel
+     * costs {@link OutpostTuning#fuelPriceFactor} times the colony's price and ore pays {@link OutpostTuning#sellPercent} percent of its value.
+     * The first descent of the shaft is not part of it: the pod makes that once, from the surface (see {@link #driveDownLitres}).
+     */
+    public static Run layerTwoRun(Zone zone, PodStats stats) {
+        return layerTwoRun(zone, stats, 0f);
+    }
+
+    /** As {@link #layerTwoRun(Zone, PodStats)} for a pod that carries {@code extraMass} (a spoil hopper's bay and a brick rack, see {@link #hopperMass}). */
+    public static Run layerTwoRun(Zone zone, PodStats stats, float extraMass) {
+        return layerTwoRun(Chassis.MOLE, zone, stats, extraMass);
+    }
+
+    /** As {@link #layerTwoRun(Zone, PodStats, float)} for a pod of {@code chassis}. */
+    public static Run layerTwoRun(Chassis chassis, Zone zone, PodStats stats, float extraMass) {
+        return run(Start.OUTPOST, chassis, zone, stats, layerOneBlocks(), extraMass);
+    }
+
+    private static Run run(Start start, Chassis chassis, Zone zone, PodStats stats, int shaftBlocks, float extraMass) {
         int cells = chassis.slabCells();
         double oreChance = zone.oreChance();
         double climbSecondsPerBlock = 1 / (climbSpeed(stats, extraMass) * 20);
+        double driveDown = start == Start.SURFACE ? driveDownLitres(stats, shaftBlocks, extraMass) : 0;
         int slabs = 0;
         double litres = 0;
         for (int next = 1; ; next++) {
             double drillSeconds = slabSeconds(chassis, zone, stats, shaftBlocks + next / 2.0);
-            double climbSeconds = (shaftBlocks + next) * climbSecondsPerBlock;
-            double used = driveDownLitres(stats, shaftBlocks, extraMass)
+            double climbBlocks = start == Start.SURFACE ? shaftBlocks + next : next;
+            double climbSeconds = climbBlocks * climbSecondsPerBlock;
+            double used = driveDown
                     + drillSeconds * next * stats.drillingLitresPerSecond()
                     + climbSeconds * stats.movingLitresPerSecond()
                     + (drillSeconds * next + climbSeconds) * stats.idleLitresPerSecond();
-            if (used > stats.tankLitres()) {
+            if (used > stats.tankLitres() * PRICING_RUN_TANK_SHARE) {
                 break;
             }
             slabs = next;
@@ -214,9 +269,9 @@ public final class EarlyRunModel {
         }
         double ores = slabs * cells * oreChance * YIELD;
         double averageOre = zone.valuePerBlock() / oreChance;
-        double gross = averageOre * Math.min(ores, stats.cargoSlots());
+        double gross = averageOre * Math.min(ores, stats.cargoSlots()) * start.sellShare();
         double catalysts = slabs * cells * zone.catalystChance() * YIELD;
-        return new Run(slabs, litres, ores, gross, gross - litres * FuelTuning.DEFAULT.pricePerLitre(), catalysts);
+        return new Run(slabs, litres, ores, gross, gross - litres * start.pricePerLitre(), catalysts);
     }
 
     /**
@@ -228,6 +283,13 @@ public final class EarlyRunModel {
         double bore = slabSeconds(Chassis.MOLE, zone, stats, shaftBlocks + run.slabs() / 2.0) * run.slabs();
         double climb = (shaftBlocks + run.slabs()) / (climbSpeed(stats, 0f) * TICKS_PER_SECOND);
         return drive + bore + climb;
+    }
+
+    /** The seconds {@code run} takes, from {@link #layerTwoRun(Zone, PodStats)} with the same stats (#320): the bore of each slab and the climb of those slabs, no drive down the shaft. */
+    public static double layerTwoRunSeconds(Zone zone, PodStats stats, Run run) {
+        double bore = slabSeconds(Chassis.MOLE, zone, stats, layerOneBlocks() + run.slabs() / 2.0) * run.slabs();
+        double climb = run.slabs() / (climbSpeed(stats, 0f) * TICKS_PER_SECOND);
+        return bore + climb;
     }
 
     /**
@@ -273,13 +335,18 @@ public final class EarlyRunModel {
 
     /** The chance that one block of the zone is Company rock, read from the same JSON that the world generator reads (0 for a zone with none). */
     public static double companyRockChance(String zoneName) {
+        return hazardChance(zoneName, "deepcharter:company_rock").orElse(0);
+    }
+
+    /** The chance that one block of the zone is the hazard {@code blockId}, read from the same JSON that the world generator reads; empty when the zone has no entry for it. */
+    public static OptionalDouble hazardChance(String zoneName, String blockId) {
         for (JsonElement entry : json("/data/deepcharter/worldgen/feature/fill_" + zoneName + ".json")
                 .getAsJsonArray("hazards")) {
-            if (entry.getAsJsonObject().get("block").getAsString().equals("deepcharter:company_rock")) {
-                return entry.getAsJsonObject().get("chance").getAsDouble();
+            if (entry.getAsJsonObject().get("block").getAsString().equals(blockId)) {
+                return OptionalDouble.of(entry.getAsJsonObject().get("chance").getAsDouble());
             }
         }
-        return 0;
+        return OptionalDouble.empty();
     }
 
     private static JsonObject json(String resource) {

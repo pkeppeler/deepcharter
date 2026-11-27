@@ -1,9 +1,13 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.creature.DrifterAssets;
+import io.github.pkeppeler.deepcharter.creature.DrifterVariant;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -21,7 +25,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -41,10 +44,13 @@ import org.jspecify.annotations.Nullable;
  */
 public class AssetCompletenessTest {
     /**
-     * Pods render GeckoLib models from their look files, with their textures under textures/entity/pod/ (see SkinAssetsTest), so they
-     * have no {@code textures/entity/<id>.png}. Every other registered entity needs one.
+     * Pods render GeckoLib models from their look files, with their textures under textures/entity/pod/ (see
+     * SkinAssetsTest), so they have no {@code textures/entity/<id>.png}. The thrown kit (#985) is drawn as the item it
+     * carries, each with its own item texture. A drifter has three forms, each with its own files, checked below.
+     * Every other registered entity needs one.
      */
-    private static final Set<String> ENTITIES_DRAWN_FROM_LOOK_FILES = Set.of("pod", "prospector");
+    private static final Set<String> ENTITIES_DRAWN_FROM_LOOK_FILES =
+            Set.of("pod", "prospector", "thrown_kit", "drifter");
 
     private static final String CONNECTED = DeepCharter.MOD_ID + ":connected";
     private static final List<String> CONNECTED_TILES = List.of("alone", "horizontal", "vertical", "corner", "centre");
@@ -55,15 +61,13 @@ public class AssetCompletenessTest {
         if (ours(BuiltInRegistries.BLOCK).size() < 15
                 || ours(BuiltInRegistries.ITEM).size() < 50
                 || ours(BuiltInRegistries.ENTITY_TYPE).size() < 3) {
-            throw fail(
+            throw failure(
                     helper,
-                    List.of(
-                            "the walk found %d blocks, %d items and %d entities of %s: it is not looking at the registries"
-                                    .formatted(
-                                            ours(BuiltInRegistries.BLOCK).size(),
-                                            ours(BuiltInRegistries.ITEM).size(),
-                                            ours(BuiltInRegistries.ENTITY_TYPE).size(),
-                                            DeepCharter.MOD_ID)));
+                    "1 asset problem(s):\n  the walk found %d blocks, %d items and %d entities of %s: it is not looking at the registries",
+                    ours(BuiltInRegistries.BLOCK).size(),
+                    ours(BuiltInRegistries.ITEM).size(),
+                    ours(BuiltInRegistries.ENTITY_TYPE).size(),
+                    DeepCharter.MOD_ID);
         }
         helper.succeed();
     }
@@ -98,6 +102,13 @@ public class AssetCompletenessTest {
             if (!ENTITIES_DRAWN_FROM_LOOK_FILES.contains(id.getPath())) {
                 requireFile(problems, "entity " + id, "textures/entity/" + id.getPath() + ".png");
             }
+        }
+        for (DrifterVariant variant : DrifterVariant.values()) {
+            String owner = "drifter " + variant.id();
+            requireFile(problems, owner, DrifterAssets.texture(variant).getPath());
+            requireFile(problems, owner, DrifterAssets.glowmask(variant).getPath());
+            requireFile(problems, owner, DrifterAssets.modelFile(variant).getPath());
+            requireFile(problems, owner, DrifterAssets.animationFile(variant).getPath());
         }
         for (String path : ENTITIES_DRAWN_FROM_LOOK_FILES) {
             if (!BuiltInRegistries.ENTITY_TYPE.containsKey(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path))) {
@@ -315,13 +326,8 @@ public class AssetCompletenessTest {
 
     private static void finish(GameTestHelper helper, List<String> problems) {
         if (!problems.isEmpty()) {
-            throw fail(helper, problems);
+            throw failure(helper, "%d asset problem(s):\n  %s", problems.size(), String.join("\n  ", problems));
         }
         helper.succeed();
-    }
-
-    private static RuntimeException fail(GameTestHelper helper, List<String> problems) {
-        return helper.assertionException(
-                Component.literal(problems.size() + " asset problem(s):\n  " + String.join("\n  ", problems)));
     }
 }

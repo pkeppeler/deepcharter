@@ -1,17 +1,23 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -20,9 +26,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -57,13 +65,17 @@ import org.slf4j.LoggerFactory;
  * Server GameTests for the bootstrap of #245 (art direction section 11): the colony's salvage crates lie within the yard radius and not
  * beyond it, fungal stalks grow only on the floors of craters and in caves, and a new player reaches the first crafting goals (tools, a
  * light, the first terminal repair) with the real recipes, starting from nothing but what crates and stalks drop. The surface runs in
- * {@code deepcharter:surface_sample}, a copy of the shipped overworld in the test mod's preset (see {@link SurfaceTerrainTest}).
+ * the surface band of {@code deepcharter:campaign_sample}, the test pack's copy of the shipped overworld (see {@link SurfaceTerrainTest}).
  */
 public class SalvageBootstrapTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SalvageBootstrapTest.class);
-    private static final String SAMPLE = "deepcharter:surface_sample";
+    private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final String YARD = "deepcharter:salvage_yard";
     private static final int MAX_TICKS = 12_000;
+    /** Phrases that place a crate in the colony; the yard's inner radius keeps crates out of it (ADR 0047). */
+    private static final Pattern IN_TOWN = Pattern.compile("\\b(round|around|about|in|at) (the )?(town|colony)\\b");
+    /** The end of a sentence, so {@link #IN_TOWN} reads only the sentence that names the crate. */
+    private static final Pattern SENTENCE_END = Pattern.compile("(?<=[.!?])\\s+");
     /** The survey covers the chunks within this many of the origin, a little past the yard so that its edge shows. */
     private static final int SURVEY_CHUNKS = 12;
     /** A crate stands up to the 4 blocks of its patch's spread, and the biome that decides the yard is read in cells of 4, past the radius. */
@@ -76,10 +88,19 @@ public class SalvageBootstrapTest {
     private static final int CRATES_BEYOND_THE_PAD = 160;
 
     private static final int STALK_COLUMNS = 40;
-    /** The walk from a crate to the nearest stalk column, in blocks: the survey of the fixed seed found 167 and 281 (a crate near the edge of the survey has the stalks beyond it out of count). */
-    private static final int MEDIAN_WALK_TO_A_STALK = 200;
+    /**
+     * The walk from a crate to the nearest stalk column, in blocks. Before the stalk patches of the yard (#855) the survey of the fixed
+     * seed found a median of 167 and a most of 281, all of it to crater floors past the crates. With a patch among the crates it finds 11
+     * and 41, and the bounds leave room for another seed: the median under two chunks (32), so that wood is always a short walk from
+     * the salvage, and the most under five.
+     */
+    private static final int MEDIAN_WALK_TO_A_STALK = 30;
 
-    private static final int MOST_WALK_TO_A_STALK = 320;
+    private static final int MOST_WALK_TO_A_STALK = 80;
+    /** Stalks stand on the plains only in the yard's patches, among the crates, so this many blocks inside its edges at most. */
+    private static final int PATCH_SLACK = 8;
+    /** At least this many stalk columns stand on the plains, in patches: the survey of the fixed seed found 74. */
+    private static final int PATCH_COLUMNS = 74;
     /** A plains block's top is no lower than 61 (ground 64 less the rolling plains' 2.6), so a stalk's base this low or lower is a crater's. */
     private static final int HIGHEST_STALK_BASE = 60;
     /** How many crates a new player must break to reach the first goals, and the whole repair chain. */
@@ -152,8 +173,9 @@ public class SalvageBootstrapTest {
         return stalks.stream().filter(pos -> !all.contains(pos.below())).toList();
     }
 
-    /** The id of the biome at a position, generating its chunk. */
+    /** The id of the biome at a position, in a chunk that the caller waited for. */
     private static String biomeAt(ServerLevel level, BlockPos pos) {
+        // sync-load: every caller waited for the chunk with FarChunks.whenBlocksLoaded
         level.getChunkAt(pos);
         return level.getBiome(pos).unwrapKey().orElseThrow().identifier().toString();
     }
@@ -162,149 +184,196 @@ public class SalvageBootstrapTest {
         return Math.sqrt((double) pos.getX() * pos.getX() + (double) pos.getZ() * pos.getZ());
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    /** The campaign level's layers hold crates and stalks of their own: the yard is the surface band's. */
+    private static List<BlockPos> inSurface(ServerLevel level, List<BlockPos> positions) {
+        return positions.stream()
+                .filter(pos -> TestLayers.isIn(level, pos, TestLayers.SURFACE))
+                .toList();
+    }
+
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void cratesLieAroundTheColonyWithinTheYardRadiusAndNoFurther(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        int radius = yardRadius();
-        List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
-        List<BlockPos> beyondThePad =
-                crates.stream().filter(pos -> distance(pos) >= PAD_RADIUS).toList();
-        double farthest = crates.stream()
-                .mapToDouble(SalvageBootstrapTest::distance)
-                .max()
-                .orElse(0);
-        int inner = yardInnerRadius();
-        double nearestOutside = crates.stream()
-                .filter(pos -> distance(pos) >= radius + EDGE_SLACK)
-                .count();
-        long insideTheRing = crates.stream()
-                .filter(pos -> distance(pos) < inner - EDGE_SLACK)
-                .count();
-        int padCorner = (int) Math.ceil(ColonyTuning.DEFAULT.padSize() / 2.0 * Math.sqrt(2));
-        if (inner - EDGE_SLACK < padCorner + ColonyTuning.DEFAULT.edgeMargin()) {
-            throw helper.assertionException(
-                    "the yard starts at %s, so a crate can stand %s from the centre: the pad's corner is at %s and its graded margin is %s more",
-                    inner, inner - EDGE_SLACK, padCorner, ColonyTuning.DEFAULT.edgeMargin());
-        }
-        if (insideTheRing > 0) {
-            throw helper.assertionException(
-                    "%s crates stand nearer than %s blocks to the colony, inside its pad or graded margin",
-                    insideTheRing, inner - EDGE_SLACK);
-        }
-        LOGGER.info(
-                "[salvage] yard radius {}: {} crates, {} beyond the pad, the farthest at {} blocks",
-                radius,
-                crates.size(),
-                beyondThePad.size(),
-                farthest);
-        if (beyondThePad.size() < CRATES_BEYOND_THE_PAD / 2) {
-            throw helper.assertionException(
-                    "the yard holds %s crates beyond the colony pad, expected at least %s",
-                    beyondThePad.size(), CRATES_BEYOND_THE_PAD / 2);
-        }
-        if (nearestOutside > 0) {
-            throw helper.assertionException(
-                    "%s crates stand more than %s blocks past the yard radius %s; the farthest is at %s",
-                    (int) nearestOutside, EDGE_SLACK, radius, farthest);
-        }
-        if (farthest < radius - EDGE_SLACK * 2) {
-            throw helper.assertionException(
-                    "the crates stop at %s blocks, well inside the yard radius %s", farthest, radius);
-        }
-        helper.succeed();
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
+            int radius = yardRadius();
+            List<BlockPos> crates = inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate")));
+            List<BlockPos> beyondThePad =
+                    crates.stream().filter(pos -> distance(pos) >= PAD_RADIUS).toList();
+            double farthest = crates.stream()
+                    .mapToDouble(SalvageBootstrapTest::distance)
+                    .max()
+                    .orElse(0);
+            int inner = yardInnerRadius();
+            double nearestOutside = crates.stream()
+                    .filter(pos -> distance(pos) >= radius + EDGE_SLACK)
+                    .count();
+            long insideTheRing = crates.stream()
+                    .filter(pos -> distance(pos) < inner - EDGE_SLACK)
+                    .count();
+            int padCorner = (int) Math.ceil(ColonyTuning.DEFAULT.padSize() / 2.0 * Math.sqrt(2));
+            if (inner - EDGE_SLACK < padCorner + ColonyTuning.DEFAULT.edgeMargin()) {
+                throw helper.assertionException(
+                        "the yard starts at %s, so a crate can stand %s from the centre: the pad's corner is at %s and its graded margin is %s more",
+                        inner, inner - EDGE_SLACK, padCorner, ColonyTuning.DEFAULT.edgeMargin());
+            }
+            if (insideTheRing > 0) {
+                throw helper.assertionException(
+                        "%s crates stand nearer than %s blocks to the colony, inside its pad or graded margin",
+                        insideTheRing, inner - EDGE_SLACK);
+            }
+            LOGGER.info(
+                    "[salvage] yard radius {}: {} crates, {} beyond the pad, the farthest at {} blocks",
+                    radius,
+                    crates.size(),
+                    beyondThePad.size(),
+                    farthest);
+            if (beyondThePad.size() < CRATES_BEYOND_THE_PAD / 2) {
+                throw helper.assertionException(
+                        "the yard holds %s crates beyond the colony pad, expected at least %s",
+                        beyondThePad.size(), CRATES_BEYOND_THE_PAD / 2);
+            }
+            if (nearestOutside > 0) {
+                throw helper.assertionException(
+                        "%s crates stand more than %s blocks past the yard radius %s; the farthest is at %s",
+                        (int) nearestOutside, EDGE_SLACK, radius, farthest);
+            }
+            if (farthest < radius - EDGE_SLACK * 2) {
+                throw helper.assertionException(
+                        "the crates stop at %s blocks, well inside the yard radius %s", farthest, radius);
+            }
+            helper.succeed();
+        });
     }
 
     /** The yard's edges are read in biome cells of 4 blocks, at the corner of each, so it is exact to a cell: a block a cell and a block inside is in, a cell outside is out. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theYardEndsAtItsRadiusOnTheBlock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        int radius = yardRadius();
+        int yardRadius = yardRadius();
+        int yardInner = yardInnerRadius();
+        // Every position the body reads a biome at, so the chunks load before it runs, not on the server thread.
+        List<FarChunks.At> chunks = new ArrayList<>();
         for (int[] direction : new int[][] {{1, 0}, {0, -1}, {-1, 0}}) {
-            BlockPos inside = new BlockPos(
-                    direction[0] * (radius - BIOME_CELL - 1), 64, direction[1] * (radius - BIOME_CELL - 1));
-            BlockPos outside =
-                    new BlockPos(direction[0] * (radius + BIOME_CELL), 64, direction[1] * (radius + BIOME_CELL));
-            int inner = yardInnerRadius();
-            BlockPos within =
-                    new BlockPos(direction[0] * (inner + 2 * BIOME_CELL), 64, direction[1] * (inner + 2 * BIOME_CELL));
-            BlockPos without =
-                    new BlockPos(direction[0] * (inner - 2 * BIOME_CELL), 64, direction[1] * (inner - 2 * BIOME_CELL));
-            if (!biomeAt(level, within).equals(YARD) || biomeAt(level, without).equals(YARD)) {
-                throw helper.assertionException(
-                        "the yard should begin between %s and %s", without.toShortString(), within.toShortString());
-            }
-            String insideBiome = biomeAt(level, inside);
-            String outsideBiome = biomeAt(level, outside);
-            if (!insideBiome.equals(YARD) || outsideBiome.equals(YARD)) {
-                throw helper.assertionException(
-                        "at %s the block %s is %s and the block %s is %s: the yard should hold the first and not the second",
-                        List.of(direction[0], direction[1]),
-                        inside.toShortString(),
-                        insideBiome,
-                        outside.toShortString(),
-                        outsideBiome);
+            for (int distance : new int[] {
+                yardRadius - BIOME_CELL - 1,
+                yardRadius + BIOME_CELL,
+                yardInner + 2 * BIOME_CELL,
+                yardInner - 2 * BIOME_CELL
+            }) {
+                chunks.add(new FarChunks.At(level, (direction[0] * distance) >> 4, (direction[1] * distance) >> 4));
             }
         }
-        helper.succeed();
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> {
+            int radius = yardRadius();
+            for (int[] direction : new int[][] {{1, 0}, {0, -1}, {-1, 0}}) {
+                BlockPos inside = new BlockPos(
+                        direction[0] * (radius - BIOME_CELL - 1), 64, direction[1] * (radius - BIOME_CELL - 1));
+                BlockPos outside =
+                        new BlockPos(direction[0] * (radius + BIOME_CELL), 64, direction[1] * (radius + BIOME_CELL));
+                int inner = yardInnerRadius();
+                BlockPos within = new BlockPos(
+                        direction[0] * (inner + 2 * BIOME_CELL), 64, direction[1] * (inner + 2 * BIOME_CELL));
+                BlockPos without = new BlockPos(
+                        direction[0] * (inner - 2 * BIOME_CELL), 64, direction[1] * (inner - 2 * BIOME_CELL));
+                if (!biomeAt(level, within).equals(YARD)
+                        || biomeAt(level, without).equals(YARD)) {
+                    throw helper.assertionException(
+                            "the yard should begin between %s and %s", without.toShortString(), within.toShortString());
+                }
+                String insideBiome = biomeAt(level, inside);
+                String outsideBiome = biomeAt(level, outside);
+                if (!insideBiome.equals(YARD) || outsideBiome.equals(YARD)) {
+                    throw helper.assertionException(
+                            "at %s the block %s is %s and the block %s is %s: the yard should hold the first and not the second",
+                            List.of(direction[0], direction[1]),
+                            inside.toShortString(),
+                            insideBiome,
+                            outside.toShortString(),
+                            outsideBiome);
+                }
+            }
+            helper.succeed();
+        });
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void stalksStandOnlyInCraters(GameTestHelper helper) {
+    /** Stalks grow on the floors of craters, and in patches among the crates of the yard (#855), and nowhere else on the plains. */
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void stalksStandOnlyInCratersAndTheYardsPatches(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> stalks = BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"));
-        List<BlockPos> bases = columnBases(stalks);
-        LOGGER.info("[salvage] {} stalk blocks in {} columns", stalks.size(), bases.size());
-        if (bases.size() < STALK_COLUMNS / 2) {
-            throw helper.assertionException(
-                    "the survey found %s stalk columns, expected at least %s", bases.size(), STALK_COLUMNS / 2);
-        }
-        for (BlockPos base : bases) {
-            if (base.getY() > HIGHEST_STALK_BASE) {
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
+            List<BlockPos> stalks = inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk")));
+            List<BlockPos> bases = columnBases(stalks);
+            LOGGER.info("[salvage] {} stalk blocks in {} columns", stalks.size(), bases.size());
+            if (bases.size() < STALK_COLUMNS / 2) {
                 throw helper.assertionException(
-                        "a stalk stands at %s, above the floor of any crater (%s)",
-                        base.toShortString(), HIGHEST_STALK_BASE);
+                        "the survey found %s stalk columns, expected at least %s", bases.size(), STALK_COLUMNS / 2);
             }
-            if (level.getBlockState(base.below()).isAir()
-                    || level.getBlockState(base.below()).is(block("fungal_stalk"))) {
-                throw helper.assertionException("the stalk at %s does not stand on the ground", base.toShortString());
+            int inner = yardInnerRadius() - PATCH_SLACK;
+            int outer = yardRadius() + PATCH_SLACK;
+            int patches = 0;
+            for (BlockPos base : bases) {
+                if (base.getY() > HIGHEST_STALK_BASE) {
+                    if (distance(base) < inner || distance(base) > outer) {
+                        throw helper.assertionException(
+                                "a stalk stands at %s, above the floor of any crater (%s) and outside the yard's %s to %s blocks",
+                                base.toShortString(), HIGHEST_STALK_BASE, inner, outer);
+                    }
+                    patches++;
+                }
+                if (level.getBlockState(base.below()).isAir()
+                        || level.getBlockState(base.below()).is(block("fungal_stalk"))) {
+                    throw helper.assertionException(
+                            "the stalk at %s does not stand on the ground", base.toShortString());
+                }
             }
-        }
-        helper.succeed();
+            LOGGER.info("[salvage] {} of the stalk columns stand on the plains, in the yard's patches", patches);
+            if (patches < PATCH_COLUMNS / 2) {
+                throw helper.assertionException(
+                        "the yard holds %s stalk columns on the plains, expected at least %s",
+                        patches, PATCH_COLUMNS / 2);
+            }
+            helper.succeed();
+        });
     }
 
     /** How far a player walks from a crate to the nearest stalk column: the wood is a walk from the salvage, not a trek. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> bases = columnBases(BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk")));
-        List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
-        double[] nearest = crates.stream()
-                .mapToDouble(crate -> bases.stream()
-                        .mapToDouble(base -> Math.sqrt(horizontalDistanceSqr(crate, base)))
-                        .min()
-                        .orElse(Double.MAX_VALUE))
-                .sorted()
-                .toArray();
-        double nearestToTheOrigin =
-                bases.stream().mapToDouble(SalvageBootstrapTest::distance).min().orElse(Double.MAX_VALUE);
-        LOGGER.info(
-                "[salvage] {} stalk columns, the nearest {} blocks from the colony's centre; from a crate to the nearest column: least {}, median {}, most {} blocks ({} crates)",
-                bases.size(),
-                (int) nearestToTheOrigin,
-                (int) nearest[0],
-                (int) nearest[nearest.length / 2],
-                (int) nearest[nearest.length - 1],
-                nearest.length);
-        if (nearest[nearest.length / 2] > MEDIAN_WALK_TO_A_STALK
-                || nearest[nearest.length - 1] > MOST_WALK_TO_A_STALK) {
-            throw helper.assertionException(
-                    "a stalk column is a median %s and at most %s blocks from a crate, over the %s and %s allowed",
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
+            List<BlockPos> bases =
+                    columnBases(inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"))));
+            List<BlockPos> crates = inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate")));
+            double[] nearest = crates.stream()
+                    .mapToDouble(crate -> bases.stream()
+                            .mapToDouble(base -> Math.sqrt(horizontalDistanceSqr(crate, base)))
+                            .min()
+                            .orElse(Double.MAX_VALUE))
+                    .sorted()
+                    .toArray();
+            double nearestToTheOrigin = bases.stream()
+                    .mapToDouble(SalvageBootstrapTest::distance)
+                    .min()
+                    .orElse(Double.MAX_VALUE);
+            LOGGER.info(
+                    "[salvage] {} stalk columns, the nearest {} blocks from the colony's centre; from a crate to the nearest column: least {}, median {}, most {} blocks ({} crates)",
+                    bases.size(),
+                    (int) nearestToTheOrigin,
+                    (int) nearest[0],
                     (int) nearest[nearest.length / 2],
                     (int) nearest[nearest.length - 1],
-                    MEDIAN_WALK_TO_A_STALK,
-                    MOST_WALK_TO_A_STALK);
-        }
-        helper.succeed();
+                    nearest.length);
+            if (nearest[nearest.length / 2] > MEDIAN_WALK_TO_A_STALK
+                    || nearest[nearest.length - 1] > MOST_WALK_TO_A_STALK) {
+                throw helper.assertionException(
+                        "a stalk column is a median %s and at most %s blocks from a crate, over the %s and %s allowed",
+                        (int) nearest[nearest.length / 2],
+                        (int) nearest[nearest.length - 1],
+                        MEDIAN_WALK_TO_A_STALK,
+                        MOST_WALK_TO_A_STALK);
+            }
+            helper.succeed();
+        });
     }
 
     private static double horizontalDistanceSqr(BlockPos a, BlockPos b) {
@@ -312,21 +381,26 @@ public class SalvageBootstrapTest {
                 + (double) (a.getZ() - b.getZ()) * (a.getZ() - b.getZ());
     }
 
-    @GameTest(dimension = "deepcharter:layer_1", maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void stalksGrowOnTheFloorsOfLayerOneCaves(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> stalks = BlockSurvey.find(level, 6, block("fungal_stalk"));
-        LOGGER.info("[salvage] layer 1: {} stalk blocks", stalks.size());
-        if (stalks.isEmpty()) {
-            throw helper.assertionException("the caves of layer 1 hold no fungal stalk");
-        }
-        for (BlockPos pos : stalks) {
-            if (!level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP)
-                    && !level.getBlockState(pos.below()).is(block("fungal_stalk"))) {
-                throw helper.assertionException("the stalk at %s does not stand on a floor", pos.toShortString());
+        FarChunks.whenBlocksLoaded(helper, BlockSurvey.area(level, 6), () -> {
+            // The campaign level holds the surface and both layers: only the stalks in layer 1's band are this test's.
+            List<BlockPos> stalks = BlockSurvey.find(level, 6, block("fungal_stalk")).stream()
+                    .filter(pos -> TestLayers.isIn(level, pos, 1))
+                    .toList();
+            LOGGER.info("[salvage] layer 1: {} stalk blocks", stalks.size());
+            if (stalks.isEmpty()) {
+                throw helper.assertionException("the caves of layer 1 hold no fungal stalk");
             }
-        }
-        helper.succeed();
+            for (BlockPos pos : stalks) {
+                if (!level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP)
+                        && !level.getBlockState(pos.below()).is(block("fungal_stalk"))) {
+                    throw helper.assertionException("the stalk at %s does not stand on a floor", pos.toShortString());
+                }
+            }
+            helper.succeed();
+        });
     }
 
     /** The items a block drops, from its real loot table with a fixed seed: the same drops on every run. */
@@ -561,17 +635,26 @@ public class SalvageBootstrapTest {
                                 Items.IRON_NUGGET,
                                 Items.IRON_NUGGET,
                                 Items.IRON_NUGGET);
+                        // Holding the lantern the path made completes chapter 1's light directive (the torch does too).
+                        if (bag.count(Items.LANTERN) != 1) {
+                            throw helper.assertionException(
+                                    "the path should end in one lantern, the bag holds %s", bag.count(Items.LANTERN));
+                        }
+                        HandbookChaptersOneToFiveTest.give(player, Items.LANTERN);
+                        done.add(chapterOne.get(6));
+                        HandbookChaptersOneToFiveTest.expectCompleted(
+                                helper, server, "a lantern from a stalk and iron", List.of(player), done);
 
                         // The first terminal: its parts from the real recipes, in the real terminal.
                         bag.craftPart(helper, "pump_motor");
                         bag.craftPart(helper, "fuel_valve");
                         BlockPos terminal = helper.absolutePos(new BlockPos(0, 1, 0));
                         HandbookChaptersOneToFiveTest.stand(helper, mock, terminal);
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
+                                3);
                         for (Item part : TerminalTypes.FUEL_PUMP.parts()) {
                             bag.take(part, 1, helper, "the fuel pump");
                             player.getInventory().add(new ItemStack(part));
@@ -633,7 +716,7 @@ public class SalvageBootstrapTest {
             "basalt_field",
             List.of("deepcharter:fungal_stalks"),
             "salvage_yard",
-            List.of("deepcharter:salvage_litter", "deepcharter:fungal_stalks"),
+            List.of("deepcharter:salvage_litter", "deepcharter:fungal_stalks", "deepcharter:fungal_stalks_yard"),
             "topsoil_claims",
             List.of("deepcharter:fungal_stalks_cave"));
 
@@ -687,5 +770,25 @@ public class SalvageBootstrapTest {
         } finally {
             mock.leave();
         }
+    }
+
+    /**
+     * The crates lie in the yard, past the colony (#1415), so no sentence of the language file that names a crate puts
+     * it in town.
+     */
+    @GameTest
+    public void theLanguageFilePutsNoCrateInTheColony(GameTestHelper helper) {
+        JsonObject lang = HandbookChaptersOneToFiveTest.lang();
+        for (String key : lang.keySet()) {
+            SENTENCE_END
+                    .splitAsStream(lang.get(key).getAsString().toLowerCase(Locale.ROOT))
+                    .filter(sentence -> sentence.contains("crate")
+                            && IN_TOWN.matcher(sentence).find())
+                    .findFirst()
+                    .ifPresent(sentence -> {
+                        throw failure(helper, "%s puts a crate in the colony: %s", key, sentence);
+                    });
+        }
+        helper.succeed();
     }
 }

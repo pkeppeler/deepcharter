@@ -1,10 +1,9 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -80,8 +79,7 @@ public class SalvageConceptsScenario extends EvidenceScenario {
             Scene crater = new Scene(0, pit);
             Scene cave = new Scene(1, Vec3.atBottomCenterOf(CAVE.offset(CAVE_SCENE)));
             for (Scene scene : List.of(surface, crater, cave)) {
-                world.serverDo(server ->
-                        build(ClientLight.serverLevel(server, LayerChain.dimension(scene.layer)), scene.centre));
+                world.serverDo(server -> build(TestLayers.level(server, scene.layer), scene.centre));
             }
             for (Option option : OPTIONS) {
                 if (option.pack() != null) {
@@ -134,7 +132,7 @@ public class SalvageConceptsScenario extends EvidenceScenario {
 
     private static void carveCave(TextureTestWorld world) {
         world.serverDo(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel level = TestLayers.level(server, 1);
             TextureTestWorld.loadChunks(level, CAVE, 2);
             RoomCarver.carve(
                     level,

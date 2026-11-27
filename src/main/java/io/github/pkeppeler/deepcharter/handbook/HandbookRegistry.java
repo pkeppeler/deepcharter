@@ -14,6 +14,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
@@ -51,6 +52,7 @@ public final class HandbookRegistry {
         HandbookProgress.register();
         HandbookReadPayload.register();
         Notes.register();
+        OpenNotePayload.register();
         HandbookItems.register();
     }
 
@@ -61,7 +63,7 @@ public final class HandbookRegistry {
                 blockKey,
                 new NoteBlock(BlockBehaviour.Properties.of()
                         .setId(blockKey)
-                        .strength(-1.0F, 3600000.0F)
+                        .strength(-1.0F, Blocks.BEDROCK.getExplosionResistance())
                         .sound(SoundType.WOOL)
                         .noOcclusion()
                         .noLootTable()));

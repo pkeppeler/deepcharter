@@ -20,10 +20,9 @@ class Clip:
 
     def interleaved(self):
         """The frames as 16-bit samples, left then right, clamped."""
-        out = array("h")
-        for left, right in zip(self.left, self.right):
-            out.append(_pcm(left))
-            out.append(_pcm(right))
+        out = array("h", bytes(2 * 2 * min(len(self.left), len(self.right))))
+        out[0::2] = array("h", map(_pcm, self.left))
+        out[1::2] = array("h", map(_pcm, self.right))
         if sys.byteorder == "big":
             out.byteswap()
         return out
@@ -34,7 +33,8 @@ class Clip:
 
 
 def _pcm(value):
-    return max(-32767, min(32767, round(value * 32767)))
+    pcm = round(value * 32767)
+    return 32767 if pcm > 32767 else -32767 if pcm < -32767 else pcm
 
 
 def seconds(length):
@@ -48,7 +48,8 @@ def noise(rng, count):
 def sine(count, freq, phase=0.0):
     """A sine of `freq` Hz; a frequency that is a whole number over the length closes on itself."""
     step = TAU * freq / RATE
-    return [math.sin(step * i + phase) for i in range(count)]
+    sin = math.sin
+    return [sin(step * i + phase) for i in range(count)]
 
 
 def phase_of(freqs):
@@ -113,17 +114,23 @@ def fade(signal, fade_in, fade_out):
 def filt(signal, kind, freq, q):
     """A biquad (RBJ cookbook): kind 'lp', 'hp' or 'bp'. `freq` is a number or one Hz value per sample (a sweep)."""
     swept = not isinstance(freq, (int, float))
-    coefficients = None
     x1 = x2 = y1 = y2 = 0.0
     out = []
-    for i, x0 in enumerate(signal):
-        if coefficients is None or swept:
-            coefficients = _biquad(kind, freq[i] if swept else freq, q)
-        b0, b1, b2, a1, a2 = coefficients
+    append = out.append
+    if not swept:
+        b0, b1, b2, a1, a2 = _biquad(kind, freq, q)
+        for x0 in signal:
+            y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+            x2, x1 = x1, x0
+            y2, y1 = y1, y0
+            append(y0)
+        return out
+    for x0, hz in zip(signal, freq, strict=True):
+        b0, b1, b2, a1, a2 = _biquad(kind, hz, q)
         y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
         x2, x1 = x1, x0
         y2, y1 = y1, y0
-        out.append(y0)
+        append(y0)
     return out
 
 

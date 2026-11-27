@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -111,9 +112,13 @@ public class ParkedPodChoiceClientTest implements FabricClientGameTest {
         }
         BlockPos pump = player.blockPosition().relative(Direction.EAST, 2);
         BlockPos station = player.blockPosition().relative(Direction.NORTH, 2);
-        server.overworld().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
-        server.overworld()
-                .setBlock(station, TerminalTypes.REPAIR_STATION.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(), pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                station,
+                TerminalTypes.REPAIR_STATION.block().defaultBlockState(),
+                3);
         PodEntity own = spawn(player, player.position().relative(Direction.WEST, 3));
         PodComponents.register(own, charter);
         own.setFuel(OWN_FUEL);

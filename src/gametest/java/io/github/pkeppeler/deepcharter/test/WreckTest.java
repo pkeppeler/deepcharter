@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
@@ -11,22 +13,21 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.WreckEvents;
@@ -47,7 +48,6 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.MinecraftServer;
@@ -62,7 +62,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -80,7 +79,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for #67: a pod at hull 0 is a wreck, and the restore hook makes it a pod again. */
 public class WreckTest {
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final int IDLE_TICKS = 100;
     private static final String ATTACHMENTS_KEY = "fabric:attachments";
@@ -91,8 +90,6 @@ public class WreckTest {
 
     private static final Map<UUID, Report> REPORTS = new ConcurrentHashMap<>();
 
-    private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
     /** Pods whose crust bore costs 20 hull. Only the crust test adds to it. */
     private static final Set<UUID> CRUST_PODS = ConcurrentHashMap.newKeySet();
 
@@ -569,27 +566,27 @@ public class WreckTest {
     public void theCharterIsToldTheLayer(GameTestHelper helper) {
         double x = 2400.5;
         double z = 2400.5;
-        ServerLevel two = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(2));
-        if (two == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(2));
-        }
+        ServerLevel two = TestLayers.level(helper.getLevel().getServer(), 2);
         MockPlayer mock = MockPlayers.join(helper, "wreck-layer");
         Charters.found(helper.getLevel().getServer(), mock.player().getUUID(), uniqueName())
                 .ifPresent(refusal -> {
                     throw failure(helper, "could not found a charter: %s", refusal);
                 });
-        mock.teleportTo(two, new Vec3(x, 8, z), 0, 0);
+        mock.teleportTo(two, TestLayers.vec(2, x, 8, z), 0, 0);
         PodEntity[] pod = {null};
-        FarChunks.awaitEntityTicking(helper, two, BlockPos.containing(x, 8, z), () -> {
+        FarChunks.awaitEntityTicking(helper, two, BlockPos.containing(x, TestLayers.worldY(2, 8), z), () -> {
             pod[0] = TestEntities.create(PodRegistry.POD, two);
-            pod[0].setPos(x, 8, z);
+            pod[0].setPos(x, TestLayers.worldY(2, 8), z);
             two.addFreshEntity(pod[0]);
             mock.player().startRiding(pod[0], true, false);
             wreck(pod[0]);
         });
         helper.succeedWhen(() -> {
             if (pod[0] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(
+                        helper,
+                        "waiting for the chunk at %s to tick entities",
+                        BlockPos.containing(x, TestLayers.worldY(2, 8), z));
             }
             Report report = REPORTS.get(pod[0].getUUID());
             if (report == null) {
@@ -882,6 +879,36 @@ public class WreckTest {
     }
 
     @GameTest
+    public void salvageTakesEverythingInTheHold(GameTestHelper helper) {
+        PodEntity pod = spawnOnFloor(helper);
+        MockPlayer mock = joinLoaded(helper, "wreck-gear", pod.position().add(2, 0, 0));
+        try {
+            pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+            pod.cargo().setAt(pod, 1, new ItemStack(Items.TORCH, 10));
+            wreck(pod);
+            int moved = Wrecks.salvage(mock.player(), pod);
+            int torches = mock.player().getInventory().countItem(Items.TORCH);
+            if (moved != 2
+                    || oreInInventory(mock) != 1
+                    || torches != 10
+                    || pod.cargo().occupied() != 0) {
+                throw failure(
+                        helper,
+                        "salvage takes the ore and the torches: moved %d, %d ore and %d torches held, %d slots left",
+                        moved,
+                        oreInInventory(mock),
+                        torches,
+                        pod.cargo().occupied());
+            }
+            helper.succeed();
+        } finally {
+            mock.leave();
+            pod.discard();
+            clearFloor(helper);
+        }
+    }
+
+    @GameTest
     public void salvageOfAnEmptyBayDoesNothing(GameTestHelper helper) {
         PodEntity pod = spawnOnFloor(helper);
         MockPlayer mock = joinLoaded(helper, "wreck-empty", pod.position().add(2, 0, 0));
@@ -894,7 +921,8 @@ public class WreckTest {
                     .consumesAction()) {
                 throw failure(
                         helper,
-                        "using an empty wreck is still handled, so that the player is not seated or refuelled by accident");
+                        "using an empty wreck is still handled, so that the player is not seated or refuelled by"
+                                + " accident");
             }
             helper.succeed();
         } finally {
@@ -931,7 +959,7 @@ public class WreckTest {
     }
 
     @GameTest
-    public void sneakingOnAWreckStillOnlyOpensTheCargoView(GameTestHelper helper) {
+    public void sneakingOnAWreckStillOnlyOpensThePodScreen(GameTestHelper helper) {
         PodEntity pod = spawnOnFloor(helper);
         MockPlayer mock = joinLoaded(helper, "wreck-sneak", pod.position().add(2, 0, 0));
         try {
@@ -940,10 +968,10 @@ public class WreckTest {
             wreck(pod);
             mock.setInput(SNEAK);
             InteractionResult result = UseEntity.on(mock.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-            if (!result.consumesAction() || !(mock.player().containerMenu instanceof OreCargoMenu)) {
+            if (!result.consumesAction() || !(mock.player().containerMenu instanceof PodMenu)) {
                 throw failure(
                         helper,
-                        "sneak-use should open the cargo view, got %s with %s",
+                        "sneak-use should open the pod screen, got %s with %s",
                         result,
                         mock.player().containerMenu);
             }
@@ -967,22 +995,20 @@ public class WreckTest {
     public void aCrustBreachThatTakesTheLastHullKillsThePilotWhoDoesNotCross(GameTestHelper helper) {
         int x = 4600;
         int z = 3000;
-        ServerLevel one = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (one == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
-        for (BlockPos pos : BlockPos.betweenClosed(x - 2, 0, z - 2, x + 2, 2, z + 2)) {
+        ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
+        for (BlockPos pos :
+                BlockPos.betweenClosed(x - 2, TestLayers.worldY(1, 0), z - 2, x + 2, TestLayers.worldY(1, 2), z + 2)) {
             one.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), Block.UPDATE_CLIENTS);
         }
-        RoomCarver.carve(one, x - 2, x + 2, 1, 8, z - 2, z + 2, Blocks.AIR);
+        RoomCarver.carve(one, x - 2, x + 2, TestLayers.worldY(1, 1), TestLayers.worldY(1, 8), z - 2, z + 2, Blocks.AIR);
         MockPlayer pilot = MockPlayers.join(helper, "wreck-crust");
-        pilot.teleportTo(one, new Vec3(x, 1, z), 0f, 0f);
+        pilot.teleportTo(one, TestLayers.vec(1, x, 1, z), 0f, 0f);
         PodEntity[] pod = {null};
         long[] zeroSince = {-1};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 1, z), () -> {
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(1, 1), z), () -> {
             pilot.confirmDimensionChange();
             PodEntity created = TestEntities.create(PodRegistry.POD, one);
-            created.setPos(x, 1, z);
+            created.setPos(x, TestLayers.worldY(1, 1), z);
             one.addFreshEntity(created);
             CRUST_PODS.add(created.getUUID());
             created.setHull(15f);
@@ -1012,7 +1038,7 @@ public class WreckTest {
                         pilot.player().connection.hasClientLoaded(),
                         pilot.player().getVehicle());
             }
-            if (!pilot.player().level().dimension().equals(LayerChain.dimension(1)) || pod[0].isRemoved()) {
+            if (!TestLayers.isIn(pilot.player(), 1) || pod[0].isRemoved()) {
                 throw failure(
                         helper,
                         "the wreck must stay in layer 1, pilot in %s",
@@ -1075,7 +1101,6 @@ public class WreckTest {
         RespawnConfig bed = bedConfig(helper);
         ServerPlayer[] respawned = {null};
         Runnable cleanup = () -> {
-            server.getPlayerList().remove(respawned[0] == null ? mock.player() : respawned[0]);
             mock.leave();
             pod.discard();
             clearBed(helper);
@@ -1102,7 +1127,8 @@ public class WreckTest {
                 if (!bed.equals(respawned[0].getRespawnConfig())) {
                     throw failure(
                             helper,
-                            "the redirect changes no player data: the bed should still be set, but the respawn point is %s",
+                            "the redirect changes no player data: the bed should still be set, but the respawn point"
+                                    + " is %s",
                             respawned[0].getRespawnConfig());
                 }
             });
@@ -1121,7 +1147,6 @@ public class WreckTest {
         MockPlayer mock = joinLoaded(helper, "wreck-nobed", pod.position());
         ServerPlayer[] respawned = {null};
         Runnable cleanup = () -> {
-            server.getPlayerList().remove(respawned[0] == null ? mock.player() : respawned[0]);
             mock.leave();
             pod.discard();
             clearFloor(helper);
@@ -1228,9 +1253,6 @@ public class WreckTest {
             }
             helper.succeed();
         } finally {
-            if (respawned[0] != null) {
-                server.getPlayerList().remove(respawned[0]);
-            }
             mock.leave();
             pod.discard();
             clearBed(helper);
@@ -1270,7 +1292,6 @@ public class WreckTest {
     /** A player marked to wake at the office who leaves and comes back dies an ordinary death: they wake at their bed. */
     @GameTest
     public void aCrewMemberWhoLeavesAndReturnsBeforeRespawningWakesAtTheirBed(GameTestHelper helper) {
-        MinecraftServer server = server(helper);
         PodEntity pod = spawnOnFloor(helper);
         MockPlayer mock = MockPlayers.joinUnloaded(helper, "wreck-leaver");
         UUID id = mock.player().getUUID();
@@ -1278,9 +1299,6 @@ public class WreckTest {
         MockPlayer[] returned = {null};
         ServerPlayer[] respawned = {null};
         Runnable cleanup = () -> {
-            if (respawned[0] != null) {
-                server.getPlayerList().remove(respawned[0]);
-            }
             if (returned[0] != null) {
                 returned[0].leave();
             }
@@ -1340,11 +1358,5 @@ public class WreckTest {
                         level,
                         EntitySpawnReason.LOAD)
                 .orElseThrow(() -> failure(helper, "the saved pod did not load"));
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

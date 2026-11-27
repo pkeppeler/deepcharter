@@ -4,6 +4,7 @@
 
 The general autonomous rules (merging, review pipeline, handoff, evidence, trust) come from the profile above. This file holds only what is specific to Deep Charter.
 
+- **Merge only when all checks are green.** GitHub does not enforce this: every session acts as the repo admin, and the merge tools push the regenerated `docs/ROADMAP.md` to `main`, so required checks would block those pushes or be bypassed. A ruleset (`protect-main`) blocks force-push and deletion of `main`. `main` changes only through the merge tools below: never a hand commit or push, and a papercut goes into a PR (an in-flight one, or a doc-only PR), never straight to `main`. This file wins over the profile's PR-only wording until the profile says the same. Merge only through `tools/merge-batch.sh <n>...` for two or more PRs (one CI run on an integration branch, landed by a fast-forward push; the PRs show as closed, not merged, [ADR 0106](../docs/adr/0106-reviewed-prs-merge-in-batches-on-an-integration-branch-with-one-ci-run.md)), `tools/merge-pr.sh <n>` for one, or `tools/merge-queue.sh <n>...` to merge them one at a time, also when a PR must show GitHub's merged state (it waits for CI, re-runs a stale base, and cleans up worktrees). All refuse and give the reason.
 - **Code, test, evidence-scenario or tool work loads the `deepcharter-conventions` skill first.** It holds the code layout, the M2 rules, the test and evidence rules and the toolchain commands.
 - Settled decisions are in [docs/SPEC.md](../docs/SPEC.md).
 
@@ -18,8 +19,8 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 ## Backlog and state
 
 - **Branches:** Create the issue first, then name the branch from its number (numbers race); the merge gate checks that the PR closes the issue its branch names, so keep `Closes #N` through body rewrites.
-- **CI runs on free standard runners** (the repo is public), so minutes are not rationed. Client tests still run only on `gameplay` PRs, for run time. Run recording jobs locally.
-- **Handing over at about 200k tokens:** let in-flight agents finish, rewrite the handoff, stop the loop, then start the successor:
+- **CI runs on free standard runners** (the repo is public), so minutes are not rationed. Client tests run on every PR that changes `src/main`, `src/client`, `src/gametest` or `src/lang` (`tools/ci-client-needed.sh`), and on any PR labelled `gameplay`; docs and tools PRs skip them, for run time. Run recording jobs locally.
+- **Handing over at about 500k tokens:** let in-flight agents finish, rewrite the handoff, stop the loop, then start the successor:
   - **Launch** from the main checkout (the repo root, not a worktree or other directory): a session started elsewhere loads none of this repo's hooks or skills.
     `claude --bg --permission-mode <mode> -n "deepcharter $(date -u +%m-%d-%H%M)" "/loop continue Deep Charter"`
     `<mode>` is the current session's permission mode (`auto` today), never a wider one.

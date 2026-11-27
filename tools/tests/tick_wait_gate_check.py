@@ -2,7 +2,7 @@
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
-Usage: python3 -I tools/tests/gate_checks.py tick_wait
+Usage: tools/py tools/tests/gate_checks.py tick_wait
 """
 import unittest
 

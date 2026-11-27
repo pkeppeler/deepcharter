@@ -11,7 +11,7 @@ Player scale: a pod's bay is 4 wide and 4 high (a Prospector is 2.9 across), a s
 high. The headframe's beacon is at 30.
 
 Fixed by the game and kept clear here: the Conduit's casing (X -5..-3, Z -15..-13, up to Y 10), which ColonyBuilder's Conduit sets;
-the terminal blocks on the plinths (Y 2 over the row of plinths, Z -8) and the hangar's console, which ColonyBuilder and Hangar set.
+the terminals, each two blocks high from Y 1 on the ground of the row at Z -8, and the hangar's console, which ColonyBuilder and Hangar set.
 """
 from dataclasses import dataclass
 
@@ -24,10 +24,11 @@ CLEAR_HEIGHT = 36
 
 CONDUIT = (-5, -15, -3, -13)
 CONDUIT_TOP = 10
-# The row of terminal plinths on the north edge of the square: the plinths are 3 x 3 at Y 1, each terminal stands on its plinth at
-# Y 2, in the order of the colony's terminals (fuel pump, ore processor, upgrade terminal, repair station, contract terminal).
+# The row of terminals on the north edge of the square: each stands on the ground at Y 1 and is two blocks high (its monitor
+# is the upper half, at Y 2), in the order of the colony's terminals (fuel pump, ore processor, upgrade terminal, repair
+# station, contract terminal).
 TERMINAL_COLUMNS = (-8, -4, 0, 4, 8)
-PLINTH_Z = -8
+TERMINAL_Z = -8
 # The Host: his height in blocks, soles to raised hand, and the top of his plinth.
 HOST = 10
 PLINTH_TOP = 5
@@ -44,6 +45,16 @@ BEACON = 30
 HANGAR_BOX = (-30, 0, -16, 14)
 HANGAR_BAY = (5, 8)
 CONSOLE_OFFSET = (5, 0, -3)
+
+
+# The buildings whose lamps are lit behind their windows (the Works' ore house at work, the office the world spawn is in, Joy's desk).
+# Every other building is dark inside, a dim glow in place of lamps (parts.dim_glow): a town of lit rooms and nobody in them reads as
+# eerie, a few left on reads as lived in. A piece is named by its structure path.
+LIT_PIECES = ("works", "office", "personnel_office")
+
+
+def dark(piece: str) -> bool:
+    return piece not in LIT_PIECES
 
 
 @dataclass(frozen=True)
@@ -68,7 +79,7 @@ def _keep_clear(piece: Piece) -> None:
     for (x, y, z) in piece.blocks:
         if x0 <= x <= x1 and z0 <= z <= z1 and 0 <= y <= CONDUIT_TOP:
             raise ValueError(f"{piece.name}: a block at {x} {y} {z} is in the Conduit's casing")
-        if y == 2 and z == PLINTH_Z and x in TERMINAL_COLUMNS:
+        if y in (1, 2) and z == TERMINAL_Z and x in TERMINAL_COLUMNS:
             raise ValueError(f"{piece.name}: a block at {x} {y} {z} is where a terminal stands")
 
 
@@ -105,12 +116,9 @@ def hands() -> Piece:
 
 
 def terminals() -> Piece:
-    """The plinths of the terminals on the north edge of the square, each a footing with a hazard kerb on the square's side, and the
-    brass pipe that runs from the Conduit to the ore processor's plinth."""
+    """What stands round the terminals on the north edge of the square, which stand on the ground themselves: the brass pipe that runs
+    from the Conduit into the back of the ore processor's monitor."""
     p = Piece("terminals")
-    for col in TERMINAL_COLUMNS:
-        p.fill(col - 1, 1, PLINTH_Z - 1, col + 1, 1, PLINTH_Z + 1, state("concrete_footing"))
-        p.fill(col - 1, 1, PLINTH_Z + 1, col + 1, 1, PLINTH_Z + 1, state("hazard_band"))
     p.fill(-4, 2, -12, -4, 2, -9, state("pipe_brass", axis="z"))
     p.set(-4, 1, -11, state("steel_beam", axis="y"))
     return p
@@ -236,7 +244,7 @@ def hoist_house(doors: list[Door]) -> Piece:
     """The winding engine house the ropes run to, in the Works' language: riveted plate in red pilasters, glowing hatches, the rope
     ports in its south wall, a door on the west street, a ladder to its railed roof, and a riveted stack."""
     p = Piece("hoist_house")
-    walls = parts.works_hall(p, -10, -36, 2, -30, 6, {"south": (-6, -2), "north": (-6, -2)})
+    walls = parts.works_hall(p, -10, -36, 2, -30, 6, {"south": (-6, -2), "north": (-6, -2)}, dark("hoist_house"))
     south = walls["south"]
     for x in range(-5, -1):
         p.set(x, 6, -30, state("hazard_band"))
@@ -250,11 +258,12 @@ def hoist_house(doors: list[Door]) -> Piece:
 
 
 def works(doors: list[Door]) -> Piece:
-    """The compact ore house beside the headframe: one Works hall of two storeys, its bay and door on the square (the door between two terminal plinths), the tipple
+    """The compact ore house beside the headframe: one Works hall of two storeys, its bay and door on the square (the door between two terminals), the tipple
     bin's conveyor dropping into a crusher house on its roof, two ore bins on legs behind it and a stack."""
     p = Piece("works")
     x0, z0, x1, z1 = 3, -21, 16, -11
-    walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"south": (7, 9, 14), "north": (7, 12), "west": (-16,), "east": (-16,)})
+    walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"south": (7, 9, 14), "north": (7, 12), "west": (-16,), "east": (-16,)},
+                            dark("works"))
     front = walls["south"]
     parts.bay(p, front, 10, 13)
     doors.append(Door("works", parts.door(p, front, 6), "south"))
@@ -290,7 +299,7 @@ def hangar(doors: list[Door]) -> Piece:
     on its floor and the console beside the bay (Hangar.java stands it from the anchor)."""
     p = Piece("hangar")
     x0, z0, x1, z1 = HANGAR_BOX[0], HANGAR_BOX[1], HANGAR_BOX[2], HANGAR_BOX[3]
-    walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"east": (2, 12), "west": (4, 10), "north": (-26, -20), "south": (-26, -20)})
+    walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"east": (2, 12), "west": (4, 10), "north": (-26, -20), "south": (-26, -20)}, dark("hangar"))
     front = walls["east"]
     parts.bay(p, front, *HANGAR_BAY)
     doors.append(Door("hangar bay", front.outside(HANGAR_BAY[0], 1), "east", 4, 4))
@@ -304,7 +313,7 @@ def office(doors: list[Door]) -> Piece:
     """The Continuity Office in the east of the square: an open house whose floor has the blue pad the world spawn is on, the
     lectern and a low shelf, with the Continuity Plan leaflet (N04) on it, where a player's eyes look down on it."""
     p = Piece("office")
-    walls = parts.cabin(p, 14, -4, 22, 4, 5, {"west": (-2, 2), "east": (-2, 2), "north": (18,), "south": (18,)})
+    walls = parts.cabin(p, 14, -4, 22, 4, 5, {"west": (-2, 2), "east": (-2, 2), "north": (18,), "south": (18,)}, dark("office"))
     west = walls["west"]
     doors.append(Door("continuity office", parts.door(p, west, 0), "west"))
     p.fill(17, 0, -1, 19, 0, 1, state("minecraft:light_blue_concrete"))
@@ -319,7 +328,7 @@ def chapel(doors: list[Door]) -> Piece:
     """A small chapel on the west street, one candle on its altar. It burns, and nobody says why. The visitors' book (N03) lies on
     the altar's second block, and the pews are spruce slabs."""
     p = Piece("chapel")
-    walls = parts.cabin(p, -24, -22, -16, -13, 6, {"east": (-20,), "west": (-17,), "north": (-20,), "south": (-20,)})
+    walls = parts.cabin(p, -24, -22, -16, -13, 6, {"east": (-20,), "west": (-17,), "north": (-20,), "south": (-20,)}, dark("chapel"))
     east = walls["east"]
     doors.append(Door("chapel", parts.door(p, east, -17), "east"))
     p.fill(-22, 1, -18, -22, 1, -17, state("brass_trim"))
@@ -336,7 +345,7 @@ def chapel(doors: list[Door]) -> Piece:
 def bunkhouse(doors: list[Door]) -> Piece:
     """Rows of bunks, all made up: eight beds in two rows along the long walls, an aisle between them."""
     p = Piece("bunkhouse")
-    walls = parts.cabin(p, 23, 14, 36, 21, 5, {"north": (25, 33), "south": (25, 29, 33), "west": (17,), "east": (17,)})
+    walls = parts.cabin(p, 23, 14, 36, 21, 5, {"north": (25, 33), "south": (25, 29, 33), "west": (17,), "east": (17,)}, dark("bunkhouse"))
     north = walls["north"]
     doors.append(Door("bunkhouse", parts.door(p, north, 29), "north"))
     for z in (15, 20):
@@ -354,7 +363,7 @@ def bed(part: str):
 def pay_office(doors: list[Door]) -> Piece:
     """A counter with a grille and a gate, and barrels of pay stubs that nobody came for; one stub (N02) lies on a barrel."""
     p = Piece("pay_office")
-    walls = parts.cabin(p, -14, 14, -6, 22, 5, {"north": (-8,), "south": (-10,), "west": (18,), "east": (18,)})
+    walls = parts.cabin(p, -14, 14, -6, 22, 5, {"north": (-8,), "south": (-10,), "west": (18,), "east": (18,)}, dark("pay_office"))
     north = walls["north"]
     doors.append(Door("pay office", parts.door(p, north, -12), "north"))
     p.fill(-13, 1, 17, -8, 1, 17, state("riveted_plate"))
@@ -369,7 +378,7 @@ def pay_office(doors: list[Door]) -> Piece:
 def personnel_office(doors: list[Door]) -> Piece:
     """Joy's desk, with her calendar (N01) on it: she recorded the templates."""
     p = Piece("personnel_office")
-    walls = parts.cabin(p, 12, 14, 20, 22, 5, {"north": (13, 19), "south": (16,), "west": (18,), "east": (18,)})
+    walls = parts.cabin(p, 12, 14, 20, 22, 5, {"north": (13, 19), "south": (16,), "west": (18,), "east": (18,)}, dark("personnel_office"))
     north = walls["north"]
     doors.append(Door("personnel office", parts.door(p, north, 16), "north"))
     p.fill(15, 1, 20, 17, 1, 20, state("minecraft:spruce_planks"))
@@ -379,10 +388,10 @@ def personnel_office(doors: list[Door]) -> Piece:
 
 
 def lamp_and_pick(doors: list[Door]) -> Piece:
-    """The miners' bar, burned out: its windows dark, a scorch of coal on its floor, a counter with stools and barrels, and its lit
+    """The miners' bar, burned out: no lamps lit inside, only a dim glow (parts.dim_glow), a scorch of coal on its floor, a counter with stools and barrels, the canteen dispenser, and its lit
     sign over a door that faces the square across the south street."""
     p = Piece("lamp_and_pick")
-    walls = parts.cabin(p, -3, 14, 9, 24, 5, {"north": (0, 6), "south": (3,), "west": (19,), "east": (19,)}, dark=True)
+    walls = parts.cabin(p, -3, 14, 9, 24, 5, {"north": (0, 6), "south": (3,), "west": (19,), "east": (19,)}, dark("lamp_and_pick"))
     north = walls["north"]
     doors.append(Door("the Lamp and Pick", parts.door(p, north, 3), "north"))
     p.fill(1, 0, 16, 5, 0, 18, state("minecraft:coal_block"))
@@ -392,20 +401,22 @@ def lamp_and_pick(doors: list[Door]) -> Piece:
         p.set(x, 1, 19, state("pipe", axis="y"))
     for x in (-1, 1, 3, 5, 7):
         p.set(x, 1, 23, state("minecraft:barrel", facing="up", open="false"))
+    # The canteen dispenser: a ration on every use (CanteenBlock). It gives no light, so the room stays dark.
+    p.set(8, 1, 20, state("canteen", facing=walls["east"].inward))
     parts.wall_sign(p, north, "bar", 3, 5)
     return p
 
 
 # ------------------------------------------------------------------------------------------------------------- the town
 
-# Where each anchor is, from the pad's centre: the block a player stands in, for the terminals the block the terminal stands in,
+# Where each anchor is, from the pad's centre: the block a player stands in, for the terminals the lower half's block,
 # for the statue the block he stands in (over his plinth), for the candle the candle's block, for the Conduit its centre column.
 ANCHORS = {
-    "fuel_pump": (-8, 2, -8),
-    "ore_processor": (-4, 2, -8),
-    "upgrade_terminal": (0, 2, -8),
-    "repair_station": (4, 2, -8),
-    "contract_terminal": (8, 2, -8),
+    "fuel_pump": (-8, 1, -8),
+    "ore_processor": (-4, 1, -8),
+    "upgrade_terminal": (0, 1, -8),
+    "repair_station": (4, 1, -8),
+    "contract_terminal": (8, 1, -8),
     "hangar": (-23, 1, 7),
     "continuity_office": (18, 1, 0),
     "statue": (0, PLINTH_TOP + 1, 0),
@@ -427,6 +438,10 @@ class Town:
     later: list[tuple[str, Piece]]
     doors: list[Door]
     anchors: dict[str, tuple[int, int, int]]
+
+    def rooms(self) -> list[tuple[str, tuple[int, int, int], tuple[int, int, int], bool]]:
+        """Every room of every piece (the piece's path, the room's low corner and high corner, whether it is dark), in colony coordinates."""
+        return [(path, low, high, dark) for path, piece in self.pieces for low, high, dark in piece.rooms]
 
 
 def build() -> Town:

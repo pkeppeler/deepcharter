@@ -29,6 +29,13 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
     public static final int FAR_AHEAD = 30;
 
     public static final int FAR_BEHIND = -30;
+
+    /**
+     * Stone beyond tier 1's reach on the right, the one the far gold is compared with: the depth ruler's labels lie
+     * over the left of the map (#1272), and on the row of a label they cover {@link #FAR_BEHIND}.
+     */
+    private static final int FAR_STONE_AHEAD = FAR_AHEAD + 2;
+
     private static final ScanArea TIER_TWO = TUNING.area(2);
     /** Lava ahead and water behind, on a row of their own, so that water spreading in the wait cannot reach the lava. */
     private static final int FLUID_UP = -2;
@@ -38,10 +45,14 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
     /** Lava one block beside the plane, with air in the plane at that cell: the thermal tier draws it as near lava. */
     private static final int NEAR_AHEAD = 8;
 
-    /** Puts gold {@link #FAR_AHEAD} ahead of the ridden pod and stone {@link #FAR_BEHIND} behind it, on the gold row. */
+    /**
+     * Puts gold {@link #FAR_AHEAD} ahead of the ridden pod, and stone {@link #FAR_BEHIND} behind it and
+     * {@link #FAR_STONE_AHEAD} ahead, on the gold row.
+     */
     public static void placeFarCells(ClientGameTestContext context, TestServerContext server) {
         ScannerHudTest.placeBesidePod(server, FAR_AHEAD, ScannerHudTest.GOLD_UP, Blocks.GOLD_ORE);
         ScannerHudTest.placeBesidePod(server, FAR_BEHIND, ScannerHudTest.GOLD_UP, Blocks.STONE);
+        ScannerHudTest.placeBesidePod(server, FAR_STONE_AHEAD, ScannerHudTest.GOLD_UP, Blocks.STONE);
         context.waitTicks(2 * TUNING.rescanTicks() + 2);
     }
 
@@ -146,7 +157,7 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
             expectDrawn("tier 2: the far stone", two, FAR_BEHIND, ScannerHudTest.GOLD_UP);
             require(
                     two.brightness(FAR_AHEAD, ScannerHudTest.GOLD_UP)
-                            > two.brightness(FAR_BEHIND, ScannerHudTest.GOLD_UP),
+                            > two.brightness(FAR_STONE_AHEAD, ScannerHudTest.GOLD_UP),
                     "tier 2: the far gold should be brighter than the far stone");
 
             // Tier 2 is the thermal tier: lava has its own colour, water is still open space.

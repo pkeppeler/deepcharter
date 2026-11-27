@@ -1,16 +1,17 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -31,13 +32,14 @@ import net.minecraft.world.phys.AABB;
 public class PodHardLandingScenario extends EvidenceScenario {
     private static final int X = 5200;
     private static final int Z = 5200;
-    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
-    private static final int SHAFT_BLOCKS = 96;
+    private static final int FLOOR_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
+    /** Deep enough that a crewed free fall still wrecks the pod through the ground cushion (#1432). */
+    private static final int SHAFT_BLOCKS = 150;
+
     private static final int BRAKED_TICKS_PER_FRAME = 5;
     private static final int FALL_TICKS_PER_FRAME = 2;
     private static final int MAX_TICKS = 900;
     private static final double BRAKE_ABOVE_SINK = 0.5;
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
 
     @Override
     protected String name() {
@@ -49,7 +51,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 RoomCarver.carve(
                         one,
                         new BlockPos(X - 2, FLOOR_Y - 2, Z - 2),
@@ -64,15 +66,26 @@ public class PodHardLandingScenario extends EvidenceScenario {
                 for (int y = FLOOR_Y + 6; y < FLOOR_Y + SHAFT_BLOCKS; y += 12) {
                     one.setBlock(new BlockPos(X + 2, y, Z), Blocks.GLOWSTONE.defaultBlockState(), 3);
                 }
+            });
+            // Before the pilot arrives: a survival pilot falls down the shaft while it waits.
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 2);
+            singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                player.teleportTo(one, X + 0.5, FLOOR_Y + SHAFT_BLOCKS - 2, Z + 0.5, Set.of(), 0, 0, true);
+                player.teleportTo(
+                        TestLayers.level(server, 1),
+                        X + 0.5,
+                        FLOOR_Y + SHAFT_BLOCKS - 2,
+                        Z + 0.5,
+                        Set.of(),
+                        0,
+                        0,
+                        true);
             });
             ClientWait.until(
                     context,
                     "the player in layer 1",
-                    client -> client.player != null
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                    client -> client.player != null && TestLayers.clientIsIn(client, 1));
             context.waitTicks(30);
 
             // Braked: the pilot taps the rotor whenever the sink passes BRAKE_ABOVE_SINK.
@@ -124,7 +137,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
                 TestEntities.vehicle(player).discard();
                 player.setLastClientInput(Input.EMPTY);
                 player.teleportTo(
-                        ClientLight.serverLevel(server, LayerChain.dimension(1)),
+                        TestLayers.level(server, 1),
                         X + 0.5,
                         FLOOR_Y + SHAFT_BLOCKS - 2,
                         Z + 0.5,
@@ -170,7 +183,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
 
     private static void boardNewPod(TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(X + 0.5, FLOOR_Y + SHAFT_BLOCKS - 2, Z + 0.5);
@@ -193,7 +206,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
     private static boolean podWrecked(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> ClientLight.serverLevel(server, LayerChain.dimension(1))
+                .computeOnServer(server -> TestLayers.level(server, 1)
                         .getEntitiesOfClass(
                                 PodEntity.class,
                                 new AABB(X - 3, FLOOR_Y - 2, Z - 3, X + 3, FLOOR_Y + SHAFT_BLOCKS + 3, Z + 3))

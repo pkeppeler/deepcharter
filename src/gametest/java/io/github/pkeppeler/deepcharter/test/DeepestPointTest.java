@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -13,13 +15,13 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -33,8 +35,7 @@ public class DeepestPointTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1000;
     private static final int X = 9100;
     private static final int Z = 9100;
-    private static final int FLOOR = 60;
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
+    private static final int FLOOR = TestLayers.worldY(1, 60);
 
     private static MockPlayer charterMember(GameTestHelper helper, String name) {
         MockPlayer mock = MockPlayers.join(helper, name);
@@ -69,7 +70,7 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodThatBoresToANewDepthRaisesItsCharterDeepestPoint(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel level = TestLayers.level(server, 1);
         RoomCarver.carve(level, X - 4, X + 3, FLOOR - 8, FLOOR - 1, Z - 4, Z + 3, Blocks.STONE);
         RoomCarver.carve(level, X - 4, X + 3, FLOOR, FLOOR + 10, Z - 4, Z + 3, Blocks.AIR);
         MockPlayer pilot = charterMember(helper, "dp-bore");
@@ -109,11 +110,12 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void reachingTheTopOfLayerThreeOpensTheMoraleInitiative(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel two = TestLayers.level(server, 2);
+        LayerChain.Band twoBand = TestLayers.band(two, 2);
         MockPlayer crew = charterMember(helper, "dp-order");
         crew.player().setPermanentlyInvulnerable(true);
         crew.player().setNoGravity(true);
-        int above = two.getMinY() + 4;
+        int above = twoBand.minY() + 4;
         crew.teleportTo(two, new Vec3(X + 100.5, above, Z + 100.5), 0, 0);
         int layerThreeTop = LayerChain.topDepth(server.registryAccess(), 3);
         boolean[] moved = {false};
@@ -129,7 +131,7 @@ public class DeepestPointTest {
                             deepest(server, crew));
                 }
                 moved[0] = true;
-                crew.teleportTo(two, new Vec3(X + 100.5, two.getMinY(), Z + 100.5), 0, 0);
+                crew.teleportTo(two, new Vec3(X + 100.5, twoBand.minY(), Z + 100.5), 0, 0);
             }
             if (!offersMorale(server, crew)) {
                 throw helper.assertionException(
@@ -143,13 +145,14 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aSpectatorOrACreativePlayerSetsNoRecord(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel two = TestLayers.level(server, 2);
+        LayerChain.Band twoBand = TestLayers.band(two, 2);
         MockPlayer ghost = charterMember(helper, "dp-ghost");
         ghost.player().setGameMode(GameType.SPECTATOR);
-        ghost.teleportTo(two, new Vec3(X + 200.5, two.getMinY() + 4, Z + 200.5), 0, 0);
+        ghost.teleportTo(two, new Vec3(X + 200.5, twoBand.minY() + 4, Z + 200.5), 0, 0);
         MockPlayer builder = charterMember(helper, "dp-creative");
         builder.player().setGameMode(GameType.CREATIVE);
-        builder.teleportTo(two, new Vec3(X + 250.5, two.getMinY() + 4, Z + 250.5), 0, 0);
+        builder.teleportTo(two, new Vec3(X + 250.5, twoBand.minY() + 4, Z + 250.5), 0, 0);
         expectNoRecordAfterPolls(helper, server, ghost, builder);
     }
 
@@ -161,7 +164,9 @@ public class DeepestPointTest {
         MockPlayer crew = charterMember(helper, "dp-nether");
         crew.player().setPermanentlyInvulnerable(true);
         crew.player().setNoGravity(true);
+        // level-height: the Nether is not in the chain, so it has no layer band
         crew.teleportTo(nether, new Vec3(X + 300.5, nether.getMinY() + 4, Z + 300.5), 0, 0);
+        // level-height: the Nether is not in the chain, so it has no layer band
         if (Depth.of(nether, nether.getMinY() + 4) <= 0) {
             throw helper.assertionException(
                     "the Nether test position should read as a positive depth, or it proves nothing");

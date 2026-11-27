@@ -61,6 +61,19 @@
       {"op": "fibres", "ramp": ["stalk.1", "stalk.2", "stalk.2", "stalk.3"], "seed": 973, "breaks": 3, "spread": 1},
       {"op": "speckle", "colours": ["stalk.0", "stalk.4"], "density": 0.04, "seed": 974}
     ]},
+    "block/great_stalk_cap_top": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["fungus.2", "fungus.3", "fungus.3", "fungus.4"], "seed": 85501, "cell": 4, "octaves": 3, "dither": 0.7},
+      {"op": "speckle", "colours": ["fungus.1", "stalk.2"], "density": 0.07, "seed": 85502},
+      {"op": "speckle", "colours": ["stalk.4", "fungus.4"], "density": 0.05, "seed": 85503}
+    ]},
+    "block/great_stalk_cap_side": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["fungus.1", "fungus.2", "fungus.2", "fungus.3"], "seed": 85504, "breaks": 3, "spread": 1},
+      {"op": "speckle", "colours": ["fungus.0", "fungus.4"], "density": 0.04, "seed": 85505}
+    ]},
+    "block/great_stalk_cap_under": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["fungus.0", "fungus.1", "fungus.1", "fungus.2"], "seed": 85506, "breaks": 3, "spread": 1},
+      {"op": "speckle", "colours": ["fungus.0", "fungus.3"], "density": 0.04, "seed": 85507}
+    ]},
     "item/scrap_iron": {"template": "sprite", "args": {"legend": {
       "h": "steel.6", "l": "steel.5", "m": "steel.4", "d": "steel.3", "k": "steel.2", "r": "rust.3", "q": "rust.2"}, "rows": [
       "", "", "",
@@ -89,16 +102,21 @@
       ".........hlmmdk",
       "..........kkkk"]}},
     "item/salvage_cloth": {"template": "sprite", "args": {"legend": {
-      "h": "tarp.4", "l": "tarp.3", "m": "tarp.2", "d": "tarp.1", "s": "enamel.1", "r": "company.2", "k": "tarp.0"}, "rows": [
+      "h": "tarp.4", "l": "tarp.3", "m": "tarp.2", "d": "tarp.1", "k": "tarp.0", "s": "enamel.1", "r": "rust.2", "R": "rust.3"}, "rows": [
       "", "",
-      "..hhhhhhhhhh",
-      ".hllllllllmhh",
-      ".hlssssssslmd",
-      ".hlllllllllmd",
-      ".hmmmrrrmmmmd",
-      ".hmmmmmmmmmdd",
-      ".hmmmmmmmmddk",
-      "..dmmmmmmdddk",
-      "...ddddddddk"]}}
+      ".hhhhhhhhhhhhhh",
+      ".dsdsdsdsdsdsds",
+      ".lmdkhlmdkhlmmd",
+      ".lmdkhlmdkhlmmd",
+      ".lmdkhlmmdkrrmd",
+      ".lmmdkhlmdkRRrd",
+      ".lmmdkhlmdkhrmd",
+      ".lmmdkhlmdkhlmd",
+      ".lmmdkhlmmdkhld",
+      ".dmmdkhddmdkhld",
+      "..ddmdd..ddkhd",
+      "..m.dd...mddd",
+      "....mm....m.m",
+      "....d.....d"]}}
   }
 }

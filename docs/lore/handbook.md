@@ -69,7 +69,7 @@ Settled 2026-10-07. Canon and context: [LORE.md](../LORE.md); the handbook's rul
 
 ### 4. Fuel Is Life (fuel, driving, flying and drilling)
 
-> Fuel is the lifeblood of every Colom pod! Your Mole burns fuel whenever she is powered on, faster while moving and fastest while drilling. Drive on her treads, fly with her rotor, and drill down or sideways, but never up. Watch the gauge, listen for the low-fuel tone, and always plan your trip home. A pod that runs dry is **Stranded**: she powers down and goes dark until someone rescues her or she's refuelled from a reserve tank.
+> Fuel is the lifeblood of every Colom pod! Your Mole burns fuel whenever someone is aboard, faster while moving and fastest while drilling. Parked with nobody inside, she burns none. Drive on her treads, fly with her rotor, and drill down or sideways, but never up. Watch the gauge, listen for the low-fuel tone, and always plan your trip home. A pod that runs dry is **Stranded**: she powers down and goes dark until she's refuelled with a fuel item or a reserve tank, or a crewmate tows her home. Nobody else is coming for her, so pack a reserve tank and turn for home at the low-fuel tone.
 >
 > *Directives (draft):* Refuel the Mole at the colony pump. · Fly the Mole. · Drill down ten blocks. · Return to the colony.
 >
@@ -112,6 +112,8 @@ Settled 2026-10-07. Canon and context: [LORE.md](../LORE.md); the handbook's rul
 > Somewhere in the Old Workings lies the Prospector, a two-seat pod that went missing some years ago. Find her, tow her home and restore her, and she's yours to fly. She has a navigator's seat, so bring a friend! Then take her down to the floor of the Workings. You've earned it.
 >
 > *Directives (draft):* Find the Prospector. · Tow the Prospector to the colony. · Restore the Prospector. · Reach the floor of the Old Workings.
+>
+> *Margin, beside the paragraph:* If you hear the song and there's no radio, leave. —R.
 >
 > *Margin:* Ines's pod. Read her log, then decide if you still want the job. —R.
 
@@ -173,7 +175,7 @@ Each revision arrives with a notice at the top of the handbook (*"Your Employee 
 ### Rev. 3: Notice of Disciplinary Action
 
 > NOTICE OF DISCIPLINARY ACTION
-> To: [CHARTER], Director [DIRECTOR]
+> To: [CHARTER]
 >
 > Your charter has been observed working below its authorised depth. This is a serious breach of your Employment Contract (see §21). You are directed to return to the surface and await further instruction.
 >

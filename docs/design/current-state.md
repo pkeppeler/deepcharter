@@ -29,9 +29,9 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Dimensions | 3 (surface, layer 1, layer 2); 6 zones in 6 layer biomes and 3 surface biomes |
 | Custom blocks | 24 (7 ores, 2 hazards, breach crust, conduit, Company lamp, note, 6 terminals, 5 surface blocks) |
 | Block textures | 55, all 16 x 16 frames, generated from recipes (`tools/textures/`); 7 animated; 77 block-state variants |
-| Items | 67 (43 with a 16 x 16 sprite, 24 block items) |
+| Items | 68 (44 with a 16 x 16 sprite, 24 block items) |
 | Entities | 3 types (Mole, Prospector, lampless figure); looks: 2 pods, 1 wreck look, 1 derelict, 1 figure (the Reacher, GeckoLib) |
-| Structures | 14 colony structure files (the square with the Host, the terminal plinths, the streets, the Works, the headframe, the hoist house, the hangar, the Continuity Office, the chapel, the bunkhouse, the two offices, the Lamp and Pick, and the Host's hands) placed from one layout file, the Conduit, and 7 layer structure kinds; the colony kit of 24 blocks and 12 signs they are built from |
+| Structures | 14 colony structure files (the square with the Host, the terminal row's pipe, the streets, the Works, the headframe, the hoist house, the hangar, the Continuity Office, the chapel, the bunkhouse, the two offices, the Lamp and Pick, and the Host's hands) placed from one layout file, the Conduit, and 7 layer structure kinds; the colony kit (`tools/colony/kit.py`) and 12 signs they are built from |
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
 | HUDs | 6 (pod status, scanner, altimeter, account, transmission overlay, breach fade) |
 | Particles | 1 (`deepcharter:dust_mote`; the tow line is a rendered chain since #508) |
@@ -206,6 +206,7 @@ All item textures in one sheet (nearest-neighbour, 5 times scale; alphabetical o
 | Repair Circuit | `repair_circuit` | Terminal repair part | `main/terminal/TerminalParts.java` | `textures/item/repair_circuit.png` (16x16) | **(a)** `assets/deepcharter/textures/item/repair_circuit.png` |
 | Reserve Fuel Tank | `reserve_fuel_tank` | Consumable | `main/repair/Consumable.java` | `textures/item/reserve_fuel_tank.png` (16x16) | **(a)** `assets/deepcharter/textures/item/reserve_fuel_tank.png` |
 | Reserve Tank | `reserve_tank` | Fuel | `main/fuel/ReserveTank.java` | `textures/item/reserve_tank.png` (16x16) | **(a)** `assets/deepcharter/textures/item/reserve_tank.png` |
+| Outpost Kit | `outpost_kit` | Outpost (used on the layer 1 floor, it builds the charter's outpost) | `main/outpost/OutpostRegistry.java` | `textures/item/outpost_kit.png` (16x16, a steel case with a hazard stripe and a brass handle) | **(a)** `assets/deepcharter/textures/item/outpost_kit.png` |
 | Rotor Hub | `rotor_hub` | Hangar console part | `main/hangar/HangarParts.java` | `textures/item/rotor_hub.png` (16x16) | **(a)** `assets/deepcharter/textures/item/rotor_hub.png` |
 | Servo Unit | `servo_unit` | Terminal repair part | `main/terminal/TerminalParts.java` | `textures/item/servo_unit.png` (16x16) | **(a)** `assets/deepcharter/textures/item/servo_unit.png` |
 | Silverium | `silverium` | Ore (what drilling gives; sold at the processor) | `main/ore/OreType.java` | `textures/item/silverium.png` (16x16) | **(a)** `assets/deepcharter/textures/item/silverium.png` |
@@ -311,7 +312,7 @@ Built from the user's pick, C, the Reacher, of [figure-concepts.md](figure-conce
 
 ### Other entities
 
-The mod registers exactly three entity types: `pod`, `prospector`, `lampless_figure`. The Notes are blocks, not entities. The tow cable is drawn as a chain
+The mod registers exactly four entity types: `pod`, `prospector`, `lampless_figure`, `tally`. The Notes are blocks, not entities. The tow cable is drawn as a chain
 of links ([Other](#7-other)).
 
 ---
@@ -320,7 +321,7 @@ of links ([Other](#7-other)).
 
 ### The colony
 
-Built once at world spawn by `main/colony/ColonyBuilder.java`: an 80 x 80 pad cleared 36 blocks high, with the company town on it, placed from structure files ([ADR 0039](../adr/0039-the-colony-is-placed-from-a-layout-file-and-the-host-has-his-hands-as-a-later-piece.md)). `data/deepcharter/colony/layout.json` names each piece, where it goes from the middle of the square (north is -Z) and where each anchor is; the 14 files in `data/deepcharter/structure/colony/` are the pieces. Both are written by `tools/colony/build.py` from `tools/colony/town.py`, from the colony kit (the Company's riveted plate, red pilasters, brass bands, lit ribbon windows, glowing hatches, pipes, lattice girders, sodium lamps, enamel signs, mine track and ore cars). The layout is the user's pick of round 2, layout A, the Pithead Works ([colony-concepts-2.md](colony-concepts-2.md)), with the Host at 10 blocks, and the rest of the town round the square at the same scale: a pod's bay is 4 wide and 4 high, a door is 2 high, a storey is 4 blocks, a player is 1.8. Vanilla: **no** (the buildings are the mod's; the beds, the candle, the lectern, the shelves, the barrels and the spruce furniture are vanilla blocks).
+Built once at world spawn by `main/colony/ColonyBuilder.java`: an 80 x 80 pad cleared 36 blocks high, with the company town on it, placed from structure files ([ADR 0039](../adr/0039-the-colony-is-placed-from-a-layout-file-and-the-host-has-his-hands-as-a-later-piece.md)). `data/deepcharter/colony/layout.json` names each piece, where it goes from the middle of the square (north is -Z) and where each anchor is; the 14 files in `data/deepcharter/structure/colony/` are the pieces. Both are written by `tools/colony/build.py` from `tools/colony/town.py`, from the colony kit (the Company's riveted plate, red pilasters, brass bands, glass windows, glowing hatches, pipes, lattice girders, sodium lamps, enamel signs, mine track and ore cars). The layout is the user's pick of round 2, layout A, the Pithead Works ([colony-concepts-2.md](colony-concepts-2.md)), with the Host at 10 blocks, and the rest of the town round the square at the same scale: a pod's bay is 4 wide and 4 high, a door is 2 high, a storey is 4 blocks, a player is 1.8. Vanilla: **no** (the buildings are the mod's; the beds, the candle, the lectern, the shelves, the barrels and the spruce furniture are vanilla blocks).
 **Swap for the whole colony: (c)** `tools/colony/town.py`, then `tools/colony/build.py`; or **(b)** the layout and structure files in a data pack. The paving, the signs and the buildings' materials are in the structure files.
 
 Overview:
@@ -338,7 +339,7 @@ A player's walk through it, from the Continuity Office to the hangar (GIF; [MP4]
 | Pad and ground | `ColonyBuilder.java` (`flatten`, `roughGround`) | Gravel, coarse dirt and packed mud in a noise pattern under the town | A flat plate cut out of the terrain; the streets and the buildings' floors are paved over it |
 | Square | `square` | 21 x 21 of riveted plate edged with hazard bands, brass studs, four pipe lamp posts | A dark plate with a yellow and black border |
 | Streets | `streets` | Concrete footing, 3 wide along the south row, 5 wide on the west side, and the ways to the office and the Works' bay; seven caged sodium lamps (`company_lamp`) | Grey paving between the buildings |
-| Terminal plinths | `terminals` | 5 plinths of concrete footing (3 x 3 x 1) with a hazard kerb, a terminal on each, facing south; a brass pipe from the Conduit to the ore processor's plinth | A row of dark blocks with small green screens |
+| Terminal row | `terminals` | Only a brass pipe from the Conduit into the back of the ore processor's monitor; the five terminals themselves stand on the ground at z -8, each two blocks high (cabinet and CRT monitor), facing south | A row of Company cabinets with green CRT monitors |
 | The Host | `square`, `hands`, `main/colony/FounderStatue.java` | A bronze Founder, 10 blocks tall to his raised hand, on a red plinth 5 blocks high with a brass cornice, floodlights and the plaque OUR FOUNDER. His body is a block display; his hands are another, a piece that the first work order places | A bronze man in a frock coat, one hand lowered and empty, the other raised in welcome once restored, with a slot in his chest |
 | Works | `works` | A two-storey Works hall 14 x 11, bay 4 x 4 and a door on the square, a crusher house on its roof, a trussed conveyor from the headframe's bin, two ore bins on legs, a stack, mine track and two ore cars | A red and black ore house with a lit upper floor |
 | Headframe and Conduit | `headframe`, `main/colony/Conduit.java` | A black lattice tower 30 blocks tall round the Conduit's casing, a sheave deck with two wheels and a beacon, two skips on ropes, a tipple bin, back legs to the hoist house | A black iron tower over the square's north side |
@@ -366,7 +367,7 @@ Close-ups, in the order of the table:
 
 ### The terminals in the colony
 
-The five terminals stand on the plinths; each is a mod block ([section 2](#2-custom-blocks)). Their screens are in [section 6](#6-screens-and-huds).
+The five terminals stand on the ground, each two blocks high; each is a mod block ([section 2](#2-custom-blocks)). Their screens are in [section 6](#6-screens-and-huds).
 
 ![terminal-fuel-pump](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/terminal-fuel-pump.png?raw=true) ![terminal-ore-processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/terminal-ore-processor.png?raw=true)
 ![terminal-upgrade-terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/terminal-upgrade-terminal.png?raw=true) ![terminal-repair-station](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/terminal-repair-station.png?raw=true)
@@ -429,7 +430,7 @@ text four times offset by 1 pixel, scanlines every 2 pixels, bloom at the top an
 **Since #246 the screens are physical machine panels** ([terminal-concepts.md](terminal-concepts.md)): the glass is a porthole in the Hatch bulkhead door
 (a riveted frame with a hinge, a dogging wheel, a gauge, stencils and a chrome Company nameplate), the buttons are sprite plates with a rotary knob, and the text is
 set in Unscii (6 pixels a letter). The stills below were shot before #246 and show the plain CRT: boxed buttons, no frame, the vanilla font. A pack can still switch the
-panel off and the screens are drawn as those stills show. The handbook and the pod cargo screen are not terminals and keep their own look. Vanilla: **no**.
+panel off and the screens are drawn as those stills show. The handbook is not a terminal and keeps its own look. Vanilla: **no**.
 **Swap: (a)** the frame, the glass, the buttons and the decals (`assets/deepcharter/textures/gui/sprites/panel/`) and `theme/panel.json`, **(c)** the rest: the colours are `client/ui/CrtTuning.java:36-38`; the draw code is `client/ui/CrtDraw.java:15-43`,
 `CrtButton.java:23`, and `CrtScreen.java:144` (the typewriter cursor block); the layout of each screen is in its own file.
 
@@ -511,14 +512,12 @@ Source `client/charter/terminal/ContractScreen.java`; the one terminal that is o
 
 Swap **(c)**.
 
-### Pod cargo screen
+### Pod screen
 
-Opened by sneaking and using a pod. Source `client/ore/OreCargoScreen.java`. It is not a CRT screen: it draws a grey panel with a dark edge and grey
-slots by `fill()` calls in the colours of vanilla's container background, with no texture. Vanilla: **partly** (the same grey, not the vanilla texture).
+Opened by sneaking and using a pod, or with the pod screen key from a seat (#1270). Source `client/pod/PodScreen.java`, on the CRT menu screen
+(`client/ui/CrtMenuScreen.java`) the terminals' slot screens use: the part slots, the fuel slot and its gauge, and a page of the hold beside the inventory. Vanilla: **no**.
 
-![screen-pod-cargo](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-pod-cargo.png?raw=true)
-
-Swap **(c)** `OreCargoScreen.java:17-44`.
+Swap **(a)** the CRT theme, as for the terminals, **(c)** the layout, `pod/PodMenu.java` and `client/pod/PodScreen.java`.
 
 ### Inventory (vanilla)
 
@@ -548,7 +547,7 @@ a cell; the area grows with the tier up to tier 4. Source `client/scanner/Scanne
 ### Altimeter
 
 Top centre, always on while in a world: white vanilla text "46 ft." (depth in feet, negative below sea level), which jitters during a breach.
-Source `client/layer/Altimeter.java`, `BreachHud.java`. Visible in every HUD still. Vanilla: **no**.
+Source `layer/Altimeter.java`, `client/layer/BreachHud.java`. Visible in every HUD still. Vanilla: **no**.
 Swap **(c)** `BreachHud.java:27` (colour), `:36-43` (position).
 
 ![hud-altimeter-layer-1-floor](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/hud-altimeter-layer-1-floor.png?raw=true)
@@ -579,8 +578,8 @@ jitter), `BreachHud.java:46-52` (a black `fill()`).
 
 ### Other vanilla UI that shows
 
-The "Press Left Shift to dismount" line (also while seated), the hotbar, health and hunger bars (hidden while seated since #247), the crosshair, the chat and the advancement toasts (nine handbook
-advancements under `data/deepcharter/advancement/handbook/`) are vanilla. Swap **(a)** vanilla GUI assets; the toast text is **(b)** advancement JSON and lang.
+The "Press Left Shift to dismount" line (also while seated), the hotbar (shown while seated again since #1457), health and hunger bars (hidden while seated since #247), the crosshair, and the chat are vanilla. Swap **(a)** vanilla GUI assets.
+There are no advancement or recipe toasts (see Advancements below), and the locator bar is off.
 
 ---
 
@@ -606,14 +605,17 @@ Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario 
 Only names and uses are given here. No audio is copied, played into a recording, or published.
 
 - The sound events are in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json`. Since #249 the pod engines and rotor,
-  the drill's dig and blocked, the terminal's power-on and the UI sounds point at OGGs of ours (`assets/deepcharter/sounds/`, each made by a recipe in `tools/sounds/`), the layers' music
+  the drill's dig and blocked, the terminal's power-on and online chord and the UI sounds point at OGGs of ours (`assets/deepcharter/sounds/`, each made by a recipe in `tools/sounds/`), the layers' music
   slots are silent, and the rest are still a **vanilla Minecraft sound** as a placeholder, with pitch or volume tweaks. A private audio pack (built by `tools/build-audio-pack.sh` from files that stay out of the repo) replaces
-  them at play time through `tools/audio-pack-map.txt`; the drone beds and the Lamp Hymn have no original and are not in it. Vanilla: **partly**.
+  them at play time through `tools/audio-pack-map.txt`; the drone beds, the Lamp Hymn and the online chord have no original and are not in it. Vanilla: **partly**.
 - The drone beds (#249) are `ambient_sounds` in each biome: `ambient.surface_loop` with `ambient.surface_groan`, `ambient.layer_1_loop` with its creak and knock, `ambient.layer_2_loop` with its creak and knock. The Lamp Hymn
-  (`hymn.colony`, `hymn.layer_1`, `hymn.layer_2`) plays from `main/sound/HymnMoments.java` on founding or joining a charter, going down a breach and coming up into the colony.
+  (`hymn.colony`, `hymn.layer_1`, `hymn.layer_2`) plays from `main/sound/HymnMoments.java` on founding or joining a charter, going down a breach and coming up into the colony; its first three
+  notes (`hymn.chapter`, about four seconds) play to each online member when a handbook chapter's last directive is done (`handbook/HandbookEvents.CHAPTER_COMPLETED`, fired by
+  `HandbookProgress.sweep`, never for progress already held on joining). The phrase is queued: it plays on the next tick at the earliest, not
+  while a repaired machine's chord rings, and not at all if that player's hymn is still playing then (#1267).
 - Groups and where they play: pod (engine idle, drive, drill side and down, rotor, transform land and launch, crash, explosion, the seep sounder's hiss `pod.seep_hiss`, repeating faster as a gas pocket nears, the heat shield's crackle `pod.glaze_burn` for each brick it burns, the signal decay's crackle `pod.signal_crackle` and heartbeat `pod.signal_lost`, #502), drill (dig, blocked, lava, dynamite,
   plastic), cargo (collect, jettison, full), fuel (low, refuel), repair (nanobots), breach (rumble, cross), scanner (ping, sweep), UI (typewriter, hover, select, confirm,
-  purchase, sale, error, refused), terminal (power on, teleport), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
+  purchase, sale, error, refused), terminal (power on, online chord, teleport; a repair that brings a terminal online plays the power-on and the chord in the world where the repairer stands, `main/sound/TerminalSounds.java`, #1267), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
 - Music: `deepcharter:music.layer_1` plays in layer 1 and `music.layer_2` in layer 2, each every 600 to 1800 ticks, set in the dimension types; the shipped sound is three seconds of
   silence, and the private pack (original `BGM_main` and `BGM_core`) fills them. `music.terminal` loops while a terminal screen is open (`client/sound/TerminalMusic.java`) and plays the terminal's hum (ours). No vanilla music plays on the
   surface or in a layer: a surface biome sets an empty `background_music`. Engine loops are `client/sound/PodLoops.java`; the typewriter click is `client/sound/TypewriterSound.java`;
@@ -630,7 +632,9 @@ The CRT glow is made by drawing the font in green with a 1-pixel halo (`client/u
 
 ### Advancements and toasts
 
-Nine handbook advancements, drawn by vanilla's toast. Swap **(b)**.
+The handbook's directive advancements (`data/deepcharter/advancement/handbook/`) have no display, so nothing draws them: they drive the handbook's chapters and show no toast. Vanilla's own
+advancements are not loaded (`handbook/mixin/ServerAdvancementManagerMixin`, ADR 0067), so there are no advancement toasts and no recipe unlocks from them. The advancements key (L) and the pause menu's
+Advancements button open the handbook screen (`client/handbook/HandbookKeys`). The locator bar is off (`surface/SurfaceWorldRules`). Nothing here to restyle.
 
 ### Not there at all
 
@@ -660,7 +664,7 @@ Already marked placeholder in code or issues:
 
 Every look that is fixed in Java and cannot be replaced by swapping a resource-pack file or a data value. These block a drop-in reskin.
 
-**Since #226** the UI rows (CRT look and drawing, handbook paper, pod status HUD, scanner HUD, altimeter, account HUD, transmission overlay, breach fade, pod cargo screen) are resource-pack data, no longer fixed in Java: see [skins.md](skins.md). Their `file:line` entries below are as of #227. What stays in Java from those rows: the position and size of each terminal screen's widgets, and the scanner's reach.
+**Since #226** the UI rows (CRT look and drawing, handbook paper, pod status HUD, scanner HUD, altimeter, account HUD, transmission overlay, breach fade) are resource-pack data, no longer fixed in Java: see [skins.md](skins.md). Their `file:line` entries below are as of #227. What stays in Java from those rows: the position and size of each terminal screen's widgets, and the scanner's reach.
 
 | Visual | What is fixed | Where |
 |---|---|---|
@@ -676,19 +680,18 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Account HUD | CRT-green text at the left, half height | `client/market/AccountHud.java:21`, `:41` |
 | Transmission overlay | Panel fill `#EA050A06`, text `#7CFC9A`, relay `#FFC857`, unknown sender `#FF5A4F`, panel size and position, cursor block | `client/transmission/TransmissionOverlay.java:34-40`, `TransmissionHud.java:30-36`, `:52-88` |
 | Breach fade | Black full-screen fill, fade timings (20 ticks: 8 in, 4 black), jitter 3 pixels over 10 ticks | `client/layer/BreachEffects.java:15-20`, `client/layer/BreachHud.java:46-52` |
-| Pod cargo screen | Grey panel `#C6C6C6`, edge `#373737`, slot `#8B8B8B`, text `#404040`, drawn with `fill()` | `client/ore/OreCargoScreen.java:17-44` |
 | Colony layout and buildings | Every building, its size, position and blocks, the paving, the Host and the pipe | `tools/colony/town.py` (then `tools/colony/build.py`), `data/deepcharter/colony/layout.json`, `data/deepcharter/structure/colony/*.nbt`; the ground noise in `main/colony/ColonyBuilder.java`, the Host's hands in `main/colony/FounderStatue.java`, the Conduit in `main/colony/Conduit.java` |
 | Layer structures | The size, blocks and layout of the 7 structures, and where Notes and candles sit | `main/layer/StructureKind.java:21-150` |
 | Pod lights | A vanilla light block at the pod's position; the level comes from the part's tier value; no lamp is drawn | `main/pod/PodLights.java:25-90`, `main/upgrade/UpgradeTuning.java` |
 | ~~Tow cable~~ | Done in #508: a rendered chain of links (`client/pod/TowChainRenderer.java`, `TowChain.java`) between the two pods, from the attachment | `client/pod/TowChainRenderer.java` |
-| Colony terminals' facing and place | All face south on a plinth row at z -8 | `main/colony/ColonyBuilder.java` (`terminals`), the plinths in `tools/colony/town.py` (`terminals`) |
+| Colony terminals' facing and place | All face south in a row at z -8, both halves placed by `TerminalBlock.place` | `main/colony/ColonyBuilder.java` (`terminals`), the anchors in `tools/colony/town.py` |
 
 ---
 
 ## Vanilla Minecraft, unchanged or reused
 
 - **Unchanged:** the surface's sky, sun, moon, clouds, weather and night monsters (its terrain, biomes and blocks are ours since #240), the font, the hotbar and inventory screens, health and hunger bars,
-  the crosshair, chat, toasts, the particle used for the tow cable, the light block, every block in the colony and the structures except the terminals, the Conduit and the Notes.
+  the crosshair, chat, the particle used for the tow cable, the light block, every block in the colony and the structures except the terminals, the Conduit and the Notes.
 - **Reused as the look of a mod thing:** Mole (raw copper block), Prospector (iron block), wrecks (coal block), the Gas Pocket's
   texture (stone), every sound (vanilla sounds as placeholders), the layer rock (stone).
 
@@ -696,7 +699,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 
 ## The design tour
 
-Two runs of one commit give the same stills, apart from two that can differ a little (`colony-aerial-northwest`, `screen-pod-cargo`): see [evidence.md](../../.claude/skills/deepcharter-conventions/evidence.md).
+Two runs of one commit give the same stills, apart from one that can differ a little (`colony-aerial-northwest`): see [evidence.md](../../.claude/skills/deepcharter-conventions/evidence.md).
 
 `design-tour` shoots these stills (name = file name on `pr-media`, under `227/`):
 

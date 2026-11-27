@@ -1,6 +1,9 @@
 {
   "values": [
     "deepcharter:packed_shale",
-    "deepcharter:green_shale"
+    "deepcharter:hardpan",
+    "deepcharter:black_shale",
+    "deepcharter:green_shale",
+    "deepcharter:basalt_core"
   ]
 }

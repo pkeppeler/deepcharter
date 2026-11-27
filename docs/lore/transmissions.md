@@ -9,7 +9,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
   - Terminal repairs are world-wide, so a charter founded after a repair receives that repair's transmission when it is founded, queued in order.
   - Finale events are per charter.
 - **Delivery:** every transmission goes to the whole charter. When several fire at once, they queue in ID order.
-- **Template fields** are filled from the charter: `[CHARTER]`, `[DIRECTOR]`, `[CREW]` (a member's name; the Lattice cycles through all of them), `[DEATHS]` (the charter's Continuity Events).
+- **Template fields** are filled from the charter: `[CHARTER]`, `[DIRECTOR]` (finale only), `[CREW]` (a member's name; the Lattice cycles through all of them), `[DEATHS]` (the charter's Continuity Events).
 - **Bonuses** are tiers B1–B4, priced in the numbers pass. Only Personnel pays bonuses, and a misfiring template still pays. The Chairman's receipts are flavour text, not money.
 - **The echo rule:** in layer 5, every Company header gets a second line with the sender reversed: `▌ECHO — .OC & MOLOC .H`.
 - **Framing:**
@@ -21,7 +21,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 ## Act 1: the Claim and the Old Workings
 
 **T01 · Event: charter founded · Personnel**
-> Welcome to H. Colom & Co., and congratulations on founding [CHARTER]! You'll find Prosperity a little quiet. Our terminals have been offline since the Night Shift, and we're counting on you to bring them back. Your Employee Handbook has been issued and bound to you. It can't be lost, so don't try! Chapter 1 will get you started.
+> Welcome to H. Colom & Co., and congratulations on founding [CHARTER]! You'll find Prosperity a little quiet. Our terminals have been offline since the Night Shift, and we're counting on you to bring them back. Your Employee Handbook is bound to you, as it has been since you arrived. It can't be lost, so don't try! Chapter 1 will get you started.
 >
 > We're so glad you're here. Have a productive shift!
 >
@@ -109,7 +109,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 > `▌END OF MESSAGE`
 
 **T23 · Breach 3→4 · Personnel · B3**
-> You've reached the Drowned Deep! Our records show some flooding at this depth, but pressure readings are within acceptable limits. If water enters your pod, please report it to your Director.
+> You've reached the Drowned Deep! Our records show some flooding at this depth, but pressure readings are within acceptable limits. If water enters your pod, please report it to Personnel.
 
 **T24 · L4 the Seep · Personnel**
 > A reminder from Personnel: Company altimeters are certified to Layer 5. Readings below Layer 5 are provided for entertainment purposes only.
@@ -193,7 +193,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 > Your latest delivery has been credited to your account.
 
 **T41 · L7 Old Furnaces · source unknown (Roz)**
-> Count the masks. Every one of them was a man who came down here, same as you. Same as him. It isn't an initial, you know. It's the end of his name. —R.
+> Count the masks. Every one of them was a man who came down here, same as you. Same as him. I wrote that nobody's ever been promoted. I was wrong. There's one opening, and it's been yours since the day you signed on. —R.
 
 **T42 · L7 the Watching Wall · relay** (`POD BEHEMOTH-0001, SURVEY ONE — LOOP 22,281`)
 > Lights are down, we're dark, we're— they're open. THEY'RE OPEN. ALL OF THEM. THE EYES ARE OPEN. Sir, put the lights back on. Sir, please. Sir, they're looking at—

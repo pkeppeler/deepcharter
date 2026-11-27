@@ -66,6 +66,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -73,6 +74,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -101,7 +103,8 @@ public class HandbookChaptersOneToFiveTest {
                             "deepcharter:handbook/welcome/craft_stone_tools",
                             "deepcharter:handbook/welcome/gather_scrap",
                             "deepcharter:handbook/welcome/smelt_iron",
-                            "deepcharter:handbook/welcome/craft_scanner"),
+                            "deepcharter:handbook/welcome/craft_scanner",
+                            "deepcharter:handbook/welcome/make_light"),
             "deepcharter:back_online",
                     List.of(
                             "deepcharter:handbook/back_online/repair_fuel_pump",
@@ -119,6 +122,7 @@ public class HandbookChaptersOneToFiveTest {
                             "deepcharter:handbook/fuel_is_life/return_to_colony"),
             "deepcharter:every_sale_counts",
                     List.of(
+                            "deepcharter:handbook/every_sale_counts/haul_ore",
                             "deepcharter:handbook/every_sale_counts/sell_ore",
                             "deepcharter:handbook/every_sale_counts/buy_component",
                             "deepcharter:handbook/every_sale_counts/install_component"));
@@ -183,6 +187,172 @@ public class HandbookChaptersOneToFiveTest {
                         "chapter %s should be number %s with directives %s, got %s with %s",
                         id, order - 1, pinned, chapter.order(), directivesOf(chapter));
             }
+        }
+        helper.succeed();
+    }
+
+    /** The triggers of a directive's advancement that complete it on obtaining or crafting an item (#1260). */
+    private static final Set<String> ITEM_TRIGGERS =
+            Set.of("minecraft:inventory_changed", "minecraft:recipe_crafted", "minecraft:crafter_recipe_crafted");
+
+    /**
+     * Every directive whose advancement completes on an obtained or crafted item names what the step asks for in
+     * {@code targets} (not its ingredients), so its index card shows it and a click opens the shown item's recipe
+     * (#1260). Every item or {@code any_of} choice is real and accepted by the advancement, and every item or tag the
+     * advancement accepts is covered by some slot, so the card neither shows what the step does not ask for nor leaves
+     * out what finishes it. A new directive of that kind that names no item fails here. Directives that a
+     * {@code deepcharter:directive} trigger completes name no item, so they are out of scope.
+     */
+    @GameTest
+    public void everyItemDirectiveNamesTheRealItemsItAsksFor(GameTestHelper helper) {
+        int itemDirectives = 0;
+        for (HandbookChapter chapter : shipped(helper.getLevel().getServer()).values()) {
+            for (HandbookChapter.Entry entry : chapter.directives()) {
+                List<String> accepted = acceptedItems(entry.id());
+                if (accepted.isEmpty()) {
+                    continue;
+                }
+                itemDirectives++;
+                if (entry.targets().isEmpty()) {
+                    throw helper.assertionException(
+                            "directive %s is completed by an item but names no target item", entry.id());
+                }
+                Set<String> covered = new HashSet<>();
+                for (HandbookChapter.TargetSlot slot : entry.targets()) {
+                    List<HandbookChapter.Choice> choices = switch (slot) {
+                        case HandbookChapter.Target target -> List.of(new HandbookChapter.Choice(target.item(), false));
+                        case HandbookChapter.AnyOf any -> any.choices();
+                    };
+                    for (HandbookChapter.Choice choice : choices) {
+                        String written = (choice.tag() ? "#" : "") + choice.id();
+                        if (choice.items().isEmpty()) {
+                            throw helper.assertionException(
+                                    "directive %s names %s, which is no registered item or a tag with none",
+                                    entry.id(), written);
+                        }
+                        if (choice.tag()
+                                ? !accepted.contains(written)
+                                : accepted.stream()
+                                        .noneMatch(predicate -> accepts(
+                                                predicate, choice.items().getFirst()))) {
+                            throw helper.assertionException(
+                                    "directive %s names %s, which its advancement does not ask for (%s)",
+                                    entry.id(), written, accepted);
+                        }
+                        covered.add(written);
+                    }
+                }
+                for (String predicate : accepted) {
+                    if (!covered.contains(predicate)) {
+                        throw helper.assertionException(
+                                "directive %s is finished by %s, but no target covers it (%s)",
+                                entry.id(), predicate, covered);
+                    }
+                }
+            }
+        }
+        if (itemDirectives < 7) {
+            throw helper.assertionException(
+                    "the shipped chapters should hold at least the seven item directives of chapter 1, found %s",
+                    itemDirectives);
+        }
+        helper.succeed();
+    }
+
+    /** Whether an advancement's item predicate, an item id or a {@code #tag}, takes {@code item}. */
+    private static boolean accepts(String predicate, Item item) {
+        return predicate.startsWith("#")
+                ? new ItemStack(item).is(TagKey.create(Registries.ITEM, Identifier.parse(predicate.substring(1))))
+                : BuiltInRegistries.ITEM.getKey(item).equals(Identifier.parse(predicate));
+    }
+
+    /**
+     * The item predicates of the item triggers of the advancement a directive shares its id with; empty when it has
+     * none.
+     */
+    private static List<String> acceptedItems(Identifier directive) {
+        String path = "/data/" + directive.getNamespace() + "/advancement/" + directive.getPath() + ".json";
+        List<String> accepted = new ArrayList<>();
+        try (InputStream stream = HandbookChaptersOneToFiveTest.class.getResourceAsStream(path)) {
+            JsonObject json = JsonParser.parseReader(new InputStreamReader(
+                            Objects.requireNonNull(stream, () -> "no advancement " + path), StandardCharsets.UTF_8))
+                    .getAsJsonObject();
+            for (var criterion : json.getAsJsonObject("criteria").asMap().values()) {
+                JsonObject trigger = criterion.getAsJsonObject();
+                if (!ITEM_TRIGGERS.contains(trigger.get("trigger").getAsString())) {
+                    continue;
+                }
+                var conditions = trigger.getAsJsonObject("conditions");
+                if (conditions == null || !conditions.has("items")) {
+                    throw new IllegalStateException(path + " has an item trigger with no items to match");
+                }
+                for (var predicate : conditions.getAsJsonArray("items")) {
+                    var items = predicate.getAsJsonObject().get("items");
+                    if (items.isJsonArray()) {
+                        items.getAsJsonArray().forEach(item -> accepted.add(item.getAsString()));
+                    } else {
+                        accepted.add(items.getAsString());
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        return accepted;
+    }
+
+    /** A target is one item or an {@code any_of} of items and tags with one count; any other shape is refused. */
+    @GameTest
+    public void aTargetIsOneItemOrAnyOfSeveralAndNothingElse(GameTestHelper helper) {
+        JsonObject any = JsonParser.parseString(
+                        "{\"any_of\": [\"minecraft:torch\", \"#minecraft:logs\"], \"count\": 2}")
+                .getAsJsonObject();
+        HandbookChapter.TargetSlot slot = HandbookChapter.TargetSlot.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, any)
+                .getOrThrow();
+        if (!(slot instanceof HandbookChapter.AnyOf anyOf)
+                || anyOf.count() != 2
+                || anyOf.choices().size() != 2
+                || !anyOf.choices().get(1).tag()
+                || !anyOf.items().contains(Items.TORCH)
+                || !anyOf.items().contains(Items.OAK_LOG)) {
+            throw helper.assertionException("any_of should read as a torch or any log with count 2, got %s", slot);
+        }
+        for (String bad : List.of(
+                "{\"item\": \"minecraft:torch\", \"any_of\": [\"minecraft:stick\"], \"count\": 1}",
+                "{\"count\": 1}",
+                "{\"any_of\": [], \"count\": 1}")) {
+            if (HandbookChapter.TargetSlot.CODEC
+                    .parse(com.mojang.serialization.JsonOps.INSTANCE, JsonParser.parseString(bad))
+                    .result()
+                    .isPresent()) {
+                throw helper.assertionException("the target %s should be refused", bad);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A directive without {@code targets} targets nothing, and a target of count 0 is refused when the chapter loads.
+     */
+    @GameTest
+    public void targetsAreOptionalAndACountOfZeroIsRefused(GameTestHelper helper) {
+        JsonObject bare = JsonParser.parseString("{\"id\": \"deepcharter:x\", \"text\": \"x\"}")
+                .getAsJsonObject();
+        HandbookChapter.Entry entry = HandbookChapter.Entry.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, bare)
+                .getOrThrow();
+        if (!entry.targets().isEmpty()) {
+            throw helper.assertionException("an entry without targets should target nothing, got %s", entry.targets());
+        }
+        JsonObject zero = JsonParser.parseString(
+                        "{\"id\": \"deepcharter:x\", \"text\": \"x\", \"targets\": [{\"item\": \"minecraft:stick\", \"count\": 0}]}")
+                .getAsJsonObject();
+        if (HandbookChapter.Entry.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, zero)
+                .result()
+                .isPresent()) {
+            throw helper.assertionException("a target of count 0 should be refused");
         }
         helper.succeed();
     }
@@ -451,6 +621,20 @@ public class HandbookChaptersOneToFiveTest {
                                         directive("welcome", "gather_scrap"),
                                         directive("welcome", "smelt_iron")));
                         give(first, ours("scanner_unit"));
+                        expectCompleted(
+                                helper,
+                                server,
+                                "a scanner unit, before any light",
+                                both,
+                                Set.of(
+                                        directive("welcome", "gather_wood"),
+                                        directive("welcome", "craft_crafting_table"),
+                                        directive("welcome", "craft_stone_tools"),
+                                        directive("welcome", "gather_scrap"),
+                                        directive("welcome", "smelt_iron"),
+                                        directive("welcome", "craft_scanner")));
+                        expectRoadAt(helper, server, first, 0);
+                        give(second, Items.TORCH);
                         expectCompleted(helper, server, "chapter 1", both, through(1));
                         expectRoadAt(helper, server, first, 1);
 
@@ -495,8 +679,8 @@ public class HandbookChaptersOneToFiveTest {
                         expectCompleted(helper, server, "chapter 3", both, through(3));
                         expectRoadAt(helper, server, first, 3);
 
-                        // Chapter 4: fuel, flight, a ten block bore, and home again. Returning counts only after the
-                        // bore.
+                        // Chapter 4: fuel, flight, a ten block bore, and home again. Returning counts only after
+                        // the bore.
                         first.stopRiding();
                         stand(helper, director, terminal);
                         helper.getLevel()
@@ -578,7 +762,19 @@ public class HandbookChaptersOneToFiveTest {
                         expectCompleted(helper, server, "chapter 4", both, through(4));
                         expectRoadAt(helper, server, second, 4);
 
-                        // Chapter 5: sell ore, then buy a part, which installs at once.
+                        // Chapter 5: haul ore in the bay (#853), sell it, then buy a part, which installs at once.
+                        pod.tickCount = 0;
+                        PodEvents.AFTER_TICK.invoker().afterTick(pod);
+                        expectCompleted(helper, server, "an empty bay", both, through(4));
+                        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+                        pod.tickCount = 0;
+                        PodEvents.AFTER_TICK.invoker().afterTick(pod);
+                        expectCompleted(
+                                helper,
+                                server,
+                                "ore in the bay",
+                                both,
+                                with(through(4), directive("every_sale_counts", "haul_ore")));
                         first.stopRiding();
                         pod.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
                         stand(helper, director, terminal);
@@ -597,7 +793,10 @@ public class HandbookChaptersOneToFiveTest {
                                 server,
                                 "selling",
                                 both,
-                                with(through(4), directive("every_sale_counts", "sell_ore")));
+                                with(
+                                        through(4),
+                                        directive("every_sale_counts", "haul_ore"),
+                                        directive("every_sale_counts", "sell_ore")));
                         helper.getLevel()
                                 .setBlock(
                                         terminal,
@@ -711,9 +910,9 @@ public class HandbookChaptersOneToFiveTest {
         }
     }
 
-    /** A pilot and a terminal user on no charter complete nothing for anyone, and nothing throws. */
+    /** A pilot and a terminal user on no charter earn only their own credit, nothing for the charter (#843), and nothing throws. */
     @GameTest
-    public void aPilotAndATerminalUserOnNoCharterCompleteNothing(GameTestHelper helper) {
+    public void aPilotAndATerminalUserOnNoCharterCompleteNothingForTheCharter(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer member = MockPlayers.join(helper, "Member");
         MockPlayer drifter = MockPlayers.join(helper, "Drifter");
@@ -746,11 +945,22 @@ public class HandbookChaptersOneToFiveTest {
             }
             pod.tickCount = 0;
             PodEvents.AFTER_TICK.invoker().afterTick(pod);
-            if (!completed(server, drifter.player()).isEmpty()
-                    || !memberBefore.equals(completed(server, member.player()))) {
+            Set<Identifier> drifterOwn = Set.of(
+                    id(directive("back_online", "repair_upgrade_terminal")),
+                    id(directive("back_online", "repair_fuel_pump")),
+                    id(directive("back_online", "repair_ore_processor")),
+                    id(directive("fuel_is_life", "refuel_mole")),
+                    id(directive("every_sale_counts", "install_component")),
+                    id(directive("every_sale_counts", "sell_ore")),
+                    id(directive("every_sale_counts", "buy_component")),
+                    id(directive("meet_the_mole", "board_mole")),
+                    id(directive("meet_the_mole", "repair_mole")));
+            Set<Identifier> memberNew = new java.util.HashSet<>(completed(server, member.player()));
+            memberNew.removeAll(memberBefore);
+            if (!drifterOwn.equals(completed(server, drifter.player())) || !memberNew.isEmpty()) {
                 throw helper.assertionException(
-                        "nothing should complete: the drifter has %s, the member %s from %s",
-                        completed(server, drifter.player()), completed(server, member.player()), memberBefore);
+                        "the drifter earns only their own credit %s, has %s; the member has %s new",
+                        drifterOwn, completed(server, drifter.player()), memberNew);
             }
             helper.succeed();
         } finally {

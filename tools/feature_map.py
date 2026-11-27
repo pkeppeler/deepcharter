@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """The feature map: one graph of the whole game, generated from docs/feature-map/map.json (#510).
 
-    python3 -I tools/feature_map.py                 write docs/FEATURE-MAP.md and docs/feature-map/index.html (git-ignored, #544)
-    python3 -I tools/feature_map.py --check         fail when the map is invalid or an output cannot be rendered; writes nothing
-    python3 -I tools/feature_map.py --poster FILE   also write the poster SVG (tools/feature-map.sh publishes it)
-    python3 -I tools/feature_map.py --check-stills  fail when a still is not on origin/pr-media (needs git, no network)
-    python3 -I tools/feature_map.py --mermaid-images  draw the icons on the Mermaid nodes (GitHub may not render them)
+    tools/py tools/feature_map.py                 write docs/FEATURE-MAP.md and docs/feature-map/index.html (git-ignored, #544)
+    tools/py tools/feature_map.py --check         fail when the map is invalid or an output cannot be rendered; writes nothing
+    tools/py tools/feature_map.py --poster FILE   also write the poster SVG (tools/feature-map.sh publishes it)
+    tools/py tools/feature_map.py --check-stills  fail when a still is not on origin/pr-media (needs git, no network)
+    tools/py tools/feature_map.py --mermaid-images  draw the icons on the Mermaid nodes (GitHub may not render them)
 
 The skill .claude/skills/feature-map/SKILL.md says when to edit the map. Stdlib only.
 """

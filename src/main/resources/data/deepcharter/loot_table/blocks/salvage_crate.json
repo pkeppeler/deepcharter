@@ -133,6 +133,141 @@
           ]
         }
       ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:company_ration",
+          "modifier": [
+            {
+              "type": "minecraft:set_count",
+              "count": {
+                "type": "minecraft:binomial",
+                "n": 1,
+                "p": 0.25
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:survives_explosion"
+          },
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.04
+          }
+        ]
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "gamme_de_la_voix"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "jeune_jouvencelle"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "othello"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "volta_counting"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "volta_hamlet"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "sullivan_toast"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "edison_around_the_world"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "lost_chord"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

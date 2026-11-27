@@ -17,18 +17,41 @@ public final class EvidencePins {
     public static volatile boolean handsHidden;
     /** Block light does not flicker: vanilla random-walks every lit surface on each client tick. */
     public static volatile boolean lightFlickerOff;
-    /** The breach fade shows this alpha (0 clear to 1 black), HUD jitter off; negative lets it run. */
-    public static volatile float breachFadeAlpha = -1f;
     /** Entities other than pods are drawn at rest: no arm sway, no walk cycle, whatever their age. */
     public static volatile boolean entitiesPosed;
+    /** Block faces are shaded as {@code cardinal_light: nether} shades them, whatever the dimension type says; set before the world opens, since sections are meshed with it. */
+    public static volatile boolean cardinalLightNether;
     /** No lampless figures spawn on the rails: one that spawned between the last wait and the shot would be in the still. */
     public static volatile boolean figureSpawningOff;
+    /**
+     * The sky is not drawn (no stars, sun, moon, sunrise or sunset), so where a view runs past what the client has
+     * drawn it shows the fog colour the frame is cleared to; and {@link #SKY_HIDDEN_CAPTION} is written in a corner of
+     * the frame, so no still passes the hidden sky off as the game's look. For a cavern that the overworld sky shows
+     * behind (#1161).
+     */
+    public static volatile boolean skyHidden;
+
+    /** The corner caption of a still taken with {@link #skyHidden} on. */
+    public static final String SKY_HIDDEN_CAPTION = "sky hidden for review (#1161)";
 
     /**
      * The age in ticks that GeckoLib reads as the clock of a lampless figure's animation (0 or more); negative keeps the figure's own.
      * Pods keep their own.
      */
     public static volatile float figureAnimationAge = -1f;
+
+    /**
+     * The age in ticks that GeckoLib reads as the clock of a drifter's animation (0 or more); negative keeps the
+     * drifter's own, which runs on the entity's ticks and the frame's partial tick.
+     */
+    public static volatile float drifterAnimationAge = -1f;
+
+    /**
+     * The attack button counts as held, whatever the mouse does. The test client's mouse is not grabbed, so vanilla
+     * sees the button up on every tick and aborts the block being mined; with this on, the game's own mining runs as
+     * it does for a player who holds the button.
+     */
+    public static volatile boolean attackHeld;
 
     private EvidencePins() {}
 
@@ -39,9 +62,12 @@ public final class EvidencePins {
         lightFlickerOff = false;
         handsHidden = false;
         itemNameHidden = false;
-        breachFadeAlpha = -1f;
         entitiesPosed = false;
         figureSpawningOff = false;
+        cardinalLightNether = false;
+        skyHidden = false;
         figureAnimationAge = -1f;
+        drifterAnimationAge = -1f;
+        attackHeld = false;
     }
 }

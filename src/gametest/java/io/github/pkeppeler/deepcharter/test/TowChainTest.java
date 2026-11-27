@@ -1,12 +1,10 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.client.pod.TowChain;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the geometry of the tow line (#508): where it starts and ends, how far it hangs when slack, that it is straight
@@ -46,8 +44,8 @@ public class TowChainTest {
     @GameTest
     public void aSlackLineHangsAndATautOneIsStraight(GameTestHelper helper) {
         TowChain slack = line(2 * RADIUS + 3.0);
-        // A rope of 5 over a chord of 3 hangs sqrt(3 * 3 * 2 / 8) = 1.5 blocks at its lowest, to within the curve's
-        // sampling.
+        // A rope of 5 over a chord of 3 hangs sqrt(3 * 3 * 2 / 8) = 1.5 blocks at its lowest, to within the
+        // curve's sampling.
         if (Math.abs(sagOf(slack) - 1.5) > 0.05) {
             throw failure(
                     helper, "a rope of %s over a chord of 3 should hang about 1.5 blocks, hung %s", ROPE, sagOf(slack));
@@ -104,11 +102,5 @@ public class TowChainTest {
             throw failure(helper, "pods on the same spot still have a line of at least one link");
         }
         helper.succeed();
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

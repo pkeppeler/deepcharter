@@ -1,18 +1,17 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -30,11 +29,15 @@ import net.minecraft.world.level.block.Blocks;
  * hull a row and has 3 rows, 24 in all, so the HUD warns from 16 slabs up: the slabs down, the hull, and what the crust takes. The pod stops on the crust and a
  * breach brace is fitted (as if bought at the upgrade terminal). It burns two ore into hull, 8 to 32, the warning goes, and the pod bores the crust into layer 2
  * with 8 hull left.
+ *
+ * <p>The pod is a Prospector with the tier 3 console (#689). Every still sits inside layer 1's signal-decay band (onset 36, blackout 6), where the stock
+ * console's readout plate fails (threshold 0.45; decay 0.83 at the first warning, 1 at the crust) and blanks the warning. Tier 3 has a share of 0, so the plate
+ * never decays. Tier 2 (share 0.3) would clear the first warning (0.09) but not the crust (0.87).
  */
 public class PodBraceScenario extends EvidenceScenario {
     private static final int X = 4900;
     private static final int Z = 5000;
-    private static final int CRUST_TOP_Y = LayerTuning.DEFAULT.crustThickness();
+    private static final int CRUST_TOP_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness());
     private static final int FLOOR_Y = CRUST_TOP_Y + 12;
     private static final int RADIUS = 6;
     private static final int TICKS_PER_FRAME = 4;
@@ -44,6 +47,8 @@ public class PodBraceScenario extends EvidenceScenario {
     private static final float HULL = 8f;
     private static final float CRUST = 24f;
     private static final int ORE = 4;
+    // One row: a 2-block drop lands under the hard-landing speed; the default 8 rows wreck the braced pod (#1374).
+    private static final int POCKET_ROWS = 1;
 
     @Override
     protected String name() {
@@ -55,16 +60,22 @@ public class PodBraceScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 build(one);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, LOOK_DOWN, true);
-                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, RADIUS);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setYRot(FACING_EAST);
                 one.addFreshEntity(pod);
                 ScannerPods.fit(server, player, pod, ComponentTrack.FUEL_TANK, 2);
+                ScannerPods.fit(server, player, pod, ComponentTrack.CONSOLE, ComponentTrack.CONSOLE.maxTier());
                 pod.setFuel(100f);
                 pod.setHull(HULL);
                 for (int i = 0; i < ORE; i++) {
@@ -79,7 +90,7 @@ public class PodBraceScenario extends EvidenceScenario {
                     "the pilot seated in the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                            && TestLayers.clientIsIn(client, 1));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.FIRST_PERSON);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
@@ -135,18 +146,13 @@ public class PodBraceScenario extends EvidenceScenario {
             // Through the crust: three rows, 8 hull each.
             context.getInput().holdKey(options -> options.keySprint);
             ticks = 0;
-            while (!context.computeOnClient(client ->
-                            ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)))
-                    && ticks < MAX_TICKS) {
+            while (!context.computeOnClient(client -> TestLayers.clientIsIn(client, 2)) && ticks < MAX_TICKS) {
                 context.waitTicks(TICKS_PER_FRAME);
                 ticks += TICKS_PER_FRAME;
                 frame(context);
             }
             context.getInput().releaseKey(options -> options.keySprint);
-            ClientWait.until(
-                    context,
-                    "the pod in layer 2",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)));
+            ClientWait.until(context, "the pod in layer 2", client -> TestLayers.clientIsIn(client, 2));
             context.waitTicks(120);
             for (int i = 0; i < 6; i++) {
                 frame(context);
@@ -172,9 +178,18 @@ public class PodBraceScenario extends EvidenceScenario {
                         .getY());
     }
 
-    /** A stone bed over three rows of breach crust, under an open room. */
+    /** A stone bed over three rows of breach crust over a pocket, under an open room. */
     private static void build(ServerLevel level) {
-        RoomCarver.carve(level, X - RADIUS, X + RADIUS, 0, 2, Z - RADIUS, Z + RADIUS, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(
+                level,
+                X - RADIUS,
+                X + RADIUS,
+                TestLayers.worldY(1, 0),
+                TestLayers.worldY(1, 2),
+                Z - RADIUS,
+                Z + RADIUS,
+                LayerBlocks.BREACH_CRUST);
+        RoomCarver.carvePocketBelow(level, 1, X - RADIUS, X + RADIUS, Z - RADIUS, Z + RADIUS, POCKET_ROWS);
         RoomCarver.carve(level, X - RADIUS, X + RADIUS, CRUST_TOP_Y, FLOOR_Y - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
         RoomCarver.carve(
                 level,

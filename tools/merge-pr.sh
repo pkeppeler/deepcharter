@@ -1,11 +1,24 @@
 #!/usr/bin/env bash
 # Usage: tools/merge-pr.sh <pr-number>
+#        tools/merge-pr.sh --check <pr-number>
+#        tools/merge-pr.sh --preflight <pr-number>
+#        tools/merge-pr.sh --ci <pr-number>
+#
+# --preflight and --ci are the two halves of the gate that tools/merge-batch.sh runs apart. --preflight is every
+# check except CI and mergeability (open, not a draft, review-passed at the head, closes its branch's issue, targets
+# main, demo and map rules) and prints "PREFLIGHT OK" or one "REFUSED:" line. --ci is the CI half alone (check runs,
+# required checks, stale base, client suite) for a PR whose branch is not <issue>-<slug>, and prints "CI OK".
+#
+# --check is read-only: it runs the whole gate below (the same functions), prints each check's state as the gate
+# reads it, and stops before retargeting or merging. Exit 1 with the same "REFUSED:" line: the merge would refuse.
+# A draft and a missing `review-passed` label or comment are notes, not refusals, so a reviewer can run it earlier:
+# the last line is "GATE OK: ..." or "GATE OK except: draft, no review pass (...)", naming only what applies. It
+# runs `git fetch origin main` (the stale-base rule needs it), so it updates only the local origin/main ref.
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
-# labelled `review-passed` with a `review-passed <head sha>` comment for the
-# current head (see tools/mark-review-passed.sh), and, unless every changed file matches
-# DOC_ONLY_GLOBS (and none under .claude/ or prompts/, nor docs/SPEC.md), labelled `stage:simplified` (the simplifier ran), closes exactly its branch's
-# issue (GitHub's closingIssuesReferences set is {N} for branch `<N>-<slug>`),
+# labelled `review-passed` with a `review-passed <head sha>` first-line comment from the trusted account for the
+# current head (see tools/mark-review-passed.sh), closes exactly its branch's
+# issue (the body's closing keywords name {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
 # mergeable, shows a demo if it changes in-game code (see the demo check below), changes docs/feature-map/map.json
 # or says `No map change: <reason>` if it is labelled `gameplay`, has no map node that cites its issue and is not built
@@ -13,21 +26,26 @@
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
-# Refuses if origin/main commits made since the PR's latest successful CI run was created (minus a
-# 2-minute margin) changed anything outside docs (`docs/**`, `*.md`, `.papercuts.jsonl`).
-# Retargets open PRs stacked on its branch to its base, then squash-merges pinned to that head sha
-# and publishes the roadmap issue (`python3 -I tools/roadmap.py --publish`; a failure there warns,
-# the merge stands). Never pushes to main.
+# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each client-gametest-shard, when they ran) runs
+# each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
+# from it only by docs/ROADMAP.md or .papercuts.jsonl.
+# A failing-check refusal carries [client-only] when every check that is not passing is a failed, timed-out or cancelled
+# client-gametest or client-gametest-shard <i>, and build and tool-tests passed: the queue re-runs the whole Client tests run.
+# Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
+# and regenerates docs/ROADMAP.md. The commit title and message go through tools/merge_message.py first: the merge proxy
+# refuses a long URL there, so it is shortened in the commit only, never in the PR body (#1007); --check warns when it will.
+# On a failed merge request the API's error text is printed. GitHub is read through REST only (tools/lib/gh-rest.sh).
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
-# Job names (ci.yml) that run on every PR; the label-gated client job is not listed.
-REQUIRED_CHECKS=(build tool-tests)
-# A PR whose files all match these needs one review pass; any other PR also needs stage:simplified.
-DOC_ONLY_GLOBS=('*.md' '.papercuts.jsonl')
-
+gate_only=0
+mode=merge
+case ${1-} in
+  --check) gate_only=1 && shift ;;
+  --preflight | --ci) mode=${1#--} && shift ;;
+esac
 if [[ $# -ne 1 || ! $1 =~ ^[0-9]+$ ]]; then
-  echo "usage: tools/merge-pr.sh <pr-number>" >&2
+  echo "usage: tools/merge-pr.sh [--check|--preflight|--ci] <pr-number>" >&2
   exit 2
 fi
 pr=$1
@@ -37,140 +55,85 @@ cd "$(dirname "$0")/.."
 source tools/lib/adr.sh
 # shellcheck source=lib/pr-body-checks.sh
 source tools/lib/pr-body-checks.sh
+# shellcheck source=lib/ci-gate.sh
+source tools/lib/ci-gate.sh
+# shellcheck source=lib/roadmap.sh
+source tools/lib/roadmap.sh
+# shellcheck source=lib/stacked.sh
+source tools/lib/stacked.sh
 origin=$(git remote get-url origin)
 [[ $origin =~ github\.com[:/]$repo(\.git)?$ ]] \
   || { echo "REFUSED: origin is '$origin', not $repo" >&2; exit 1; }
 
 # Read the head sha first. The merge below is pinned to it, so a push that lands
 # after this point makes the merge fail instead of merging unchecked code.
-sha=$(pr_field headRefOid .headRefOid) || refuse "could not be read from GitHub"
+sha=$(pr_field .head.sha) || refuse "could not be read from GitHub"
 [[ $sha =~ ^[0-9a-f]+$ ]] || refuse "has no readable head commit"
 
-state=$(pr_field state .state)
+state=$(pr_state_of "$pr") || refuse "could not read its state"
 [[ $state == OPEN ]] || refuse "is not open (state: $state)"
 
-[[ $(pr_field isDraft .isDraft) == false ]] || refuse "is a draft"
+if [[ $mode == ci ]]; then
+  gate_only=1
+  load_labels
+  load_pr_files
+  check_ci_gate
+  check_client_suite_ran
+  echo "CI OK: PR #$pr at $sha"
+  exit 0
+fi
+
+is_draft=$(pr_field .draft) || refuse "could not read isDraft"
+if [[ $gate_only -eq 1 ]]; then
+  [[ $is_draft == false ]] && echo "draft: no" || echo "draft: yes (the merge refuses a draft)"
+else
+  [[ $is_draft == false ]] || refuse "is a draft"
+fi
 
 check_closing_reference # sets $branch, $issue, $body, $closes
 
+# GitHub closes the issue only for a PR into the default branch, so a PR into anything else closes nothing.
+base=$(pr_field .base.ref) || refuse "has no readable base branch"
+[[ $base == main ]] \
+  || refuse "targets '$base', not main: GitHub closes its issue only for a PR into the default branch (retarget it to main, or merge the PR it is stacked on first: that retargets it)"
+
 load_labels
-has_label review-passed || refuse "lacks the review-passed label"
-
 # Bodies are compared whole (as JSON strings), so a longer comment cannot match.
-pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" \
-  || refuse "has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
-
-# A PR is doc-only when it changes files and every one, and a rename's previous path, matches
-# DOC_ONLY_GLOBS and is not behaviour or the user's contract (.claude/**, prompts/**, docs/SPEC.md:
-# markdown that steers agents or settles the design). Fail closed: an unreadable or empty file list is not doc-only.
-is_doc() {
-  case $1 in
-    .claude/* | prompts/* | docs/SPEC.md) return 1 ;;
-  esac
-  local glob
-  for glob in "${DOC_ONLY_GLOBS[@]}"; do
-    # shellcheck disable=SC2053 # an unquoted right side is a glob here
-    [[ $1 == $glob ]] && return 0
-  done
-  return 1
-}
-load_pr_files
-doc_only=1
-[[ -n $pr_files ]] || doc_only=0
-while IFS=$'\t' read -r _ path previous; do
-  [[ -n $path ]] || continue
-  is_doc "$path" || doc_only=0
-  [[ -z $previous ]] || is_doc "$previous" || doc_only=0
-done <<<"$pr_files"
-if [[ $doc_only -eq 0 ]]; then
-  has_label stage:simplified \
-    || refuse "lacks the stage:simplified label (only doc-only PRs skip the simplifier pass)"
+review_pass_refusal=
+has_label review-passed || review_pass_refusal="lacks the review-passed label"
+if [[ -z $review_pass_refusal ]]; then
+  # Only the trusted account's comments, and only a comment's first line: the cloud proxy appends a footer to every
+  # comment it posts.
+  gh api "repos/$repo/issues/$pr/comments?per_page=100" --paginate \
+    --jq ".[] | select(.user.login == \"$TRUSTED_LOGIN\") | .body | split(\"\\n\")[0] | @json" | grep -qxF "\"review-passed $sha\"" \
+    || review_pass_refusal="has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
+fi
+if [[ $gate_only -eq 1 ]]; then
+  if [[ -n $review_pass_refusal ]]; then echo "review-passed: no ($review_pass_refusal)"; else echo "review-passed: yes"; fi
+else
+  [[ -z $review_pass_refusal ]] || refuse "$review_pass_refusal"
 fi
 
-mergeable=$(pr_field mergeable .mergeable)
-[[ $mergeable == MERGEABLE ]] || refuse "is not mergeable (mergeable: $mergeable)"
-
-# Checks come from the check-runs API, not `gh pr checks`: workflows that run on
-# label events add a skipped run under the same name as an earlier real one, and
-# the default (latest per name) view would let that skipped run hide a failure.
-# One line per run: name, start time, id, status, conclusion. A run that has not
-# started sorts newest. Runs are ordered by start time, then id (monotonic).
-run_lines=$(gh api "repos/$repo/commits/$sha/check-runs?filter=all&per_page=100" --paginate \
-  --jq '.check_runs[] | [.name, (.started_at // "9999-12-31T23:59:59Z"), (.id | tostring), .status, (.conclusion // "")] | @tsv' 2>&1 || true)
-if ! grep -q $'\t' <<<"$run_lines"; then
-  refuse "has no checks reported for $sha (zero checks is not a pass): $(tr '\n' ' ' <<<"$run_lines")"
+if [[ $mode == preflight ]]; then
+  # The batch build finds a conflict itself, so mergeability is not read here.
+  load_pr_files
+  check_demo
+  check_map_change
+  check_map_fresh
+  echo "PREFLIGHT OK: PR #$pr at $sha"
+  exit 0
 fi
-# Per name, the deciding run is the newest one that is not skipped: only a
-# `success` passes, anything else (running, failed, cancelled, ...) refuses. A name
-# whose runs were all skipped is "skipping". Output lines are "verdict<TAB>name".
-checks=$(grep $'\t' <<<"$run_lines" | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n | awk -F'\t' '
-  function flush() {
-    if (name == "") return
-    print (state == "" ? "skipping" : state == "success" ? "pass" : state) "\t" name
-  }
-  $1 != name { flush(); name = $1; state = "" }
-  { s = ($4 == "completed") ? $5 : $4; if (s != "skipped") state = s }
-  END { flush() }')
-while IFS=$'\t' read -r bucket name; do
-  case $bucket in
-    pass | skipping) ;;
-    *) refuse "has a check that is not passing: $name (newest non-skipped run: $bucket)" ;;
-  esac
-done <<<"$checks"
-for required in "${REQUIRED_CHECKS[@]}"; do
-  grep -qxF "pass"$'\t'"$required" <<<"$checks" && continue
-  if grep -qxF "skipping"$'\t'"$required" <<<"$checks"; then
-    refuse "has a required check that was only skipped: $required"
-  fi
-  refuse "lacks required check: $required"
-done
 
-# The CI run above tested the merge ref against main as it was then. If main has
-# since changed code, a PR with no textual conflict can still break main once
-# squashed. The PR's latest successful `CI` run for this head sha gives a creation
-# time; every origin/main commit since then (minus a margin) is a change the run may
-# not have seen. Cancelled or failed runs are skipped so they cannot narrow the window.
-# A "Re-run jobs" keeps `created_at`, so it can only cause a conservative refusal, which
-# a close and reopen fixes. The run's pull_requests[].base.sha reports the PR's current
-# base, not the tested one, so it is no use. Fail closed on any unreadable step.
-# Docs-only commits are allowed.
-git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
-ci_run=$(gh api "repos/$repo/actions/runs?head_sha=$sha&event=pull_request&per_page=100" --paginate \
-  --jq '.workflow_runs[] | select(.name == "CI" and .status == "completed" and .conclusion == "success") | .id' 2>/dev/null \
-  | sort -n | tail -1) || ci_run=
-[[ $ci_run =~ ^[0-9]+$ ]] || refuse "has no successful CI run for $sha (cannot tell what main it was tested against)" # pipe-tail: an unreadable list leaves ci_run empty and refuses
-ci_created=$(gh api "repos/$repo/actions/runs/$ci_run" --jq .created_at 2>/dev/null) || ci_created=
-ts_re='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
-[[ $ci_created =~ $ts_re ]] || refuse "has no readable creation time on its CI run $ci_run (cannot tell what main it was tested against)"
-# Two minutes of margin before the run was created, so a merge racing it is
-# counted (a false refusal only costs a close and reopen). GNU date first, then BSD.
-ci_since=$(date -u -d "$ci_created - 2 minutes" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
-  || date -u -j -v-2M -f %Y-%m-%dT%H:%M:%SZ "$ci_created" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null) \
-  || refuse "could not compute the margin before its CI run creation time $ci_created"
-main_commits=$(git log --format=%H --since="$ci_since" origin/main) \
-  || refuse "could not list the commits on origin/main since $ci_since"
-code_moved=()
-for commit in $main_commits; do
-  files=$(git show --name-only --format= --no-renames "$commit") \
-    || refuse "could not read the files changed by origin/main commit $commit"
-  while IFS= read -r path; do
-    case $path in
-      '' | docs/* | *.md | .papercuts.jsonl) ;;
-      *) code_moved+=("$path") ;;
-    esac
-  done <<<"$files"
-done
-if [[ ${#code_moved[@]} -gt 0 ]]; then
-  shown=${code_moved[*]:0:5}
-  more=
-  [[ ${#code_moved[@]} -le 5 ]] || more=" (+$((${#code_moved[@]} - 5)) more)"
-  refuse "main changed since its CI run (CI run $ci_run created $ci_created): ${shown// /, }$more; re-run CI on a fresh merge ref with 'gh pr close $pr && gh pr reopen $pr' (the head sha is unchanged, so the review pass stays valid)"
-fi
+mergeable=$(pr_mergeable_of "$pr") || refuse "could not read mergeable"
+[[ $mergeable == MERGEABLE ]] || refuse "is not mergeable (mergeable: $mergeable)$([[ $mergeable == CONFLICTING ]] && echo '; merge origin/main into the branch and push')"
+
+check_ci_gate
 
 # A PR may not ADD docs/adr/NNNN-*.md when NNNN is already on origin/main (parallel
 # PRs pick numbers on their own), or twice among its own added ADRs. A path the PR
 # vacates (renamed away or removed) no longer holds its number. Fail closed: an
 # unreadable list refuses.
+load_pr_files
 main_adrs=$(git ls-tree --name-only origin/main docs/adr/) || main_adrs=
 [[ -n $main_adrs ]] || refuse "could not read the ADR list on origin/main"
 vacated=$'\n'
@@ -207,36 +170,60 @@ check_demo
 check_map_change
 check_map_fresh
 
+check_client_suite_ran
+
 # Read the closing set again: a body edit may have reached GitHub's parse after the first read.
 checked_closes=$closes
 closing_set
 [[ $closes == "$checked_closes" ]] \
   || refuse "closing set changed during the gate (was ${checked_closes:-empty}, now ${closes:-empty}); re-run"
 
-# --delete-branch closes (it does not retarget) every open PR based on this head branch, and a
-# closed PR whose base is gone cannot be reopened (#663). Retarget each to this PR's base first.
-base=$(pr_field baseRefName .baseRefName) || refuse "has no readable base branch"
-stacked=$(gh pr list -R "$repo" --base "$branch" --state open --limit 1000 --json number --jq '.[].number') \
-  || refuse "could not list the PRs stacked on $branch"
-for stacked_pr in $stacked; do
-  gh pr edit "$stacked_pr" -R "$repo" --base "$base" \
-    || refuse "cannot retarget stacked PR #$stacked_pr to $base (merging would close it)"
-  echo "Retargeted PR #$stacked_pr to $base"
-done
+if [[ $gate_only -eq 1 ]]; then
+  # Not a refusal: the merge rewrites these URLs in the commit message, so the author can see it (#1007).
+  long_urls=$(tools/py tools/merge_message.py --list <<<"$(pr_field .title)
+$body") || refuse "could not check the title and body for long URLs"
+  if [[ -n $long_urls ]]; then
+    echo "WARNING: the title or body holds $(wc -l <<<"$long_urls" | tr -d ' ') URL(s) the merge proxy refuses (150+ characters, or an 80-character run); the merge rewrites them in the commit message and leaves the PR body as it is: $(head -1 <<<"$long_urls" | cut -c1-100)"
+  fi
+  pending=
+  [[ $is_draft == false ]] || pending="draft"
+  [[ -z $review_pass_refusal ]] || pending="${pending:+$pending, }no review pass"
+  if [[ -z $pending ]]; then
+    echo "GATE OK: PR #$pr at $sha passes the merge gate (check only, nothing changed)"
+  else
+    echo "GATE OK except: $pending (the merge would refuse until then)"
+  fi
+  exit 0
+fi
 
-# gh can merge on GitHub and then fail on local cleanup (branch checked out in a
-# worktree), so a nonzero exit is judged by the PR's real state.
-if ! gh pr merge "$pr" -R "$repo" --squash --delete-branch --match-head-commit "$sha"; then
-  state=$(pr_field state .state) || state=unknown
+# GitHub deletes the head branch on merge (the repo's delete_branch_on_merge, so this script deletes no ref). Retarget
+# each open PR stacked on this head branch to this PR's base first (tools/lib/stacked.sh).
+retarget_stacked "$branch" "$base" || refuse "$retarget_err"
+
+# The repo's squash settings are PR_TITLE and PR_BODY: the subject is "<title> (#n)" and the message the body.
+# The merge endpoint is not documented to apply them, so pass both. A merge request can fail after GitHub merged
+# (a timeout), so a nonzero exit is judged by the PR's real state.
+title=$(pr_field .title) || refuse "has no readable title"
+message=$(pr_field '.body // ""') || refuse "has no readable body"
+# The proxy refuses a title or message holding a long URL (#1007): send the text with those URLs shortened. The PR
+# body is not changed.
+title=$(tools/py tools/merge_message.py <<<"$title") || refuse "could not rewrite the title's long URLs"
+message=$(tools/py tools/merge_message.py <<<"$message") || refuse "could not rewrite the body's long URLs"
+if ! merge_out=$(gh api -X PUT "repos/$repo/pulls/$pr/merge" -f merge_method=squash -f sha="$sha" \
+  -f commit_title="$title (#$pr)" -f commit_message="$message" 2>&1); then
+  state=$(pr_state_of "$pr") || state=unknown
   if [[ $state != MERGED ]]; then
-    echo "ERROR: gh pr merge failed and PR #$pr is not merged (state: $state)" >&2
+    echo "ERROR: the merge request failed and PR #$pr is not merged (state: $state): $merge_out" >&2
     exit 1
   fi
-  echo "WARNING: gh pr merge exited nonzero but PR #$pr is MERGED (likely local branch cleanup); continuing" >&2
+  echo "WARNING: the merge request failed but PR #$pr is MERGED; continuing: $merge_out" >&2
 fi
 echo "Merged PR #$pr at $sha"
 
-# Publishing is derived state: the PR is already merged, so a failure warns.
-if ! ROADMAP_REPO=$repo python3 -I tools/roadmap.py --publish; then
-  echo "WARNING: PR #$pr is MERGED, but the roadmap publish failed; run 'python3 -I tools/roadmap.py --publish'" >&2
+# Called in an `if` (set -e is off inside the lib's function).
+roadmap_tmp=
+trap roadmap_cleanup EXIT
+if ! regenerate_roadmap "#$pr"; then
+  echo "ERROR: PR #$pr is MERGED, but the roadmap regeneration FAILED" >&2
+  exit 1
 fi

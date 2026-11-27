@@ -1,8 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -66,7 +65,7 @@ public class OrePlacementScenario extends EvidenceScenario {
             String shot,
             boolean pan) {
         BlockPos room = singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             @Nullable BlockPos best = null;
             int most = -1;
             for (int i = 0; i < ROOMS_TRIED; i++) {
@@ -82,14 +81,11 @@ public class OrePlacementScenario extends EvidenceScenario {
             return found;
         });
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.teleportTo(level, room.getX() - 5.5, room.getY(), room.getZ() + 0.5, Set.of(), EAST, 0f, true);
         });
-        ClientWait.until(
-                context,
-                "the client in layer " + layer,
-                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer)));
+        ClientWait.until(context, "the client in layer " + layer, client -> TestLayers.clientIsIn(client, layer));
         context.waitTicks(40);
         screenshot(context, shot);
         if (pan) {
@@ -98,7 +94,7 @@ public class OrePlacementScenario extends EvidenceScenario {
                 singleplayer.getServer().runOnServer(server -> {
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.teleportTo(
-                            ClientLight.serverLevel(server, LayerChain.dimension(layer)),
+                            TestLayers.level(server, layer),
                             room.getX() - 5.5,
                             room.getY(),
                             room.getZ() + 0.5,

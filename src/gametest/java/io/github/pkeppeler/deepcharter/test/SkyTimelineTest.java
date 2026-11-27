@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +30,7 @@ import org.joml.Vector3fc;
  * test running beside this one is not affected. The expected colours are written out here, not read from the timeline.
  */
 public class SkyTimelineTest {
+    private static final String CAMPAIGN = "deepcharter:campaign_sample";
     private static final Identifier SKY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sky");
     private static final long DUSK = 0;
     private static final long NIGHT = 144_000;
@@ -97,34 +100,25 @@ public class SkyTimelineTest {
         helper.succeed();
     }
 
-    /** A layer has no sky: it does not run the timeline, and still reads its own fog, sky colour and a sky light factor of 0. */
-    @GameTest(dimension = "deepcharter:layer_1")
-    public void aLayerIsNotTouchedByTheSky(GameTestHelper helper) {
-        ServerLevel layer = helper.getLevel();
+    /**
+     * A layer has no sky: in the campaign level, which runs the sky timeline for its surface band, a position in a layer band reads a sky
+     * light factor of 0 from its zone biome (#744, ADR 0062), so the sky does not light it.
+     */
+    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN)
+    public void aLayerBandIsNotTouchedByTheSky(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
         Timeline timeline = timeline(helper);
-        if (layer.dimensionType().timelines().stream().anyMatch(held -> held.value() == timeline)) {
-            throw helper.assertionException("layer_1 should not run the sky timeline");
+        if (level.dimensionType().timelines().stream().noneMatch(held -> held.value() == timeline)) {
+            throw helper.assertionException("the campaign level should run the sky timeline for its surface band");
         }
-        expectEqual(
-                helper,
-                "layer_1 sky colour",
-                EnvironmentAttributes.SKY_COLOR.defaultValue(),
-                layer.environmentAttributes().getDimensionValue(EnvironmentAttributes.SKY_COLOR));
-        expectEqual(
-                helper,
-                "layer_1 fog colour",
-                EnvironmentAttributes.FOG_COLOR.defaultValue(),
-                layer.environmentAttributes().getDimensionValue(EnvironmentAttributes.FOG_COLOR));
-        expectEqual(
-                helper,
-                "layer_1 sky light factor",
-                0.0f,
-                layer.environmentAttributes().getDimensionValue(EnvironmentAttributes.SKY_LIGHT_FACTOR));
-        expectEqual(
-                helper,
-                "layer_1 gameplay sky light level",
-                4.0f,
-                layer.environmentAttributes().getDimensionValue(EnvironmentAttributes.SKY_LIGHT_LEVEL));
+        for (int layer = 1; layer <= 2; layer++) {
+            expectEqual(
+                    helper,
+                    "layer " + layer + " sky light factor in a zone biome",
+                    0.0f,
+                    level.environmentAttributes()
+                            .getValue(EnvironmentAttributes.SKY_LIGHT_FACTOR, TestLayers.pos(layer, 0, 20, 0)));
+        }
         helper.succeed();
     }
 

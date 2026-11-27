@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
+
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -28,7 +31,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
@@ -36,31 +38,33 @@ import net.minecraft.world.phys.Vec3;
 
 /** Server GameTests for pod spawn, mount, dismount, seats and save/load. */
 public class PodShellTest {
-    private static final int EXPECTED_DATA_FIELDS = 11;
-    private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
+    private static final int EXPECTED_DATA_FIELDS = 12;
 
     @GameTest
     public void podSpawnsWithMoleHitboxAndFullGauges(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         try {
             if (!pod.isAlive()) {
-                throw helper.assertionException("the pod is not alive after spawning");
+                throw failure(helper, "the pod is not alive after spawning");
             }
             if (pod.chassis() != Chassis.MOLE) {
-                throw helper.assertionException("a new pod should be a Mole, got %s", pod.chassis());
+                throw failure(helper, "a new pod should be a Mole, got %s", pod.chassis());
             }
             AABB box = pod.getBoundingBox();
             if (Math.abs(box.getXsize() - Chassis.MOLE.width()) > 1e-4
                     || Math.abs(box.getYsize() - Chassis.MOLE.height()) > 1e-4
                     || Math.abs(box.getZsize() - Chassis.MOLE.width()) > 1e-4) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the Mole hitbox should be its chassis's %s wide and %s tall, got %s",
-                        Chassis.MOLE.width(), Chassis.MOLE.height(), box);
+                        Chassis.MOLE.width(),
+                        Chassis.MOLE.height(),
+                        box);
             }
             if (pod.hull() != PodTuning.DEFAULT.shell().fullHull()
                     || pod.fuel() != PodTuning.DEFAULT.shell().fullFuel()) {
-                throw helper.assertionException(
-                        "a new pod should have full hull and fuel, got %s and %s", pod.hull(), pod.fuel());
+                throw failure(
+                        helper, "a new pod should have full hull and fuel, got %s and %s", pod.hull(), pod.fuel());
             }
             helper.succeed();
         } finally {
@@ -76,15 +80,17 @@ public class PodShellTest {
         try {
             InteractionResult result = pod.interact(mock.player(), InteractionHand.MAIN_HAND, Vec3.ZERO);
             if (!result.consumesAction()) {
-                throw helper.assertionException("using the pod should consume the action, got %s", result);
+                throw failure(helper, "using the pod should consume the action, got %s", result);
             }
             if (mock.player().getVehicle() != pod || !pod.getPassengers().contains(mock.player())) {
-                throw helper.assertionException("the player should be riding the pod");
+                throw failure(helper, "the player should be riding the pod");
             }
             if (!pod.getBoundingBox().inflate(0.5).contains(mock.player().position())) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the seat should be inside the pod, rider at %s, pod box %s",
-                        mock.player().position(), pod.getBoundingBox());
+                        mock.player().position(),
+                        pod.getBoundingBox());
             }
             helper.succeed();
         } finally {
@@ -102,13 +108,13 @@ public class PodShellTest {
         if (mock.player().getVehicle() != pod) {
             mock.leave();
             pod.discard();
-            throw helper.assertionException("the player did not mount before the dismount check");
+            throw failure(helper, "the player did not mount before the dismount check");
         }
         mock.setInput(SNEAK);
         helper.runAfterDelay(5, () -> {
             try {
                 if (mock.player().getVehicle() != null || !pod.getPassengers().isEmpty()) {
-                    throw helper.assertionException("sneaking should dismount the rider");
+                    throw failure(helper, "sneaking should dismount the rider");
                 }
             } finally {
                 mock.leave();
@@ -128,17 +134,16 @@ public class PodShellTest {
             pod.interact(first.player(), InteractionHand.MAIN_HAND, Vec3.ZERO);
             InteractionResult result = pod.interact(second.player(), InteractionHand.MAIN_HAND, Vec3.ZERO);
             if (second.player().getVehicle() != null) {
-                throw helper.assertionException("a second player must not fit in a one-seat pod");
+                throw failure(helper, "a second player must not fit in a one-seat pod");
             }
             if (result.consumesAction()) {
-                throw helper.assertionException("using a full pod should not consume the action, got %s", result);
+                throw failure(helper, "using a full pod should not consume the action, got %s", result);
             }
             if (second.player().startRiding(pod)) {
-                throw helper.assertionException("startRiding should refuse a second rider");
+                throw failure(helper, "startRiding should refuse a second rider");
             }
             if (pod.getPassengers().size() != 1 || pod.getPassengers().getFirst() != first.player()) {
-                throw helper.assertionException(
-                        "the pod should carry only the first rider, got %s", pod.getPassengers());
+                throw failure(helper, "the pod should carry only the first rider, got %s", pod.getPassengers());
             }
             helper.succeed();
         } finally {
@@ -170,10 +175,10 @@ public class PodShellTest {
                         TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), output.buildResult()),
                         level,
                         EntitySpawnReason.LOAD)
-                .orElseThrow(() -> helper.assertionException("the saved pod did not load"));
+                .orElseThrow(() -> failure(helper, "the saved pod did not load"));
         try {
             if (!(loaded instanceof PodEntity copy)) {
-                throw helper.assertionException("loaded a %s instead of a pod", loaded);
+                throw failure(helper, "loaded a %s instead of a pod", loaded);
             }
             if (copy.chassis() != Chassis.MOLE
                     || copy.hull() != 37.5f
@@ -181,12 +186,18 @@ public class PodShellTest {
                     || !copy.stranded()
                     || copy.cargoUsed() != 7
                     || copy.cargoMass() != 38.5f) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "pod data did not survive save and load: hull %s fuel %s stranded %s cargo %s/%s",
-                        copy.hull(), copy.fuel(), copy.stranded(), copy.cargoUsed(), copy.cargoMass());
+                        copy.hull(),
+                        copy.fuel(),
+                        copy.stranded(),
+                        copy.cargoUsed(),
+                        copy.cargoMass());
             }
             if (copy.flying() || copy.drilling() || copy.hullBurning() || copy.drillDirection() != Direction.DOWN) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "flying, drilling, hull burning and drill direction are transient and must reset on load");
             }
             helper.succeed();
@@ -206,12 +217,11 @@ public class PodShellTest {
         }
         Collections.sort(ids);
         if (ids.size() != EXPECTED_DATA_FIELDS) {
-            throw helper.assertionException(
-                    "PodData should declare %d fields, found %d", EXPECTED_DATA_FIELDS, ids.size());
+            throw failure(helper, "PodData should declare %d fields, found %d", EXPECTED_DATA_FIELDS, ids.size());
         }
         for (int i = 1; i < ids.size(); i++) {
             if (ids.get(i) != ids.get(i - 1) + 1) {
-                throw helper.assertionException("PodData ids should be consecutive, got %s", ids);
+                throw failure(helper, "PodData ids should be consecutive, got %s", ids);
             }
         }
         Path podPackage =
@@ -227,9 +237,11 @@ public class PodShellTest {
                 }
                 for (Field field : type.getDeclaredFields()) {
                     if (field.getType() == EntityDataAccessor.class) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "%s declares synced data %s; declare it in PodData",
-                                type.getSimpleName(), field.getName());
+                                type.getSimpleName(),
+                                field.getName());
                     }
                 }
             }
@@ -261,7 +273,7 @@ public class PodShellTest {
             helper.succeed();
             return;
         }
-        throw helper.assertionException("a saved pod without a hull must not load as a full tank");
+        throw failure(helper, "a saved pod without a hull must not load as a full tank");
     }
 
     @GameTest
@@ -274,8 +286,8 @@ public class PodShellTest {
         var pods = level.getEntities(PodRegistry.POD, new AABB(at, at).inflate(1), pod -> true);
         try {
             if (pods.size() != 1) {
-                throw helper.assertionException(
-                        "/deepcharter pod spawn should create one pod at the source, found %d", pods.size());
+                throw failure(
+                        helper, "/deepcharter pod spawn should create one pod at the source, found %d", pods.size());
             }
             helper.succeed();
         } finally {

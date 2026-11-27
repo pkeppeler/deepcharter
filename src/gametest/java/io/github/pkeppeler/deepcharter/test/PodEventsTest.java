@@ -1,13 +1,16 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -17,7 +20,6 @@ import java.util.function.DoubleConsumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
@@ -25,13 +27,11 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for {@link PodEvents}. Fabric events cannot be unregistered, so the listeners
@@ -39,12 +39,10 @@ import org.jspecify.annotations.Nullable;
  * run sees the defaults.
  */
 public class PodEventsTest {
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     /** The pod starts at z 3.5 with a 1.9-wide hull, so a wall at z 5 stops it after 0.55 blocks. */
     private static final int WALL_Z = 5;
-
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
 
     private static final Map<UUID, Integer> DEPLETED = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> TICKS = new ConcurrentHashMap<>();
@@ -54,7 +52,6 @@ public class PodEventsTest {
     private static final Set<UUID> NEGATIVE_MASS = ConcurrentHashMap.newKeySet();
     private static final Set<UUID> NAN_MASS = ConcurrentHashMap.newKeySet();
     private static final Set<UUID> PASS_THROUGH = ConcurrentHashMap.newKeySet();
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 
     static {
         PodEvents.HULL_DEPLETED.register(pod -> DEPLETED.merge(pod.getUUID(), 1, Integer::sum));
@@ -83,12 +80,6 @@ public class PodEventsTest {
                 helper.setBlock(new BlockPos(x, FLOOR_Y, z), Blocks.AIR);
             }
         }
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     @GameTest

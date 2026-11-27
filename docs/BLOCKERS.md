@@ -2,20 +2,9 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
-## 2026-10-20: Ruleset requiring the `build` and `tool-tests` checks (#516)
-
-**Status:** open, needs the user or the orchestrator; apply only after the #516 PR has merged.
-
-Nothing goes straight to `main` any more (#516), so the default branch can require its checks. Add this to the `protect-main` ruleset, or as a second ruleset on the default branch (`/bootstrap-github-repo` applies the same one):
-- rule `required_status_checks`, checks `build` and `tool-tests` (the `REQUIRED_CHECKS` of `tools/merge-pr.sh`).
-
-Order matters: before the #516 PR merges, the roadmap regeneration and papercut commits still go to `main` directly, and required checks would block them.
-
-Tracked in #694.
-
 ## 2026-10-14: Renovate opens no PRs: the wrong Renovate app reaches this repo
 
-**Status:** open, needs the user.
+**Status:** resolved 2026-10-20. The user installed the self-hosted App `pkeppeler-renovate` on this repo and removed the Mend app; a dry run (pkeppeler/renovate run 39417651532) found the repo and resolved the shared preset, and #564 is closed. The text below is the original report.
 
 `renovate.json` extends `github>pkeppeler/renovate`, the private shared preset of the self-hosted Renovate that `pkeppeler/renovate`'s workflow runs. That workflow's GitHub App is not installed on this repo: its 2026-10-14 22:57 UTC run autodiscovered only `pkeppeler/renovate`. The Mend-hosted "Renovate" app is installed here instead. It cannot read the private preset, so it opened #564 ("Cannot find preset's package") and stopped.
 
@@ -31,7 +20,7 @@ Until then nothing bumps dependencies. The weekly `audit.yml` still reports advi
 
 From about 10:51 UTC every CI job fails with zero steps: "The job was not started because recent account payments have failed or your spending limit needs to be increased" (first seen on run 37766192132). The 10:46 run had succeeded, so the Free plan's monthly Actions minutes have most likely run out. The orchestrator can't see billing (`gh` lacks the `user` scope).
 
-`tools/merge-pr.sh` requires green CI, so no PR merges until Actions runs again. The orchestrator keeps working: PRs go through implementation, review cycle 1, the simplifier and cycle 2, and wait marked `review-passed`. When CI is back, each needs a close and reopen to re-run CI on a fresh merge ref, then the gate.
+`tools/merge-pr.sh` requires green CI, so no PR merges until Actions runs again. The orchestrator keeps working: PRs go through implementation, review cycle 1, the simplifier and cycle 2, and wait marked `review-passed`. When CI is back, each needs the whole runs holding its newest non-skipped `build`, `tool-tests` and `client-gametest` jobs re-run (`tools/merge-queue.sh` does it; never per job, since a job re-run copies the other jobs without their merged-main annotation) to record a fresh merge of main, then the gate.
 
 The options are the user's call:
 - set a small Actions spending limit;
@@ -46,7 +35,7 @@ The user's design session (deepcharter-93) is raising it with the user.
 
 Client GameTests and evidence recordings render a real window. When the Mac's display sleeps, the render thread blocks and the run hangs at resource load with no error. Overnight, the display sleeps: the running `caffeinate -imsu` keeps the system awake but not the display, since it has no `-d`. One agent started its own `caffeinate -d`, which the rules forbid; the orchestrator stopped it.
 
-The workaround: when a PR's client suite can't run locally overnight, the PR carries the `gameplay` label so CI runs the client suite, and the PR body says so. To let local client runs and recordings work unattended, run `caffeinate -dimsu` instead. That is the user's call.
+The workaround: when a PR's client suite can't run locally overnight, the PR body says so (CI runs the client suite on game-code PRs; the `gameplay` label is its manual override). To let local client runs and recordings work unattended, run `caffeinate -dimsu` instead. That is the user's call.
 
 ## 2026-10-07: Subagents hit the usage limit (work paused, resumes by itself)
 
@@ -77,8 +66,8 @@ All M1 prototypes are merged. On a real dedicated server, two players each pilot
 
 ### What each piece does
 1. **The Mole pod**: you ride it and it holds one pilot. It has hull, fuel and cargo gauges. See [PR #40](https://github.com/pkeppeler/deepcharter/blob/pr-media/40/pod-rider-third-person.png?raw=true).
-2. **Driving and rotor flight**: it drives on one axis at a time and never diagonally. Jump is the rotor. Hard landings damage the hull. See [the drive GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/44/pod-drive.gif?raw=true) (PR #44).
-3. **Drilling**: sprint to drill down, and push into a wall to drill sideways. It never drills up. Ore goes to cargo, and the floor crust is slow and hurts the hull. See [the drill GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/86/pod-drill.gif?raw=true) (PR #86).
+2. **Driving and rotor flight**: it steers like a boat (W forward, S reverse, A and D turn). Jump is the rotor. Hard landings damage the hull. See [the drive GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/44/pod-drive.gif?raw=true) (PR #44).
+3. **Drilling**: sprint to drill down, and drive forward (W) into a wall to drill sideways. It never drills up. Ore goes to cargo, and the floor crust is slow and hurts the hull. See [the drill GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/86/pod-drill.gif?raw=true) (PR #86).
 4. **Cargo, lift and fuel**: 7 ore slots, and weight cuts lift. Fuel drains when idle, faster when moving, and fastest when drilling. An empty tank strands the pod. Coal refuels it. (PR #48)
 5. **Layers and the breach**: layer 1 and layer 2 each get darker with depth. The altimeter reads in feet. A breach plays a rumble, a fade to black and a typed transmission. See [the breach GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/49/breach-crossing.gif?raw=true) (PRs #41, #42, #49).
 6. **The scanner**: a side-view minimap of ore around the pod. It stays readable at midnight and in the dark layers. See [the scanner GIF](https://github.com/pkeppeler/deepcharter/blob/pr-media/46/scanner-hud.gif?raw=true) (PR #46).
@@ -113,7 +102,7 @@ M2 (#51-#85) ends with a playable build for you and your friends (#85: v0.2.0). 
 - **The Minecraft server EULA:** you accept it when you run the server zip. The zip ships with `eula=false`.
 - **The private audio pack:** #57 builds a pack from the original game's sounds into `private/`. Git ignores that folder. You give it to your friends privately. It is never committed or uploaded.
 - **The lore text:** your lore session (PR #34) supplies the transmission, Note and handbook text. The agents use placeholders until it merges.
-- **The creatures session (#13):** the lampless figure (#83) is a placeholder until then.
+- **The creatures session (#13):** the lampless figure (#83) is a placeholder until then. **Answered 2026-11-21:** the session ran; the design is in [CREATURES.md](CREATURES.md).
 - **Roadmap note:** the Prospector chassis (#82) moves from M3 to M2. SPEC §5 (chapter 9) and §16 put its salvage in the onboarding. This is not a change to the SPEC, but you should know.
 - **SPEC §8 (provisional):** the Prospector navigator seat strains the "no passengers" rule. **Answered 2026-10-11 (#200, #507):** passengers are allowed; crew roles stay the goal.
 
@@ -133,14 +122,14 @@ SPEC §7 says "later tiers reveal hazards". It does not say how the scanner show
 
 **What M0 delivered:**
 1. **The mod builds and starts.** Fabric 26.3 shows the title screen with Deep Charter loaded. See the screenshot in [PR #20](https://github.com/pkeppeler/deepcharter/pull/20).
-2. **Every PR runs CI.** CI builds the mod, runs the server tests and runs the tool tests. PRs with the `gameplay` label also run the in-game tests on GitHub's machines, with software graphics. See [PR #22](https://github.com/pkeppeler/deepcharter/pull/22) and [PR #38](https://github.com/pkeppeler/deepcharter/pull/38).
+2. **Every PR runs CI.** CI builds the mod, runs the server tests and runs the tool tests. PRs that change game code (or carry the `gameplay` label) also run the in-game tests on GitHub's machines, with software graphics. See [PR #22](https://github.com/pkeppeler/deepcharter/pull/22) and [PR #38](https://github.com/pkeppeler/deepcharter/pull/38).
 3. **The merge gate.** `tools/merge-pr.sh` merges only when all of these are true:
    - the checks are green
    - a second review passed on the exact commit
    - the PR has no merge conflict
    The gate found and closed a gap: a later skipped check run could hide a failed one. See [PR #17](https://github.com/pkeppeler/deepcharter/pull/17) and [PR #22](https://github.com/pkeppeler/deepcharter/pull/22).
 4. **PR evidence.** A scripted scene records inside the game and makes a GIF and an MP4 that show in the PR. Nothing outside the game is ever captured. See the GIF in [PR #23](https://github.com/pkeppeler/deepcharter/pull/23).
-5. **The live roadmap.** The pinned `roadmap` issue is updated after each merge.
+5. **The live roadmap.** [docs/ROADMAP.md](ROADMAP.md) is regenerated after each merge.
 6. **Read-only Fabric source copies** for agents to read. AI instruction files are stripped from them. See [PR #18](https://github.com/pkeppeler/deepcharter/pull/18) and [PR #21](https://github.com/pkeppeler/deepcharter/pull/21).
 
 **What is not done:** the play-test bridge (#4, PR #24). See the entry below.

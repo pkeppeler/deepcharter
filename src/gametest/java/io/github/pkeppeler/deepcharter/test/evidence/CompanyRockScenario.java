@@ -1,16 +1,16 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.util.List;
 import java.util.Set;
@@ -31,10 +31,9 @@ import net.minecraft.world.phys.Vec3;
  * {@code l<layer>-<place>}: {@code l2-lava}. The places are those of the concept round (#503), so a still compares with that round's {@code now-*} stills.
  */
 public class CompanyRockScenario extends EvidenceScenario {
-    /** Where the rooms stand in each layer's dimension, on a chunk boundary, and the box of whole chunks of rock round all of them (a chunk the box covers in part never reached the client in two runs of three). */
-    private static final BlockPos ORIGIN = new BlockPos(3616, LIVE_GAUGES_FLOOR_Y, 3616);
-
+    /** Where the rooms stand in each layer's band, on a chunk boundary, and the box of whole chunks of rock round all of them (a chunk the box covers in part never reached the client in two runs of three). */
     private static final BlockPos ROCK_LOW = new BlockPos(-16, -3, -16);
+
     private static final BlockPos ROCK_HIGH = new BlockPos(63, 12, 15);
     /** Company Rock, in blocks from the origin: a patch in the wall of each of the four rooms (bore, cave, lava, hall), as the worldgen scatters it. */
     private static final List<BlockPos> PATCHES = List.of(
@@ -86,43 +85,44 @@ public class CompanyRockScenario extends EvidenceScenario {
 
     @Override
     protected void run(ClientGameTestContext context) {
-        int renderDistance = context.computeOnClient(
-                client -> client.options.renderDistance().get());
         TextureTestWorld.open(context, shot -> screenshot(context, shot), world -> {
             world.settleLimit(SETTLE_LIMIT_SECONDS);
-            context.runOnClient(client -> client.options.renderDistance().set(RENDER_DISTANCE));
-            ClientPacks.enable(context, TestPacks.LAYER_CONCEPT_GRAIN);
-            try {
-                for (int layer : List.of(1, 2)) {
-                    world.serverDo(
-                            server -> build(ClientLight.serverLevel(server, LayerChain.dimension(layer)), layer));
+            ClientChecks.withRenderDistance(context, RENDER_DISTANCE, () -> {
+                ClientPacks.enable(context, TestPacks.LAYER_CONCEPT_GRAIN);
+                try {
+                    for (int layer : List.of(1, 2)) {
+                        world.serverDo(server -> build(TestLayers.level(server, layer), layer));
+                    }
+                    for (int layer : List.of(1, 2)) {
+                        // The box runs 80 blocks east from x -16 and 32 across z: settle a square round its middle.
+                        BlockPos middle = absolute(layer, new BlockPos(24, 0, 0));
+                        ClientWait.lightSettled(context, world.server(), layer, middle.getX(), middle.getZ(), 40);
+                    }
+                    for (int layer : List.of(1, 2)) {
+                        world.serverDo(server -> place(TestLayers.level(server, layer), layer));
+                        shoot(context, world, layer);
+                    }
+                    frame(context);
+                } finally {
+                    ClientPacks.disable(context, TestPacks.LAYER_CONCEPT_GRAIN);
                 }
-                for (int layer : List.of(1, 2)) {
-                    world.serverDo(
-                            server -> place(ClientLight.serverLevel(server, LayerChain.dimension(layer)), layer));
-                    shoot(context, world, layer);
-                }
-                frame(context);
-            } finally {
-                ClientPacks.disable(context, TestPacks.LAYER_CONCEPT_GRAIN);
-                context.runOnClient(client -> client.options.renderDistance().set(renderDistance));
-            }
+            });
         });
     }
 
     private void shoot(ClientGameTestContext context, TextureTestWorld world, int layer) {
         for (View view : VIEWS) {
-            world.view(layer, absolute(view.eye()), absolute(view.target()), SETTLE_TICKS);
+            world.view(layer, absolute(layer, view.eye()), absolute(layer, view.target()), SETTLE_TICKS);
             world.still(still(layer, view.place()));
         }
-        world.serverDo(server -> mount(ClientLight.serverLevel(server, LayerChain.dimension(layer))));
+        world.serverDo(server -> mount(TestLayers.level(server, layer), layer));
         context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
         ClientWait.until(
                 context,
                 "the player in the pod in layer " + layer,
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer)));
+                        && TestLayers.clientIsIn(client, layer));
         context.waitTicks(MOUNT_TICKS);
         world.still(still(layer, "pod"));
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
@@ -137,12 +137,18 @@ public class CompanyRockScenario extends EvidenceScenario {
         return "l%d-%s".formatted(layer, place);
     }
 
-    private static Vec3 absolute(Vec3 local) {
-        return local.add(ORIGIN.getX(), ORIGIN.getY(), ORIGIN.getZ());
+    /** Where the rooms of {@code layer} stand: the same place in X and Z, and the same height over the layer's floor. */
+    private static BlockPos origin(int layer) {
+        return new BlockPos(3616, TestLayers.worldY(layer, LIVE_GAUGES_LOCAL_Y), 3616);
     }
 
-    private static BlockPos absolute(BlockPos local) {
-        return local.offset(ORIGIN);
+    private static Vec3 absolute(int layer, Vec3 local) {
+        BlockPos origin = origin(layer);
+        return local.add(origin.getX(), origin.getY(), origin.getZ());
+    }
+
+    private static BlockPos absolute(int layer, BlockPos local) {
+        return local.offset(origin(layer));
     }
 
     /**
@@ -151,8 +157,8 @@ public class CompanyRockScenario extends EvidenceScenario {
      */
     private static void build(ServerLevel level, int layer) {
         Block rock = layer == 1 ? Blocks.GRANITE : Blocks.TUFF;
-        BlockPos low = absolute(ROCK_LOW);
-        BlockPos high = absolute(ROCK_HIGH);
+        BlockPos low = absolute(layer, ROCK_LOW);
+        BlockPos high = absolute(layer, ROCK_HIGH);
         for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
             for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
                 // force-ok: an evidence scenario has no GameTestHelper to release through; its world is discarded when
@@ -162,10 +168,10 @@ public class CompanyRockScenario extends EvidenceScenario {
             }
         }
         RoomCarver.carve(level, low, high, rock.defaultBlockState());
-        air(level, 2, 6, 1, 11, 0, 2);
-        air(level, 12, 28, 1, 6, 0, 13);
-        air(level, 34, 45, 1, 5, 0, 9);
-        air(level, 50, 58, 1, 5, 0, 10);
+        air(level, layer, 2, 6, 1, 11, 0, 2);
+        air(level, layer, 12, 28, 1, 6, 0, 13);
+        air(level, layer, 34, 45, 1, 5, 0, 9);
+        air(level, layer, 50, 58, 1, 5, 0, 10);
         // The cave's floor rises in mounds and its roof hangs in stubs, in the rock's own block.
         for (int[] mound : new int[][] {{14, 4}, {16, 8}, {22, 6}, {25, 10}, {13, 11}, {24, 2}}) {
             for (int dx = -1; dx <= 1; dx++) {
@@ -173,7 +179,7 @@ public class CompanyRockScenario extends EvidenceScenario {
                     int height = dx == 0 && dz == 0 ? 2 : 1;
                     for (int y = 1; y <= height; y++) {
                         level.setBlock(
-                                absolute(new BlockPos(mound[0] + dx, y, mound[1] + dz)),
+                                absolute(layer, new BlockPos(mound[0] + dx, y, mound[1] + dz)),
                                 rock.defaultBlockState(),
                                 Block.UPDATE_ALL);
                     }
@@ -182,31 +188,33 @@ public class CompanyRockScenario extends EvidenceScenario {
         }
         for (int[] stub : new int[][] {{15, 3}, {21, 5}, {26, 8}, {18, 10}, {13, 7}}) {
             for (int y = 5; y <= 6; y++) {
-                level.setBlock(absolute(new BlockPos(stub[0], y, stub[1])), rock.defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(
+                        absolute(layer, new BlockPos(stub[0], y, stub[1])), rock.defaultBlockState(), Block.UPDATE_ALL);
             }
         }
         // The pit of lava: its sides, bottom and the floor round it are rock, so the sources stay where they are put.
         for (int x = 38; x <= 41; x++) {
             for (int z = 0; z <= 1; z++) {
-                level.setBlock(absolute(new BlockPos(x, 0, z)), Blocks.LAVA.defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(
+                        absolute(layer, new BlockPos(x, 0, z)), Blocks.LAVA.defaultBlockState(), Block.UPDATE_ALL);
             }
         }
         for (View view : VIEWS) {
-            lamp(level, view.eye());
+            lamp(level, layer, view.eye());
         }
-        lamp(level, SEAT_POD.add(0, 2, -1));
+        lamp(level, layer, SEAT_POD.add(0, 2, -1));
     }
 
-    private static void air(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2) {
+    private static void air(ServerLevel level, int layer, int x1, int x2, int y1, int y2, int z1, int z2) {
         RoomCarver.carve(
                 level,
-                absolute(new BlockPos(x1, y1, z1)),
-                absolute(new BlockPos(x2, y2, z2)),
+                absolute(layer, new BlockPos(x1, y1, z1)),
+                absolute(layer, new BlockPos(x2, y2, z2)),
                 Blocks.AIR.defaultBlockState());
     }
 
-    private static void lamp(ServerLevel level, Vec3 eye) {
-        level.setBlock(BlockPos.containing(absolute(eye)), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
+    private static void lamp(ServerLevel level, int layer, Vec3 eye) {
+        level.setBlock(BlockPos.containing(absolute(layer, eye)), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
     }
 
     /** Sets every patch of Company Rock of a layer, in the rock of that layer as the worldgen sets it (ADR 0056), so layer 2's joints glow. */
@@ -214,15 +222,15 @@ public class CompanyRockScenario extends EvidenceScenario {
         BlockState rock = ((CompanyRockBlock) HazardBlocks.COMPANY_ROCK)
                 .in((layer == 1 ? LayerBlocks.PACKED_SHALE : LayerBlocks.GREEN_SHALE).defaultBlockState());
         for (BlockPos at : PATCHES) {
-            level.setBlock(absolute(at), rock, Block.UPDATE_ALL);
+            level.setBlock(absolute(layer, at), rock, Block.UPDATE_ALL);
         }
     }
 
     /** Seats the player in a pod at the hall's south end, facing the far wall. */
-    private static void mount(ServerLevel level) {
+    private static void mount(ServerLevel level, int layer) {
         ServerPlayer player = level.getServer().getPlayerList().getPlayers().getFirst();
-        Vec3 at = absolute(SEAT_POD);
-        Vec3 target = absolute(SEAT_TARGET);
+        Vec3 at = absolute(layer, SEAT_POD);
+        Vec3 target = absolute(layer, SEAT_TARGET);
         player.teleportTo(level, at.x, at.y, at.z, Set.of(), 180.0f, 0.0f, true);
         player.setNoGravity(false);
         PodEntity pod = TestEntities.create(PodRegistry.POD, level);

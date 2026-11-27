@@ -1,7 +1,11 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -9,8 +13,10 @@ import io.github.pkeppeler.deepcharter.pod.PodHeatShield;
 import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
+import io.github.pkeppeler.deepcharter.pod.PodSprint;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +25,6 @@ import java.util.Optional;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.Direction;
@@ -37,10 +42,11 @@ public final class PodStatusHud {
 
     public static void init() {
         HudElementRegistry.addLast(ID, PodStatusHud::extract);
+        HudKeepClear.register(PodStatusHud::keepClear);
     }
 
     /**
-     * The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has and whether the pod is stranded. The hull is shown as points out of
+     * The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has, and whether the pod is stranded (#963). The hull is shown as points out of
      * the most the pod's parts allow: the client works the maximum out itself, from the synced component state
      * ({@link io.github.pkeppeler.deepcharter.pod.PodComponents#STATE}).
      */
@@ -56,6 +62,20 @@ public final class PodStatusHud {
                 new Line(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()), look.podStatusColor()));
         lines.add(new Line(
                 Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())), look.podStatusColor()));
+        float soot = EngineSoot.soot(pod);
+        long slower = Math.round((1 - EngineSoot.output(soot)) * 100);
+        if (EngineSoot.isLimp(soot)) {
+            lines.add(new Line(Component.translatable("hud.deepcharter.pod.soot_limp"), look.podStatusColor()));
+        } else if (slower >= 1) {
+            // Only once it costs something: no line for a clean engine or the grace, and never a "0%".
+            lines.add(new Line(
+                    Component.translatable(
+                            "hud.deepcharter.pod.soot",
+                            Math.round(soot),
+                            slower,
+                            Math.round((EngineSoot.burn(soot) - 1) * 100)),
+                    look.podStatusColor()));
+        }
         PodLining.State lining = PodLining.of(pod);
         if (PodLining.hasHopper(pod)) {
             lines.add(new Line(
@@ -69,6 +89,13 @@ public final class PodStatusHud {
             lines.add(new Line(Component.translatable("hud.deepcharter.pod.stranded"), look.podStatusColor()));
         }
         return lines;
+    }
+
+    /** The line shown, in its own colour, while the pod runs on its sprint boost (#1276): what it adds. */
+    public static Optional<Component> sprintLine(PodEntity pod) {
+        return PodSprint.boosting(pod)
+                ? Optional.of(Component.translatable("hud.deepcharter.pod.sprint", PodSprint.boostPercent()))
+                : Optional.empty();
     }
 
     /** The warning line shown, in its own colour, while lava burns the hull. A heat shield with bricks left soaks the lava: the hull is not burning then, and {@link #glazeLine} says so. */
@@ -102,25 +129,31 @@ public final class PodStatusHud {
     }
 
     /**
+     * The warning line shown, steady, while the load is at or over the climb limit ({@link PodLoad#cannotClimb}, #1449): the held rotor cannot climb, though the pod
+     * still drives. It labels the cockpit's overloaded lamp, and is the plain HUD's only overload cue.
+     */
+    public static Optional<Component> overloadedLine(PodEntity pod) {
+        return PodLoad.of(pod).cannotClimb()
+                ? Optional.of(Component.translatable("hud.deepcharter.pod.overloaded"))
+                : Optional.empty();
+    }
+
+    /** The warning line shown while the alarm of the pod's zone rings (#973, {@link DrifterAlarm}): the seconds it has left. */
+    public static Optional<Component> drifterAlarmLine(PodEntity pod) {
+        return DrifterAlarm.warning(pod)
+                .map(state -> Component.translatable("hud.deepcharter.pod.drifter_alarm", state.seconds()));
+    }
+
+    /**
      * The lines shown, in their own colour, about the breach crust (#378), from one look at the crust ahead: when the hull would not outlast it, the slabs to it (or that
-     * the pod is in it), the hull, and what the crust rows left would take; then what a breach brace does about that, if the pod has one. {@code resting} is whether the
-     * pod is on the ground with its pilot giving no input.
+     * the pod is in it), the hull, what the crust rows left would take and, over open space, what the drop under the
+     * crust would (#1387); then what a breach brace does about that, if the pod has one. {@code resting} is whether
+     * the pod is on the ground with its pilot giving no input.
      */
     public static List<Component> crustLines(PodEntity pod, boolean resting) {
         PodBrace.Status status = PodBrace.status(pod, resting);
         List<Component> lines = new ArrayList<>();
-        status.warning()
-                .ifPresent(warning -> lines.add(
-                        warning.slabsAway() > 0
-                                ? Component.translatable(
-                                        "hud.deepcharter.pod.crust_ahead",
-                                        warning.slabsAway(),
-                                        Math.round(warning.hull()),
-                                        Math.round(warning.cost()))
-                                : Component.translatable(
-                                        "hud.deepcharter.pod.crust_in",
-                                        Math.round(warning.hull()),
-                                        Math.round(warning.cost()))));
+        status.warning().ifPresent(warning -> lines.add(crustLine(warning)));
         switch (status.patching()) {
             case IDLE -> {}
             case WAITS_FOR_REST -> lines.add(Component.translatable("hud.deepcharter.pod.brace_waits"));
@@ -129,6 +162,26 @@ public final class PodStatusHud {
             case WORKING -> lines.add(Component.translatable("hud.deepcharter.pod.brace_working"));
         }
         return lines;
+    }
+
+    /**
+     * The crust warning's line: the slabs down (or that the pod is in the crust), the hull and the crust's price, and
+     * the drop's when it costs a hull point or more.
+     */
+    private static Component crustLine(PodBrace.Warning warning) {
+        long drop = Math.round(warning.drop());
+        String key = (warning.slabsAway() > 0 ? "hud.deepcharter.pod.crust_ahead" : "hud.deepcharter.pod.crust_in")
+                + (drop > 0 ? "_drop" : "");
+        List<Object> args = new ArrayList<>();
+        if (warning.slabsAway() > 0) {
+            args.add(warning.slabsAway());
+        }
+        args.add(Math.round(warning.hull()));
+        args.add(Math.round(warning.cost()));
+        if (drop > 0) {
+            args.add(drop);
+        }
+        return Component.translatable(key, args.toArray());
     }
 
     /** Whether the ridden pod is at rest as the local pilot sees it: on the ground, with no drill, drive or rotor key held. */
@@ -156,8 +209,8 @@ public final class PodStatusHud {
     public static List<Component> sounderLines(PodEntity pod) {
         PodSounder.State state = PodSounder.reading(pod).orElse(PodSounder.State.EMPTY);
         List<Component> lines = new ArrayList<>();
-        // The drill waits on a pocket in the slab it bores next: the one below, or the one beside in the direction it
-        // bores.
+        // The drill waits on a pocket in the slab it bores next: the one below, or the one beside in the direction
+        // it bores.
         Direction bore = pod.drillDirection();
         boolean bleeding = pod.drilling()
                 && PodSounder.bleedPauseTicks(pod) > 0
@@ -217,13 +270,19 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.slag_only", Kind.INFO),
             Map.entry("hud.deepcharter.pod.liner", Kind.INFO),
             Map.entry("hud.deepcharter.pod.lining", Kind.INFO),
+            Map.entry("hud.deepcharter.pod.soot", Kind.INFO),
+            Map.entry("hud.deepcharter.pod.soot_limp", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.sprint", Kind.INFO),
             Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
             Map.entry("hud.deepcharter.pod.burning", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.overloaded", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_spent", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.crust_ahead", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.crust_in", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.crust_ahead_drop", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.crust_in_drop", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_waits", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_dry", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.brace_dear", Kind.ALERT),
@@ -233,13 +292,19 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.lining_dry", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.hard_landing", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.lava_near", Kind.ALERT),
-            Map.entry("hud.deepcharter.pod.lava_above", Kind.ALERT));
+            Map.entry("hud.deepcharter.pod.lava_above", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.drifter_alarm", Kind.ALERT));
 
     /** A line of the readout and the colour it is drawn in. */
     public record Line(Component text, int color) {
-        /** The kind of a line from its key in {@link #KINDS}; a line of plain text (the account line) is a note. */
+        /**
+         * The kind of a line from its key in {@link #KINDS}; a line of plain text, and the charter's account line ({@link AccountHud#KEY}), which the cockpit's plate shows
+         * under its tally, are notes. A plate too long for its room drops notes from the end up and asks each row it passes for its kind, so the account line must have one
+         * (#1457: a burning, stranded pod on a 320 wide GUI crashed the game here).
+         */
         public Kind kind() {
-            if (!(text.getContents() instanceof TranslatableContents contents)) {
+            if (!(text.getContents() instanceof TranslatableContents contents)
+                    || contents.getKey().equals(AccountHud.KEY)) {
                 return Kind.INFO;
             }
             Kind kind = KINDS.get(contents.getKey());
@@ -255,9 +320,12 @@ public final class PodStatusHud {
     public static List<Line> readout(LocalPlayer player, PodEntity pod) {
         HudLook look = HudLook.current();
         List<Line> readout = new ArrayList<>(statusLines(pod));
+        sprintLine(pod).ifPresent(line -> readout.add(new Line(line, look.podSprintColor())));
         burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+        overloadedLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         glazeLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+        drifterAlarmLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));
         linerLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLinerColor())));
         sounderLines(pod).forEach(line -> readout.add(new Line(line, look.podSounderColor())));
         crustLines(pod, resting(player, pod)).forEach(line -> readout.add(new Line(line, look.podHardLandingColor())));
@@ -267,21 +335,53 @@ public final class PodStatusHud {
         return readout;
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-        Minecraft client = Minecraft.getInstance();
+    /** The readout as it is drawn: its lines and the box they cover, top left. */
+    private record Block(List<Line> lines, HudKeepClear.Rect box) {}
+
+    /**
+     * The plain readout on a GUI {@code guiWidth} x {@code guiHeight}: a pilot's pod and no cockpit on this GUI; empty otherwise. What is
+     * drawn and what is kept clear are this one box.
+     */
+    private static Optional<Block> block(Minecraft client, int guiWidth, int guiHeight) {
         LocalPlayer player = client.player;
         if (player == null
                 || !(player.getVehicle() instanceof PodEntity pod)
                 || !PodSeat.showsPodStatus(pod, player)
-                || CockpitHud.seated(client).isPresent()) {
+                || CockpitHud.seated(client, guiWidth, guiHeight).isPresent()) {
+            return Optional.empty();
+        }
+        HudLook look = HudLook.current();
+        List<Line> lines = readout(player, pod);
+        int widest = lines.stream()
+                .mapToInt(line -> client.font.width(line.text()))
+                .max()
+                .orElse(0);
+        int pitch = client.font.lineHeight + look.podStatusLineGap();
+        return Optional.of(new Block(
+                lines,
+                new HudKeepClear.Rect(
+                        "pod readout",
+                        look.podStatusMargin(),
+                        look.podStatusMargin(),
+                        widest,
+                        lines.size() * pitch - look.podStatusLineGap())));
+    }
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        block(client, guiWidth, guiHeight).ifPresent(block -> into.add(block.box()));
+    }
+
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+        Minecraft client = Minecraft.getInstance();
+        Optional<Block> block = block(client, graphics.guiWidth(), graphics.guiHeight());
+        if (block.isEmpty()) {
             return;
         }
-        Font font = client.font;
         HudLook look = HudLook.current();
-        int y = look.podStatusMargin();
-        for (Line line : readout(player, pod)) {
-            graphics.text(font, line.text(), look.podStatusMargin(), y, line.color());
-            y += font.lineHeight + look.podStatusLineGap();
+        int y = block.get().box().y();
+        for (Line line : block.get().lines()) {
+            graphics.text(client.font, line.text(), block.get().box().x(), y, line.color());
+            y += client.font.lineHeight + look.podStatusLineGap();
         }
     }
 }

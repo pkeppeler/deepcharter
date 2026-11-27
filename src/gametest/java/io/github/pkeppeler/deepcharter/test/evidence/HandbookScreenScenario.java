@@ -110,10 +110,13 @@ public class HandbookScreenScenario extends EvidenceScenario {
                             Component.literal("PLACEHOLDER: " + titles[chapter - 1]),
                             List.of(
                                     new HandbookChapter.Entry(
-                                            directive(chapter, 1), Component.literal("PLACEHOLDER: first thing to do")),
+                                            directive(chapter, 1),
+                                            Component.literal("PLACEHOLDER: first thing to do"),
+                                            List.of()),
                                     new HandbookChapter.Entry(
                                             directive(chapter, 2),
-                                            Component.literal("PLACEHOLDER: second thing to do")))));
+                                            Component.literal("PLACEHOLDER: second thing to do"),
+                                            List.of()))));
         }
         return chapters;
     }

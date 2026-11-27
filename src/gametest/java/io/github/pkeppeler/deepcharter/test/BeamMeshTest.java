@@ -1,15 +1,13 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.client.beam.BeamMesh;
 import io.github.pkeppeler.deepcharter.client.theme.BeamStyle;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the shape of a fake light beam (#248): a cone of translucent quads that is brightest at the lamp, fades along
@@ -158,11 +156,5 @@ public class BeamMeshTest {
             throw failure(helper, "a beam of length 0 should have no vertices");
         }
         helper.succeed();
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

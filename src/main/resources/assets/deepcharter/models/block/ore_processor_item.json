@@ -1,0 +1,7 @@
+{
+  "parent": "deepcharter:block/terminal_item",
+  "textures": {
+    "front": "deepcharter:block/ore_processor_front",
+    "front_glow": "deepcharter:block/ore_processor_front_glow"
+  }
+}

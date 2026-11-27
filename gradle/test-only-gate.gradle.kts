@@ -4,7 +4,7 @@
 // The scan is tools/TestOnlyGate.java (the JDK's class-file API, no dependency), run over the compiled classes so a reference is what javac
 // resolved. What it exempts, and the marker `// test-seam: <reason>` for a deliberate seam, are in its header.
 // Every finding fails. -PtestOnlyList prints the key of every finding.
-// tools/tests/testonly_gate_check.py runs it over fixture trees (python3 -I tools/tests/gate_checks.py testonly).
+// tools/tests/testonly_gate_check.py runs it over fixture trees (tools/py tools/tests/gate_checks.py testonly).
 tasks.register("checkTestOnlyMembers") {
 	group = "verification"
 	description = "Fails on a non-private mod member that only src/gametest references."

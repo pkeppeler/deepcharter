@@ -1,0 +1,89 @@
+{
+  "attributes": {
+    "minecraft:audio/ambient_sounds": {
+      "loop": "deepcharter:ambient.layer_2_loop",
+      "additions": [
+        {
+          "sound": "deepcharter:ambient.layer_2_knock",
+          "tick_chance": 0.0004
+        }
+      ]
+    },
+    "minecraft:audio/background_music": {
+      "default": {
+        "max_delay": 1800,
+        "min_delay": 600,
+        "replace_current_music": true,
+        "sound": "deepcharter:music.layer_2"
+      }
+    },
+    "minecraft:gameplay/bed_rule": {
+      "can_set_spawn": "never",
+      "can_sleep": "never",
+      "destroy_on_use": false
+    },
+    "minecraft:gameplay/can_pillager_patrol_spawn": false,
+    "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
+    "minecraft:gameplay/straw_bed_rule": {
+      "can_set_spawn": "never",
+      "can_sleep": "never",
+      "destroy_on_use": false
+    },
+    "minecraft:visual/ambient_light_color": "#090b0c",
+    "minecraft:visual/ambient_particles": [
+      {
+        "particle": {
+          "type": "deepcharter:dust_mote"
+        },
+        "probability": 0.3
+      },
+      {
+        "particle": {
+          "type": "minecraft:glow"
+        },
+        "probability": 0.02
+      }
+    ],
+    "minecraft:visual/fog_color": "#0c1416",
+    "minecraft:visual/fog_end_distance": 20.0,
+    "minecraft:visual/fog_start_distance": 2.0,
+    "minecraft:visual/moon_angle": 180.0,
+    "minecraft:visual/sky_color": "#0c1416",
+    "minecraft:visual/sky_fog_end_distance": 0.0,
+    "minecraft:visual/sky_light_factor": 0.0,
+    "minecraft:visual/star_brightness": 0.0,
+    "minecraft:visual/sun_angle": 180.0,
+    "minecraft:visual/sunrise_sunset_color": "#00000000",
+    "minecraft:visual/water_fog_color": "#000f10",
+    "minecraft:visual/water_fog_end_distance": 20.0
+  },
+  "carvers": [],
+  "downfall": 0.0,
+  "effects": {
+    "water_color": "#3f76e4"
+  },
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "deepcharter:fill_spore_fields"
+    ],
+    [],
+    [
+      "deepcharter:line_hollows"
+    ],
+    [
+      "deepcharter:glowcaps_spore_fields",
+      "deepcharter:giant_fungi_quiet",
+      "deepcharter:giant_fungi_spore_fields",
+      "deepcharter:giant_fungi_garden"
+    ],
+    [],
+    []
+  ],
+  "has_precipitation": false,
+  "temperature": 0.5
+}

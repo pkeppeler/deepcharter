@@ -7,5 +7,6 @@ public final class ColonyRegistry {
     public static void register() {
         ColonyBlocks.register();
         ColonyKit.register();
+        ColonyRations.register();
     }
 }

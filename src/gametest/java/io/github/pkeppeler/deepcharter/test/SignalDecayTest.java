@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -12,11 +12,11 @@ import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Instrument;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.EnumMap;
@@ -26,10 +26,8 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the signal decay (#502): the curve of each layer, the console part that pushes it deeper, the order the instruments fail in and that the
@@ -39,12 +37,6 @@ public class SignalDecayTest {
     private static final int CELLS = 4000;
     private static final long SEED = 0x5EEDL;
     private static final double EPSILON = 1e-9;
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
 
     private static int faults(Instrument instrument, double intensity, long seed, Fault kind) {
         int found = 0;
@@ -142,8 +134,8 @@ public class SignalDecayTest {
                 }
             }
         }
-        // A Mole's cap is 2: its best console still has the last slab or so, and only the Prospector's third tier is
-        // immune.
+        // A Mole's cap is 2: its best console still has the last slab or so, and only the Prospector's third tier
+        // is immune.
         if (!(SignalDecay.intensity(1, 0, 2) == 1) || Chassis.MOLE.tierCap() >= ComponentTrack.CONSOLE.maxTier()) {
             throw failure(helper, "a tier 2 console is not immune at the floor, and a Mole cannot fit the immune tier");
         }
@@ -292,23 +284,24 @@ public class SignalDecayTest {
             throw failure(helper, "a pod outside the layers has no decay");
         }
         surface.discard();
-        ServerLevel layer = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
+        ServerLevel layer = TestLayers.level(helper.getLevel().getServer(), 1);
+        LayerChain.Band layerBand = TestLayers.band(layer, 1);
         PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.MOLE), layer);
         MockPlayer owner = MockPlayers.join(helper, "Decay owner");
         try {
-            pod.setPos(0.5, layer.getMinY() + 2, 0.5);
+            pod.setPos(0.5, layerBand.minY() + 2, 0.5);
             if (SignalDecay.intensity(pod) != 1) {
                 throw failure(
                         helper,
                         "a stock pod 2 slabs over the floor of layer 1 is in the blackout, got %s",
                         SignalDecay.intensity(pod));
             }
-            pod.setPos(0.5, layer.getMinY() + 100, 0.5);
+            pod.setPos(0.5, layerBand.minY() + 100, 0.5);
             if (SignalDecay.intensity(pod) != 0) {
                 throw failure(
                         helper, "a pod 100 slabs over the floor reads no decay, got %s", SignalDecay.intensity(pod));
             }
-            pod.setPos(0.5, layer.getMinY() + 21, 0.5);
+            pod.setPos(0.5, layerBand.minY() + 21, 0.5);
             double stock = SignalDecay.intensity(pod);
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, ComponentTrack.CONSOLE, 2);
             if (Math.abs(stock - 0.5) > EPSILON

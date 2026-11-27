@@ -2,8 +2,12 @@
   "values": [
     "deepcharter:regolith_rock",
     "deepcharter:packed_shale",
+    "deepcharter:hardpan",
+    "deepcharter:black_shale",
     "deepcharter:green_shale",
     "deepcharter:packed_shale_rubble",
-    "deepcharter:green_shale_rubble"
+    "deepcharter:green_shale_rubble",
+    "deepcharter:basalt_core",
+    "deepcharter:columnar_basalt"
   ]
 }

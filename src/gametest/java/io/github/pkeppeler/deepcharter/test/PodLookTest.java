@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.client.pod.GeoModel;
 import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -12,7 +15,6 @@ import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -41,14 +43,20 @@ public class PodLookTest {
             for (Map.Entry<Integer, String> entry : expected.entrySet()) {
                 String shown = look.cutterFor(entry.getKey());
                 if (!shown.equals(entry.getValue())) {
-                    throw helper.assertionException(Component.literal(chassis.id() + "'s drill tier " + entry.getKey()
-                            + " should show the " + entry.getValue() + ", shows the " + shown));
+                    throw failure(
+                            helper,
+                            "%s's drill tier %s should show the %s, shows the %s",
+                            chassis.id(),
+                            entry.getKey(),
+                            entry.getValue(),
+                            shown);
                 }
             }
-            require(
+            expect(
                     helper,
                     expected.size() == ComponentTrack.DRILL.maxTier() + 1,
-                    "the pin should cover every drill tier, 0 to " + ComponentTrack.DRILL.maxTier());
+                    "the pin should cover every drill tier, 0 to %s",
+                    ComponentTrack.DRILL.maxTier());
         }
         helper.succeed();
     }
@@ -56,13 +64,13 @@ public class PodLookTest {
     @GameTest
     public void aTierShowsTheCutterOfTheHighestEntryAtOrBelowIt(GameTestHelper helper) {
         PodLook look = PodLook.parse("test", new StringReader(WITH_CUTTERS));
-        require(helper, look.cutterFor(0).equals("tricone"), "tier 0 shows the stock cutter");
-        require(
+        expect(helper, look.cutterFor(0).equals("tricone"), "tier 0 shows the stock cutter");
+        expect(
                 helper,
                 look.cutterFor(1).equals("tricone"),
                 "tier 1 shows the cutter of tier 0, the highest entry at or below it");
-        require(helper, look.cutterFor(2).equals("stacked"), "tier 2 shows the stacked cutter");
-        require(
+        expect(helper, look.cutterFor(2).equals("stacked"), "tier 2 shows the stacked cutter");
+        expect(
                 helper,
                 look.cutterFor(6).equals("fluted"),
                 "tier 6 shows the cutter of tier 3, the highest entry below it");
@@ -75,48 +83,51 @@ public class PodLookTest {
                 "test",
                 new StringReader(PLAIN.replace(
                         "\"wreck\"", "\"paint\": \"deepcharter:textures/entity/pod/plain_paint.png\", \"wreck\"")));
-        require(
+        expect(
                 helper,
                 painted.paintMask()
                         .equals(Optional.of(Identifier.parse("deepcharter:textures/entity/pod/plain_paint.png"))),
-                "the paint mask, got " + painted.paintMask());
-        require(
+                "the paint mask, got %s",
+                painted.paintMask());
+        expect(
                 helper,
                 PodLook.parse("test", new StringReader(PLAIN)).paintMask().isEmpty(),
                 "a look with no paint key is not painted");
-        String bad = failure(
+        String bad = messageOf(
                 helper,
                 () -> PodLook.parse(
                         "test",
                         new StringReader(
                                 PLAIN.replace("\"wreck\"", "\"paint\": \"deepcharter:pod/plain\", \"wreck\""))));
-        require(
+        expect(
                 helper,
                 bad.contains("paint") && bad.contains("not a texture path"),
-                "a paint mask that is no texture path is refused and says so, got " + bad);
+                "a paint mask that is no texture path is refused and says so, got %s",
+                bad);
         helper.succeed();
     }
 
     @GameTest
     public void aLookReadsItsVariants(GameTestHelper helper) {
         PodLook look = PodLook.parse("test", new StringReader(WITH_CUTTERS));
-        require(helper, look.intact().glow() == PodLook.Glow.LIT, "the intact pod glows while lit by default");
-        require(
+        expect(helper, look.intact().glow() == PodLook.Glow.LIT, "the intact pod glows while lit by default");
+        expect(
                 helper,
                 look.wreck().glow() == PodLook.Glow.ALWAYS
                         && look.wreck().hide().equals(List.of("rotor")),
                 "the wreck keeps a lamp lit and hides the rotor");
-        require(
+        expect(
                 helper,
                 look.intact().glowmask().equals(Identifier.parse("deepcharter:textures/entity/pod/mole_glowmask.png")),
-                "the glowmask is the texture's name and _glowmask, got "
-                        + look.intact().glowmask());
-        require(
+                "the glowmask is the texture's name and _glowmask, got %s",
+                look.intact().glowmask());
+        expect(
                 helper,
                 look.modelFile().equals(Identifier.parse("deepcharter:geckolib/models/pod/mole.geo.json")),
-                "the model file, got " + look.modelFile());
+                "the model file, got %s",
+                look.modelFile());
         PodLook plain = PodLook.parse("test", new StringReader(PLAIN));
-        require(
+        expect(
                 helper,
                 plain.cutters().isEmpty() && plain.wreck().glow() == PodLook.Glow.NEVER,
                 "a plain look has no cutters, and its wreck never glows");
@@ -140,11 +151,13 @@ public class PodLookTest {
                         "{\"model\": \"deepcharter:pod/plain\", \"texture\": \"deepcharter:textures/entity/pod/plain.png\"}",
                         "wreck is missing or not an object"));
         for (Map.Entry<String, String> entry : broken.entrySet()) {
-            String message = failure(helper, () -> PodLook.parse("broken.json", new StringReader(entry.getKey())));
-            require(
+            String message = messageOf(helper, () -> PodLook.parse("broken.json", new StringReader(entry.getKey())));
+            expect(
                     helper,
                     message.contains(entry.getValue()) && message.contains("broken.json"),
-                    "expected '" + entry.getValue() + "' in: " + message);
+                    "expected '%s' in: %s",
+                    entry.getValue(),
+                    message);
         }
         helper.succeed();
     }
@@ -154,34 +167,28 @@ public class PodLookTest {
     public void aLookThatDoesNotFitItsModelFails(GameTestHelper helper) throws IOException {
         GeoModel mole = PodGeoModelTest.read(
                 helper, PodGeoModelTest.look(helper, Chassis.MOLE).modelFile());
-        String unknownCutter = failure(
+        String unknownCutter = messageOf(
                 helper,
                 () -> PodLook.parse("look", new StringReader(WITH_CUTTERS.replace("fluted", "flute")))
                         .check(mole));
-        require(helper, unknownCutter.contains("maps drill tier 3 to the cutter 'flute'"), unknownCutter);
-        String unknownBone = failure(
+        expect(helper, unknownCutter.contains("maps drill tier 3 to the cutter 'flute'"), "%s", unknownCutter);
+        String unknownBone = messageOf(
                 helper,
                 () -> PodLook.parse("look", new StringReader(WITH_CUTTERS.replace("rotor", "propeller")))
                         .check(mole));
-        require(helper, unknownBone.contains("hides 'propeller'"), unknownBone);
-        String noMap = failure(
+        expect(helper, unknownBone.contains("hides 'propeller'"), "%s", unknownBone);
+        String noMap = messageOf(
                 helper, () -> PodLook.parse("look", new StringReader(PLAIN)).check(mole));
-        require(helper, noMap.contains("has no cutters map"), noMap);
+        expect(helper, noMap.contains("has no cutters map"), "%s", noMap);
         helper.succeed();
     }
 
-    private static String failure(GameTestHelper helper, Runnable action) {
+    private static String messageOf(GameTestHelper helper, Runnable action) {
         try {
             action.run();
         } catch (IllegalArgumentException e) {
             return Objects.requireNonNull(e.getMessage(), "the failure has no message");
         }
-        throw helper.assertionException(Component.literal("expected the look to fail"));
-    }
-
-    private static void require(GameTestHelper helper, boolean condition, String message) {
-        if (!condition) {
-            throw helper.assertionException(Component.literal(message));
-        }
+        throw failure(helper, "expected the look to fail");
     }
 }

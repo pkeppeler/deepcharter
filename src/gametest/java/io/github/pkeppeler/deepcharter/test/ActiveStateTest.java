@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
@@ -11,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -49,7 +52,7 @@ import net.minecraft.world.phys.Vec3;
 public class ActiveStateTest {
     private static final TerminalType PUMP = TerminalTypes.FUEL_PUMP;
     /** Far from every other test's chunks, so the chunk test can unload its own. */
-    private static final BlockPos FAR = new BlockPos(-3536, 70, 3536);
+    private static final BlockPos FAR = TestLayers.pos(TestLayers.SURFACE, -3536, 70, 3536);
 
     private static final Set<Long> UNLOADED = ConcurrentHashMap.newKeySet();
     private static final Set<Long> LOADED = ConcurrentHashMap.newKeySet();
@@ -77,9 +80,13 @@ public class ActiveStateTest {
     private static void expectActive(GameTestHelper helper, BlockPos absolute, boolean expected, String why) {
         BlockState state = helper.getLevel().getBlockState(absolute);
         if (state.getValue(TextureProperties.ACTIVE) != expected) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s: the terminal at %s should show active=%s, shows %s",
-                    why, absolute.toShortString(), expected, state);
+                    why,
+                    absolute.toShortString(),
+                    expected,
+                    state);
         }
     }
 
@@ -87,16 +94,19 @@ public class ActiveStateTest {
         BlockEntity entity = helper.getLevel().getBlockEntity(absolute);
         BlockState state = helper.getLevel().getBlockState(absolute);
         if (entity == null || !entity.getBlockState().equals(state)) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "the block entity at %s holds %s, the level %s",
-                    absolute.toShortString(), entity == null ? "nothing" : entity.getBlockState(), state);
+                    absolute.toShortString(),
+                    entity == null ? "nothing" : entity.getBlockState(),
+                    state);
         }
     }
 
     private static void repairDirectly(GameTestHelper helper, RepairState state, TerminalType type) {
         for (Item part : type.parts()) {
             if (state.insert(type, part).isPresent()) {
-                throw helper.assertionException("inserting %s straight into the state should succeed", part);
+                throw failure(helper, "inserting %s straight into the state should succeed", part);
             }
         }
     }
@@ -153,7 +163,7 @@ public class ActiveStateTest {
                             player.getUUID(),
                             "Lamp Co " + UUID.randomUUID().toString().substring(0, 8))
                     .isPresent()) {
-                throw helper.assertionException("founding a charter should succeed");
+                throw failure(helper, "founding a charter should succeed");
             }
             WorldData.with(server, RepairState.TYPE, new RepairState(), () -> {
                 BlockPos taker = place(helper, PUMP.block().defaultBlockState(), 1);
@@ -169,7 +179,7 @@ public class ActiveStateTest {
                     Item part = PUMP.parts().get(i);
                     player.getInventory().add(new ItemStack(part));
                     if (TerminalParts.insert(player, taker, part).isPresent()) {
-                        throw helper.assertionException("inserting part %s of the fuel pump should succeed", i);
+                        throw failure(helper, "inserting part %s of the fuel pump should succeed", i);
                     }
                 }
                 expectActive(helper, taker, true, "the pump that took the last part");
@@ -187,8 +197,7 @@ public class ActiveStateTest {
     public void aTerminalSetInTheWrongStateIsCorrectedOnItsNextTick(GameTestHelper helper) {
         BlockState lit = ContractTerminal.TYPE.block().defaultBlockState();
         if (!lit.getValue(TextureProperties.ACTIVE)) {
-            throw helper.assertionException(
-                    "the contract terminal's default state should be active: it never went dark");
+            throw failure(helper, "the contract terminal's default state should be active: it never went dark");
         }
         BlockPos contract = place(helper, lit.setValue(TextureProperties.ACTIVE, false), 1);
         helper.succeedWhen(() -> {
@@ -255,43 +264,70 @@ public class ActiveStateTest {
         Map<String, Runnable> paths = new LinkedHashMap<>();
         paths.put("place", () -> place(helper, PUMP.block().defaultBlockState(), 3));
         paths.put("sync at a terminal", () -> TerminalActivity.sync(level, pump));
+        // sync-load: the chunk of the test's own structure, which is loaded
         paths.put("chunk load", () -> TerminalActivity.sync(level, level.getChunkAt(pump)));
         UnreadableChecks.assertSavedDataNoThrow(
                 helper, "terminal activity", level.getServer(), RepairState.TYPE, paths);
         if (!level.getBlockState(pump).equals(before)) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "unreadable repair data must leave the terminal as it was: %s, now %s",
-                    before, level.getBlockState(pump));
+                    before,
+                    level.getBlockState(pump));
         }
         helper.succeed();
     }
 
     /** In the world: a lit lamp lights its block to 15, and the same lamp turned dark leaves it unlit. */
-    @GameTest
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aLitLampGivesFullLightAndADarkOneNone(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
         BlockPos lamp = new BlockPos(2, 1, 2);
         BlockPos absolute = helper.absolutePos(lamp);
-        helper.setBlock(lamp, ColonyBlocks.COMPANY_LAMP.defaultBlockState());
-        helper.startSequence()
-                .thenWaitUntil(() -> requireLight(helper, absolute, 15))
-                .thenExecute(() -> helper.setBlock(
-                        lamp, ColonyBlocks.COMPANY_LAMP.defaultBlockState().setValue(TextureProperties.ACTIVE, false)))
-                .thenWaitUntil(() -> requireLight(helper, absolute, 0))
-                .thenSucceed();
+        BlockState lit = ColonyBlocks.COMPANY_LAMP.defaultBlockState();
+        helper.setBlock(lamp, lit);
+        int[] phase = {0};
+        FarChunks.Deadline[] deadline = {FarChunks.deadline()};
+        TestTicks.each(helper, () -> {
+            switch (phase[0]) {
+                case 0 -> {
+                    if (awaitLight(helper, level, absolute, 15, deadline[0])) {
+                        helper.setBlock(lamp, lit.setValue(TextureProperties.ACTIVE, false));
+                        deadline[0] = FarChunks.deadline();
+                        phase[0] = 1;
+                    }
+                }
+                case 1 -> {
+                    if (awaitLight(helper, level, absolute, 0, deadline[0])) {
+                        phase[0] = 2;
+                        helper.succeed();
+                    }
+                }
+                case 2 -> {}
+                default -> throw new IllegalStateException("phase " + phase[0]);
+            }
+        });
     }
 
-    private static void requireLight(GameTestHelper helper, BlockPos absolute, int expected) {
-        int light = helper.getLevel().getBrightness(LightLayer.BLOCK, absolute);
-        if (light != expected) {
-            throw helper.assertionException("the block light at the lamp is %s, expected %s", light, expected);
-        }
+    /** Whether the block light at {@code absolute} is {@code expected}; fails the test once the deadline passes. */
+    private static boolean awaitLight(
+            GameTestHelper helper, ServerLevel level, BlockPos absolute, int expected, FarChunks.Deadline deadline) {
+        int light = level.getBrightness(LightLayer.BLOCK, absolute);
+        deadline.await(
+                helper,
+                level,
+                light == expected,
+                () -> String.format(
+                        "the block light at the lamp is %s, expected %s (light work pending: %s)",
+                        light, expected, level.getLightEngine().hasLightWork()));
+        return light == expected;
     }
 
     /** Pins the property name: blockstate files and saved worlds use it. */
     @GameTest
     public void thePropertyIsCalledActive(GameTestHelper helper) {
         if (!TextureProperties.ACTIVE.getName().equals("active")) {
-            throw helper.assertionException("the property is called %s", TextureProperties.ACTIVE.getName());
+            throw failure(helper, "the property is called %s", TextureProperties.ACTIVE.getName());
         }
         helper.succeed();
     }

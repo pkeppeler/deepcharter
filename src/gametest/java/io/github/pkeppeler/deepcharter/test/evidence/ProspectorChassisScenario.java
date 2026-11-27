@@ -1,12 +1,15 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -21,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.Set;
@@ -36,7 +40,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -69,9 +72,6 @@ public class ProspectorChassisScenario extends EvidenceScenario {
     private static final float LOOK_DOWN = 40f;
     /** The navigator looks along the slab, across the pod, so that the camera behind sees both riders side by side. */
     private static final float SIDE_ON = 90f;
-
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     @Override
     protected String name() {
@@ -109,6 +109,10 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                         Z + SLAB_RADIUS,
                         Blocks.AIR);
                 level.setBlock(console, HangarTerminal.TYPE.block().defaultBlockState(), 3);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), TestLayers.SURFACE, X, Z, SLAB_RADIUS);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel level = server.overworld();
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setPermanentlyInvulnerable(true);
                 player.getInventory().clearContent();
@@ -201,10 +205,10 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                 player.onUpdateAbilities();
                 player.addEffect(new MobEffectInstance(
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-                StructureSite prospector = LayerStructures.prospector(server)
+                StructureSite prospector = LayerStructures.prospector(
+                                TestLayers.level(server, StructureKind.WRECK.layer()))
                         .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
-                ServerLevel level = ClientLight.serverLevel(
-                        server, LayerChain.dimension(prospector.kind().layer()));
+                ServerLevel level = TestLayers.level(server, prospector.kind().layer());
                 BoundingBox box = prospector.bounds();
                 for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
                     for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {
@@ -348,15 +352,6 @@ public class ProspectorChassisScenario extends EvidenceScenario {
         }
     }
 
-    /** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow. */
-    private static Vec3 at(StructureSite site, double u, double y, double v) {
-        BlockPos origin = site.origin();
-        return new Vec3(
-                origin.getX() + 0.5 + (site.alongZ() ? v : u),
-                origin.getY() + y,
-                origin.getZ() + 0.5 + (site.alongZ() ? u : v));
-    }
-
     /** Puts the player at {@code at} in the site's layer, looking at {@code target}. */
     private static void fly(TestSingleplayerContext singleplayer, StructureSite site, Vec3 at, Vec3 target) {
         Vec3 d = target.subtract(at);
@@ -368,15 +363,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
             player.teleportTo(
-                    ClientLight.serverLevel(
-                            server, LayerChain.dimension(site.kind().layer())),
-                    at.x,
-                    at.y,
-                    at.z,
-                    Set.of(),
-                    yaw,
-                    pitch,
-                    true);
+                    TestLayers.level(server, site.kind().layer()), at.x, at.y, at.z, Set.of(), yaw, pitch, true);
         });
     }
 }

@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalInt;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
@@ -18,7 +18,8 @@ public final class Zones {
     /** Zone names per layer (index 0 is layer 1), top to bottom. A layer with no entry has no zones yet. */
     private static final List<List<String>> NAMES = List.of(
             List.of("topsoil_claims", "stone_benches", "deep_claim"),
-            List.of("upper_levels", "shift_change", "prospectors_run"));
+            List.of("upper_levels", "shift_change", "prospectors_run"),
+            List.of("garden", "spore_fields", "quiet"));
 
     private Zones() {}
 
@@ -31,10 +32,10 @@ public final class Zones {
      */
     public record Zone(int layer, int index, Identifier id) {}
 
-    /** Checks at server start that the names cover every layer of the chain. */
+    /** Checks at server start that the names cover every layer of the chain, as the overworld lays it out. */
     public static void init() {
         ServerLifecycleEvents.SERVER_STARTED.register(
-                server -> requireNamesFor(LayerChain.count(server.registryAccess())));
+                server -> requireNamesFor(LayerChain.layerCount(server.overworld())));
     }
 
     /** A chain with a layer that has no zone names is a bug, found at start-up and not on a tick. */
@@ -47,12 +48,11 @@ public final class Zones {
 
     /** The zone at {@code y}; empty on the surface and outside the layer's height, so any player Y is safe to ask. */
     public static Optional<Zone> of(Level level, int y) {
-        OptionalInt found = LayerChain.layerOf(
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
-        if (found.isEmpty()) {
+        Optional<Band> band = LayerChain.layerAt(level, y);
+        if (band.isEmpty()) {
             return Optional.empty();
         }
-        return of(found.getAsInt(), level.getMinY(), level.getHeight(), y);
+        return of(band.get().layer(), band.get().minY(), band.get().height(), y);
     }
 
     /** The zone at {@code y} of a layer of {@code height} blocks from {@code minY}; empty for an unnamed layer or an outside y. */

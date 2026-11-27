@@ -206,7 +206,12 @@ class RecipeRulesTest(unittest.TestCase):
         self.assertEqual([(255, 255, 255, 255), (0, 0, 0, 255), (0x10, 0x20, 0x30, 255)],
                          [image.get(0, 0), image.get(16, 16), image.get(31, 31)])
 
-    def test_a_size_that_is_not_16_or_32_fails(self):
+    def test_an_18_recipe_draws_the_mob_effect_icon_size(self):
+        image = self.book({"mob_effect/x": {"kind": "cutout", "size": 18, "layers": [
+            {"op": "fill", "colour": "ramp.0"}]}}).image("mob_effect/x")
+        self.assertEqual((18, 18), (image.width, image.height))
+
+    def test_a_size_that_is_not_16_18_or_32_fails(self):
         with self.assertRaisesRegex(RecipeError, "block/x: size 24 is not one of"):
             self.book({"block/x": {"kind": "opaque", "size": 24, "layers": [{"op": "fill", "colour": "ink"}]}})
 

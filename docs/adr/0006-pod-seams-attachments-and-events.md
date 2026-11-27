@@ -4,6 +4,8 @@ status: accepted
 
 # Pod seams: attachments for state, events for behaviour
 
+Amended 2026-10-22 (#745) by [ADR 0061](0061-a-crossing-in-the-campaign-world-is-an-event-in-place-found-by-the-root-vehicles-y-with-the-crust-rows-as-hysteresis.md): `BreachEvents.CROSSED` also fires with the same level as `from` and `to`, for a crossing inside the campaign world, which moves nothing. A listener that assumes the entity arrived as a new instance must check `from != to` first.
+
 M2 adds about 30 features that all touch pods. They share no file: new pod state is a versioned Fabric data attachment, and pod behaviour changes through `PodEvents`. After #51, `PodEntity`, `PodData`, `PodMovement` and `PodTuning` take no more edits (#60 is the one exception, for `PodStats`).
 
 ## Pod state is an attachment

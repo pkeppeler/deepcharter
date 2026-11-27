@@ -1,12 +1,14 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.outpost.OutpostTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
@@ -17,6 +19,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.suit.SuitTrack;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Run;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
@@ -27,9 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Blocks;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +54,13 @@ public class EconomyAffordabilityTest {
     private static final int CONSOLE_TIER_TWO_RUNS = 2;
 
     private static final int CONSOLE_TIER_THREE_RUNS = 4;
+    /**
+     * The heat shield's tier 2 (#712), the best a Mole takes, in runs of a Mole with tier 2 parts in layer 2 at most; its tier 3, a Prospector's, in runs of a
+     * Prospector with tier 3 parts in layer 2 at most. Tier 1 is crafted.
+     */
+    private static final int HEAT_SHIELD_TIER_TWO_RUNS = 4;
+
+    private static final int HEAT_SHIELD_TIER_THREE_RUNS = 2;
     /** The radiator matters from layer 3 on, and its first purchase, tier 2 now that tier 1 is crafted, costs what the others' tier 3 does: this many layer 2 runs of a Mole with tier 2 parts, at most. */
     private static final int RADIATOR_RUNS = 5;
     /** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -77,15 +85,27 @@ public class EconomyAffordabilityTest {
      */
     private record Target(boolean layerTwo, double minRuns, double maxRuns) {}
 
-    private static final Map<Consumable, Target> ITEM_TARGETS = Map.of(
-            Consumable.RESERVE_FUEL_TANK, new Target(false, 0.25, 1),
-            Consumable.DYNAMITE, new Target(false, 0.25, 1),
-            Consumable.QUANTUM_TELEPORTER, new Target(true, 1.5, 2),
-            Consumable.PLASTIC_EXPLOSIVES, new Target(true, 0.25, 1),
-            Consumable.BLASTING_CHARGE, new Target(false, 0.25, 1),
-            Consumable.SHAPED_CHARGE, new Target(false, 0.25, 1),
-            Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1),
-            Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4));
+    private static final Map<Consumable, Target> ITEM_TARGETS = Map.ofEntries(
+            Map.entry(Consumable.RESERVE_FUEL_TANK, new Target(false, 0.25, 1)),
+            Map.entry(Consumable.DYNAMITE, new Target(false, 0.25, 1)),
+            Map.entry(Consumable.QUANTUM_TELEPORTER, new Target(true, 1.5, 2)),
+            Map.entry(Consumable.PLASTIC_EXPLOSIVES, new Target(true, 0.25, 1)),
+            Map.entry(Consumable.BLASTING_CHARGE, new Target(false, 0.25, 1)),
+            Map.entry(Consumable.SHAPED_CHARGE, new Target(false, 0.25, 1)),
+            Map.entry(Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1)),
+            Map.entry(Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4)),
+            // The thrown kit (#985) is a round, not a tool: a flare a tenth of a layer 1 run, a decoy a fifth, a charge
+            // under half.
+            Map.entry(Consumable.THROWN_FLARE, new Target(false, 0.05, 0.15)),
+            Map.entry(Consumable.THROWN_DECOY, new Target(false, 0.15, 0.30)),
+            Map.entry(Consumable.THROWN_CHARGE, new Target(false, 0.35, 0.55)),
+            Map.entry(Consumable.TETHER, new Target(false, 0.25, 1)),
+            // On foot (#987): the driver is about two fifths of a layer 2 run, a pack of bolts a twentieth.
+            Map.entry(Consumable.BOLT_DRIVER, new Target(true, 0.25, 1)),
+            Map.entry(Consumable.BOLT, new Target(true, 0.02, 0.25)),
+            // A layer 3 item (#1194), about a third of a Mole layer 2 run: a minute of suit that a trip below layer
+            // 2 buys.
+            Map.entry(Consumable.AIR_CANISTER, new Target(true, 0.25, 0.5)));
 
     private static Run stockRunInLayerOne() {
         return EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);
@@ -96,15 +116,7 @@ public class EconomyAffordabilityTest {
     }
 
     private static Run upgradedRunInLayerTwo(float extraMass) {
-        return EarlyRunModel.run(
-                Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks(), extraMass);
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
+        return EarlyRunModel.layerTwoRun(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), extraMass);
     }
 
     /**
@@ -166,10 +178,9 @@ public class EconomyAffordabilityTest {
      */
     @GameTest
     public void theLinerTierTwoIsAffordableAfterItsLayerTwoRuns(GameTestHelper helper) {
-        Run run = EarlyRunModel.run(
+        Run run = EarlyRunModel.layerTwoRun(
                 Zone.load("upper_levels"),
                 EarlyRunModel.withLiner(EarlyRunModel.mole(2, 2, 2), 2),
-                EarlyRunModel.layerOneBlocks(),
                 EarlyRunModel.hopperMass());
         long price = UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 2);
         LOGGER.info("[economy] liner tier 2 ${}: {} layer 2 runs of {}", price, run.toAfford(price), run);
@@ -181,6 +192,146 @@ public class EconomyAffordabilityTest {
                     run.toAfford(price),
                     run.net(),
                     LINER_TIER_TWO_RUNS);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The heat shield (#712) is the lava ladder's rung 3 and is bought in layer 2 or below: tier 2 ($1,250, the best a Mole takes) in at most {@value #HEAT_SHIELD_TIER_TWO_RUNS}
+     * runs of a Mole with tier 2 parts, tier 3 ($2,500, a Prospector's) in at most {@value #HEAT_SHIELD_TIER_THREE_RUNS} layer 2 runs of a Prospector with tier 3 parts. Tier 1 is crafted.
+     */
+    @GameTest
+    public void theHeatShieldTiersTwoAndThreeAreAffordableAfterTheirLayerTwoRuns(GameTestHelper helper) {
+        Run mole = upgradedRunInLayerTwo();
+        Run prospector = EarlyRunModel.run(
+                Chassis.PROSPECTOR,
+                Zone.load("upper_levels"),
+                EarlyRunModel.mole(3, 3, 3),
+                EarlyRunModel.layerOneBlocks(),
+                0f);
+        long tierTwo = UpgradeTuning.DEFAULT.price(ComponentTrack.HEAT_SHIELD, 2);
+        long tierThree = UpgradeTuning.DEFAULT.price(ComponentTrack.HEAT_SHIELD, 3);
+        LOGGER.info(
+                "[economy] heat shield tier 2 ${}: {} Mole layer 2 runs of {}; tier 3 ${}: {} Prospector layer 2 runs of {}",
+                tierTwo,
+                mole.toAfford(tierTwo),
+                mole,
+                tierThree,
+                prospector.toAfford(tierThree),
+                prospector);
+        if (tierTwo != 1250L || tierThree != 2500L) {
+            throw failure(
+                    helper,
+                    "the heat shield's tiers 2 and 3 cost $1250 and $2500, found $%d and $%d",
+                    tierTwo,
+                    tierThree);
+        }
+        if (mole.toAfford(tierTwo) > HEAT_SHIELD_TIER_TWO_RUNS) {
+            throw failure(
+                    helper,
+                    "heat shield tier 2 costs $%d, which is %d Mole layer 2 runs of $%.0f; at most %d are allowed",
+                    tierTwo,
+                    mole.toAfford(tierTwo),
+                    mole.net(),
+                    HEAT_SHIELD_TIER_TWO_RUNS);
+        }
+        if (prospector.toAfford(tierThree) > HEAT_SHIELD_TIER_THREE_RUNS) {
+            throw failure(
+                    helper,
+                    "heat shield tier 3 costs $%d, which is %d Prospector layer 2 runs of $%.0f; at most %d are allowed",
+                    tierThree,
+                    prospector.toAfford(tierThree),
+                    prospector.net(),
+                    HEAT_SHIELD_TIER_THREE_RUNS);
+        }
+        helper.succeed();
+    }
+
+    /** The suit tracks' tiers 1 and 2 are bought in at most this many layer 2 runs of a Mole with tier 2 parts, as the runs that fund them. */
+    private static final int SUIT_TIER_ONE_RUNS = 2;
+
+    private static final int SUIT_TIER_TWO_RUNS = 4;
+    /** Tier 3 of heat and pressure is a Prospector's buy in at most this many layer 2 runs, and the air track's, which also raises capacity, in one more. */
+    private static final int SUIT_TIER_THREE_RUNS = 2;
+
+    private static final int SUIT_AIR_TIER_THREE_RUNS = 3;
+
+    /**
+     * The suit tracks (#1064, A) matter from layer 3 down and are bought in layer 2 or below, so they are banded against the layer 2 runs
+     * that fund them: tier 1 in at most {@value #SUIT_TIER_ONE_RUNS} runs of a Mole with tier 2 parts, tier 2 in at most
+     * {@value #SUIT_TIER_TWO_RUNS}, tier 3 in at most {@value #SUIT_TIER_THREE_RUNS} runs of a Prospector with tier 3 parts
+     * ({@value #SUIT_AIR_TIER_THREE_RUNS} for the air track). The prices are written out so that the code cannot move them.
+     */
+    @GameTest
+    public void theSuitTracksAreAffordableForTheDepthTheyAnswer(GameTestHelper helper) {
+        Run mole = upgradedRunInLayerTwo();
+        Run prospector = EarlyRunModel.run(
+                Chassis.PROSPECTOR,
+                Zone.load("upper_levels"),
+                EarlyRunModel.mole(3, 3, 3),
+                EarlyRunModel.layerOneBlocks(),
+                0f);
+        long[][] prices = {{450, 1_100, 2_500}, {450, 1_100, 2_500}, {550, 1_400, 3_000}};
+        for (SuitTrack track : SuitTrack.values()) {
+            for (int tier = 1; tier <= track.maxTier(); tier++) {
+                long price = track.price(tier);
+                Run funder = tier == 3 ? prospector : mole;
+                int runs = funder.toAfford(price);
+                int allowed = tier == 1
+                        ? SUIT_TIER_ONE_RUNS
+                        : tier == 2
+                                ? SUIT_TIER_TWO_RUNS
+                                : track == SuitTrack.AIR ? SUIT_AIR_TIER_THREE_RUNS : SUIT_TIER_THREE_RUNS;
+                LOGGER.info(
+                        "[economy] suit {} tier {} ${}: {} {} layer 2 runs of {}",
+                        track,
+                        tier,
+                        price,
+                        runs,
+                        tier == 3 ? "Prospector" : "Mole",
+                        funder);
+                if (price != prices[track.ordinal()][tier - 1]) {
+                    throw failure(
+                            helper,
+                            "suit %s tier %d costs $%d, expected $%d",
+                            track,
+                            tier,
+                            price,
+                            prices[track.ordinal()][tier - 1]);
+                }
+                if (runs > allowed) {
+                    throw failure(
+                            helper,
+                            "suit %s tier %d costs $%d, which is %d %s layer 2 runs of $%.0f; at most %d are allowed",
+                            track,
+                            tier,
+                            price,
+                            runs,
+                            tier == 3 ? "Prospector" : "Mole",
+                            funder.net(),
+                            allowed);
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /** A track's tiers climb in price: each tier costs more than the one below it, so the order they are bought in is the order they are priced in. */
+    @GameTest
+    public void everySuitTierCostsMoreThanTheOneBelow(GameTestHelper helper) {
+        for (SuitTrack track : SuitTrack.values()) {
+            for (int tier = 2; tier <= track.maxTier(); tier++) {
+                if (track.price(tier) <= track.price(tier - 1)) {
+                    throw failure(
+                            helper,
+                            "suit %s tier %d costs $%d, not more than tier %d's $%d",
+                            track,
+                            tier,
+                            track.price(tier),
+                            tier - 1,
+                            track.price(tier - 1));
+                }
+            }
         }
         helper.succeed();
     }
@@ -229,10 +380,9 @@ public class EconomyAffordabilityTest {
     @GameTest
     public void aLinedRunToLayerTwoNetsMoreThanAnUnlinedLayerOneRun(GameTestHelper helper) {
         Run layerOne = stockRunInLayerOne();
-        Run lined = EarlyRunModel.run(
+        Run lined = EarlyRunModel.layerTwoRun(
                 Zone.load("upper_levels"),
                 EarlyRunModel.withLiner(EarlyRunModel.mole(2, 2, 2), 2),
-                EarlyRunModel.layerOneBlocks(),
                 EarlyRunModel.hopperMass());
         LOGGER.info(
                 "[economy] lined layer 2 run {}; an unlined layer 1 run nets ${}", lined, Math.round(layerOne.net()));
@@ -300,10 +450,8 @@ public class EconomyAffordabilityTest {
      */
     @GameTest
     public void theSounderTierTwoIsAffordableAfterItsLayerTwoRuns(GameTestHelper helper) {
-        Run run = EarlyRunModel.run(
-                Zone.load("upper_levels"),
-                EarlyRunModel.withSounder(EarlyRunModel.mole(2, 2, 2), 2),
-                EarlyRunModel.layerOneBlocks());
+        Run run = EarlyRunModel.layerTwoRun(
+                Zone.load("upper_levels"), EarlyRunModel.withSounder(EarlyRunModel.mole(2, 2, 2), 2));
         long price = UpgradeTuning.DEFAULT.price(ComponentTrack.SOUNDER, 2);
         LOGGER.info("[economy] sounder tier 2 ${}: {} layer 2 runs of {}", price, run.toAfford(price), run);
         if (run.toAfford(price) > SOUNDER_TIER_TWO_RUNS) {
@@ -364,13 +512,13 @@ public class EconomyAffordabilityTest {
     /**
      * Tank refills that a one-way bore of all of layer 1 takes, for a Mole whose tank is of tier 0 to 6, in the deepest zone (it
      * changes drill time per slab through the ore's hardness, so it is the dearest). Literals: a change to the tank ladder, the burn
-     * rates, the drill or layer 1's height moves them.
+     * rates (#963 cut them to about a seventh, so a bore is 20 L and the tank ladder buys it in 3 refills or fewer), the drill or layer 1's height moves them.
      */
-    private static final int[] BORE_TANKS_BY_TANK_TIER = {14, 10, 6, 4, 3, 2, 1};
+    private static final int[] BORE_TANKS_BY_TANK_TIER = {3, 2, 1, 1, 1, 1, 1};
 
-    private static final int BORE_LITRES = 139;
+    private static final int BORE_LITRES = 20;
     /** Litres (in tenths) of a braked drive down layer 1's 192 blocks at 0.6 blocks per tick: 16 s, the rotor on half of it. */
-    private static final int DRIVE_DOWN_DECILITRES = 20;
+    private static final int DRIVE_DOWN_DECILITRES = 3;
     /** The terminal sink speed of a pod in blocks per tick: gravity 0.08 times drag 0.98 over the 0.02 the drag removes. */
     private static final double FREE_FALL_TERMINAL_SINK = 3.92;
 
@@ -392,6 +540,13 @@ public class EconomyAffordabilityTest {
             throw failure(helper, "a one-way bore of layer 1 burns %.1f L, expected %d", litres, BORE_LITRES);
         }
         for (int tier = 0; tier < BORE_TANKS_BY_TANK_TIER.length; tier++) {
+            // The refill counts are mostly 1 now that a tank is minutes of play (#963), so they pin little: each tier's
+            // price must also buy a bigger tank.
+            if (tier > 0
+                    && !(EarlyRunModel.mole(0, tier, 0).tankLitres()
+                            > EarlyRunModel.mole(0, tier - 1, 0).tankLitres())) {
+                throw failure(helper, "tank tier %d must hold more than tier %d", tier, tier - 1);
+            }
             int tanks = (int) Math.ceil(litres / EarlyRunModel.mole(0, tier, 0).tankLitres());
             LOGGER.info("[fuel] tank tier {}: {} tanks", tier, tanks);
             if (tanks != BORE_TANKS_BY_TANK_TIER[tier]) {
@@ -429,7 +584,94 @@ public class EconomyAffordabilityTest {
         helper.succeed();
     }
 
-    /** The layer 2 runs assume a pod that starts at the bottom of layer 1's shaft; the Prospector takes this many of them. */
+    /** The slabs and the net dollars of a Mole with tier 2 parts in `upper_levels`, from the outpost (#320) and, as before, from the surface. Literals: a change to the fuel, the drill, the ore or the outpost's terms moves them. */
+    private static final int OUTPOST_RUN_SLABS = 48;
+
+    private static final int OUTPOST_RUN_NET = 455;
+    private static final int SURFACE_START_RUN_SLABS = 31;
+    private static final int SURFACE_START_RUN_NET = 370;
+    /** What the outpost's prices take from a layer 2 run, as a share of what the same run nets at the colony's prices, at least and at most. */
+    private static final double OUTPOST_TERMS_SHARE_MIN = 0.15;
+
+    private static final double OUTPOST_TERMS_SHARE_MAX = 0.35;
+
+    /**
+     * A layer 2 run starts at the outpost on the layer 1 floor (#320): the pod is at the bottom of the shaft with a full tank and climbs only the slabs it
+     * bored, so it bores deeper on the same tank than a run that starts at the surface and climbs the whole shaft back. The outpost's prices (dearer fuel,
+     * a smaller share of the ore) take a fifth to a third of the run, so the colony still pays more for the same ore, and the run still nets more than
+     * the one that starts at the surface, so the outpost is worth building.
+     */
+    @GameTest
+    public void aLayerTwoRunStartsAtTheOutpostWithAFullTankAndNetsMoreThanOneFromTheSurface(GameTestHelper helper) {
+        Zone zone = Zone.load("upper_levels");
+        PodStats stats = EarlyRunModel.mole(2, 2, 2);
+        Run outpost = EarlyRunModel.layerTwoRun(zone, stats);
+        Run surface = EarlyRunModel.run(zone, stats, EarlyRunModel.layerOneBlocks());
+        double colonyNet = outpost.gross() * 100 / OutpostTuning.DEFAULT.sellPercent()
+                - outpost.litres() * FuelTuning.DEFAULT.pricePerLitre();
+        double share = 1 - outpost.net() / colonyNet;
+        LOGGER.info(
+                "[economy] layer 2 run from the outpost {}; from the surface {}; the outpost's prices take {} of the colony-priced net ${}",
+                outpost,
+                surface,
+                share,
+                Math.round(colonyNet));
+        if (outpost.slabs() != OUTPOST_RUN_SLABS || Math.round(outpost.net()) != OUTPOST_RUN_NET) {
+            throw failure(
+                    helper,
+                    "a layer 2 run from the outpost bores %d slabs and nets $%.0f, expected %d and $%d",
+                    outpost.slabs(),
+                    outpost.net(),
+                    OUTPOST_RUN_SLABS,
+                    OUTPOST_RUN_NET);
+        }
+        if (surface.slabs() != SURFACE_START_RUN_SLABS || Math.round(surface.net()) != SURFACE_START_RUN_NET) {
+            throw failure(
+                    helper,
+                    "a layer 2 run from the surface bores %d slabs and nets $%.0f, expected %d and $%d",
+                    surface.slabs(),
+                    surface.net(),
+                    SURFACE_START_RUN_SLABS,
+                    SURFACE_START_RUN_NET);
+        }
+        if (outpost.litres() > stats.tankLitres()) {
+            throw failure(
+                    helper,
+                    "a layer 2 run from the outpost burns %.1f L of a %.1f L tank: it has no pump underground",
+                    outpost.litres(),
+                    stats.tankLitres());
+        }
+        if (outpost.net() <= surface.net()) {
+            throw failure(
+                    helper,
+                    "a run from the outpost nets $%.0f, no more than the $%.0f of one from the surface",
+                    outpost.net(),
+                    surface.net());
+        }
+        if (share < OUTPOST_TERMS_SHARE_MIN || share > OUTPOST_TERMS_SHARE_MAX) {
+            throw failure(
+                    helper,
+                    "the outpost's prices take %.2f of the run's colony-priced net, outside %.2f to %.2f",
+                    share,
+                    OUTPOST_TERMS_SHARE_MIN,
+                    OUTPOST_TERMS_SHARE_MAX);
+        }
+        helper.succeed();
+    }
+
+    /** The ore in the outpost kit's recipe (four Bronzium, two Ironium) is worth less than one layer 2 run, so a charter builds its outpost on the first one. */
+    @GameTest
+    public void theOutpostKitsOreCostsLessThanOneLayerTwoRun(GameTestHelper helper) {
+        long ore = 4L * OreType.BRONZIUM.value() + 2L * OreType.IRONIUM.value();
+        double run = upgradedRunInLayerTwo().net();
+        LOGGER.info("[economy] outpost kit: ${} of ore against a layer 2 run of ${}", ore, Math.round(run));
+        if (ore > run) {
+            throw failure(helper, "the outpost kit's ore is worth $%d, more than a layer 2 run of $%.0f", ore, run);
+        }
+        helper.succeed();
+    }
+
+    /** The layer 2 runs start at the charter's outpost at the bottom of layer 1's shaft (#320), with a full tank; the Prospector takes this many of them, as it did from the surface. */
     @GameTest
     public void theProspectorRestoreTakesTheLayerTwoRunsThePlanSays(GameTestHelper helper) {
         int runs = upgradedRunInLayerTwo()
@@ -488,8 +730,7 @@ public class EconomyAffordabilityTest {
     @GameTest
     public void theCompanyAdvanceIsAtLeastTheCicatriumTheProspectorRestoreTakes(GameTestHelper helper) {
         HangarTuning.RestoreCost cost = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR);
-        Run run = EarlyRunModel.run(
-                Zone.load("prospectors_run"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+        Run run = EarlyRunModel.layerTwoRun(Zone.load("prospectors_run"), EarlyRunModel.mole(2, 2, 2));
         LOGGER.info(
                 "[economy] Prospector restore: {} Cicatrium, {} advanced; from ore alone, at {} per run in the deepest zone, it would take {} runs",
                 cost.catalysts(),
@@ -509,7 +750,7 @@ public class EconomyAffordabilityTest {
     @GameTest
     public void cicatriumFoundInTheOreIsNotAnIncomeStream(GameTestHelper helper) {
         Zone deepest = Zone.load("prospectors_run");
-        Run run = EarlyRunModel.run(deepest, EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+        Run run = EarlyRunModel.layerTwoRun(deepest, EarlyRunModel.mole(2, 2, 2));
         double sold = run.catalysts() * OreType.CICATRIUM.value();
         LOGGER.info(
                 "[economy] a layer 2 run in prospectors_run: {} Cicatrium, ${} if sold, against ${} of other ore",

@@ -5,10 +5,10 @@ The Ribbon is one slim band along the top edge with a bar for each gauge, the al
 hung from its right end, and a plate for the text readout under that. The sprites are under textures/gui/sprites/cockpit/ribbon/ in src/main/resources/assets/deepcharter/. A
 resource pack restyles the Ribbon key by key, or turns it off with `enabled` 0 (ADR 0032, docs/design/skins.md).
 
-    python3 tools/cockpit_ribbon.py              write the sprites and the theme file
-    python3 tools/cockpit_ribbon.py --check      list the files that differ from what the generator makes (what the test runs)
-    python3 tools/cockpit_ribbon.py --preview D  write a mock of the Ribbon in each state on a 427 x 240 screen into directory D
-    python3 tools/cockpit_ribbon.py --coverage   print the share of a 427 x 240 screen the Ribbon covers
+    tools/py tools/cockpit_ribbon.py              write the sprites and the theme file
+    tools/py tools/cockpit_ribbon.py --check      list the files that differ from what the generator makes (what the test runs)
+    tools/py tools/cockpit_ribbon.py --preview D  write a mock of the Ribbon in each state on a 427 x 240 screen into directory D
+    tools/py tools/cockpit_ribbon.py --coverage   print the share of a 427 x 240 screen the Ribbon covers, and vanilla's hotbar beside it
 
 Standard library only. A sprite is the same bytes on every run: the only randomness is `random.Random` with a fixed seed, and every coordinate is a whole number, never
 `round`, which breaks a tie to the even number on one machine and the other way on another.
@@ -47,13 +47,18 @@ BEZEL_W, MARGIN = 112, 7
 STATUS_BUDGET = 0.09
 
 GAUGES = ("fuel", "hull", "depth", "heat", "cargo")
-LAMPS = 4
+LAMPS = 5
+# The cargo slot's gauge reads the pod's load (#1449): the climb limit is marked after this many of its segments, so each segment under the mark is a tenth of
+# the climb limit and the three past it show how far over the pod is, to 130%.
+LOAD_LIMIT_SEGMENT = 10
+# The load gauge's title, as the game draws it in its own font on a plate cut from the readout plate, hung under the gauge from the band's lower edge.
+LOAD_TITLE = "LOAD"
 KIND = {"across": 0, "up": 1}
 SHARED = {
     "enabled": 1, "minGuiWidth": MIN_GUI_W, "minGuiHeight": MIN_GUI_H,
     "fuelColor": "#F0A010", "hullColor": "#58B05A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
     "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "plateGap": 2,
-    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5,
+    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5, "titleGap": 0, "titleTextHeight": 7,
     "cameraInstalled": 0, "cameraStaticPerHull": 4.0, "cameraStaticFallPerTick": 0.03, "cameraStaticDots": 2400, "cameraDotSize": 2,
     "cameraLensHeatPerTick": 0.01, "cameraLensCoolPerTick": 0.02, "cameraLensDead": 1.0, "cameraLensRecover": 0.6,
     "cameraFlickerMaxChance": 0.35, "cameraFlickerMinTicks": 2, "cameraFlickerMaxTicks": 6, "cameraHazeLines": 14, "cameraHazeAlpha": 90, "cameraVeilAlpha": 150, "cameraDotAlphaMin": 80, "cameraTearBands": 6, "cameraTearAlpha": 90,
@@ -63,7 +68,13 @@ SHARED = {
     "decayCellTicks": 3, "decayDeadColor": "#0A0E0D", "decayBaseNoise": 0.7, "decayStaticDots": 400, "decayDotSize": 1, "decayDotAlphaMin": 70, "decayStaticColor": "#B8C4C0",
     "decayTearBands": 3, "decayTearAlpha": 70, "decayTagColor": "#9FB0AB", "decayLostColor": "#FF3A2A",
     "decayCueSlowTicks": 70, "decayCueFastTicks": 12, "decayAlarmTicks": 20,
+    # The SINK readout (#1432): the sink against the hard-landing buffer, the title and a bar on a plate hung under the band's middle while the pod sinks past
+    # sinkShowShare of the buffer. The bar's limit mark is after sinkLimit of its segments; it turns ribbonWarn from sinkWarnShare of the buffer and lowColor past
+    # it, and stays sinkHoldTicks after the sink.
+    "ribbonWarn": "#FFB02E", "sinkShowShare": 0.6, "sinkWarnShare": 0.75, "sinkBarW": 12, "sinkBarH": 5, "sinkSegments": 4, "sinkLimit": 3, "sinkBarGap": 2, "sinkHoldTicks": 20,
 }
+# The width of the SINK readout's title, "SINK", as the game's font measures it: its I is narrower than FONT_W.
+SINK_TITLE_W = 22
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -221,8 +232,8 @@ def bar_labels(img, x, y, text):
 
 
 def lamp_well(img, x, y):
-    """The recess for the warning lamps: one dark slot that LAMPS lamps of 5 x 5 light in the game. Returns the slot's width."""
-    width = LAMPS * 5 + (LAMPS - 1) * SHARED["lampGap"]
+    """The recess for the warning lamps: one dark slot that LAMPS lamps of 4 x 5 light in the game. Returns the slot's width."""
+    width = LAMPS * 4 + (LAMPS - 1) * SHARED["lampGap"]
     well(img, x, y, width, 5)
     return width
 
@@ -240,10 +251,11 @@ def ribbon():
     w, h, bar_w, bar_h, segments = 320, 14, 26, 5, 13
     band = slab(w, h, (0, 0, 6, 6), random.Random(448_11))
     place = Placed(w, h, 1, 0, 0, 0)
-    for name, ux, text in (("fuel", 8, "F"), ("hull", 46, "H"), ("cargo", 84, "C"), ("depth", 203, "D"), ("heat", 241, "T")):
+    for name, ux, text in (("fuel", 8, "F"), ("hull", 46, "H"), ("cargo", 84, "L"), ("depth", 203, "D"), ("heat", 241, "T")):
         bar_labels(band, ux, 3, text)
         well(band, ux + 7, 4, bar_w, bar_h)
         look.gauge(name, "across", place.inner(ux + 7, 4, bar_w, bar_h), segments)
+    look.keys[STYLE + "CargoLimit"] = LOAD_LIMIT_SEGMENT
     well(band, 124, 2, 72, 10)  # the altimeter's recess
     lamps_w = lamp_well(band, 284, 4)
     look.lamps(place.inner(284, 4, lamps_w, 5))
@@ -296,14 +308,16 @@ def write() -> None:
 
 # The states the stills are shot in: the pod's real values, the numbers the plate shows and the alert lines (the plain readout's lines after the first four).
 STATES = {
-    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "Y150"], "alerts": [], "lamps": [0, 0, 0, 0],
+    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "Y150"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
              "lines": ["Hull 100/100", "Fuel 78%", "Cargo 0", "Y 150"]},
-    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "cargo": 0.25, "tally": ["90/100", "12%", "3", "Y150"], "alerts": [], "lamps": [1, 0, 0, 0],
+    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "cargo": 0.25, "tally": ["90/100", "12%", "3", "Y150"], "alerts": [], "lamps": [1, 0, 0, 0, 0],
                  "lines": ["Hull 90/100", "Fuel 12%", "Cargo 3", "Y 150"]},
     "burning": {"fuel": 0.7, "hull": 0.45, "depth": 0.18, "heat": 1.0, "cargo": 0.25, "tally": ["45/100", "70%", "3", "Y150"], "alerts": ["HULL BURNING"],
-                "lamps": [0, 0, 1, 1], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Y 150", "HULL BURNING"]},
-    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.9, "tally": ["80/100", "50%", "11", "Y-420"], "alerts": [], "lamps": [0, 0, 0, 0],
-             "lines": ["Hull 80/100", "Fuel 50%", "Cargo 11", "Y -420"]},
+                "lamps": [0, 0, 1, 1, 0], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Y 150", "HULL BURNING"]},
+    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.69, "tally": ["80/100", "50%", "5", "Y-420"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
+             "lines": ["Hull 80/100", "Fuel 50%", "Cargo 5", "Y -420"]},
+    "overloaded": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.85, "tally": ["80/100", "50%", "7", "Y-420"], "alerts": ["OVERLOADED"],
+                   "lamps": [0, 0, 0, 1, 1], "lines": ["Hull 80/100", "Fuel 50%", "Cargo 7", "Y -420", "OVERLOADED"]},
 }
 FONT_W = 6  # the preview's glyphs, and the width the coverage assumes for a character of the game's font
 
@@ -335,6 +349,29 @@ def plate_size(look, state):
     return max(row_width(row) for row in rows) + left + right, len(rows) * 11 - 2 + top + bottom
 
 
+def sink_box(look):
+    """The SINK readout's plate on the 427 x 240 screen, (left, top, width, height), as the client puts it: centred under the band (under the altimeter's recess) and
+    hung from its lower edge. The coverage counts it although it shows only while the pod sinks."""
+    inset = look.sprites["plate"].border[0] + SHARED["titleGap"]
+    width = SINK_TITLE_W + SHARED["sinkBarGap"] + SHARED["sinkBarW"] + 2 * inset
+    height = max(SHARED["titleTextHeight"], SHARED["sinkBarH"]) + 2 * inset
+    band = look.parts["part_a"]
+    return band.left(SCREEN_W) + (band.w - width) // 2, band.top(SCREEN_H) + band.h, width, height
+
+
+def title_box(look):
+    """The load gauge's title plate on the 427 x 240 screen, (left, top, width, height): centred under the gauge, hung from the band's lower edge, as the client
+    puts it."""
+    t = look.keys
+    inset = look.sprites["plate"].border[0] + SHARED["titleGap"]
+    width = len(LOAD_TITLE) * FONT_W + 2 * inset  # the game measures a run of text with its last advance
+    height = SHARED["titleTextHeight"] + 2 * inset
+    gauge = Placed(t[STYLE + "CargoW"], t[STYLE + "CargoH"], t[STYLE + "CargoAnchorX"], t[STYLE + "CargoAnchorY"], t[STYLE + "CargoX"], t[STYLE + "CargoY"])
+    band = look.parts["part_a"]
+    left = gauge.left(SCREEN_W) + (gauge.w - width) // 2
+    return left, band.top(SCREEN_H) + band.h, width, height
+
+
 def coverage(look):
     """The pixels of a 427 x 240 screen the Ribbon makes opaque in the calm state, as (status, scanner): status is the band and the plate, scanner is its bezel and
     window. The sprites count by their opaque pixels, so a chamfer or a round corner does not, and a pixel under two pieces counts once."""
@@ -353,11 +390,23 @@ def coverage(look):
     plate = Placed(width, height, t[STYLE + "ReadoutAnchorX"], t[STYLE + "ReadoutAnchorY"], t[STYLE + "ReadoutX"], t[STYLE + "ReadoutY"])
     left, top = plate.left(SCREEN_W), plate.top(SCREEN_H)
     status |= {(left + i, top + j) for j in range(height) for i in range(width)}
+    for left, top, width, height in (sink_box(look), title_box(look)):
+        status |= {(left + i, top + j) for j in range(height) for i in range(width)}
     mark(scanner, look.sprites["cap"].img, look.parts["cap"])
     window = Placed(t[STYLE + "ScannerW"], t[STYLE + "ScannerH"], t[STYLE + "ScannerAnchorX"], t[STYLE + "ScannerAnchorY"], t[STYLE + "ScannerX"], t[STYLE + "ScannerY"])
     scanner |= {(window.left(SCREEN_W) + i, window.top(SCREEN_H) + j) for j in range(window.h) for i in range(window.w)}
     status -= scanner
     return len(status), len(scanner)
+
+
+# Vanilla's hotbar, which a seated pilot keeps (#1457): its 182 x 22 sprite, every pixel of it drawn (the slots are glass, not holes), at the bottom centre,
+# and the top row of the 24 x 23 selection frame, which stands a pixel over the bar. It is not a status panel: it shows what the pilot carries, not the pod.
+HOTBAR_W, HOTBAR_H, FRAME_W = 182, 22, 24
+
+
+def hotbar_coverage():
+    """The pixels of a 427 x 240 screen vanilla's hotbar covers, the selection frame's row over it included. The held item's name over it comes and goes and is not counted."""
+    return HOTBAR_W * HOTBAR_H + FRAME_W
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -393,7 +442,7 @@ def preview_lamps(img, look, flags):
     place = Placed(t[STYLE + "LampsW"], t[STYLE + "LampsH"], t[STYLE + "LampsAnchorX"], t[STYLE + "LampsAnchorY"], t[STYLE + "LampsX"], t[STYLE + "LampsY"])
     left, top = place.left(SCREEN_W), place.top(SCREEN_H)
     size = (place.w - SHARED["lampGap"] * (LAMPS - 1)) // LAMPS
-    colors = [SHARED["lowColor"], SHARED["lowColor"], SHARED["heatColor"], SHARED["depthColor"]]
+    colors = [SHARED["lowColor"], SHARED["lowColor"], SHARED["heatColor"], SHARED["depthColor"], SHARED["lowColor"]]
     for k in range(LAMPS):
         img.rect(left + k * (size + SHARED["lampGap"]), top, size, place.h, rgb(colors[k]) if flags[k] else rgb(SHARED["offColor"]))
 
@@ -420,8 +469,16 @@ def preview_look(look, state):
     for name in GAUGES:
         value = state[name]
         low = (name == "fuel" and value <= 0.2) or (name == "hull" and value <= SHARED["hullLowFraction"])
+        low = low or (name == "cargo" and value * t[STYLE + "CargoSegments"] >= t[STYLE + "CargoLimit"])
         preview_gauge(img, STYLE + name.capitalize(), look, value, rgb(SHARED["lowColor"] if low else SHARED[name + "Color"]))
     preview_lamps(img, look, state["lamps"])
+    gauge = Placed(t[STYLE + "CargoW"], t[STYLE + "CargoH"], t[STYLE + "CargoAnchorX"], t[STYLE + "CargoAnchorY"], t[STYLE + "CargoX"], t[STYLE + "CargoY"])
+    mark_x = gauge.left(SCREEN_W) + t[STYLE + "CargoLimit"] * gauge.w // t[STYLE + "CargoSegments"] - 1
+    img.rect(mark_x, gauge.top(SCREEN_H) - 1, 1, gauge.h + 2, rgb(SHARED["lowColor"]))
+    tl, tt, tw, th = title_box(look)
+    img.blit(nine_slice(sprites["plate"].img, sprites["plate"].border, tw, th), tl, tt)
+    inset = sprites["plate"].border[0] + SHARED["titleGap"]
+    img.text(tl + inset, tt + inset, LOAD_TITLE, rgb(SHARED["cargoColor"]))
     img.text(SCREEN_W // 2 - text_width("-1,234 ft.") // 2, t[STYLE + "AltimeterY"] + 1, "-1,234 ft.", rgb("#FFFFFF"))
     width, height = plate_size(look, state)
     inset_left, inset_top, _, _ = plate_inset(look)
@@ -457,7 +514,10 @@ def main(argv: list[str]) -> int:
         return 0
     if args.coverage:
         status, scanner = coverage(ribbon())
-        print(f"{STYLE}: status {status / (SCREEN_W * SCREEN_H):.1%}, scanner {scanner / (SCREEN_W * SCREEN_H):.1%}, total {(status + scanner) / (SCREEN_W * SCREEN_H):.1%}")
+        hotbar = hotbar_coverage()
+        screen = SCREEN_W * SCREEN_H
+        print(f"{STYLE}: status {status / screen:.1%}, scanner {scanner / screen:.1%}, total {(status + scanner) / screen:.1%}")
+        print(f"seated with vanilla's hotbar: hotbar {hotbar / screen:.1%}, total {(status + scanner + hotbar) / screen:.1%}")
         return 0
     if args.check:
         stale = check()

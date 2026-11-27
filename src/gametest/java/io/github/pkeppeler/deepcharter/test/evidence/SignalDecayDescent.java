@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -16,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -36,11 +36,12 @@ final class SignalDecayDescent {
     static final int X = 5300;
     static final int Z = 5000;
     private static final int ROOM_RADIUS = 5;
-    private static final int ROOM_TOP = 46;
+    private static final int ROOM_TOP = TestLayers.worldY(1, 46);
     /** The pod's feet start this high over the floor of layer 1 and are lowered to the bottom, above the breach crust. */
-    private static final int START_Y = SignalDecayTuning.DEFAULT.band(1).onset() + 4;
+    private static final int START_Y =
+            TestLayers.worldY(1, SignalDecayTuning.DEFAULT.band(1).onset() + 4);
 
-    private static final int BOTTOM_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    private static final int BOTTOM_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
     private static final double DOWN_PER_FRAME = 0.4;
     private static final double UP_PER_FRAME = 0.5;
     private static final int HOLD_FRAMES = 30;
@@ -66,7 +67,7 @@ final class SignalDecayDescent {
             EvidencePins.handsHidden = true;
             try {
                 singleplayer.getServer().runOnServer(server -> {
-                    ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                    ServerLevel one = TestLayers.level(server, 1);
                     RoomCarver.carve(
                             one,
                             X - ROOM_RADIUS - 1,
@@ -113,7 +114,7 @@ final class SignalDecayDescent {
                         "the pilot seated in the pod in layer 1",
                         client -> client.player != null
                                 && client.player.getVehicle() instanceof PodEntity
-                                && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                                && TestLayers.clientIsIn(client, 1));
                 context.runOnClient(client -> {
                     ClientSession.player(client).setXRot(25f);
                     ClientSession.player(client).setYRot(0f);

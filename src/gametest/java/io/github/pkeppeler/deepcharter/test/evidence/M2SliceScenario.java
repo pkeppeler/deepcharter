@@ -10,7 +10,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.RepairScreen;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
@@ -25,10 +25,10 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
+import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
@@ -44,6 +44,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.HandbookChaptersOneToFiveTest;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -54,15 +55,15 @@ import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
+import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -74,7 +75,9 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Options;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -92,6 +95,8 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
@@ -116,6 +121,10 @@ import org.jspecify.annotations.Nullable;
  * climbs and descents, the crafting of parts) is stated on screen as it happens. See the PR's list of shortcuts.
  */
 public class M2SliceScenario extends EvidenceScenario {
+    static {
+        M2SliceEndState.watchCrossings();
+    }
+
     private static final int TICKS_PER_FRAME = 3;
     private static final int HOLD_FRAMES = 6;
     private static final int WAIT_TICKS = 600;
@@ -145,20 +154,20 @@ public class M2SliceScenario extends EvidenceScenario {
 
     private static final int BORE_SEARCH_BLOCKS = 24;
     /** The Mole is set this far above the floor of the overworld for the rest of the bore. */
-    private static final int BORE_RESUMED_ABOVE_FLOOR = 6;
+    private static final int BORE_RESUMED_ABOVE_FLOOR = 6; // fixed-pos: a height above the floor, not a world Y
 
     /** The room at the floor of layer 1, in the Deep Claim, far from everything else. */
     private static final int X = 4000;
 
     private static final int Z = 4000;
-    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    private static final int FLOOR_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
     private static final int ROOM_WEST = 6;
     private static final int ROOM_EAST = 16;
     private static final int ROOM_RADIUS_Z = 6;
 
-    private @Nullable CharterId charter;
-    private @Nullable UUID mole;
-    private @Nullable UUID prospector;
+    private final Arrival<CharterId> charter = new Arrival<>("charter", "foundTheCharter() founds it");
+    private final Arrival<UUID> mole = new Arrival<>("mole", "repairFoundingMole() repairs it");
+    private final Arrival<UUID> prospector = new Arrival<>("prospector", "lamplessFigure() finds it");
     /** Read by the render thread, which draws it over the world and over every screen. */
     private static volatile Component caption = Component.empty();
 
@@ -168,18 +177,6 @@ public class M2SliceScenario extends EvidenceScenario {
 
     private int captured;
     private int beat;
-
-    private CharterId charter() {
-        return Objects.requireNonNull(charter, "charter: set by foundTheCharter(), read before it ran");
-    }
-
-    private UUID mole() {
-        return Objects.requireNonNull(mole, "mole: set by repairFoundingMole(), read before it ran");
-    }
-
-    private UUID prospector() {
-        return Objects.requireNonNull(prospector, "prospector: set by lamplessFigure(), read before it ran");
-    }
 
     @Override
     protected String name() {
@@ -293,11 +290,11 @@ public class M2SliceScenario extends EvidenceScenario {
             onServer(server -> {
                 ServerPlayer real = real(server);
                 expectNoRefusal(Charters.found(server, real.getUUID(), "Riggs and Sons"), "founding");
-                charter = Charters.charterOfOrThrow(server, real.getUUID())
+                charter.set(Charters.charterOfOrThrow(server, real.getUUID())
                         .orElseThrow()
-                        .id();
+                        .id());
                 ServerPlayer mock = two.mock().player();
-                expectNoRefusal(Charters.apply(server, mock.getUUID(), charter()), "applying");
+                expectNoRefusal(Charters.apply(server, mock.getUUID(), charter.get()), "applying");
                 expectNoRefusal(Charters.approve(server, real.getUUID(), mock.getUUID()), "approving");
                 two.mock().teleportTo(server.overworld(), pad(11, 6), 90f, 0f);
                 return null;
@@ -305,7 +302,7 @@ public class M2SliceScenario extends EvidenceScenario {
             snap(HOLD_FRAMES);
             still("02-charter-founded-with-crewmate");
             onServer(server -> {
-                Charter founded = Charters.findOrThrow(server, charter()).orElseThrow();
+                Charter founded = Charters.findOrThrow(server, charter.get()).orElseThrow();
                 if (!founded.onRoster(two.mock().player().getUUID())
                         || !founded.onRoster(real(server).getUUID())) {
                     throw new AssertionError("both players should be on the charter's roster");
@@ -315,8 +312,8 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void starterItems() {
-            say(
-                    "2. Handbook chapter 1. SHORTCUT: a stalk, a crafting table, stone tools, scrap, iron and a scanner unit are handed over, not gathered.");
+            say("2. Handbook chapter 1. SHORTCUT: a stalk, a crafting table, stone tools, scrap, iron, a torch and"
+                    + " a scanner unit are handed over, not gathered.");
             onServer(server -> {
                 ServerPlayer real = real(server);
                 stash(real, new ItemStack(HandbookChaptersOneToFiveTest.ours("fungal_stalk"), 4));
@@ -324,6 +321,7 @@ public class M2SliceScenario extends EvidenceScenario {
                 stash(real, new ItemStack(Items.STONE_PICKAXE));
                 stash(real, new ItemStack(HandbookChaptersOneToFiveTest.ours("scrap_iron"), 3));
                 stash(real, new ItemStack(Items.IRON_INGOT, 3));
+                stash(real, new ItemStack(Items.TORCH));
                 stash(real, new ItemStack(ScannerRegistry.SCANNER_UNIT));
                 return null;
             });
@@ -332,8 +330,8 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void repairColonyTerminals() {
-            say(
-                    "3. Handbook chapter 2. SHORTCUT: the parts are handed over, not crafted. They go in through the real terminal screens.");
+            say("3. Handbook chapter 2. SHORTCUT: the parts are handed over, not crafted. They go in through the"
+                    + " real terminal screens.");
             onServer(server -> {
                 ServerPlayer real = real(server);
                 for (TerminalType type : List.of(
@@ -367,8 +365,8 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void repairFoundingMole() {
-            say(
-                    "4. Handbook chapter 3. The hangar console takes its four parts, and the derelict Mole is repaired and registered to the charter.");
+            say("4. Handbook chapter 3. The hangar console takes its four parts, and the derelict Mole is repaired"
+                    + " and registered to the charter.");
             BlockPos console = onServer(server ->
                     HangarConsole.find(server).orElseThrow(() -> new AssertionError("the colony has no hangar")));
             Vec3 derelict = onServer(server -> HangarPods.derelict(server)
@@ -381,13 +379,9 @@ public class M2SliceScenario extends EvidenceScenario {
             stand(Vec3.atBottomCenterOf(console.west(2)), Vec3.atCenterOf(console));
             ctx.waitTicks(20);
             useKey();
-            ClientWait.screen(ctx, TerminalScreen.class);
+            ClientWait.screen(ctx, RepairScreen.class);
             snap(HOLD_FRAMES);
-            for (var part : HangarParts.ALL) {
-                click("INSERT " + new ItemStack(part).getHoverName().getString().toUpperCase(Locale.ROOT));
-                ctx.waitTicks(8);
-                snap(2);
-            }
+            insertParts(HangarParts.ALL);
             ClientWait.screen(ctx, HangarScreen.class);
             snap(HOLD_FRAMES);
             still("10-hangar-console-online");
@@ -395,14 +389,14 @@ public class M2SliceScenario extends EvidenceScenario {
             awaitServer(server -> HangarPods.derelict(server)
                     .flatMap(PodComponents::registration)
                     .isPresent());
-            mole = onServer(server -> {
+            mole.set(onServer(server -> {
                 PodEntity pod = HangarPods.derelict(server).orElseThrow();
                 String serial = PodComponents.registration(pod).orElseThrow().serial();
                 if (!serial.equals("MOLE-0001")) {
                     throw new AssertionError("the founding Mole should be MOLE-0001, it is " + serial);
                 }
                 return pod.getUUID();
-            });
+            }));
             stand(Vec3.atBottomCenterOf(console.west(2)), derelict.add(0, 1, 0));
             ctx.waitTicks(30);
             snap(HOLD_FRAMES);
@@ -410,14 +404,14 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void refuel() {
-            say(
-                    "5. SHORTCUT: the Mole is moved by hand to the pump, and $60 is granted. The fuel is bought on the real pump screen.");
+            say("5. SHORTCUT: the Mole is moved by hand to the pump, and $60 is granted. The fuel is bought on the"
+                    + " real pump screen.");
             onServer(server -> {
-                PodEntity pod = pod(server, mole());
+                PodEntity pod = pod(server, mole.get());
                 pod.setFuel(20f);
                 Vec3 park = pad(PARK_DX, PARK_DZ);
                 pod.teleportTo(server.overworld(), park.x, park.y, park.z, Set.of(), 0f, 0f, true);
-                Charters.deposit(server, charter(), 60);
+                Charters.deposit(server, charter.get(), 60);
                 return null;
             });
             BlockPos pump = TestColony.anchor(site.colony(), ColonyAnchor.FUEL_PUMP);
@@ -425,19 +419,19 @@ public class M2SliceScenario extends EvidenceScenario {
             snap(HOLD_FRAMES);
             still("12-pump-before-fuel");
             click("FILL UP");
-            awaitServer(server -> pod(server, mole()).fuel() >= 99f);
+            awaitServer(server -> pod(server, mole.get()).fuel() >= 99f);
             snap(HOLD_FRAMES);
             still("13-pump-after-fuel");
             ctx.setScreen(() -> null);
         }
 
         private void boardAndDrillDown() {
-            say(
-                    "6. Handbook chapter 3 and 4. Board the Mole, fly it, drill down through the floor and into layer 1, then climb back home. "
-                            + "SHORTCUT: the Mole is moved to bare ground off the pad, because the pad is Company plate and the drill refuses it. Four ore blocks are planted under the bore, "
-                            + "and the long bore down to the floor of the world is skipped.");
+            say("6. Handbook chapter 3 and 4. Board the Mole, fly it, drill down through the floor and into layer"
+                    + " 1, then climb back home. SHORTCUT: the Mole is moved to bare ground off the pad, because"
+                    + " the pad is Company plate and the drill refuses it. Four ore blocks are planted under the"
+                    + " bore, and the long bore down to the floor of the world is skipped.");
             onServer(server -> {
-                PodEntity pod = pod(server, mole());
+                PodEntity pod = pod(server, mole.get());
                 ServerLevel overworld = server.overworld();
                 Vec3 site = boreSite(overworld);
                 pod.teleportTo(overworld, site.x, site.y, site.z, Set.of(), -90f, 0f, true);
@@ -462,7 +456,7 @@ public class M2SliceScenario extends EvidenceScenario {
                         3);
                 return null;
             });
-            Vec3 at = onServer(server -> pod(server, mole()).position());
+            Vec3 at = onServer(server -> pod(server, mole.get()).position());
             stand(at.add(-2.5, 0, 0), at.add(0, Chassis.MOLE.height() / 2, 0));
             ctx.waitTicks(20);
             snap(HOLD_FRAMES);
@@ -477,7 +471,7 @@ public class M2SliceScenario extends EvidenceScenario {
             still("15-boarded-the-mole");
 
             // Fly.
-            ctx.getInput().holdKey(options -> options.keyJump);
+            holdDriveKey(options -> options.keyJump);
             snap(7);
             ctx.getInput().releaseKey(options -> options.keyJump);
             awaitServer(server -> directiveDone(server, "meet_the_mole/board_mole")
@@ -487,36 +481,36 @@ public class M2SliceScenario extends EvidenceScenario {
 
             // Drill down: the floor, the dirt, the planted ore, and out of the world into layer 1.
             ctx.runOnClient(client -> ClientSession.player(client).setXRot(40f));
-            ctx.getInput().holdKey(options -> options.keySprint);
+            holdDriveKey(options -> options.keySprint);
             // The real drill bores the first blocks, past the 10 that the directive asks for.
             recordUntil(
-                    server -> findPod(server, mole())
+                    server -> findPod(server, mole.get())
                             .filter(pod -> pod.getY() < site.pad().y - BORE_SHOWN_BLOCKS)
                             .isPresent(),
                     WAIT_TICKS * 3,
                     "The Mole did not bore " + BORE_SHOWN_BLOCKS + " blocks down",
                     stillOnce(
-                            server -> findPod(server, mole())
+                            server -> findPod(server, mole.get())
                                     .filter(pod -> pod.getY() < site.pad().y - 1)
                                     .isPresent(),
                             "17-drilling-down-in-the-colony"));
             ctx.getInput().releaseKey(options -> options.keySprint);
-            say(
-                    "6. SHORTCUT: the rest of the bore, down to the floor of the world, is skipped. The Mole is set in a pocket 6 blocks above the floor, and refuelled with coal that is handed over.");
+            say("6. SHORTCUT: the rest of the bore, down to the floor of the world, is skipped. The Mole is set in"
+                    + " a pocket 6 blocks above the floor, and refuelled with coal that is handed over.");
             skipTheBoreToTheFloor();
             refuelWithCoal();
-            ctx.getInput().holdKey(options -> options.keySprint);
+            holdDriveKey(options -> options.keySprint);
             recordUntil(
-                    server -> podIn(server, mole(), LayerChain.dimension(1)),
+                    server -> podInLayer(server, mole.get(), 1),
                     WAIT_TICKS * 3,
                     "The Mole did not cross into layer 1",
                     () -> {});
             say("6. Layer 1. The Mole has crossed the breach. The drill goes on, which completes \"drill down\".");
-            // The crossing gave the server a new player state, so the held key is pressed again for the server to see
-            // it.
+            // The crossing gave the server a new player state, so the held key is pressed again for the server to
+            // see it.
             ctx.getInput().releaseKey(options -> options.keySprint);
             snap(2);
-            ctx.getInput().holdKey(options -> options.keySprint);
+            holdDriveKey(options -> options.keySprint);
             // Released the tick the directive is done: a stone slab takes 24 ticks to bore, and below layer 1's ceiling
             // there are caves.
             for (int tick = 0;
@@ -533,15 +527,15 @@ public class M2SliceScenario extends EvidenceScenario {
             still("18-layer-1-below-the-colony");
 
             // Climb back out, through the ceiling of layer 1 and the shaft, to the colony.
-            ctx.getInput().holdKey(options -> options.keyJump);
+            holdDriveKey(options -> options.keyJump);
             recordUntil(
-                    server -> podIn(server, mole(), Level.OVERWORLD),
+                    server -> podIn(server, mole.get(), Level.OVERWORLD),
                     WAIT_TICKS,
                     "The Mole did not climb back to the overworld",
                     () -> {});
             ctx.getInput().releaseKey(options -> options.keyJump);
-            say(
-                    "6. SHORTCUT: the climb up the rest of the shaft is skipped. The Mole is set down on the pad, home in the colony, with ore in its bay.");
+            say("6. SHORTCUT: the climb up the rest of the shaft is skipped. The Mole is set down on the pad, home"
+                    + " in the colony, with ore in its bay.");
             setMoleOnThePad();
             awaitServer(server -> directiveDone(server, "fuel_is_life/return_to_colony"));
             snap(HOLD_FRAMES);
@@ -582,23 +576,35 @@ public class M2SliceScenario extends EvidenceScenario {
                     + " blocks east of the pad's edge, from x " + (center.getX() + edge + BORE_OFF_PAD));
         }
 
-        /** Sets the Mole in a sealed pocket in the rock {@link #BORE_RESUMED_ABOVE_FLOOR} blocks above the floor of the overworld, under where it is. */
+        /** Sets the Mole in a sealed pocket in the rock {@link #BORE_RESUMED_ABOVE_FLOOR} blocks above the floor of the campaign level's surface band, under where it is. */
         private void skipTheBoreToTheFloor() {
-            onServer(server -> {
-                ServerLevel overworld = server.overworld();
-                PodEntity pod = pod(server, mole());
+            BlockPos pocket = onServer(server -> {
+                // The descent resumes in the surface band of the campaign level, where the layers are bands of one
+                // level, so
+                // the drill carries the Mole across each floor in place.
+                ServerLevel campaign = TestLayers.level(server, 1);
+                PodEntity pod = pod(server, mole.get());
                 int x = pod.getBlockX();
                 int z = pod.getBlockZ();
-                int floor = overworld.getMinY();
+                int floor = TestLayers.band(campaign, TestLayers.SURFACE).minY();
                 int low = floor + BORE_RESUMED_ABOVE_FLOOR;
                 RoomCarver.carve(
-                        overworld,
+                        campaign,
                         new BlockPos(x - 2, low, z - 2),
                         new BlockPos(x + 2, low + 4, z + 2),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
+                return new BlockPos(x, low, z);
+            });
+            ClientWait.lightSettled(ctx, two.server(), 1, pocket.getX(), pocket.getZ(), 2);
+            onServer(server -> {
+                ServerLevel campaign = TestLayers.level(server, 1);
+                PodEntity pod = pod(server, mole.get());
+                int x = pocket.getX();
+                int z = pocket.getZ();
+                int low = pocket.getY();
                 Entity arrived = pod.teleport(new TeleportTransition(
-                        overworld,
+                        campaign,
                         new Vec3(x + 0.5, low, z + 0.5),
                         Vec3.ZERO,
                         pod.getYRot(),
@@ -612,10 +618,13 @@ public class M2SliceScenario extends EvidenceScenario {
             });
             ClientWait.until(
                     ctx,
-                    "the player riding a pod near the floor of the overworld",
+                    "the player riding a pod near the floor of the surface band",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity
                             && ClientSession.player(client).getY()
-                                    < ClientLight.clientLevel(client).getMinY() + BORE_RESUMED_ABOVE_FLOOR + 3,
+                                    < TestLayers.band(ClientLight.clientLevel(client), TestLayers.SURFACE)
+                                                    .minY()
+                                            + BORE_RESUMED_ABOVE_FLOOR
+                                            + 3,
                     client -> "the player at " + ClientSession.player(client).position() + ", riding "
                             + ClientSession.player(client).getVehicle());
             ctx.runOnClient(client -> ClientSession.player(client).setXRot(40f));
@@ -624,7 +633,7 @@ public class M2SliceScenario extends EvidenceScenario {
         /** Sets the Mole on the pad at the park, as it is when it comes home, whichever level it is in. */
         private void setMoleOnThePad() {
             onServer(server -> {
-                PodEntity pod = pod(server, mole());
+                PodEntity pod = pod(server, mole.get());
                 Vec3 park = pad(PARK_DX, PARK_DZ);
                 Entity arrived = pod.teleport(new TeleportTransition(
                         server.overworld(), park, Vec3.ZERO, 0f, 0f, TeleportTransition.DO_NOTHING));
@@ -665,10 +674,10 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void fitScannerBuyLights() {
-            say(
-                    "8. Handbook chapters 5 and 6. SHORTCUT: $400 is granted. The scanner unit is used on the Mole, and the lights are bought on the real upgrade screen.");
+            say("8. Handbook chapters 5 and 6. SHORTCUT: $400 is granted. The scanner unit is used on the Mole,"
+                    + " and the lights are bought on the real upgrade screen.");
             onServer(server -> {
-                Charters.deposit(server, charter(), 400);
+                Charters.deposit(server, charter.get(), 400);
                 return null;
             });
             BlockPos terminal = TestColony.anchor(site.colony(), ColonyAnchor.UPGRADE_TERMINAL);
@@ -683,7 +692,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ctx.setScreen(() -> null);
             onServer(server -> {
                 ServerPlayer real = real(server);
-                PodEntity fitting = pod(server, mole());
+                PodEntity fitting = pod(server, mole.get());
                 // The unit stashed in the pack is moved to the hand for the use, and what the hand held comes back.
                 ItemStack held = real.getItemInHand(InteractionHand.MAIN_HAND);
                 real.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
@@ -702,7 +711,7 @@ public class M2SliceScenario extends EvidenceScenario {
             click("LIGHTS  T0");
             snap(2);
             click("BUY TIER 2  $375"); // tier 1 is crafted and not sold (#536)
-            awaitServer(server -> PodComponents.partOf(pod(server, mole()), ComponentTrack.LIGHTS)
+            awaitServer(server -> PodComponents.partOf(pod(server, mole.get()), ComponentTrack.LIGHTS)
                     .isPresent());
             snap(HOLD_FRAMES);
             still("26-lights-bought");
@@ -712,11 +721,12 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void diveToTheDeepClaim() {
-            say(
-                    "9. Handbook chapters 6 and 7. SHORTCUT: the Mole is lowered to a room at the floor of layer 1, in the Deep Claim, with ore planted in its walls. The camera has night vision so the dark can be seen.");
+            say("9. Handbook chapters 6 and 7. SHORTCUT: the Mole is lowered to a room at the floor of layer 1, in"
+                    + " the Deep Claim, with ore planted in its walls. The camera has night vision so the dark can"
+                    + " be seen.");
             onServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-                ServerLevel layerTwo = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerLevel layerTwo = TestLayers.level(server, 2);
                 for (int dx = -3; dx <= 3; dx++) {
                     for (int dz = -3; dz <= 3; dz++) {
                         one.getChunk(X / 16 + dx, Z / 16 + dz, ChunkStatus.FULL);
@@ -726,13 +736,15 @@ public class M2SliceScenario extends EvidenceScenario {
                 buildRoom(one);
                 return null;
             });
-            board(mole());
+            ClientWait.lightSettled(
+                    ctx, two.server(), 1, X + (ROOM_EAST - ROOM_WEST) / 2, Z, (ROOM_EAST + ROOM_WEST) / 2 + 1);
+            board(mole.get());
             onServer(server -> {
                 real(server)
                         .addEffect(new MobEffectInstance(
                                 MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-                PodEntity pod = pod(server, mole());
+                ServerLevel one = TestLayers.level(server, 1);
+                PodEntity pod = pod(server, mole.get());
                 pod.setFuel(100f);
                 Entity arrived = pod.teleport(new TeleportTransition(
                         one, new Vec3(X, FLOOR_Y, Z), Vec3.ZERO, -90f, 30f, TeleportTransition.DO_NOTHING));
@@ -744,7 +756,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the player riding a pod in layer 1",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                    client -> TestLayers.clientIsIn(client, 1)
                             && ClientSession.player(client).getVehicle() instanceof PodEntity);
             ctx.runOnClient(client -> ClientSession.player(client).setYRot(-90f));
             ctx.waitTicks(60);
@@ -759,30 +771,27 @@ public class M2SliceScenario extends EvidenceScenario {
             awaitServer(server -> chapterDone(server, "seeing_below"));
             dismount();
             readHandbook("seeing_below", "30-handbook-chapter-6-seeing-below");
-            board(mole());
+            board(mole.get());
         }
 
         private void crossTheBreach() {
-            say(
-                    "10. Handbook chapter 8. The Mole is refuelled with coal, then the real drill bores the stone and the crust and crosses the breach. SHORTCUT: the coal is handed over.");
+            say("10. Handbook chapter 8. The Mole is refuelled with coal, then the real drill bores the stone and"
+                    + " the crust and crosses the breach. SHORTCUT: the coal is handed over.");
             refuelWithCoal();
             snap(HOLD_FRAMES);
             ctx.runOnClient(client -> ClientSession.player(client).setXRot(35f));
-            ctx.getInput().holdKey(options -> options.keySprint);
+            holdDriveKey(options -> options.keySprint);
             recordUntil(
-                    server -> podIn(server, mole(), LayerChain.dimension(2)),
+                    server -> podInLayer(server, mole.get(), 2),
                     WAIT_TICKS * 5,
                     "The Mole did not cross into layer 2",
                     stillOnce(
-                            server -> findPod(server, mole())
+                            server -> findPod(server, mole.get())
                                     .filter(pod -> pod.getY() < FLOOR_Y - 1)
                                     .isPresent(),
                             "31-boring-through-the-crust"));
             ctx.getInput().releaseKey(options -> options.keySprint);
-            ClientWait.until(
-                    ctx,
-                    "the client in layer 2",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)));
+            ClientWait.until(ctx, "the client in layer 2", client -> TestLayers.clientIsIn(client, 2));
             say("10. Layer 2, the Old Workings. The first breach is crossed.");
             awaitServer(server -> directiveDone(server, "first_breach/breach_workings"));
             refuelWithCoal();
@@ -803,16 +812,17 @@ public class M2SliceScenario extends EvidenceScenario {
         private static final int FIGURE_WALK_FRAMES_LIMIT = 200;
 
         private void lamplessFigure() {
-            say(
-                    "11. SHORTCUT: the Mole is carried to Prospector's Run, the floor of layer 2, to a rail drift cut beside a wreck bay.");
+            say("11. SHORTCUT: the Mole is carried to Prospector's Run, the floor of layer 2, to a rail drift cut"
+                    + " beside a wreck bay.");
             clearTransmission();
             StructureSite site =
-                    onServer(server -> LayerStructures.prospector(server).orElseThrow());
+                    onServer(server -> LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                            .orElseThrow());
             Vec3 bay = at(site, 0, 0, 0);
             Vec3 figureStart = at(site, FIGURE_AT_U, 0, 0);
             Vec3 moleAt = at(site, MOLE_AT_U, 0, 0);
             onServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel level = TestLayers.level(server, 2);
                 Vec3 far = at(site, -DRIFT_LENGTH - 3, 0, 3);
                 Vec3 near = at(site, 7, 0, -3);
                 for (int chunkX = Math.min((int) far.x, (int) near.x) >> 4;
@@ -831,13 +841,19 @@ public class M2SliceScenario extends EvidenceScenario {
             // Forced chunks load, and tick their entities: the figure is not added to a chunk that is only loaded.
             awaitEntityTickingInLayer2(List.of(figureStart, bay, moleAt));
             awaitServer(server -> !wrecksAt(server, bay).isEmpty());
-            prospector = onServer(server -> wrecksAt(server, bay).getFirst().getUUID());
+            prospector.set(onServer(server -> wrecksAt(server, bay).getFirst().getUUID()));
             LamplessFigure[] figure = {null};
             dismount();
             onServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
-                cutDrift(level, site);
-                pod(server, mole())
+                cutDrift(TestLayers.level(server, 2), site);
+                return null;
+            });
+            Vec3 driftMiddle = at(site, -(DRIFT_LENGTH + 7) / 2.0, 0, 0);
+            ClientWait.lightSettled(
+                    ctx, two.server(), 2, (int) driftMiddle.x, (int) driftMiddle.z, (DRIFT_LENGTH - 7) / 2 + 2);
+            onServer(server -> {
+                ServerLevel level = TestLayers.level(server, 2);
+                pod(server, mole.get())
                         .teleportTo(
                                 level,
                                 moleAt.x,
@@ -853,7 +869,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the drift's rail under the Mole on the client",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
+                    client -> TestLayers.clientIsIn(client, 2)
                             && ClientLight.clientLevel(client)
                                     .getBlockState(BlockPos.containing(moleAt))
                                     .is(Blocks.RAIL),
@@ -864,7 +880,7 @@ public class M2SliceScenario extends EvidenceScenario {
                                     .getChunk(BlockPos.containing(moleAt))
                                     .getClass()
                                     .getSimpleName());
-            board(mole());
+            board(mole.get());
             ClientWait.until(ctx, "no screen open", client -> client.gui.screen() == null);
             float towardFigure = yawToward(moleAt, figureStart);
             // From the pilot's own eyes: from behind, the Mole and its rider would stand in front of the drift.
@@ -877,7 +893,7 @@ public class M2SliceScenario extends EvidenceScenario {
             showTransmission("32a-transmission-in-prospectors-run");
             say("11. SHORTCUT: the figure is placed at the far end of the drift. It walks toward the Mole.");
             onServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel level = TestLayers.level(server, 2);
                 LamplessFigure made = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 made.setPos(figureStart);
                 made.setHeading(site.alongZ() ? Direction.SOUTH : Direction.EAST);
@@ -893,7 +909,7 @@ public class M2SliceScenario extends EvidenceScenario {
                     frames < FIGURE_WALK_FRAMES_LIMIT
                             && !onServer(server -> figure[0]
                                             .position()
-                                            .distanceTo(pod(server, mole()).position())
+                                            .distanceTo(pod(server, mole.get()).position())
                                     < FIGURE_NEAR_BLOCKS);
                     frames++) {
                 ctx.waitTicks(TICKS_PER_FRAME);
@@ -901,25 +917,26 @@ public class M2SliceScenario extends EvidenceScenario {
                 if (!shotWalk
                         && onServer(server -> figure[0]
                                         .position()
-                                        .distanceTo(pod(server, mole()).position())
+                                        .distanceTo(pod(server, mole.get()).position())
                                 < 16)) {
                     still("33-the-lampless-figure-walks-out-of-the-dark");
                     shotWalk = true;
                 }
             }
             if (!onServer(server ->
-                    figure[0].position().distanceTo(pod(server, mole()).position()) < FIGURE_NEAR_BLOCKS)) {
+                    figure[0].position().distanceTo(pod(server, mole.get()).position()) < FIGURE_NEAR_BLOCKS)) {
                 throw new AssertionError("the figure never came near the Mole: "
                         + onServer(server -> figure[0].position() + ", " + figure[0].tickCount + " ticks old, removed "
                                 + figure[0].isRemoved() + ", Mole at "
-                                + pod(server, mole()).position()));
+                                + pod(server, mole.get()).position()));
             }
-            say(
-                    "11. It never attacks, and neither a light nor a person near it makes it fade. A dark pod with a pilot draws it: it grabs the hull and drains the tank until it is killed, by the drill or by hand. Here it is killed.");
+            say("11. It never attacks, and neither a light nor a person near it makes it fade. A dark pod with a"
+                    + " pilot draws it: it grabs the hull and drains the tank until it is killed, by the drill or"
+                    + " by hand. Here it is killed.");
             snap(3);
             still("34-the-figure-comes-to-the-mole");
             onServer(server -> {
-                figure[0].kill(ClientLight.serverLevel(server, LayerChain.dimension(2)));
+                figure[0].kill(TestLayers.level(server, 2));
                 return null;
             });
             for (int frames = 0; frames < 40 && !onServer(server -> figure[0].isRemoved()); frames++) {
@@ -932,8 +949,8 @@ public class M2SliceScenario extends EvidenceScenario {
 
         /** A 3 x 4 drift with a rail down it, from the bay's west wall out {@link #DRIFT_LENGTH} blocks. Its shell is sealed first. */
         private static void cutDrift(ServerLevel level, StructureSite site) {
-            // The box that is cut: RoomCarver seals the shell round it, which is the floor, the ceiling, both walls and
-            // the
+            // The box that is cut: RoomCarver seals the shell round it, which is the floor, the ceiling, both walls
+            // and the
             // far end.
             BlockPos a = BlockPos.containing(at(site, -DRIFT_LENGTH, 0, -1));
             BlockPos b = BlockPos.containing(at(site, -7, 3, 1));
@@ -954,23 +971,28 @@ public class M2SliceScenario extends EvidenceScenario {
         private void wreckSite() {
             say("12. Handbook chapter 9. The Mole drives on along the rails, into the bay of PROSPECTOR-0002's wreck.");
             StructureSite site =
-                    onServer(server -> LayerStructures.prospector(server).orElseThrow());
+                    onServer(server -> LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                            .orElseThrow());
             Vec3 bay = at(site, 0, 0, 0);
             Vec3 moleAt = at(site, MOLE_AT_U, 0, 0);
             ctx.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setYRot(yawToward(moleAt, bay));
             });
+            // A pod drives along its own facing, not where its pilot looks.
+            onServer(server -> {
+                pod(server, mole.get()).setYRot(yawToward(moleAt, bay));
+                return null;
+            });
             ctx.waitTicks(10);
             ClientWait.until(
                     ctx,
-                    "the player riding the Mole in layer 2 with no screen open",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
-                            && ClientSession.player(client).getVehicle() instanceof PodEntity
-                            && client.gui.screen() == null);
-            ctx.getInput().holdKey(options -> options.keyUp);
+                    "the player riding the Mole in layer 2",
+                    client -> TestLayers.clientIsIn(client, 2)
+                            && ClientSession.player(client).getVehicle() instanceof PodEntity);
+            holdDriveKey(options -> options.keyUp);
             recordUntil(
-                    server -> pod(server, mole()).position().distanceTo(bay) < 7,
+                    server -> pod(server, mole.get()).position().distanceTo(bay) < 7,
                     WAIT_TICKS,
                     "The Mole did not drive into the wreck's bay at " + bay + " from " + moleAt + " facing "
                             + yawToward(moleAt, bay),
@@ -992,12 +1014,15 @@ public class M2SliceScenario extends EvidenceScenario {
             still("37-note-n10-on-the-table");
             useKey();
             awaitServer(server -> Notes.foundFor(server, real(server).getUUID()).contains(Notes.id(10)));
+            // The click opens the Note in the handbook; the player reads it and closes it before driving.
+            ClientWait.screen(ctx, HandbookScreen.class);
             snap(HOLD_FRAMES);
             still("38-note-n10-found");
+            ctx.setScreen(() -> null);
 
             // The tow cable: the pilot uses it on the wreck.
             say("13. The tow cable goes on the wreck. SHORTCUT: the cable is handed over, not crafted.");
-            board(mole());
+            board(mole.get());
             refuelWithCoal();
             useTowCable("fitted");
             snap(HOLD_FRAMES);
@@ -1005,7 +1030,7 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private static List<PodEntity> wrecksAt(MinecraftServer server, Vec3 bay) {
-            return ClientLight.serverLevel(server, LayerChain.dimension(2))
+            return TestLayers.level(server, 2)
                     .getEntitiesOfClass(
                             PodEntity.class,
                             new AABB(BlockPos.containing(bay)).inflate(6),
@@ -1013,12 +1038,12 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void towHome() {
-            say(
-                    "14. SHORTCUT: the climb home through three layers is skipped; the Mole and its tow are set at the colony's west edge. The last leg is driven.");
+            say("14. SHORTCUT: the climb home through three layers is skipped; the Mole and its tow are set at the"
+                    + " colony's west edge. The last leg is driven.");
             Vec3 start = onServer(server -> towLane(server.overworld()));
             onServer(server -> {
-                PodEntity tower = pod(server, mole());
-                PodEntity towed = pod(server, prospector());
+                PodEntity tower = pod(server, mole.get());
+                PodEntity towed = pod(server, prospector.get());
                 ServerLevel overworld = server.overworld();
                 overworld.getChunk(
                         BlockPos.containing(start).getX() >> 4,
@@ -1038,9 +1063,10 @@ public class M2SliceScenario extends EvidenceScenario {
             });
             ClientWait.until(
                     ctx,
-                    "the player riding a pod in the overworld",
+                    "the player riding a pod in the overworld with no screen open",
                     client -> ClientLight.clientLevel(client).dimension().equals(Level.OVERWORLD)
-                            && ClientSession.player(client).getVehicle() instanceof PodEntity);
+                            && ClientSession.player(client).getVehicle() instanceof PodEntity
+                            && client.gui.screen() == null);
             ctx.runOnClient(client -> {
                 ClientSession.player(client).setYRot(-90f);
                 ClientSession.player(client).setXRot(10f);
@@ -1049,7 +1075,7 @@ public class M2SliceScenario extends EvidenceScenario {
             say("14. Towing the wreck home along the ground, with the real drive keys.");
             snap(HOLD_FRAMES);
             still("40-towing-at-the-edge-of-the-colony");
-            ctx.getInput().holdKey(options -> options.keyUp);
+            holdDriveKey(options -> options.keyUp);
             recordUntil(
                     server -> directiveDone(server, "company_property/tow_prospector"),
                     WAIT_TICKS * 3,
@@ -1091,13 +1117,13 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void repairHullAndRestore() {
-            say(
-                    "15. Handbook chapter 7. The crust cost the Mole hull. SHORTCUT: the Mole is moved by hand to the repair station.");
+            say("15. Handbook chapter 7. The crust cost the Mole hull. SHORTCUT: the Mole is moved by hand to the"
+                    + " repair station.");
             BlockPos station = TestColony.anchor(site.colony(), ColonyAnchor.REPAIR_STATION);
             useTowCable("removed");
             dismount();
             onServer(server -> {
-                PodEntity tower = pod(server, mole());
+                PodEntity tower = pod(server, mole.get());
                 if (tower.hull() >= tower.maxHull()) {
                     throw new AssertionError("the Mole should have lost hull on the crust, it has " + tower.hull());
                 }
@@ -1117,10 +1143,10 @@ public class M2SliceScenario extends EvidenceScenario {
             readHandbook("staying_safe", "44-handbook-chapter-7-staying-safe");
             readHandbook("first_breach", "45-handbook-chapter-8-first-breach");
 
-            say(
-                    "16. The wreck is in reach of the hangar console. SHORTCUT: $1,390 and 3 Cicatrium are granted. The console restores PROSPECTOR-0002.");
+            say("16. The wreck is in reach of the hangar console. SHORTCUT: $1,390 and 3 Cicatrium are granted."
+                    + " The console restores PROSPECTOR-0002.");
             onServer(server -> {
-                Charters.deposit(server, charter(), 1_390);
+                Charters.deposit(server, charter.get(), 1_390);
                 for (int i = 0; i < 3; i++) {
                     stash(real(server), OreRegistry.stack(OreType.CICATRIUM));
                 }
@@ -1135,7 +1161,7 @@ public class M2SliceScenario extends EvidenceScenario {
             snap(HOLD_FRAMES);
             still("47-prospector-restored");
             ctx.setScreen(() -> null);
-            String serial = onServer(server -> PodComponents.registration(pod(server, prospector()))
+            String serial = onServer(server -> PodComponents.registration(pod(server, prospector.get()))
                     .orElseThrow()
                     .serial());
             say("16. The wreck is registered to the charter and keeps its own number: it is " + serial
@@ -1144,7 +1170,7 @@ public class M2SliceScenario extends EvidenceScenario {
                 throw new AssertionError("the restored wreck should keep PROSPECTOR-0002, it is " + serial);
             }
             showTransmission("48-t17-transmission");
-            Vec3 wreckAt = onServer(server -> pod(server, prospector()).position());
+            Vec3 wreckAt = onServer(server -> pod(server, prospector.get()).position());
             // The hangar's walls are in the way at ground level, so the camera hovers over them.
             onServer(server -> {
                 ServerPlayer real = real(server);
@@ -1167,8 +1193,8 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void workOrder() {
-            say(
-                    "17. The Founder's hands. SHORTCUT: 10 Bronzium is granted, 4 to the player and 6 to the crewmate, as if mined elsewhere.");
+            say("17. The Founder's hands. SHORTCUT: 10 Bronzium is granted, 4 to the player and 6 to the crewmate,"
+                    + " as if mined elsewhere.");
             onServer(server -> {
                 for (int i = 0; i < 4; i++) {
                     stash(real(server), OreRegistry.stack(OreType.BRONZIUM));
@@ -1229,8 +1255,8 @@ public class M2SliceScenario extends EvidenceScenario {
             still("52-work-order-done");
             ctx.setScreen(() -> null);
             BlockPos statue = TestColony.anchor(site.colony(), ColonyAnchor.STATUE);
-            // The anchor is the block the Host stands in, over his 5-block plinth: his feet are 5 blocks above the
-            // square.
+            // The anchor is the block the Host stands in, over his 5-block plinth: his feet are 5 blocks above
+            // the square.
             stand(
                     Vec3.atBottomCenterOf(statue.below(5)).add(0, 1, 12),
                     Vec3.atCenterOf(statue).add(0, 5, 0));
@@ -1240,19 +1266,21 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private void theOldWorkingsFloor() {
-            say(
-                    "18. Handbook chapter 9. Both crew board the restored Prospector. SHORTCUT: it is carried to the floor of the Old Workings.");
+            say("18. Handbook chapter 9. Both crew board the restored Prospector. SHORTCUT: it is carried to the"
+                    + " floor of the Old Workings.");
             StructureSite site =
-                    onServer(server -> LayerStructures.prospector(server).orElseThrow());
+                    onServer(server -> LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                            .orElseThrow());
             Vec3 park = at(site, -4.5, 0, 3.5);
-            Vec3 prospectorHere = onServer(server -> pod(server, prospector()).position());
+            Vec3 prospectorHere =
+                    onServer(server -> pod(server, prospector.get()).position());
             stand(prospectorHere.add(-4, 0, 0), prospectorHere.add(0, 1.2, 0));
             ctx.waitTicks(20);
-            board(prospector());
+            board(prospector.get());
             onServer(server -> {
                 ServerPlayer mock = two.mock().player();
                 two.mock().teleportTo(server.overworld(), prospectorHere.add(0, 0, 3), 0f, 0f);
-                if (!mock.startRiding(pod(server, prospector()))) {
+                if (!mock.startRiding(pod(server, prospector.get()))) {
                     throw new AssertionError("the crewmate could not take the navigator's seat");
                 }
                 return null;
@@ -1262,8 +1290,8 @@ public class M2SliceScenario extends EvidenceScenario {
             snap(HOLD_FRAMES);
             still("54-two-crew-in-the-prospector");
             onServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
-                PodEntity pod = pod(server, prospector());
+                ServerLevel level = TestLayers.level(server, 2);
+                PodEntity pod = pod(server, prospector.get());
                 Entity arrived = pod.teleport(
                         new TeleportTransition(level, park, Vec3.ZERO, 0f, 0f, TeleportTransition.DO_NOTHING));
                 if (arrived == null) {
@@ -1274,7 +1302,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the player riding a pod in layer 2",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
+                    client -> TestLayers.clientIsIn(client, 2)
                             && ClientSession.player(client).getVehicle() instanceof PodEntity);
             awaitServer(server -> directiveDone(server, "company_property/reach_workings_floor"));
             ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
@@ -1285,11 +1313,11 @@ public class M2SliceScenario extends EvidenceScenario {
             readHandbook("company_property", "56-handbook-chapter-9-company-property");
 
             onServer(server -> {
-                M2SliceEndState.require(server, charter(), pod(server, prospector()));
+                M2SliceEndState.require(server, charter.get(), pod(server, prospector.get()));
                 return null;
             });
-            say(
-                    "End of the slice. All nine chapters are done, the Prospector is restored and the Founder's hands are back.");
+            say("End of the slice. All nine chapters are done, the Prospector is restored and the Founder's hands"
+                    + " are back.");
             snap(HOLD_FRAMES);
             still("57-end-state");
         }
@@ -1315,26 +1343,33 @@ public class M2SliceScenario extends EvidenceScenario {
         private void repairTerminal(
                 TerminalType type, ColonyAnchor anchor, Class<? extends Screen> online, String name) {
             BlockPos pos = TestColony.anchor(site.colony(), anchor);
-            openTerminal(new Vec3(pos.getX() + 0.5, site.pad().y, pos.getZ() + 2.5), pos, TerminalScreen.class);
+            openTerminal(new Vec3(pos.getX() + 0.5, site.pad().y, pos.getZ() + 2.5), pos, RepairScreen.class);
             snap(HOLD_FRAMES);
-            for (var part : type.parts()) {
-                click("INSERT " + new ItemStack(part).getHoverName().getString().toUpperCase(Locale.ROOT));
-                ctx.waitTicks(8);
-                snap(2);
-            }
+            insertParts(type.parts());
             ClientWait.screen(ctx, online);
             snap(HOLD_FRAMES);
             still(name);
             ctx.setScreen(() -> null);
         }
 
+        /** Shift-clicks each of {@code parts} from the inventory into its slot of the open repair screen. */
+        private void insertParts(List<Item> parts) {
+            RepairScreen screen = ctx.computeOnClient(client -> ClientSession.screen(client, RepairScreen.class));
+            for (Item part : parts) {
+                Slot held = ctx.computeOnClient(client -> SlotClicks.inventorySlot(screen.getMenu(), part));
+                SlotClicks.shiftClick(ctx, screen, held);
+                ctx.waitTicks(8);
+                snap(2);
+            }
+        }
+
         /** Opens the handbook at the chapter's directives, takes a still, and closes it. */
         private void readHandbook(String chapter, String still) {
             ctx.waitTicks(20);
-            // The test pack adds a sample chapter that is never finished, which would classify every real chapter after
-            // it.
-            // So the screen is built as HandbookScreen.open builds it, from the shipped chapters only and the progress
-            // the
+            // The test pack adds a sample chapter that is never finished, which would classify every real chapter
+            // after it.
+            // So the screen is built as HandbookScreen.open builds it, from the shipped chapters only and the
+            // progress the
             // server synced.
             List<HandbookPage> pages = ctx.computeOnClient(ShippedHandbook::pages);
             ctx.setScreen(() -> new HandbookScreen(pages, id -> true, id -> {}, List.of()));
@@ -1406,7 +1441,7 @@ public class M2SliceScenario extends EvidenceScenario {
                 ServerPlayer real = real(server);
                 real.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
                 InteractionResult result =
-                        UseEntity.on(real, real.level(), InteractionHand.MAIN_HAND, pod(server, prospector()));
+                        UseEntity.on(real, real.level(), InteractionHand.MAIN_HAND, pod(server, prospector.get()));
                 if (!result.consumesAction()) {
                     throw new AssertionError("the tow cable was not " + outcome + ": " + result);
                 }
@@ -1427,6 +1462,12 @@ public class M2SliceScenario extends EvidenceScenario {
                     .findFirst()
                     .orElseThrow(() -> new AssertionError("no button starts with " + prefix)));
             ctx.clickScreenButton(label);
+        }
+
+        /** Holds a drive or fly key once no screen is open: an open screen eats the key, and the beat stalls. */
+        private void holdDriveKey(Function<Options, KeyMapping> key) {
+            ClientWait.until(ctx, "no screen open before holding a drive key", client -> client.gui.screen() == null);
+            ctx.getInput().holdKey(key);
         }
 
         private void useKey() {
@@ -1482,7 +1523,7 @@ public class M2SliceScenario extends EvidenceScenario {
                 eachFrame.run();
                 if ((ticks += TICKS_PER_FRAME) > maxTicks) {
                     throw new AssertionError(failure + " within " + ticks + " ticks, the Mole being "
-                            + onServer(server -> describe(findPod(server, mole()))) + ", the client having "
+                            + onServer(server -> describe(findPod(server, mole.get()))) + ", the client having "
                             + ctx.computeOnClient(ClientWait::describe) + ", its chunk "
                             + ctx.computeOnClient(client -> client.level == null || client.player == null
                                     ? "unknown"
@@ -1560,7 +1601,7 @@ public class M2SliceScenario extends EvidenceScenario {
             FarChunks.Deadline deadline = FarChunks.deadline();
             while (true) {
                 Vec3 waiting = onServer(server -> {
-                    ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                    ServerLevel level = TestLayers.level(server, 2);
                     return positions.stream()
                             .filter(at -> !level.isPositionEntityTicking(BlockPos.containing(at)))
                             .findFirst()
@@ -1570,9 +1611,10 @@ public class M2SliceScenario extends EvidenceScenario {
                     return;
                 }
                 if (deadline.expired()) {
-                    throw new AssertionError("chunk " + chunkOf(BlockPos.containing(waiting)) + " in "
-                            + LayerChain.dimension(2) + " was not entity-ticking after " + FarChunks.WAIT_SECONDS
-                            + " s (beat " + beat + ")");
+                    throw new AssertionError(
+                            "chunk " + chunkOf(BlockPos.containing(waiting)) + " in layer 2 of the campaign level"
+                                    + " was not entity-ticking after " + FarChunks.WAIT_SECONDS
+                                    + " s (beat " + beat + ")");
                 }
                 ctx.waitTicks(1);
             }
@@ -1606,6 +1648,12 @@ public class M2SliceScenario extends EvidenceScenario {
                 }
             }
             return Optional.empty();
+        }
+
+        private static boolean podInLayer(MinecraftServer server, UUID id, int layer) {
+            return findPod(server, id)
+                    .filter(pod -> TestLayers.isIn(pod, layer))
+                    .isPresent();
         }
 
         private static boolean podIn(
@@ -1644,21 +1692,13 @@ public class M2SliceScenario extends EvidenceScenario {
             float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
             onServer(server -> {
                 ServerPlayer real = real(server);
-                real.teleportTo(
-                        ClientLight.serverLevel(server, LayerChain.dimension(layer)),
-                        feet.x,
-                        feet.y,
-                        feet.z,
-                        Set.of(),
-                        yaw,
-                        pitch,
-                        true);
+                real.teleportTo(TestLayers.level(server, layer), feet.x, feet.y, feet.z, Set.of(), yaw, pitch, true);
                 return null;
             });
             ClientWait.until(
                     ctx,
                     "the player at the feet in layer " + layer,
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                    client -> TestLayers.clientIsIn(client, layer)
                             && ClientSession.player(client).distanceToSqr(feet) < 1.0);
             ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ctx.waitTicks(4);
@@ -1712,28 +1752,20 @@ public class M2SliceScenario extends EvidenceScenario {
             return (float) Math.toDegrees(Math.atan2(-(to.x - from.x), to.z - from.z));
         }
 
-        /** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow. */
-        private static Vec3 at(StructureSite site, double u, double y, double v) {
-            BlockPos origin = site.origin();
-            return new Vec3(
-                    origin.getX() + 0.5 + (site.alongZ() ? v : u),
-                    origin.getY() + y,
-                    origin.getZ() + 0.5 + (site.alongZ() ? u : v));
-        }
-
         /** The room in the Deep Claim: crust, a row of stone with ore in it, an airy room, lamps and ore in the walls. */
         private static void buildRoom(ServerLevel level) {
             RoomCarver.carve(
                     level,
                     X - ROOM_WEST,
                     X + ROOM_EAST,
-                    level.getMinY(),
-                    level.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1,
+                    TestLayers.band(level, 1).minY(),
+                    TestLayers.band(level, 1).minY() + LayerTuning.DEFAULT.crustThickness() - 1,
                     Z - ROOM_RADIUS_Z,
                     Z + ROOM_RADIUS_Z,
                     LayerBlocks.BREACH_CRUST);
-            // The wall ores sit in this stone shell, so it is carved sealed as well: lava must not be one block behind
-            // them.
+            RoomCarver.carvePocketBelow(level, 1, X - ROOM_WEST, X + ROOM_EAST, Z - ROOM_RADIUS_Z, Z + ROOM_RADIUS_Z);
+            // The wall ores sit in this stone shell, so it is carved sealed as well: lava must not be one block
+            // behind them.
             RoomCarver.carve(
                     level,
                     X - ROOM_WEST - 1,

@@ -1,25 +1,43 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.screenshot.TestScreenshotOptions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Base class for PR evidence scenarios. Run with tools/record-evidence.sh, which sets
@@ -32,11 +50,17 @@ import net.minecraft.world.level.GameType;
  */
 public abstract class EvidenceScenario implements FabricClientGameTest {
     /** Above the layer 1 signal decay (#502), so the gauges are live: the decay starts {@code onset} slabs above the floor, and a stock console shrinks that. */
-    protected static final int LIVE_GAUGES_FLOOR_Y =
+    protected static final int LIVE_GAUGES_LOCAL_Y =
             SignalDecayTuning.DEFAULT.band(1).onset() + 4;
 
-    /** Where a scenario carves a room in a layer: 60 slabs above the live-gauges floor, so the gauges stay live. */
-    protected static final int LAYER_ROOM_Y = LIVE_GAUGES_FLOOR_Y + 60;
+    /** {@link #LIVE_GAUGES_LOCAL_Y} as a world Y in layer 1: a layer is a band of the campaign level. */
+    protected static final int LIVE_GAUGES_FLOOR_Y = TestLayers.worldY(1, LIVE_GAUGES_LOCAL_Y);
+
+    /** Where a scenario carves a room in a layer, counted from the layer's floor: 60 slabs above the live-gauges floor, so the gauges stay live. */
+    protected static final int LAYER_ROOM_LOCAL_Y = LIVE_GAUGES_LOCAL_Y + 60;
+
+    /** {@link #LAYER_ROOM_LOCAL_Y} as a world Y in layer 1. */
+    protected static final int LAYER_ROOM_Y = TestLayers.worldY(1, LAYER_ROOM_LOCAL_Y);
 
     /** Where a scenario builds a slab or hall in the overworld's sky, clear of the terrain. */
     // fixed-pos: the overworld has no anchor to derive a sky slab from; 200 sits 120 under its 320 build limit
@@ -50,7 +74,13 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     private static final float FLOAT_PITCH_DOWN = 85f;
     private static final int MINE_LIMIT_TICKS = 160;
 
+    /** How many times {@link #zoomStill} scales a crop up. */
+    private static final int ZOOM = 8;
+
     private int frame;
+
+    /** Pass as {@code ticksPerFrame} to {@link #mineBlock} to mine without recording a frame. */
+    protected static final int NO_FRAMES = 0;
 
     /** The scenario name: also the output directory name and the argument to record-evidence.sh. */
     protected abstract String name();
@@ -89,7 +119,10 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        run(context);
+        // A recording shows the game as a player sees it, transmissions included.
+        try (var _ = QuietTransmissions.shown()) {
+            run(context);
+        }
         if (frame == 0) {
             throw new AssertionError("Scenario " + name() + " produced no frames");
         }
@@ -114,10 +147,103 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
         });
     }
 
+    /**
+     * Puts the first player's feet at {@code feet} in the overworld, turned to look from {@code eye} at {@code target}.
+     */
+    protected static void teleportLooking(TestSingleplayerContext singleplayer, Vec3 feet, Vec3 eye, Vec3 target) {
+        Vec3 d = target.subtract(eye);
+        float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+        float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
+        singleplayer
+                .getServer()
+                .runOnServer(server -> server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .teleportTo(server.overworld(), feet.x, feet.y, feet.z, Set.of(), yaw, pitch, true));
+    }
+
+    /**
+     * Marks every transmission with a bonus fired for {@code charter}, so a scenario that drops through a breach and its
+     * zones keeps the balance its stills show: the breach and the zones on the way down would pay Personnel's bonuses.
+     */
+    protected static void markBonusesFired(MinecraftServer server, CharterId charter) {
+        TransmissionData data = TransmissionData.get(server);
+        TransmissionCatalog.all().stream()
+                .filter(transmission -> transmission.bonus().isPresent())
+                .forEach(transmission -> data.fire(charter, transmission));
+    }
+
     /** Waits for the client to have joined the world: a player and a level. */
     protected static void awaitWorld(ClientGameTestContext context) {
         ClientWait.until(
                 context, "the player and level of the world", client -> client.player != null && client.level != null);
+    }
+
+    /** Records {@code frames} frames, one a tick. */
+    protected final void tickFrames(ClientGameTestContext context, int frames) {
+        for (int i = 0; i < frames; i++) {
+            context.waitTicks(1); // tick-wait: one frame a tick, the recording's frame rate
+            frame(context);
+        }
+    }
+
+    /**
+     * A lit chamber round the column ({@code x}, {@code z}): a solid stone box 13 blocks square from two rows under {@code floorY} to
+     * eight above it, an 11-block room cut inside it from {@code floorY} up seven rows, and glowstone at each of {@code lamps}. The stone
+     * is laid first, so no worldgen lava is in or beside the room.
+     */
+    protected static void stoneChamber(ServerLevel level, int x, int z, int floorY, BlockPos... lamps) {
+        fillAround(level, x, z, floorY - 2, floorY - 1, 6, Blocks.STONE);
+        fillAround(level, x, z, floorY, floorY + 8, 6, Blocks.STONE);
+        // room-carver: a room cut inside the solid stone box built just above, so no worldgen lava is in or beside it
+        fillAround(level, x, z, floorY, floorY + 7, 5, Blocks.AIR);
+        for (BlockPos lamp : lamps) {
+            level.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), Block.UPDATE_ALL);
+        }
+    }
+
+    /** A square of {@code block} {@code radius} blocks out from the column ({@code x}, {@code z}), from {@code yFrom} to {@code yTo}. */
+    private static void fillAround(ServerLevel level, int x, int z, int yFrom, int yTo, int radius, Block block) {
+        for (int bx = x - radius; bx <= x + radius; bx++) {
+            for (int y = yFrom; y <= yTo; y++) {
+                for (int bz = z - radius; bz <= z + radius; bz++) {
+                    level.setBlock(new BlockPos(bx, y, bz), block.defaultBlockState(), Block.UPDATE_ALL);
+                }
+            }
+        }
+    }
+
+    /**
+     * Right-clicks {@code target} as a player does: looks at its middle, waits for the crosshair to rest on it, then
+     * presses the use key, so the game's own path ({@code Minecraft.startUseItem}) picks the entity and sends the
+     * interaction.
+     */
+    protected static void rightClick(ClientGameTestContext context, Entity target) {
+        context.getInput().lookAt(BlockPos.containing(target.getBoundingBox().getCenter()));
+        ClientWait.until(
+                context,
+                "the crosshair on " + target,
+                client -> client.hitResult instanceof EntityHitResult hit && hit.getEntity() == target);
+        context.getInput().pressKey(options -> options.keyUse);
+    }
+
+    /**
+     * The client's copy of the server entity with network id {@code id}, waited for until the client holds it. The
+     * integrated server and its client share ids, so this finds a scenario's own entity where another of its type
+     * shares the level (the colony's pod does).
+     */
+    protected static <T extends Entity> T clientEntity(ClientGameTestContext context, int id, Class<T> type) {
+        ClientWait.until(
+                context,
+                type.getSimpleName() + " " + id + " in the client's world",
+                client -> type.isInstance(ClientLight.clientLevel(client).getEntity(id)));
+        return context.computeOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), id, type));
+    }
+
+    /** The first player's level's copy of the pod with network id {@code podId}. */
+    protected static PodEntity podOnServer(MinecraftServer server, int podId) {
+        return TestEntities.require(
+                server.getPlayerList().getPlayers().getFirst().level(), podId, PodEntity.class);
     }
 
     /**
@@ -138,7 +264,7 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
                 ClientSession.player(client).swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
             });
             context.waitTicks(1); // tick-wait: the mining is one call a tick
-            if (tick % ticksPerFrame == 1) {
+            if (ticksPerFrame != NO_FRAMES && tick % ticksPerFrame == 1) {
                 frame(context);
             }
             if (singleplayer
@@ -152,9 +278,49 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
                 + " ticks bare handed");
     }
 
+    /** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow; {@code u} and {@code v} are from the middle of the origin block. */
+    protected static Vec3 at(StructureSite site, double u, double y, double v) {
+        BlockPos origin = site.origin();
+        return new Vec3(
+                origin.getX() + 0.5 + (site.alongZ() ? v : u),
+                origin.getY() + y,
+                origin.getZ() + 0.5 + (site.alongZ() ? u : v));
+    }
+
     /** Take a named still screenshot. */
     protected final void screenshot(ClientGameTestContext context, String screenshotName) {
         shoot(context, screenshotName, screenshotsDir());
+    }
+
+    /**
+     * Saves {@code zoomName}: the rectangle at ({@code x}, {@code y}), {@code width} by {@code height} GUI pixels, of the still {@code screenshotName}
+     * already taken, scaled up {@link #ZOOM} times with nearest-neighbour so each GUI pixel stays a sharp block.
+     */
+    protected final void zoomStill(
+            ClientGameTestContext context,
+            String screenshotName,
+            String zoomName,
+            int x,
+            int y,
+            int width,
+            int height) {
+        int guiScale = context.computeOnClient(client -> client.getWindow().getGuiScale());
+        try {
+            BufferedImage full = ImageIO.read(
+                    screenshotsDir().resolve(screenshotName + ".png").toFile());
+            BufferedImage crop = full.getSubimage(x * guiScale, y * guiScale, width * guiScale, height * guiScale);
+            BufferedImage out =
+                    new BufferedImage(crop.getWidth() * ZOOM, crop.getHeight() * ZOOM, BufferedImage.TYPE_INT_ARGB);
+            for (int py = 0; py < out.getHeight(); py++) {
+                for (int px = 0; px < out.getWidth(); px++) {
+                    out.setRGB(px, py, crop.getRGB(px / ZOOM, py / ZOOM));
+                }
+            }
+            ImageIO.write(
+                    out, "png", screenshotsDir().resolve(zoomName + ".png").toFile());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static void shoot(ClientGameTestContext context, String fileName, Path dir) {

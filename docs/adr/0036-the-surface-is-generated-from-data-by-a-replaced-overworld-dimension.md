@@ -6,6 +6,10 @@ status: accepted
 
 Builds on [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md) (our own dry surface) and [ADR 0030](0030-art-direction-decisions.md) (the art direction). Amends [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md): the open floor now comes from our own material rule. Issue #240.
 
+Amended 2026-11-22 (#915): the surface stays empty for good (`docs/CREATURES.md`, Surface), so no biome lists a vanilla monster and no vanilla monster spawns on the surface or in any band; the Retained keep their own spawns in layers 1 and 2. Data closes the siege (every biome is in `without_zombie_sieges`) and the pillager patrol (`can_pillager_patrol_spawn` is false in every biome), and `spawn_patrols` is off as a second layer. Phantoms, wardens and the trader have no data switch: `SurfaceWorldRules` turns their rules off once per world, so they share the old-world gap below (the warden rule only hardens, since there is no sculk). `spawn_monsters` stays on, or the Retained would stop too.
+
+Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md): the campaign world overrides the overworld dimension type; an old world with a colony now refuses to start.
+
 ## Decision
 
 - **The overworld is replaced by a data pack dimension.** `data/minecraft/dimension/overworld.json` has the generator: `deepcharter:surface` noise settings and a `multi_noise` biome source of three surface biomes. It wins over every world preset, checked in real worlds (see Checked in real worlds). The GameTest server ignores it (it bakes a flat world), so `deepcharter:surface_sample` in the test preset holds a copy, and `SurfaceTerrainTest` keeps the copy equal to the shipped file.
@@ -19,7 +23,7 @@ Builds on [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain
   | Great pit | 24, 150, south of the square | 56 blocks in radius, 22 deep, rim 12 high |
   | Base ground | y 64 | the plateau's ground block is y 63 |
 - **Block ids are fixed:** `deepcharter:regolith` (plains top), `regolith_packed` (the layer under it), `ochre_regolith` (mesa top), `regolith_rock` (rust-red rock under that) and `basalt_outcrop`. Each is one block with 2 to 4 weighted model variants in its blockstate, so more or fewer textures is a pack change. The material rule (`deepcharter:surface`) is gated by one `stone_depth` condition (about the top 15 blocks of a column), so a block in deep rock pays one condition, and inside it picks the block from the two noises that also shape the relief. Basalt paints only from y 66 up, so the knobs are black and the flat plateau is not.
-- **Biomes carry life and, later, atmosphere.** `regolith_plains`, `mesa_country` and `basalt_field` have no creatures, no ambient mobs, no features and no carvers. Vanilla's monster list stays (night monsters belong to the creatures work). The biomes follow the same two noises as the terrain, through the noise router's `continents` and `erosion` slots.
+- **Biomes carry life and, later, atmosphere.** `regolith_plains`, `mesa_country` and `basalt_field` have no creatures, no ambient mobs, no features and no carvers. The biomes follow the same two noises as the terrain, through the noise router's `continents` and `erosion` slots.
 - **The wandering trader is turned off once.** Its spawner ignores a biome's spawn list, so the biomes cannot stop the trader and its llamas. `SurfaceWorldRules` sets the `spawn_wandering_traders` game rule to false on `ColonyEvents.BUILT`, which fires once per world, at its first start. A player who turns the rule back on keeps that choice, and a world that already has its colony is not changed. No new saved data, no mixin.
 - **Dry and open:** `sea_level` is `min_y`, `default_fluid` is air, there are no aquifers, and the rule has no bedrock step. The floor is plain stone down to the breach (ADR 0011).
 
@@ -71,3 +75,29 @@ Per new column of a 2352 block world (our surface over the layers, as ADR 0029 s
 The biome-source rows are the worst case for the surface: the surface's `multi_noise` source is evaluated for every quart cell of the whole 2352 block height, which the tall world will not do. A rerun on a quiet machine would settle the heap and the bar; none was available.
 
 Reproduce: `DEEPCHARTER_SURFACE_COST=1 DEEPCHARTER_SURFACE_COST_ONLY=<world> tools/gametest.sh 'surface_cost_test*'` for `tall_baseline`, `tall_surface`, `tall_baseline_biomes` and `tall_surface_biomes`.
+
+### Follow-up, 2026-10-22: the biome-source pair on a quiet machine (#473)
+
+This shows: on a quiet machine the surface biome source costs 1.075x the layers-only biome source in CPU per column on the pooled medians (1.049x on the pooled minimums), which matches the 1.08x this ADR first measured: no regression on a quiet machine. It is well under the 1.15x bar of [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). The 1.16x that #465 read (1.26x with its features) came from a loaded machine (load 15 to 65), so it was not a regression.
+
+Method: `tools/cost-run.sh 5 <world>...`, which runs `SurfaceCostTest` for 5 rounds of 289 columns each, one JVM per world, and reads the load average before each run. It refuses to start above load 2. No other work was started on the Mac; the 1-minute load average at each start was 1.45 to 1.99, the tail of the previous run's own world generation, and the sum of the CPU of the other (non-Java) processes peaked between 38% and 126% of one core, under the two cores that would mark a run as loaded. That check did not see another Java process, and `ps` CPU is a decayed average, so the quiet reading rests on the load averages and on no other agent being started. Three runs per world (15 rounds each), alternating which world went first. These runs used Gradle's daemon; the script now runs it without, so that every other Java process counts as foreign. The timed work is in the test JVM either way.
+
+CPU ms per column, `tall_baseline_biomes` (layers only) against `tall_surface_biomes` (surface), rounds in order:
+
+| Run | Load at start | `tall_baseline_biomes` min, median | `tall_surface_biomes` min, median |
+|---|---|---|---|
+| 1 | 1.81 baseline, 1.45 surface | 119.22, 123.25 (125.67, 122.31, 119.22, 123.25, 133.19) | 125.82, 128.23 (128.23, 126.06, 134.11, 136.88, 125.82) |
+| 2 | 1.99 baseline, 1.97 surface | 119.96, 122.23 (122.23, 119.96, 123.03, 146.83, 122.12) | 123.92, 134.27 (134.27, 125.18, 123.92, 134.37, 142.23) |
+| 3 | 1.97 baseline, 1.85 surface | 118.13, 121.39 (121.39, 118.13, 118.16, 123.03, 137.88) | 127.71, 131.52 (131.52, 127.71, 129.02, 136.76, 136.27) |
+| All 15 rounds | | 118.13, 122.31 | 123.92, 131.52 |
+
+Ratio, surface over layers only: 1.075x on the pooled medians (131.52 over 122.31), 1.049x on the pooled minimums. By run, the medians give 1.04x, 1.10x and 1.08x, and the minimums 1.06x, 1.03x and 1.08x. The same world differs by up to 4.7% in its median between runs (`tall_surface_biomes`; 1.5% for `tall_baseline_biomes`), so one pair cannot settle a ratio this close, and the pooled figures can.
+
+Not settled: the heap. The fifth round of every run reads a negative heap (the garbage collector ran between the two readings), and the other four vary by about 2x within one world, as before, so no heap ratio is claimed.
+
+## Note, 2026-11-21 (#803)
+
+The overworld is the campaign world: `data/minecraft/dimension/overworld.json` now has the generator of `campaign_sample` (`deepcharter:campaign` noise settings, the `deepcharter:bands` biome source) and a new `data/minecraft/dimension_type/overworld.json` has the campaign type. The surface above is its surface band, from y -64 to 319. The generator's height query for the surface band is identical to the one this ADR describes over 262,144 columns of the old `surface_sample`; the biomes are identical too. Two differences remain, and both are in the made chunk: the top block differs in about 14% of sampled columns, and the features are not all at the same place (see `SurfaceBandParityTest` in the first commit of #803). The layers' density terms ran above their bands and raised columns of ground to the top of the band in 0.5% of the columns; the campaign density now ends them at the band's floor.
+
+`surface_sample` is deleted. The GameTest server still bakes a flat overworld, now of a short test type (`deepcharter:test_overworld`, vanilla's 384-tall type), and `SurfaceTerrainTest` runs in the surface band of `campaign_sample`, the test pack's copy of the new overworld. The user approved the look on 2026-11-21 (#214).
+

@@ -33,6 +33,8 @@ public class PartTooltipClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(context, "the player and level", client -> client.player != null && client.level != null);
+            // Awaited by item, not "non-empty": the starting kit (rations) fills these slots before the part arrives.
+            Item hull = ComponentItems.item(ComponentTrack.HULL);
             singleplayer.getServer().runOnServer(server -> {
                 Inventory inventory =
                         server.getPlayerList().getPlayers().getFirst().getInventory();
@@ -44,8 +46,8 @@ public class PartTooltipClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "both parts in the client's inventory",
-                    client -> !stackAt(client, LABELLED_SLOT).isEmpty()
-                            && !stackAt(client, UNLABELLED_SLOT).isEmpty());
+                    client -> stackAt(client, LABELLED_SLOT).is(hull)
+                            && stackAt(client, UNLABELLED_SLOT).is(hull));
             ItemStack labelled = context.computeOnClient(client -> stackAt(client, LABELLED_SLOT));
             ItemStack unlabelled = context.computeOnClient(client -> stackAt(client, UNLABELLED_SLOT));
             String name = unlabelled.getHoverName().getString();

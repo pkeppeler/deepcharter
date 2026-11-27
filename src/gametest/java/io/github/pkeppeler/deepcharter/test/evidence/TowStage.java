@@ -12,7 +12,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
@@ -28,9 +27,6 @@ final class TowStage {
     static final int CHAT_FADE_TICKS = 220;
 
     static final int TICKS_PER_FRAME = 3;
-    static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-    static final Input JUMP = new Input(false, false, false, false, true, false, false);
-    static final Input FORWARD_JUMP = new Input(true, false, false, false, true, false, false);
     /** The mock pilot's yaws: it drives south, and turns to drive east or back north. */
     static final float SOUTH = 0f;
 
@@ -76,6 +72,14 @@ final class TowStage {
         float yaw = (float) (Mth.atan2(-line.x, line.z) * Mth.RAD_TO_DEG);
         float pitch = (float) -(Mth.atan2(line.y, line.horizontalDistance()) * Mth.RAD_TO_DEG);
         watcher(level, two).teleportTo(level, from.x, from.y, from.z, Set.of(), yaw, pitch, true);
+    }
+
+    /**
+     * Turns the mock pilot's tower to face {@code yaw}: a pod drives along its own facing, whatever its pilot looks
+     * at.
+     */
+    static void turn(TwoPlayerServer two, float yaw) {
+        TestEntities.vehicle(two.mock().player()).setYRot(yaw);
     }
 
     /** The tower's place. Looked up by UUID: a pod whose chunk is unloaded and loaded again is a new entity. */

@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
@@ -37,12 +38,11 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for #74: what a scanner slice covers and shows at each tier. */
 public class ScannerTiersTest {
     /** Well above the flat test world, so every tier's dive stays inside the build limits. */
-    private static final int ORIGIN_Y = 150;
+    private static final int ORIGIN_Y = TestLayers.worldY(TestLayers.SURFACE, 150);
 
     private static final AtomicInteger CHARTERS = new AtomicInteger();
 
@@ -55,12 +55,6 @@ public class ScannerTiersTest {
         if (!level.setBlock(at, block.defaultBlockState(), 2)) {
             throw new IllegalStateException("could not place " + block + " at " + at);
         }
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String message, @Nullable Object... args) {
-        return helper.assertionException(message.formatted(args));
     }
 
     @GameTest
@@ -223,8 +217,8 @@ public class ScannerTiersTest {
                     "the thermal tier should reach 2 blocks either side of the plane for the Mole and the Prospector (a bore of 2 or 3 and a block of margin), got %d",
                     spread);
         }
-        // Perpendicular to an east-facing plane is the Z axis. Each column ahead holds lava at one offset from the
-        // plane.
+        // Perpendicular to an east-facing plane is the Z axis. Each column ahead holds lava at one offset from
+        // the plane.
         int[] offsets = {0, 1, 2, -1, -2, 3, -3};
         Cell[] expected = {Cell.LAVA, Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.AIR, Cell.AIR
         };

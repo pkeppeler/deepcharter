@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -107,8 +108,8 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             });
             require(ore == 0, "the sold ore left the inventory, " + ore + " remain");
 
-            // #313, #363: four spoil in the parked pod's bay become two slag brick in its rack, and the account is not
-            // charged.
+            // #313, #363: four spoil in the parked pod's bay become two slag brick in its rack, and the account is
+            // not charged.
             singleplayer
                     .getServer()
                     .runOnServer(server -> PodLining.modify(parkedPod(server), state -> state.withSpoil(4)));
@@ -330,10 +331,8 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             TerminalView manyView = new TerminalView(
                     processor,
                     TerminalTypes.ORE_PROCESSOR.id(),
-                    true,
-                    true,
-                    List.of(),
-                    Optional.of(new ProcessorView(many, List.of())));
+                    Optional.of(new ProcessorView(many, List.of())),
+                    List.of());
             for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                 context.setScreen(() -> new OreProcessorScreen(manyView));
                 OreProcessorScreen crowded =
@@ -443,8 +442,11 @@ public class OreProcessorClientTest implements FabricClientGameTest {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
         require(Charters.found(server, player.getUUID(), CHARTER).isEmpty(), "founding should succeed");
         BlockPos processor = player.blockPosition().relative(Direction.EAST, 2);
-        server.overworld()
-                .setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                processor,
+                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                3);
         RepairState state = RepairState.get(server);
         for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
             type.parts().forEach(part -> state.insert(type, part));

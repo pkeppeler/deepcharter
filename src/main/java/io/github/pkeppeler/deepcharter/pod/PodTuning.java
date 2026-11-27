@@ -18,7 +18,8 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
      * Treads and rotor. Speeds are blocks per tick, accelerations blocks per tick squared, powers and
      * masses share one unit, damage is in hull points.
      *
-     * @param horizontalSpeed     speed along the one axis the pilot drives
+     * @param horizontalSpeed     speed along the one axis the pilot drives: a boat's top speed on water, above a
+     *     sprint-jumping player's (#1276, PodSprintTest)
      * @param enginePower         rotor power; lift is this minus the cargo mass
      * @param thrustAcceleration  upward acceleration at full lift (lift equal to engine power)
      * @param maxClimbSpeed       the rotor cannot push the pod up faster than this
@@ -36,7 +37,7 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
             float verticalDrag,
             float hardLandingSpeed,
             float hullDamagePerSpeed) {
-        public static final Movement DEFAULT = new Movement(0.2f, 100f, 0.16f, 0.35f, 0.08f, 0.98f, 0.7f, 70f);
+        public static final Movement DEFAULT = new Movement(0.4f, 100f, 0.16f, 0.35f, 0.08f, 0.98f, 0.7f, 50f);
     }
 
     /**
@@ -57,7 +58,9 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
     }
 
     /**
-     * Original stock-pod tank and rates; FUEL is a percentage of the tank (litres / tankLitres * 100).
+     * Stock-pod tank and burn rates; FUEL is a percentage of the tank (litres / tankLitres * 100). The tank is the original's 10 L, but the rates
+     * are about a seventh of the original's per-second 0.063, 0.19 and 0.32 (#963): our drill takes 2.4 s a block in layer 1, so the original's
+     * rates left a first tank 13 blocks and 31 s of drilling. {@code PodFuelTripTest} measures what a tank buys now.
      * What a fuel item gives is data (PodFuelItems). The beep sounds at lowFuelPercent and below, faster at urgentFuelPercent.
      */
     public record Fuel(
@@ -67,6 +70,6 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
             float drillingLitresPerSecond,
             float lowFuelPercent,
             float urgentFuelPercent) {
-        public static final Fuel DEFAULT = new Fuel(10f, 0.063f, 0.19f, 0.32f, 21f, 6f);
+        public static final Fuel DEFAULT = new Fuel(10f, 0.009f, 0.027f, 0.046f, 21f, 6f);
     }
 }

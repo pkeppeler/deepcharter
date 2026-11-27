@@ -1,7 +1,10 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -10,18 +13,18 @@ import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -38,7 +41,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -55,13 +57,10 @@ import org.jspecify.annotations.Nullable;
  * from data. An override is keyed by pod, so that a test's pod is the only one it touches.
  */
 public class PodStatsTest {
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final float SOUTH = 0f;
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    /** Layer 1 at these columns is the test's own: PodDrillTest uses x 3000 to 3704. */
+    /** Layer 1 at these columns is the test's own: PodDrillTest uses x 2996 to 4157 at z 2996 to 3004. */
     private static final int Z = 3000;
 
     private static final int FAR_MARGIN_TICKS = 1000;
@@ -89,7 +88,11 @@ public class PodStatsTest {
     }
 
     private static MockPlayer seatPilot(GameTestHelper helper, PodEntity pod) {
-        MockPlayer pilot = MockPlayers.join(helper, "stats-pilot");
+        return seatPilot(helper, pod, "stats-pilot");
+    }
+
+    private static MockPlayer seatPilot(GameTestHelper helper, PodEntity pod, String name) {
+        MockPlayer pilot = MockPlayers.join(helper, name);
         pilot.teleportTo(helper.getLevel(), pod.position(), SOUTH, 0f);
         if (!pilot.player().startRiding(pod)) {
             throw helper.assertionException("the pilot could not mount the pod");
@@ -139,6 +142,22 @@ public class PodStatsTest {
         }
     }
 
+    @GameTest
+    public void withoutThrustAccelerationZeroesTheLiftAndNothingElse(GameTestHelper helper) {
+        PodStats base = PodStats.base();
+        PodStats cut = base.withoutThrustAcceleration();
+        if (base.thrustAcceleration() <= 0f
+                || cut.thrustAcceleration() != 0f
+                || cut.horizontalSpeed() != base.horizontalSpeed()
+                || cut.enginePower() != base.enginePower()
+                || cut.maxHull() != base.maxHull()
+                || cut.maxClimbSpeed() != base.maxClimbSpeed()) {
+            throw helper.assertionException(
+                    "cutting the lift should zero it and nothing else, got %s from %s", cut, base);
+        }
+        helper.succeed();
+    }
+
     @GameTest(maxTicks = 60)
     public void speedOverrideChangesHowFarTheTreadsDrive(GameTestHelper helper) {
         float speed = PodTuning.DEFAULT.movement().horizontalSpeed() * 2f;
@@ -146,7 +165,8 @@ public class PodStatsTest {
         MockPlayer pilot = seatPilot(helper, pod);
         Vec3 start = pod.position();
         pilot.setInput(FORWARD);
-        int ticks = 10;
+        // Five ticks keep the pod on the small floor at twice the cruise speed.
+        int ticks = 5;
         helper.runAfterDelay(ticks, () -> {
             try {
                 double moved = pod.position().subtract(start).horizontalDistance();
@@ -176,7 +196,8 @@ public class PodStatsTest {
             try {
                 if (pod.getY() - startY < 1.0 || !pod.flying()) {
                     throw helper.assertionException(
-                            "a pod loaded to the stock engine power but with ten times the engine should climb, rose %s, flying %s",
+                            "a pod loaded to the stock engine power but with ten times the engine should climb, rose"
+                                    + " %s, flying %s",
                             pod.getY() - startY, pod.flying());
                 }
                 helper.succeed();
@@ -192,6 +213,9 @@ public class PodStatsTest {
         float tank = PodTuning.DEFAULT.fuel().tankLitres();
         PodEntity drained = spawnOnFloor(helper, stats -> stats.withIdleLitresPerSecond(idle * 10f));
         PodEntity control = helper.spawn(PodRegistry.POD, new Vec3(1.5, FLOOR_Y + 1, 1.5));
+        // Only a pod with someone aboard burns (#1434).
+        MockPlayer pilot = seatPilot(helper, drained);
+        MockPlayer controlPilot = seatPilot(helper, control, "stats-control-pilot");
         int ticks = 20;
         helper.runAfterDelay(ticks, () -> {
             try {
@@ -211,8 +235,9 @@ public class PodStatsTest {
                 }
                 helper.succeed();
             } finally {
+                controlPilot.leave();
                 control.discard();
-                cleanUp(helper, drained, null);
+                cleanUp(helper, drained, pilot);
             }
         });
     }
@@ -360,7 +385,8 @@ public class PodStatsTest {
                 boolean landed = padded.onGround() && control.onGround();
                 if (!landed || padded.hull() != before || control.hull() >= before) {
                     throw helper.assertionException(
-                            "both pods should land from 12 blocks, the padded one keeping %s and the control losing hull, got %s and %s (landed %s)",
+                            "both pods should land from 12 blocks, the padded one keeping %s and the control losing"
+                                    + " hull, got %s and %s (landed %s)",
                             before, padded.hull(), control.hull(), landed);
                 }
                 helper.succeed();
@@ -403,8 +429,9 @@ public class PodStatsTest {
     @GameTest
     public void theBuiltInFuelsAreInTheTableToo(GameTestHelper helper) {
         for (var fuel : List.of(Items.COAL, Items.CHARCOAL)) {
-            if (PodFuelItems.litresOf(new ItemStack(fuel)).orElse(0) != 2.0) {
-                throw helper.assertionException("%s should give 2 litres from the data table", fuel);
+            double expected = fuel == Items.COAL ? 2.0 : 1.0;
+            if (PodFuelItems.litresOf(new ItemStack(fuel)).orElse(0) != expected) {
+                throw helper.assertionException("%s should give %s litres from the data table", fuel, expected);
             }
         }
         if (PodFuelItems.litresOf(new ItemStack(Items.STICK)).isPresent()) {
@@ -415,8 +442,8 @@ public class PodStatsTest {
 
     @GameTest
     public void aTaggedItemWithNoLitresEntryOrABadFileIsLoggedAndNotFuel(GameTestHelper helper) {
-        // This test's data tags the feather (no file) and the flint (a file with negative litres), next to the blaze
-        // rod.
+        // This test's data tags the feather (no file) and the flint (a file with negative litres), next to the
+        // blaze rod.
         List<Item> missing = PodFuelItems.checkLitresFor(
                 List.of(Items.COAL, Items.STICK, Items.FEATHER, Items.FLINT, Items.BLAZE_ROD));
         if (!missing.equals(List.of(Items.STICK, Items.FEATHER, Items.FLINT))) {
@@ -514,21 +541,13 @@ public class PodStatsTest {
         helper.succeed();
     }
 
-    /** A mock pilot, and the pod it sits in once the far chunk ticks entities; {@link #pod} stays null until then. */
+    /** A mock pilot, and the pod it sits in once the far chunk ticks entities; {@link #pod} arrives then. */
     private static final class FarRig {
         private final MockPlayer pilot;
-        private @Nullable PodEntity pod;
+        private final Arrival<PodEntity> pod = new Arrival<>("pod", "the far chunk ticks");
 
         private FarRig(MockPlayer pilot) {
             this.pilot = pilot;
-        }
-
-        PodEntity pod() {
-            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
-        }
-
-        boolean ready() {
-            return pod != null;
         }
 
         /** Must be called from the test method. */
@@ -546,26 +565,17 @@ public class PodStatsTest {
                 }
                 prepare.accept(pod);
                 pilot.setInput(SPRINT);
-                rig.pod = pod;
+                rig.pod.set(pod);
             });
             return rig;
         }
     }
 
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw helper.assertionException(
-                    Component.literal("dimension " + LayerChain.dimension(layer) + " did not load"));
-        }
-        return level;
-    }
-
     @GameTest(maxTicks = FAR_TICKS)
     public void halvedTicksPerHardnessBoresInAboutHalfTheTicks(GameTestHelper helper) {
         int x = 4000;
-        int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        int floor = TestLayers.worldY(1, 60);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - 3, x + 8, floor - 8, floor - 1, Z - 3, Z + 4, Blocks.STONE);
         RoomCarver.carve(level, x - 3, x + 8, floor, floor + 10, Z - 3, Z + 4, Blocks.AIR);
         FarRig[] rigs = new FarRig[2];
@@ -582,28 +592,30 @@ public class PodStatsTest {
         int[] end = {-1, -1};
         TestTicks.each(helper, () -> {
             for (int i = 0; i < 2; i++) {
-                if (!rigs[i].ready()) {
+                if (!rigs[i].pod.isPresent()) {
                     continue;
                 }
-                if (start[i] < 0 && rigs[i].pod().drilling()) {
-                    start[i] = rigs[i].pod().tickCount;
+                PodEntity pod = rigs[i].pod.get();
+                if (start[i] < 0 && pod.drilling()) {
+                    start[i] = pod.tickCount;
                 }
                 if (start[i] >= 0
                         && end[i] < 0
                         && level.getBlockState(new BlockPos(columns[i], floor - 1, Z))
                                 .isAir()) {
-                    end[i] = rigs[i].pod().tickCount;
+                    end[i] = pod.tickCount;
                 }
             }
             if (end[0] >= 0 && end[1] >= 0) {
                 int slow = end[0] - start[0];
                 int fast = end[1] - start[1];
-                OVERRIDES.remove(rigs[1].pod().getUUID());
-                rigs[0].pod().discard();
-                rigs[1].pod().discard();
+                OVERRIDES.remove(rigs[1].pod.get().getUUID());
+                rigs[0].pod.get().discard();
+                rigs[1].pod.get().discard();
                 if (fast >= slow || Math.abs(2 * fast - slow) > 4) {
                     throw helper.assertionException(Component.literal(String.format(
-                            "half the ticks per hardness should bore in about half the ticks, the control took %d and the other %d",
+                            "half the ticks per hardness should bore in about half the ticks, the control took %d and"
+                                    + " the other %d",
                             slow, fast)));
                 }
                 helper.succeed();
@@ -614,17 +626,19 @@ public class PodStatsTest {
     /** Boring the one crust row left under a pod in layer 1 with the pod's hull and crust damage set; checks the pod that arrives in layer 2. */
     private static void borePodThroughCrust(
             GameTestHelper helper, int x, float hull, float crustDamage, Consumer<PodEntity> check) {
-        ServerLevel one = layer(helper, 1);
-        RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
+        ServerLevel one = TestLayers.level(helper, 1);
+        int floor = TestLayers.band(one, 1).minY();
+        RoomCarver.carve(one, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(one, x - 2, x + 2, floor + 1, floor + 8, Z - 2, Z + 2, Blocks.AIR);
+        RoomCarver.carvePocketBelow(one, 1, x - 2, x + 2, Z - 2, Z + 2);
         UUID[] id = new UUID[1];
-        FarRig rig = FarRig.await(helper, one, new Vec3(x, 1, Z), "crust-stats-" + x, pod -> {
+        FarRig rig = FarRig.await(helper, one, TestLayers.vec(1, x, 1, Z), "crust-stats-" + x, pod -> {
             id[0] = pod.getUUID();
             OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(crustDamage));
             pod.setHull(hull);
         });
         TestTicks.each(helper, () -> {
-            if (!rig.ready() || !rig.pilot.player().level().dimension().equals(LayerChain.dimension(2))) {
+            if (!rig.pod.isPresent() || !TestLayers.isIn(rig.pilot.player(), 2)) {
                 return;
             }
             rig.pilot.releaseInput();
@@ -654,19 +668,20 @@ public class PodStatsTest {
 
     @GameTest(maxTicks = FAR_TICKS)
     public void aCrustBoreThatTakesTheLastHullFiresHullDepleted(GameTestHelper helper) {
-        // Since #67 a pod at hull 0 is a wreck: the drill stops with the power and the pilot dies, so the pod does not
-        // cross.
+        // Since #67 a pod at hull 0 is a wreck: the drill stops with the power and the pilot dies, so the pod does
+        // not cross.
         int x = 4128;
-        ServerLevel one = layer(helper, 1);
-        RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
-        FarRig rig = FarRig.await(helper, one, new Vec3(x, 1, Z), "crust-stats-" + x, pod -> {
+        ServerLevel one = TestLayers.level(helper, 1);
+        int floor = TestLayers.band(one, 1).minY();
+        RoomCarver.carve(one, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(one, x - 2, x + 2, floor + 1, floor + 8, Z - 2, Z + 2, Blocks.AIR);
+        FarRig rig = FarRig.await(helper, one, TestLayers.vec(1, x, 1, Z), "crust-stats-" + x, pod -> {
             OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(20f));
             pod.setHull(15f);
         });
         long[] zeroSince = {-1};
         TestTicks.each(helper, () -> {
-            if (!rig.ready() || rig.pod().hull() != 0f) {
+            if (!rig.pod.isPresent() || rig.pod.get().hull() != 0f) {
                 return;
             }
             if (zeroSince[0] < 0) {
@@ -676,14 +691,16 @@ public class PodStatsTest {
             if (helper.getTick() - zeroSince[0] < 5) {
                 return;
             }
-            int events = DEPLETED.getOrDefault(rig.pod().getUUID(), 0);
-            boolean wreck = Wrecks.isWreck(rig.pod());
-            OVERRIDES.remove(rig.pod().getUUID());
-            DEPLETED.remove(rig.pod().getUUID());
-            rig.pod().discard();
+            PodEntity pod = rig.pod.get();
+            int events = DEPLETED.getOrDefault(pod.getUUID(), 0);
+            boolean wreck = Wrecks.isWreck(pod);
+            OVERRIDES.remove(pod.getUUID());
+            DEPLETED.remove(pod.getUUID());
+            pod.discard();
             if (events != 1 || !wreck) {
                 throw helper.assertionException(Component.literal(
-                        "a crust bore costing 20 should take a hull of 15 to 0, fire HULL_DEPLETED once and leave a wreck, got "
+                        "a crust bore costing 20 should take a hull of 15 to 0, fire HULL_DEPLETED once and leave a"
+                                + " wreck, got "
                                 + events + " events, wreck " + wreck));
             }
             helper.succeed();

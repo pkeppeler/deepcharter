@@ -15,6 +15,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 
@@ -49,8 +50,19 @@ public final class TerminalActivity {
         TerminalEvents.REPAIRED.register((server, type, charter, player) -> syncLoaded(type));
     }
 
-    /** Sets the terminal at {@code pos} to show whether its type is online. A block that is no terminal is left alone. */
+    /**
+     * Sets the terminal at {@code pos}, both its halves, to show whether its type is online. A block that is no terminal is left
+     * alone.
+     */
     public static void sync(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        syncBlock(level, pos);
+        if (state.getBlock() instanceof TerminalBlock) {
+            syncBlock(level, TerminalBlock.otherHalf(state, pos));
+        }
+    }
+
+    private static void syncBlock(ServerLevel level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
         BlockState right = corrected(level.getServer(), state);
         if (right != state) {
@@ -85,13 +97,31 @@ public final class TerminalActivity {
                 for (int z = 0; z < SectionPos.SECTION_SIZE; z++) {
                     for (int x = 0; x < SectionPos.SECTION_SIZE; x++) {
                         BlockState state = section.getBlockState(x, y, z);
+                        BlockPos at = chunk.getPos().getBlockAt(x, baseY + y, z);
                         BlockState right = corrected(level.getServer(), state);
                         if (right != state) {
-                            chunk.setBlockState(chunk.getPos().getBlockAt(x, baseY + y, z), right, 0);
+                            chunk.setBlockState(at, right, 0);
                         }
+                        mendUpperHalf(level, chunk, at, right);
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * A lower half with room over it and no upper half gets one: a terminal saved when it was one block, or set by a command or a
+     * structure, would otherwise lose itself to the first neighbour update from above.
+     */
+    private static void mendUpperHalf(ServerLevel level, LevelChunk chunk, BlockPos at, BlockState state) {
+        if (!(state.getBlock() instanceof TerminalBlock)
+                || state.getValue(TerminalBlock.HALF) != DoubleBlockHalf.LOWER) {
+            return;
+        }
+        BlockPos above = at.above();
+        if (above.getY() <= level.getMaxY() && chunk.getBlockState(above).canBeReplaced()) {
+            BlockState upper = corrected(level.getServer(), state.setValue(TerminalBlock.HALF, DoubleBlockHalf.UPPER));
+            chunk.setBlockState(above, upper, 0);
         }
     }
 

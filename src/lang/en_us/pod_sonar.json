@@ -1,0 +1,18 @@
+{
+  "key.deepcharter.sonar_ping": "Ping the sonar (navigator)",
+  "deepcharter.pod.sonar.not_navigator": "Only the navigator works the sonar",
+  "deepcharter.pod.sonar.no_power": "No power for the sonar",
+  "deepcharter.pod.sonar.low_power": "Not enough power left to ping",
+  "deepcharter.pod.sonar.cooling_down": "The sonar is still ringing",
+  "deepcharter.pod.sonar.unreadable": "The sonar's log is from a newer build",
+  "deepcharter.pod.sonar.title": "SONAR",
+  "deepcharter.pod.sonar.hint": "%s pings",
+  "key.deepcharter.sonar_mark": "Mark the echo you are looking at (navigator)",
+  "deepcharter.pod.sonar.no_echo": "That echo has faded",
+  "deepcharter.pod.sonar.no_aim": "Look toward an echo to mark it",
+  "deepcharter.pod.sonar.mark": "%s %s m",
+  "deepcharter.pod.sonar.kind.ore": "ORE",
+  "deepcharter.pod.sonar.kind.gas": "GAS",
+  "deepcharter.pod.sonar.kind.cave": "CAVE",
+  "deepcharter.pod.sonar.kind.moved": "MOVED"
+}

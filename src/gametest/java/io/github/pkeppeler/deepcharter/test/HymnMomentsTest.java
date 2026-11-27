@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
@@ -10,19 +10,17 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.HymnMoments;
 import io.github.pkeppeler.deepcharter.sound.HymnMomentsProbe;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #249: the Lamp Hymn plays to one player at the moments it is for (founding a charter at the colony, joining one,
@@ -87,8 +85,8 @@ public class HymnMomentsTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer pilot = MockPlayers.join(helper, "Pilot");
         ServerLevel surface = server.overworld();
-        ServerLevel layer1 = ClientLight.serverLevel(server, LayerChain.dimension(1));
-        ServerLevel layer2 = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel layer1 = TestLayers.level(server, 1);
+        ServerLevel layer2 = TestLayers.level(server, 2);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), layer1, layer2, 1, 2);
         helper.runAfterDelay(DRAIN_TICKS, () -> {
@@ -106,8 +104,8 @@ public class HymnMomentsTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer pilot = MockPlayers.join(helper, "Climber");
         ServerLevel surface = server.overworld();
-        ServerLevel layer1 = ClientLight.serverLevel(server, LayerChain.dimension(1));
-        ServerLevel layer2 = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel layer1 = TestLayers.level(server, 1);
+        ServerLevel layer2 = TestLayers.level(server, 2);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), layer2, layer1, 2, 1);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), layer1, surface, 1, LayerChain.SURFACE);
         helper.runAfterDelay(DRAIN_TICKS, () -> {
@@ -162,7 +160,7 @@ public class HymnMomentsTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer pilot = MockPlayers.join(helper, "Bouncer");
         ServerLevel surface = server.overworld();
-        ServerLevel layer1 = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel layer1 = TestLayers.level(server, 1);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
         helper.runAfterDelay(DRAIN_TICKS, () -> {
@@ -180,7 +178,7 @@ public class HymnMomentsTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer pilot = MockPlayers.join(helper, "Yo-yo");
         ServerLevel surface = server.overworld();
-        ServerLevel layer1 = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel layer1 = TestLayers.level(server, 1);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), layer1, surface, 1, LayerChain.SURFACE);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
@@ -200,7 +198,7 @@ public class HymnMomentsTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer pilot = MockPlayers.join(helper, "Restarter");
         ServerLevel surface = server.overworld();
-        ServerLevel layer1 = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel layer1 = TestLayers.level(server, 1);
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
         HymnMomentsProbe.stopped();
         BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
@@ -221,23 +219,10 @@ public class HymnMomentsTest {
         Entity pod = TestEntities.create(PodRegistry.POD, server.overworld());
         BreachEvents.CROSSED
                 .invoker()
-                .onCrossed(
-                        pod,
-                        server.overworld(),
-                        ClientLight.serverLevel(server, LayerChain.dimension(1)),
-                        LayerChain.SURFACE,
-                        1);
+                .onCrossed(pod, server.overworld(), TestLayers.level(server, 1), LayerChain.SURFACE, 1);
         helper.runAfterDelay(DRAIN_TICKS, () -> {
             expect(helper, watcher.soundsHeard().isEmpty(), "the watcher heard %s", watcher.soundsHeard());
             helper.succeed();
         });
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw helper.assertionException(Component.literal(String.format(format, args)));
-        }
     }
 }

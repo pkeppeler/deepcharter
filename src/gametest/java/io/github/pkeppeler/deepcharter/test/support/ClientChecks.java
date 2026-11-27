@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +48,19 @@ public final class ClientChecks {
         }
     }
 
+    /** Fails, naming the cause, unless the client is its pod's navigator: only a navigator draws the scope and sends the ping (#1082). */
+    public static void requireNavigator(ClientGameTestContext context) {
+        String seat = context.computeOnClient(client -> {
+            int passengers = client.player != null && client.player.getVehicle() instanceof PodEntity pod
+                    ? pod.getPassengers().size()
+                    : 0;
+            return SonarHud.frame(client).isPresent()
+                    ? ""
+                    : "the client is not the navigator: its pod shows " + passengers + " passengers";
+        });
+        require(seat.isEmpty(), seat);
+    }
+
     /**
      * Runs {@code body} with the HUD hidden (F1), then puts the HUD back as it was, in a finally, also when {@code body} throws. Every client
      * test shares one client, and a later one draws on the HUD. This is the one place a test toggles the HUD: {@code gradle/gametest.gradle.kts}
@@ -75,6 +91,34 @@ public final class ClientChecks {
         } finally {
             context.runOnClient(client -> client.options.particles().set(particlesWere));
         }
+    }
+
+    /**
+     * Runs {@code body} with the client's render distance at {@code chunks}, then puts it back as it was, in a finally, also when
+     * {@code body} throws. Every client test shares one client.
+     */
+    public static void withRenderDistance(ClientGameTestContext context, int chunks, Runnable body) {
+        int was = context.computeOnClient(
+                client -> client.options.renderDistance().get());
+        try {
+            context.runOnClient(client -> client.options.renderDistance().set(chunks));
+            body.run();
+        } finally {
+            context.runOnClient(client -> client.options.renderDistance().set(was));
+        }
+    }
+
+    /**
+     * A screenshot of the surface sky once the client has caught up, with minimal particles and the HUD hidden: the sky's dark, random
+     * {@code dust_mote} would otherwise speckle the pixels a test reads (#1043).
+     */
+    public static Path skyShot(ClientGameTestContext context, String name) {
+        Path[] shot = new Path[1];
+        withHudHidden(context, ParticleStatus.MINIMAL, () -> {
+            context.waitTicks(40);
+            shot[0] = context.takeScreenshot(name);
+        });
+        return shot[0];
     }
 
     private static void withHud(ClientGameTestContext context, boolean hidden, Runnable body) {

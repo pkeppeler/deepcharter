@@ -7,11 +7,12 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionPayload;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
@@ -20,6 +21,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -32,14 +35,17 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Client GameTest for #62. The overlay shows the transmission of a breach crossing over the fade, with {@code [CHARTER]} and
- * {@code [DIRECTOR]} filled in and the header in the colour of its framing. Transmissions fired for a charter reach the real client in
- * order, one after another, and those fired while it was offline are delivered when it logs in again.
+ * Client GameTest for #62 and #1333. The overlay shows the transmission of a breach crossing over the fade, in the script's framing: the
+ * header in the colour of its framing, the text with {@code [CHARTER]} filled in, and the framing's closing line. A relay counts its
+ * loops by the world's day. Transmissions fired for a charter reach the real client in order, one after another, and those fired while
+ * it was offline are delivered when it logs in again.
  */
 public class TransmissionsClientTest implements FabricClientGameTest {
     private static final String CREW_NAME = "Overlay Crew";
     private static final String TWO_PLAYER_NAME = "Two Player Overlay";
-    private static final String MOCK_NAME = "MockPilot";
+    private static final String FROM_PERSONNEL = "▌INCOMING — PERSONNEL, H. COLOM & CO.";
+    private static final String END_OF_MESSAGE = "▌END OF MESSAGE";
+    private static final long TICKS_PER_DAY = 24_000L;
     private static final double X = 2400.5;
     private static final double Z = 2400.5;
     /** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
@@ -52,8 +58,20 @@ public class TransmissionsClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
-        aCrossingShowsItsTransmissionOverTheFade(context);
-        transmissionsReachTheClientInOrderAndOnLogin(context);
+        try (var _ = QuietTransmissions.shown()) {
+            theDirectorFieldIsFilledWithTheDirectorsName();
+            aCrossingShowsItsTransmissionOverTheFade(context);
+            transmissionsReachTheClientInOrderAndOnLogin(context);
+        }
+    }
+
+    /** The overlay fills {@code [DIRECTOR]} with the name the server sent and leaves no literal field behind. */
+    private static void theDirectorFieldIsFilledWithTheDirectorsName() {
+        String filled = TransmissionOverlay.fill(
+                "[CHARTER] signs. [DIRECTOR] signs. [DIRECTOR] again.", CREW_NAME, "Test Director");
+        require(
+                filled.equals(CREW_NAME + " signs. Test Director signs. Test Director again."),
+                "The charter and Director fields should be filled, the text is: " + filled);
     }
 
     /** The overlay's state, for a wait's failure message. */
@@ -67,7 +85,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
         return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, name);
     }
 
-    /** A real crossing brings t05 to the charter's player, with the fields filled, and the text is drawn over the black of the fade. */
+    /** A real crossing brings t11 to the charter's player, framed live from Personnel, and the text is drawn over the black of the fade (which this test starts itself: a crossing in place has none). */
     private static void aCrossingShowsItsTransmissionOverTheFade(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
@@ -77,38 +95,56 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                 first.setPermanentlyInvulnerable(true);
                 require(Charters.found(server, first.getUUID(), CREW_NAME).isEmpty(), "founding should succeed");
                 // Generate the arrival area in layer 2 now so the crossing does not wait on it.
-                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel two = TestLayers.level(server, 2);
                 for (int dx = -2; dx <= 2; dx++) {
                     for (int dz = -2; dz <= 2; dz++) {
                         two.getChunk((int) X / 16 + dx, (int) Z / 16 + dz);
                     }
                 }
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-                first.teleportTo(one, X, one.getMinY() - 1, Z, Set.of(), 0, 0, true);
+                ServerLevel one = TestLayers.level(server, 1);
+                // Layer 1's zones have transmissions of their own. They are marked fired and sent, so only the
+                // crossing's transmission reaches the overlay.
+                CharterId charter = Charters.charterOfOrThrow(server, first.getUUID())
+                        .orElseThrow()
+                        .id();
+                TransmissionData data = TransmissionData.get(server);
+                for (String zone : List.of("t07", "t08", "t09", "t10")) {
+                    data.fire(charter, TransmissionCatalog.require(id(zone)));
+                }
+                data.markSent(
+                        charter, first.getUUID(), data.progress(charter).fired().size());
+                // A crossing is read from the layer last seen, so the player is first put in layer 1.
+                first.teleportTo(one, X, TestLayers.band(one, 1).minY() + 40, Z, Set.of(), 0, 0, true);
                 return first.getGameProfile().name();
+            });
+            ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
+            context.waitTicks(20); // tick-wait: the server notes the layer a player is in over its next ticks
+            // The founding's welcome (t01) is on the overlay or queued: cleared, so the crossing's is next.
+            context.runOnClient(client -> TransmissionOverlay.reset());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                // One block under the floor of layer 1, so it crosses on the next server tick.
+                server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .teleportTo(one, X, TestLayers.band(one, 1).minY() - 1, Z, Set.of(), 0, 0, true);
             });
 
             ClientWait.until(
                     context,
-                    "transmission t05 on the overlay",
+                    "transmission t11 on the overlay",
                     client -> TransmissionOverlay.transmission()
                             .map(Transmission::id)
-                            .equals(Optional.of(id("t05"))),
+                            .equals(Optional.of(id("t11"))),
                     client -> seen());
             String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
             require(
-                    !body.contains("[CHARTER]")
-                            && !body.contains("[DIRECTOR]")
-                            && body.contains(CREW_NAME)
-                            && body.contains(player),
-                    "The charter and Director fields should be filled with '" + CREW_NAME + "' and '" + player
-                            + "', the text is: " + body);
+                    body.startsWith("Congratulations on your first breach!") && body.endsWith("\n\n" + END_OF_MESSAGE),
+                    "t11 is the script's text, closed by the live framing's last line; the text is: " + body);
             ClientWait.until(
                     context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
             String header = context.computeOnClient(client -> TransmissionOverlay.headerShown());
-            require(
-                    header.equals("> LIVE FROM THE EMPLOYER"),
-                    "t05 is live from the employer, the header is: " + header);
+            require(header.equals(FROM_PERSONNEL), "t11 is live from Personnel, the header is: " + header);
             require(
                     context.computeOnClient(
                             client -> TransmissionOverlay.bodyShown().equals(TransmissionOverlay.bodyFull())),
@@ -117,23 +153,27 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     greenPixels(context.takeScreenshot("transmission-overlay")) >= 50,
                     "The overlay should draw its text on screen");
 
-            // The breach fade keeps running under the text: at its black plateau the text is the only bright thing on
-            // screen.
+            // The breach fade keeps running under the text: at its black plateau the text is the only bright thing
+            // on screen.
             context.runOnClient(client -> {
                 TransmissionOverlay.reset();
-                BreachEffects.begin();
+                BreachEffects.begin(true);
                 TransmissionOverlay.enqueue(new TransmissionPayload(id("t01"), CREW_NAME, player));
             });
+            // A screen covers the HUD and stops the overlay typing while the fade runs on to black under it (#1245).
             ClientWait.until(
                     context,
-                    "the breach fade done with the transmission header shown",
-                    client -> BreachEffects.fadeAlpha(0f) >= 1f
-                            && TransmissionOverlay.active()
-                            && !TransmissionOverlay.headerShown().isEmpty(),
-                    client -> seen());
+                    "the whole transmission header typed over the black of the breach fade, with no screen open",
+                    client -> client.gui.screen() == null
+                            && BreachEffects.fadeAlpha(0f) >= 1f
+                            && TransmissionOverlay.headerShown().equals(FROM_PERSONNEL),
+                    client -> seen() + ", fade alpha " + BreachEffects.fadeAlpha(0f) + ", "
+                            + ClientWait.describe(client));
+            long overFade = greenPixels(context.takeScreenshot("transmission-over-fade"));
             require(
-                    greenPixels(context.takeScreenshot("transmission-over-fade")) >= 20,
-                    "The transmission should be drawn over the black of the fade, not under it");
+                    overFade >= 20,
+                    "The transmission should be drawn over the black of the fade, not under it; the shot has "
+                            + overFade + " green pixels");
             context.runOnClient(client -> {
                 BreachEffects.reset();
                 TransmissionOverlay.reset();
@@ -182,8 +222,9 @@ public class TransmissionsClientTest implements FabricClientGameTest {
 
             // Two at once: the first types out, the second waits for it and takes the screen when the first is done.
             two.server().runOnServer(server -> {
+                // Founding sent t01 already, and the client was sent it on joining: firing it again changes nothing.
                 Transmissions.fire(server, charter, id("t01"));
-                Transmissions.fire(server, charter, id("t06"));
+                Transmissions.fire(server, charter, id("t10"));
             });
             ClientWait.until(
                     context,
@@ -194,11 +235,9 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     client -> seen());
             String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
             require(
-                    body.contains(TWO_PLAYER_NAME)
-                            && body.contains(MOCK_NAME)
-                            && !body.contains("[CHARTER]")
-                            && !body.contains("[DIRECTOR]"),
-                    "The Director is " + MOCK_NAME + " and the charter " + TWO_PLAYER_NAME + ", the text is: " + body);
+                    body.contains("congratulations on founding " + TWO_PLAYER_NAME + "!")
+                            && !body.contains("[CHARTER]"),
+                    "The charter is " + TWO_PLAYER_NAME + ", the text is: " + body);
             ClientWait.until(
                     context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
             require(
@@ -206,19 +245,47 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     "A live transmission is typed in phosphor green");
             ClientWait.until(
                     context,
-                    "transmission t06 on the overlay",
+                    "transmission t10 on the overlay",
                     client -> TransmissionOverlay.transmission()
                             .map(Transmission::id)
-                            .equals(Optional.of(id("t06"))),
+                            .equals(Optional.of(id("t10"))),
                     client -> seen());
             ClientWait.until(
                     context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
             require(
                     !(redPixels(context.takeScreenshot("transmission-unknown")) < 20),
                     "A transmission from an unknown sender has a red header");
+            String fragment = context.computeOnClient(
+                    client -> TransmissionOverlay.headerShown() + "|" + TransmissionOverlay.bodyFull());
+            require(
+                    fragment.startsWith("▌INCOMING — [SOURCE UNKNOWN]|") && fragment.endsWith("\n\n▌SIGNAL LOST"),
+                    "A fragment is framed from an unknown source and ends with the signal lost: " + fragment);
 
-            // Offline: the client leaves, the mock stays. The mock is sent these at once, the client when it logs in
-            // again.
+            // A relay: the dead crew's pod, and the loop counter the script gives, one more for each day of the world.
+            two.server().runOnServer(server -> Transmissions.fire(server, charter, id("t12")));
+            ClientWait.until(
+                    context,
+                    "relay t12 typed out on the overlay",
+                    client -> TransmissionOverlay.transmission()
+                                    .map(Transmission::id)
+                                    .equals(Optional.of(id("t12")))
+                            && TransmissionOverlay.typed(),
+                    client -> seen());
+            String relay = context.computeOnClient(client -> TransmissionOverlay.headerShown() + "|"
+                    + String.format(
+                            Locale.ROOT,
+                            "%,d",
+                            14_002 + Objects.requireNonNull(client.level).getGameTime() / TICKS_PER_DAY)
+                    + "|" + TransmissionOverlay.bodyFull());
+            String[] parts = relay.split("\\|", 3);
+            require(
+                    parts[0].equals("▌AUTOMATIC RELAY — POD MOLE-0388 — LOOP " + parts[1])
+                            && parts[2].endsWith("\n\n▌RELAY RESTARTS"),
+                    "A relay names its pod, counts its loops and restarts: " + relay);
+            require(!(amberPixels(context.takeScreenshot("transmission-relay")) < 20), "A relay has an amber header");
+
+            // Offline: the client leaves, the mock stays. The mock is sent these at once, the client when it logs
+            // in again.
             two.connection().close();
             ClientWait.until(context, "the client out of the world", client -> client.level == null);
             for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > MOCK_ONLY; tick++) {
@@ -268,6 +335,11 @@ public class TransmissionsClientTest implements FabricClientGameTest {
     /** Pixels of the red of an unknown sender's header, 0xFF5A4F. */
     private static long redPixels(Path screenshot) {
         return countPixels(screenshot, (red, green, blue) -> near(red, 0xFF) && near(green, 0x5A) && near(blue, 0x4F));
+    }
+
+    /** Pixels of the amber of a relay's header, 0xFFC857. */
+    private static long amberPixels(Path screenshot) {
+        return countPixels(screenshot, (red, green, blue) -> near(red, 0xFF) && near(green, 0xC8) && near(blue, 0x57));
     }
 
     private static boolean near(int channel, int expected) {

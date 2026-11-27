@@ -6,7 +6,7 @@ public enum FindResult {
     FOUND,
     /** The charter had already found it; nothing changed. */
     ALREADY_FOUND,
-    /** The player is on no charter, so there is no handbook to file it in; nothing changed. */
+    /** The player is on no charter: the Note is filed for them alone, and goes into a charter they found or join. */
     NO_CHARTER,
     /** The block names a Note that does not exist (yet); nothing changed. */
     UNKNOWN,

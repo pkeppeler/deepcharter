@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import com.mojang.blaze3d.platform.cursor.CursorType;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -29,23 +31,76 @@ import org.jspecify.annotations.Nullable;
  * of {@code CrtDraw.glowText} (four copies one pixel out, then the text) counts as one string, the last copy. Text drawn through a
  * scissor is cut to it, and a string wholly outside the scissor is dropped. {@code textWithWordWrap} and {@code textWithBackdrop} are
  * not recorded; the mod draws no text with either.
+ *
+ * <p>{@link #frame} also keeps the plain {@code fill} rectangles drawn outside a widget and the cursor the frame asked
+ * for, for what only shows as ink or a hand: a hovered row's highlight, a click cue.
  */
 public final class DrawnText {
     private DrawnText() {}
 
-    /** A string the screen drew: its text, and the box it covers on the screen in GUI pixels. */
-    public record Drawn(String text, Box box) {
+    /** A string the screen drew: its text, the box it covers on the screen in GUI pixels, and its colour (ARGB). */
+    public record Drawn(String text, Box box, int color) {
         /** The text cut to 30 characters, for a failure message. */
         public String shortText() {
             return text.length() <= 30 ? text : text.substring(0, 30) + "...";
         }
     }
 
+    /**
+     * A rectangle the screen filled outside any widget: the box it covers on the screen in GUI pixels, cut to the
+     * scissor, and its colour (ARGB).
+     */
+    public record Fill(Box box, int color) {}
+
+    /**
+     * One frame drawn outside any widget: its strings, its fills in the order drawn, and the cursor it asked for, or
+     * null.
+     */
+    public record Frame(
+            List<Drawn> text, List<Fill> fills, @Nullable CursorType cursor) {}
+
+    /** The characters of {@code text}, without its styles. */
+    public static String plain(FormattedCharSequence text) {
+        StringBuilder out = new StringBuilder();
+        text.accept((index, style, codePoint) -> {
+            out.appendCodePoint(codePoint);
+            return true;
+        });
+        return out.toString();
+    }
+
     /** Renders {@code screen} into a recorder and returns the strings it drew outside any widget. Client thread. */
     public static List<Drawn> of(Screen screen) {
+        return of(screen, -1, -1);
+    }
+
+    /** Like {@link #of(Screen)} with the mouse at ({@code mouseX}, {@code mouseY}), for what only a hovered thing draws. */
+    public static List<Drawn> of(Screen screen, int mouseX, int mouseY) {
+        return frame(screen, mouseX, mouseY).text();
+    }
+
+    /** Like {@link #of(Screen)} with the mouse where the cursor is now. Client thread. */
+    public static List<Drawn> atCursor(Screen screen) {
         Minecraft client = Minecraft.getInstance();
-        Recorder recorder = new Recorder(client);
-        screen.extractRenderStateWithTooltipAndSubtitles(recorder, -1, -1, 0f);
+        var window = client.getWindow();
+        return of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
+                client.mouseHandler.getScaledYPos(window));
+    }
+
+    /**
+     * Renders {@code screen} once with the mouse at ({@code mouseX}, {@code mouseY}) and returns all it recorded.
+     * Client thread.
+     */
+    public static Frame frame(Screen screen, int mouseX, int mouseY) {
+        Recorder recorder = new Recorder(Minecraft.getInstance());
+        screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f);
+        return new Frame(List.copyOf(recorder.drawn), List.copyOf(recorder.fills), recorder.cursor);
+    }
+
+    /** Runs {@code draw} on a recorder and returns the strings it drew, for something that is not a screen, such as a toast. Client thread. */
+    public static List<Drawn> of(Consumer<GuiGraphicsExtractor> draw) {
+        Recorder recorder = new Recorder(Minecraft.getInstance());
+        draw.accept(recorder);
         return List.copyOf(recorder.drawn);
     }
 
@@ -79,6 +134,8 @@ public final class DrawnText {
         private static final StackWalker STACK = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
 
         private final List<Drawn> drawn = new ArrayList<>();
+        private final List<Fill> fills = new ArrayList<>();
+        private @Nullable CursorType cursor;
         private final Deque<Box> scissors = new ArrayDeque<>();
         private final Vector2f corner = new Vector2f();
 
@@ -96,6 +153,27 @@ public final class DrawnText {
         }
 
         @Override
+        public void fill(int x0, int y0, int x1, int y1, int color) {
+            super.fill(x0, y0, x1, y1, color);
+            if (insideWidget()) {
+                return;
+            }
+            Box box = transformed(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+            if (!scissors.isEmpty()) {
+                box = intersection(scissors.peek(), box);
+            }
+            if (box.width() > 0 && box.height() > 0) {
+                fills.add(new Fill(box, color));
+            }
+        }
+
+        @Override
+        public void requestCursor(CursorType type) {
+            super.requestCursor(type);
+            cursor = type;
+        }
+
+        @Override
         public void disableScissor() {
             super.disableScissor();
             scissors.pop();
@@ -104,60 +182,51 @@ public final class DrawnText {
         @Override
         public void text(Font font, @Nullable String text, int x, int y, int color) {
             String drawn = Objects.requireNonNull(text, "text drawn without a string");
-            record(drawn, font.width(drawn), font, x, y);
+            record(drawn, font.width(drawn), font, x, y, color);
         }
 
         @Override
         public void text(Font font, @Nullable String text, int x, int y, int color, boolean shadow) {
             String drawn = Objects.requireNonNull(text, "text drawn without a string");
-            record(drawn, font.width(drawn), font, x, y);
+            record(drawn, font.width(drawn), font, x, y, color);
         }
 
         @Override
         public void text(Font font, FormattedCharSequence text, int x, int y, int color) {
-            record(string(text), font.width(text), font, x, y);
+            record(plain(text), font.width(text), font, x, y, color);
         }
 
         @Override
         public void text(Font font, FormattedCharSequence text, int x, int y, int color, boolean shadow) {
-            record(string(text), font.width(text), font, x, y);
+            record(plain(text), font.width(text), font, x, y, color);
         }
 
         @Override
         public void text(Font font, Component text, int x, int y, int color) {
-            record(text.getString(), font.width(text), font, x, y);
+            record(text.getString(), font.width(text), font, x, y, color);
         }
 
         @Override
         public void text(Font font, Component text, int x, int y, int color, boolean shadow) {
-            record(text.getString(), font.width(text), font, x, y);
+            record(text.getString(), font.width(text), font, x, y, color);
         }
 
         @Override
         public void centeredText(Font font, String text, int x, int y, int color) {
-            record(text, font.width(text), font, x - font.width(text) / 2, y);
+            record(text, font.width(text), font, x - font.width(text) / 2, y, color);
         }
 
         @Override
         public void centeredText(Font font, Component text, int x, int y, int color) {
-            record(text.getString(), font.width(text), font, x - font.width(text) / 2, y);
+            record(text.getString(), font.width(text), font, x - font.width(text) / 2, y, color);
         }
 
         @Override
         public void centeredText(Font font, FormattedCharSequence text, int x, int y, int color) {
-            record(string(text), font.width(text), font, x - font.width(text) / 2, y);
+            record(plain(text), font.width(text), font, x - font.width(text) / 2, y, color);
         }
 
-        private static String string(FormattedCharSequence text) {
-            StringBuilder out = new StringBuilder();
-            text.accept((index, style, codePoint) -> {
-                out.appendCodePoint(codePoint);
-                return true;
-            });
-            return out.toString();
-        }
-
-        private void record(String text, int width, Font font, int x, int y) {
+        private void record(String text, int width, Font font, int x, int y, int color) {
             if (text.isBlank() || insideWidget()) {
                 return;
             }
@@ -173,9 +242,9 @@ public final class DrawnText {
                     && last.text().equals(text)
                     && Math.abs(last.box().x() - box.x()) <= GLOW_REACH
                     && Math.abs(last.box().y() - box.y()) <= GLOW_REACH) {
-                drawn.set(drawn.size() - 1, new Drawn(text, box));
+                drawn.set(drawn.size() - 1, new Drawn(text, box, color));
             } else {
-                drawn.add(new Drawn(text, box));
+                drawn.add(new Drawn(text, box, color));
             }
         }
 

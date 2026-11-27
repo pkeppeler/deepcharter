@@ -29,7 +29,7 @@ GUI_SIZES = [(320, 240), (321, 240), (427, 240), (480, 270), (640, 360), (683, 3
 GAUGES = cockpit_ribbon.GAUGES
 LOOK = cockpit_ribbon.ribbon()
 # A line of the plain readout that is long: "CRUST 3 DOWN  HULL 40, IT TAKES 55" is 34 characters.
-WIDE_ALERT = {"alerts": ["x" * 34], "tally": cockpit_ribbon.STATES["calm"]["tally"], "lines": [], "lamps": [0, 0, 0, 0]}
+WIDE_ALERT = {"alerts": ["x" * 34], "tally": cockpit_ribbon.STATES["calm"]["tally"], "lines": [], "lamps": [0, 0, 0, 0, 0]}
 
 
 def png_size(path: Path) -> tuple[int, int]:
@@ -71,7 +71,7 @@ class Theme(unittest.TestCase):
         self.assertEqual((320, 240), (THEME["minGuiWidth"], THEME["minGuiHeight"]))
 
     def test_the_generator_has_nothing_to_rewrite(self):
-        self.assertEqual([], cockpit_ribbon.check(), "run `python3 tools/cockpit_ribbon.py` to rewrite the cockpit")
+        self.assertEqual([], cockpit_ribbon.check(), "run `tools/py tools/cockpit_ribbon.py` to rewrite the cockpit")
 
     def test_the_generator_never_calls_round_which_breaks_a_tie_differently_on_two_machines(self):
         source = (TOOLS / "cockpit_ribbon.py").read_text(encoding="utf-8")
@@ -98,7 +98,7 @@ class Theme(unittest.TestCase):
     def test_the_scanner_window_holds_tiers_one_to_three(self):
         self.assertEqual((cockpit_ribbon.SCANNER_W, cockpit_ribbon.SCANNER_H), (THEME[STYLE + "ScannerW"], THEME[STYLE + "ScannerH"]))
 
-    def test_the_ribbon_has_every_gauge_and_four_lamps_of_whole_pixels(self):
+    def test_the_ribbon_has_every_gauge_and_its_lamps_of_whole_pixels(self):
         for gauge in GAUGES:
             self.assertGreater(THEME[STYLE + gauge.capitalize() + "W"], 0, "the pilot must be able to read every gauge")
         lamps = THEME[STYLE + "LampsW"]
@@ -169,6 +169,26 @@ class Layout(unittest.TestCase):
                     self.assertTrue(inside(plate, (0, 0, screen[0], screen[1])))
                     for prefix in (STYLE + "Cap", STYLE + "PartA"):
                         self.assertFalse(overlap(plate, rect(prefix, screen)), prefix)
+
+
+class Load(unittest.TestCase):
+    def test_the_climb_limit_is_marked_on_a_segment_boundary_inside_the_load_bar(self):
+        limit, segments = THEME[STYLE + "CargoLimit"], THEME[STYLE + "CargoSegments"]
+        self.assertTrue(0 < limit < segments, "the bar shows a share of load past the limit")
+        self.assertEqual(0, limit * THEME[STYLE + "CargoW"] % segments, "the mark sits in the gap between two segments")
+
+    def test_the_load_title_hangs_under_its_gauge_on_screen_and_clear_of_the_plate_and_the_bezel(self):
+        left, top, width, height = cockpit_ribbon.title_box(LOOK)
+        title = (left, top, left + width, top + height)
+        screen = (cockpit_ribbon.SCREEN_W, cockpit_ribbon.SCREEN_H)
+        gauge = rect(STYLE + "Cargo", screen)
+        self.assertTrue(inside(title, (0, 0) + screen))
+        self.assertLessEqual(title[0], gauge[0] + 1)
+        self.assertGreaterEqual(title[2], gauge[2] - 1, "the title is centred under its gauge")
+        self.assertEqual(rect(STYLE + "PartA", screen)[3], title[1], "the title hangs from the band's lower edge")
+        for state in cockpit_ribbon.STATES.values():
+            self.assertFalse(overlap(title, plate_rect(screen, state)))
+        self.assertFalse(overlap(title, rect(STYLE + "Cap", screen)))
 
 
 class Coverage(unittest.TestCase):

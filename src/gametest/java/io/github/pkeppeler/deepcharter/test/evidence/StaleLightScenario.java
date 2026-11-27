@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -59,11 +60,11 @@ public class StaleLightScenario extends EvidenceScenario {
     }
 
     private void runHidden(ClientGameTestContext context) {
-        ResourceKey<Level> layer = LayerChain.dimension(2);
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);
             TestServerContext server = singleplayer.getServer();
+            ResourceKey<Level> layer = server.computeOnServer(s -> TestLayers.dimension(s, 2));
             ClientWait.until(
                     context,
                     "the colony built",
@@ -78,11 +79,12 @@ public class StaleLightScenario extends EvidenceScenario {
                 StructureSite site = server.computeOnServer(s -> {
                     BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
                     ServerLevel level = ClientLight.serverLevel(s, layer);
+                    LayerChain.Band band = TestLayers.band(level, 2);
                     return StructureSite.in(
                             s.overworld().getSeed(),
                             StructureKind.GALLERY,
-                            level.getMinY(),
-                            level.getHeight(),
+                            band.minY(),
+                            band.height(),
                             at,
                             at,
                             conduit);

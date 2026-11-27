@@ -1,5 +1,5 @@
 {
-  "feature": "deepcharter:fungal_stalk_column",
+  "feature": "deepcharter:fungal_stalk_cave",
   "placement": [
     {
       "type": "minecraft:count",
@@ -9,16 +9,10 @@
       "type": "minecraft:in_square"
     },
     {
-      "type": "minecraft:height_range",
-      "height": {
-        "type": "minecraft:uniform",
-        "min_inclusive": {
-          "absolute": 10
-        },
-        "max_inclusive": {
-          "absolute": 150
-        }
-      }
+      "type": "deepcharter:layer_rows",
+      "layer": 1,
+      "min": 10,
+      "max": 150
     },
     {
       "type": "minecraft:environment_scan",
@@ -46,7 +40,7 @@
       "count": 6
     },
     {
-      "type": "minecraft:offset",
+      "type": "deepcharter:in_chunk_offset",
       "x": {
         "type": "minecraft:trapezoid",
         "min": -3,

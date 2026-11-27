@@ -1,13 +1,11 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.mojang.serialization.Dynamic;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -16,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestAttachments;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Example;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Other;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.util.Objects;
@@ -24,7 +23,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -36,7 +34,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
-import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for the versioned pod attachment pattern: defaults, save/load, unreadable versions and a breach crossing. */
@@ -77,9 +74,9 @@ public class PodAttachmentTest {
     }
 
     /**
-     * The real load path. Fabric reads all of an entity's attachments as one map and drops the whole
-     * map if it fails to decode, so a bad entry must not fail: it must load as Unreadable, leave the
-     * valid attachment intact, fail loud when a feature reads it, and be written back unchanged.
+     * The real load path. Fabric skips a saved attachment entry that fails to decode, and the next save
+     * omits it, so a bad entry must not fail: it must load as Unreadable, leave the valid attachment
+     * intact, fail loud when a feature reads it, and be written back unchanged.
      */
     @GameTest
     public void anUnreadableVersionLoadsKeepsItsDataAndCostsOtherAttachmentsNothing(GameTestHelper helper) {
@@ -130,17 +127,54 @@ public class PodAttachmentTest {
                 // Expected.
             }
 
-            TagValueOutput output = TagValueOutput.createWithContext(
-                    ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
-            loaded.saveWithoutId(output);
-            CompoundTag saved = output.buildResult()
-                    .getCompound(ATTACHMENTS_KEY)
-                    .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
+            CompoundTag saved = savedAttachments(helper, loaded);
             if (!future.equals(Objects.requireNonNull(saved.get(exampleKey), "saved.get(exampleKey) is absent"))) {
                 throw failure(helper, "the unreadable data was not written back unchanged: %s", saved.get(exampleKey));
             }
             if (!other.equals(Objects.requireNonNull(saved.get(otherKey), "saved.get(otherKey) is absent"))) {
                 throw failure(helper, "the valid attachment was not saved intact: %s", saved.get(otherKey));
+            }
+            helper.succeed();
+        } finally {
+            loaded.discard();
+        }
+    }
+
+    /**
+     * A removed attachment type (ADR 0104): a pod saved with the Company recovery's clock, {@code
+     * deepcharter:company_recovery}, loads, keeps its other attachments, and is saved without the clock. Fabric skips an
+     * entry whose type is not registered and keeps the rest of the map, so the retired id needs no reader.
+     */
+    @GameTest
+    public void aRetiredCompanyRecoveryClockLoadsAndIsDroppedOnSave(GameTestHelper helper) {
+        String retiredKey = "deepcharter:company_recovery";
+        String otherKey = TestAttachments.OTHER.identifier().toString();
+        // The clock exactly as version 1 saved it: the game time the wait began.
+        CompoundTag clock = new CompoundTag();
+        clock.putInt("version", 1);
+        clock.putLong("since", 123_456L);
+        CompoundTag other = new CompoundTag();
+        other.putInt("version", TestAttachments.VERSION);
+        other.putString("text", "kept");
+        CompoundTag attachments = new CompoundTag();
+        attachments.put(retiredKey, clock);
+        attachments.put(otherKey, other);
+
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+        Entity loaded = reload(helper, pod, attachments);
+        try {
+            if (!new Other("kept").equals(Versioned.orThrow(loaded, TestAttachments.OTHER))) {
+                throw failure(
+                        helper,
+                        "the retired clock cost the pod its other attachment: %s",
+                        loaded.getAttached(TestAttachments.OTHER));
+            }
+            CompoundTag saved = savedAttachments(helper, loaded);
+            if (saved.contains(retiredKey)) {
+                throw failure(helper, "the retired clock was written back: %s", saved.get(retiredKey));
+            }
+            if (!other.equals(Objects.requireNonNull(saved.get(otherKey), "saved.get(otherKey) is absent"))) {
+                throw failure(helper, "the other attachment was not saved intact: %s", saved.get(otherKey));
             }
             helper.succeed();
         } finally {
@@ -199,32 +233,35 @@ public class PodAttachmentTest {
         throw failure(helper, "a foreign wire version must throw");
     }
 
-    /** M1's crossing, with a piloted pod: the arriving pod is a new entity, and the attachment must be on it. */
+    /** A crossing in place (ADR 0061), with a piloted pod: it is the same entity, and its attachment is untouched. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
-    public void theAttachmentSurvivesABreachCrossing(GameTestHelper helper) {
+    public void theAttachmentSurvivesABreachCrossingInPlace(GameTestHelper helper) {
         double x = 2000.5;
         double z = 2000.5;
-        ServerLevel one = layer(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         openShaft(one, x, z);
         MockPlayer mock = MockPlayers.join(helper, "attachment-crossing");
-        mock.teleportTo(one, new Vec3(x, 8, z), 0, 0);
+        mock.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pod = {null};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), () -> {
             pod[0] = TestEntities.create(PodRegistry.POD, one);
-            pod[0].setPos(x, 8, z);
+            pod[0].setPos(x, TestLayers.worldY(1, 8), z);
             one.addFreshEntity(pod[0]);
             Versioned.modifyOrThrow(pod[0], TestAttachments.EXAMPLE, example -> new Example(7));
             if (!mock.player().startRiding(pod[0], true, false)) {
                 throw failure(helper, "the mock could not board the pod");
             }
         });
-        // The pod falls by itself (PodMovement brings its own gravity) and leaves layer_1 through the open floor.
+        // The pod falls by itself (PodMovement brings its own gravity) and leaves layer 1 through the open floor.
         helper.succeedWhen(() -> {
             if (pod[0] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(
+                        helper,
+                        "waiting for the chunk at %s to tick entities",
+                        BlockPos.containing(x, TestLayers.worldY(1, 8), z));
             }
             ServerPlayer player = mock.player();
-            if (!player.level().dimension().equals(LayerChain.dimension(2))) {
+            if (!TestLayers.isIn(player, 2)) {
                 throw failure(
                         helper,
                         "the rider is still in %s (pod ticked %s times)",
@@ -234,16 +271,26 @@ public class PodAttachmentTest {
             if (!(player.getVehicle() instanceof PodEntity arrived)) {
                 throw failure(helper, "the rider is on %s after crossing, not a pod", player.getVehicle());
             }
-            if (arrived == pod[0] || !pod[0].isRemoved()) {
-                throw failure(helper, "expected a new pod instance after the crossing and the old one removed");
+            if (arrived != pod[0] || pod[0].isRemoved()) {
+                throw failure(helper, "expected the same pod instance after the crossing, still in the world");
             }
             if (!new Example(7).equals(Versioned.orThrow(arrived, TestAttachments.EXAMPLE))) {
                 throw failure(
                         helper,
-                        "the attachment did not cross with the pod, got %s",
+                        "the attachment changed in the crossing, got %s",
                         arrived.getAttached(TestAttachments.EXAMPLE));
             }
         });
+    }
+
+    /** The attachments {@code entity} writes when it is saved. */
+    private static CompoundTag savedAttachments(GameTestHelper helper, Entity entity) {
+        TagValueOutput output = TagValueOutput.createWithContext(
+                ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
+        entity.saveWithoutId(output);
+        return output.buildResult()
+                .getCompound(ATTACHMENTS_KEY)
+                .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
     }
 
     /** Saves {@code pod} (replacing its attachments with {@code attachments} if given), discards it and loads a new pod from the data. */
@@ -264,28 +311,16 @@ public class PodAttachmentTest {
                 .orElseThrow(() -> failure(helper, "the saved pod did not load"));
     }
 
-    /** Clear a 3x3 shaft through the floor of {@code level}, wide enough for the pod's 1.9-block hull. */
+    /** Clear a 3x3 shaft through the floor of layer 1 into a pocket under it, wide enough for the pod's 1.9-block hull. */
     private static void openShaft(ServerLevel level, double x, double z) {
         BlockPos column = BlockPos.containing(x, 0, z);
+        RoomCarver.carvePocketBelow(
+                level, 1, column.getX() - 1, column.getX() + 1, column.getZ() - 1, column.getZ() + 1);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(level.getMinY()),
-                column.offset(1, 0, 1).atY(level.getMinY() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

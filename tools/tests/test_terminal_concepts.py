@@ -104,8 +104,61 @@ class Panel(unittest.TestCase):
         under_scanline = "#" + "".join("%02x" % round(int(dim[i:i + 2], 16) * keep) for i in (0, 2, 4))
         self.assertGreaterEqual(contrast(under_scanline, "#" + crt["backgroundColor"].lstrip("#")), 3.5)
 
+    # PanelLook.cornerInset(18, row), which ThemeLooksTest holds the Java side to: the scanlines end where the glass does.
+    CORNER_INSETS_R18 = [14, 11, 9, 7, 6, 5, 4, 3, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0]
+
+    @staticmethod
+    def alpha(sprite, x: int, y: int) -> int:
+        return sprite.pixels[4 * (y * sprite.width + x) + 3]
+
+    def test_the_glass_corner_is_the_portholes_corner_pixel_for_pixel(self):
+        radius = self.theme["glassRadius"]
+        left, top = self.theme["glassLeft"], self.theme["glassTop"]
+        frame = pngio.decode((SPRITES / "frame.png").read_bytes())
+        glass = pngio.decode((SPRITES / "glass.png").read_bytes())
+        self.assertEqual(terminal_concepts.PORTHOLE["radius"], radius)
+        hole, filled = [], []
+        for row in range(radius):
+            hole.append(next(x for x in range(radius + 1) if self.alpha(frame, left + x, top + row) == 0))
+            filled.append(next(x for x in range(radius + 1) if self.alpha(glass, x, row) != 0))
+        self.assertEqual(self.CORNER_INSETS_R18, hole, "the frame's porthole corner")
+        right, bottom = frame.width - self.theme["glassRight"] - 1, frame.height - self.theme["glassBottom"] - 1
+        mirrored = [next(x for x in range(radius + 1) if self.alpha(frame, right - x, bottom - row) == 0) for row in range(radius)]
+        self.assertEqual(self.CORNER_INSETS_R18, mirrored, "the frame's bottom-right porthole corner")
+        self.assertEqual(self.CORNER_INSETS_R18, filled, "the glass's corner")
+        for row in range(radius):
+            for x in range(radius):
+                if self.alpha(frame, left + x, top + row) != 0:
+                    with self.subTest(x=x, y=row):
+                        self.assertEqual(0, self.alpha(glass, x, row), "glass drawn over the bezel")
+
+    def test_the_glass_shades_the_rim_and_leaves_the_content_corner_clear(self):
+        # Content starts `margin` px inside the glass edge; a title there keeps 95% of its brightness (#1012). The corner pixel is on the arc and may be dark.
+        glass = pngio.decode((SPRITES / "glass.png").read_bytes())
+        margin = self.theme["insetLeft"] - self.theme["glassLeft"]
+        for y in range(margin + 1, glass.height - margin - 1):
+            for x in range(margin + 1, glass.width - margin - 1):
+                self.assertLessEqual(self.alpha(glass, x, y), 12, f"glass shade over the content at {x}, {y}")
+        # The catalogue consoles draw the same sprite with their title box at (pad, titleTop) of the glass, and the font lights the box's top row, so the
+        # first stem starts a column in, on the box's top row.
+        catalogue = load(MOD_ASSETS / "theme/catalogue.json")
+        x = catalogue["pad"] + 1
+        for y in (catalogue["titleTop"], catalogue["titleTop"] + 1):
+            self.assertLessEqual(self.alpha(glass, x, y), 12, f"glass shade over a catalogue console's title at {x}, {y}")
+        for row in range(self.theme["glassRadius"] // 2):
+            first = next(x for x in range(glass.width) if self.alpha(glass, x, row) != 0)
+            self.assertGreaterEqual(self.alpha(glass, first, row), 100, f"the glass's rim in row {row}")
+
+    def test_the_glass_has_the_same_corner_in_all_four_corners(self):
+        glass = pngio.decode((SPRITES / "glass.png").read_bytes())
+        size = glass.width
+        for y in range(size):
+            for x in range(size):
+                self.assertEqual(self.alpha(glass, x, y) != 0, self.alpha(glass, size - 1 - x, y) != 0)
+                self.assertEqual(self.alpha(glass, x, y) != 0, self.alpha(glass, x, size - 1 - y) != 0)
+
     def test_the_generator_has_nothing_to_rewrite(self):
-        self.assertEqual([], terminal_concepts.check(), "run `python3 tools/terminal_concepts.py` to rewrite the panel")
+        self.assertEqual([], terminal_concepts.check(), "run `tools/py tools/terminal_concepts.py` to rewrite the panel")
 
 
 class Font(unittest.TestCase):

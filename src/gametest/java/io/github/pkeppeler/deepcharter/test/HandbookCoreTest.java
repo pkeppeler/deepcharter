@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookSyncPayload;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTriggers;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.test.support.Findings;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.io.IOException;
@@ -45,6 +46,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -52,13 +54,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.component.ItemContainerContents;
@@ -172,17 +174,6 @@ public class HandbookCoreTest {
         if (!HandbookProgress.completedFor(server, director.getUUID()).isEmpty()) {
             throw helper.assertionException("an unknown directive must complete nothing");
         }
-        helper.succeed();
-    }
-
-    @GameTest
-    public void aPlayerOnNoCharterCompletesNothing(GameTestHelper helper) {
-        MinecraftServer server = helper.getLevel().getServer();
-        ServerPlayer loner = MockPlayers.join(helper, "Loner").player();
-
-        Directives.fire(loner, CUSTOM_DIRECTIVE);
-
-        expectComplete(helper, server, loner, CUSTOM_DIRECTIVE, false);
         helper.succeed();
     }
 
@@ -306,6 +297,7 @@ public class HandbookCoreTest {
         ServerPlayer player = MockPlayers.join(helper, "Packer").player();
         Container chest = new SimpleContainer(27);
         boolean[] tried = {false};
+        Findings found = new Findings();
         helper.succeedWhen(() -> {
             if (!tried[0]) {
                 if (handbooksHeld(player) != 1) {
@@ -325,11 +317,13 @@ public class HandbookCoreTest {
                 // Before the end-of-tick sweep runs, the chest must really have received the handbook: otherwise this
                 // test proves nothing.
                 if (handbooksIn(chest) != 1 || handbooksHeld(player) != 0) {
-                    helper.fail("the quick move should put the handbook in the chest before the sweep, chest holds "
+                    found.note("the quick move should put the handbook in the chest before the sweep, chest holds "
                             + handbooksIn(chest) + ", player holds " + handbooksHeld(player));
                 }
+                // one-shot-ok: only forces one more poll, the sweep's result is checked below on every poll
                 throw helper.assertionException("moved the handbook into the chest; waiting to see where it ends up");
             }
+            found.ensure(helper);
             if (handbooksIn(chest) != 0) {
                 throw helper.assertionException("the chest holds a handbook");
             }
@@ -353,7 +347,9 @@ public class HandbookCoreTest {
                     throw helper.assertionException("waiting for the handbook to be issued");
                 }
                 player.kill(level);
-                server.getPlayerList().respawn(player, false, Entity.RemovalReason.KILLED);
+                // The Respawn button, so the listener follows the new player and the mock's leave ends the right one.
+                player.connection.handleClientCommand(
+                        new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
                 died[0] = true;
             }
             ServerPlayer reborn = server.getPlayerList().getPlayer(id);
@@ -367,8 +363,6 @@ public class HandbookCoreTest {
                 throw helper.assertionException(
                         "the respawned player holds exactly one handbook, holds %s", handbooksHeld(reborn));
             }
-            // The mock only knows the dead body, so it cannot remove the respawned player itself.
-            server.getPlayerList().remove(reborn);
         });
     }
 
@@ -383,6 +377,7 @@ public class HandbookCoreTest {
                 }
                 player.getInventory().setItem(slotHolding(player), ItemStack.EMPTY);
                 removed[0] = true;
+                // one-shot-ok: only forces one more poll, the re-issue is checked below on every poll
                 throw helper.assertionException("removed the handbook; waiting for it to come back");
             }
             if (handbooksHeld(player) != 1) {
@@ -477,7 +472,7 @@ public class HandbookCoreTest {
     public void aDirectiveDefinedTwiceFailsLoudAndNamesBothChapters(GameTestHelper helper) {
         Identifier first = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "one");
         Identifier second = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "two");
-        HandbookChapter.Entry entry = new HandbookChapter.Entry(CUSTOM_DIRECTIVE, Component.literal("x"));
+        HandbookChapter.Entry entry = new HandbookChapter.Entry(CUSTOM_DIRECTIVE, Component.literal("x"), List.of());
         Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
         chapters.put(first, new HandbookChapter(0, Component.literal("one"), List.of(entry)));
         chapters.put(second, new HandbookChapter(1, Component.literal("two"), List.of(entry)));
@@ -532,6 +527,7 @@ public class HandbookCoreTest {
     public void aHandbookHiddenInABundleOrShulkerIsStripped(GameTestHelper helper) {
         ServerPlayer player = MockPlayers.join(helper, "Smuggler").player();
         boolean[] planted = {false};
+        Findings found = new Findings();
         helper.succeedWhen(() -> {
             if (!planted[0]) {
                 if (handbooksHeld(player) != 1) {
@@ -540,7 +536,10 @@ public class HandbookCoreTest {
                 ItemStack bundle = new ItemStack(Items.BUNDLE);
                 bundle.set(
                         DataComponents.BUNDLE_CONTENTS,
-                        BundleContents.EMPTY.copyWithContents(Stream.of(new ItemStack(HandbookRegistry.HANDBOOK))));
+                        // The constructor, not copyWithContents: a bundle refuses the handbook through its insert path,
+                        // and the sweep must still strip a stack that holds one by other means.
+                        new BundleContents(List.of(
+                                ItemStackTemplate.fromNonEmptyStack(new ItemStack(HandbookRegistry.HANDBOOK)))));
                 ItemStack shulker = new ItemStack(Items.SHULKER_BOX);
                 shulker.set(
                         DataComponents.CONTAINER,
@@ -548,12 +547,16 @@ public class HandbookCoreTest {
                 player.getInventory().add(bundle);
                 player.getInventory().add(shulker);
                 planted[0] = true;
-                if (handbooksInside(bundle) != 1 || handbooksInside(shulker) != 1) {
-                    helper.fail("the test must plant a handbook in each stack");
+                // Read the inventory's stacks: Inventory.add empties the stacks it takes.
+                if (handbooksHidden(player) != 2) {
+                    found.note("the test must plant a handbook in each stack, the inventory hides "
+                            + handbooksHidden(player));
                 }
+                // one-shot-ok: only forces one more poll, the sweep's result is checked below on every poll
                 throw helper.assertionException(
                         "planted handbooks in a bundle and a shulker box; waiting for the sweep");
             }
+            found.ensure(helper);
             for (int index = 0; index < player.getInventory().getContainerSize(); index++) {
                 if (handbooksInside(player.getInventory().getItem(index)) != 0) {
                     throw helper.assertionException("a handbook is still inside a stack in slot %s", index);
@@ -716,6 +719,14 @@ public class HandbookCoreTest {
             return;
         }
         throw helper.assertionException("using %s must fail loud", what);
+    }
+
+    private static int handbooksHidden(ServerPlayer player) {
+        int hidden = 0;
+        for (int index = 0; index < player.getInventory().getContainerSize(); index++) {
+            hidden += handbooksInside(player.getInventory().getItem(index));
+        }
+        return hidden;
     }
 
     private static int handbooksHeld(ServerPlayer player) {

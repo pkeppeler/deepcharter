@@ -1,8 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -75,8 +75,8 @@ public class LayerTerrainScenario extends EvidenceScenario {
     private void flyThrough(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer, int frames) {
         List<Vec3> route = singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
-            return smooth(findRoute(level));
+            ServerLevel level = TestLayers.level(server, layer);
+            return smooth(findRoute(level, layer));
         });
         int stride = Math.max(1, (int) Math.ceil(route.size() / (double) frames));
         float yaw = 0f;
@@ -93,21 +93,19 @@ public class LayerTerrainScenario extends EvidenceScenario {
             float shownYaw = yaw;
             float shownPitch = Mth.clamp(pitch, -60f, 60f);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+                ServerLevel level = TestLayers.level(server, layer);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(level, at.x, at.y - EYE_HEIGHT, at.z, Set.of(), shownYaw, shownPitch, true);
             });
             if (first) {
                 ClientWait.until(
-                        context,
-                        "the client in layer " + layer,
-                        client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer)));
+                        context, "the client in layer " + layer, client -> TestLayers.clientIsIn(client, layer));
                 context.waitTicks(40);
                 first = false;
             }
             context.waitTicks(TICKS_PER_FRAME);
-            // Vanilla covers the screen with "Loading terrain" while the client waits for chunks; leave those frames
-            // out.
+            // Vanilla covers the screen with "Loading terrain" while the client waits for chunks; leave those
+            // frames out.
             if (context.computeOnClient(client -> client.gui.screen() == null)) {
                 frame(context);
             }
@@ -115,11 +113,12 @@ public class LayerTerrainScenario extends EvidenceScenario {
     }
 
     /** The longest open way out of the roomiest of the few best caves near the start, as cell centres. */
-    private static List<Vec3> findRoute(ServerLevel level) {
+    private static List<Vec3> findRoute(ServerLevel level, int layer) {
         List<BlockPos> starts = new ArrayList<>();
         Map<BlockPos, Integer> room = new HashMap<>();
-        int top = level.getMinY() + 24;
-        int bottom = level.getMaxY() - 40;
+        LayerChain.Band band = TestLayers.band(level, layer);
+        int top = band.minY() + 24;
+        int bottom = band.maxY() - 40;
         for (int x = START_X - SEARCH_RADIUS; x <= START_X + SEARCH_RADIUS; x += 2) {
             for (int z = START_Z - SEARCH_RADIUS; z <= START_Z + SEARCH_RADIUS; z += 2) {
                 for (int y = top; y <= bottom; y += 2) {

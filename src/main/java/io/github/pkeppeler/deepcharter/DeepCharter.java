@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter;
 
 import io.github.pkeppeler.deepcharter.charter.CharterInit;
 import io.github.pkeppeler.deepcharter.colony.ColonyInit;
+import io.github.pkeppeler.deepcharter.continuity.ContinuityInit;
 import io.github.pkeppeler.deepcharter.creature.CreatureInit;
 import io.github.pkeppeler.deepcharter.fuel.FuelInit;
 import io.github.pkeppeler.deepcharter.handbook.HandbookInit;
@@ -9,10 +10,12 @@ import io.github.pkeppeler.deepcharter.hangar.HangarInit;
 import io.github.pkeppeler.deepcharter.layer.LayerInit;
 import io.github.pkeppeler.deepcharter.market.MarketInit;
 import io.github.pkeppeler.deepcharter.ore.OreInit;
+import io.github.pkeppeler.deepcharter.outpost.OutpostInit;
 import io.github.pkeppeler.deepcharter.pod.PodInit;
 import io.github.pkeppeler.deepcharter.repair.RepairInit;
 import io.github.pkeppeler.deepcharter.scanner.ScannerInit;
 import io.github.pkeppeler.deepcharter.sound.SoundInit;
+import io.github.pkeppeler.deepcharter.suit.SuitInit;
 import io.github.pkeppeler.deepcharter.surface.SurfaceInit;
 import io.github.pkeppeler.deepcharter.terminal.TerminalInit;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionInit;
@@ -32,6 +35,7 @@ public class DeepCharter implements ModInitializer {
     public void onInitialize() {
         CharterInit.init();
         ColonyInit.init();
+        ContinuityInit.init();
         CreatureInit.init();
         FuelInit.init();
         HandbookInit.init();
@@ -39,10 +43,12 @@ public class DeepCharter implements ModInitializer {
         LayerInit.init();
         MarketInit.init();
         OreInit.init();
+        OutpostInit.init();
         PodInit.init();
         RepairInit.init();
         ScannerInit.init();
         SoundInit.init();
+        SuitInit.init();
         SurfaceInit.init();
         TerminalInit.init();
         TransmissionInit.init();

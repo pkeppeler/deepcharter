@@ -5,7 +5,11 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
+import java.util.Arrays;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -30,11 +34,16 @@ import org.jspecify.annotations.Nullable;
  * {@link Zones#index}). Only the layer's own rock ({@link LayerBlocks#GROUND}) is replaced: caves, the crust and anything an earlier step
  * placed stay as they are. An ore, and Company rock, is placed in the rock it replaces ({@link OreBlock#in}, {@link CompanyRockBlock#in}).
  *
+ * <p>The zone is a third of {@code layer}, counted from 1. In a layer dimension the layer is the whole level. In a campaign world (its
+ * generator's biome source is a {@link BandBiomeSource}) it is a band of the level, so the fill finds its rows there (#743).
+ *
+ * @param layer   the layer the zone is in, counted from 1
  * @param zone    0 for the top third of the layer, 2 for the bottom
  * @param ores    ore blocks and the chance of each for a block of stone
  * @param hazards hazard blocks and the chance of each for a block of stone that is not ore
  */
-public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<Block>> hazards) implements Feature {
+public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, List<Entry<Block>> hazards)
+        implements Feature {
     /** A block and the chance of it for one stone block. */
     public record Entry<B extends Block>(B block, double chance) {
         static <B extends Block> Codec<Entry<B>> codec(Codec<B> blocks) {
@@ -58,6 +67,9 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
 
     public static final MapCodec<ZoneFillFeature> CODEC = RecordCodecBuilder.<ZoneFillFeature>mapCodec(instance ->
                     instance.group(
+                                    Codec.intRange(1, Integer.MAX_VALUE)
+                                            .fieldOf("layer")
+                                            .forGetter(ZoneFillFeature::layer),
                                     Codec.intRange(0, Zones.COUNT - 1)
                                             .fieldOf("zone")
                                             .forGetter(ZoneFillFeature::zone),
@@ -80,8 +92,9 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
 
     @Override
     public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
-        int minY = level.getMinY();
-        int height = level.getHeight();
+        Band band = LayerChain.layerBand(generator, level, layer, "A zone fill");
+        int minY = band.minY();
+        int height = band.height();
         int firstX = origin.getX() >> 4 << 4;
         int firstZ = origin.getZ() >> 4 << 4;
         // The chunk itself, not the region: a block lookup through the region costs several times as much, and this
@@ -98,35 +111,75 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
         while (high + 1 < minY + height && Zones.index(minY, height, high + 1) == zone) {
             high++;
         }
+        // A level cut to part of a band (the cost test's floors, ADR 0086) holds only some of the zone's rows. Every
+        // shipped level holds whole bands, so this changes nothing there.
+        low = Math.max(low, chunk.getMinY());
+        high = Math.min(high, chunk.getMinY() + chunk.getHeight() - 1);
+        // The rolls and the states they place do not change from block to block, and the rock hardly does: a layer is
+        // mostly one state, so its ore states are worked out once for each new rock. A section that holds nothing but
+        // ground is not read block by block: its blocks are only rolled for, and the few that place something are read.
+        double[] oreFloors = floors(ores);
+        double[] hazardFloors = floors(hazards);
+        @Nullable BlockState[] oreStates = new BlockState[ores.size()];
+        @Nullable BlockState[] hazardStates = new BlockState[hazards.size()];
+        @Nullable BlockState lastRock = null;
+        boolean lastIsGround = false;
         for (int index = chunk.getSectionIndex(low); index <= chunk.getSectionIndex(high); index++) {
             LevelChunkSection section = chunk.getSection(index);
             if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(LayerBlocks.GROUND))) {
                 continue;
             }
+            boolean onlyGround = !section.maybeHas(state -> !state.is(LayerBlocks.GROUND));
             int sectionY = chunk.getSectionYFromSectionIndex(index) << 4;
             for (int y = Math.max(low, sectionY); y <= Math.min(high, sectionY + 15); y++) {
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
-                        BlockState rock = section.getBlockState(x, y & 15, z);
-                        if (!rock.is(LayerBlocks.GROUND)) {
-                            continue;
-                        }
-                        BlockState state = null;
-                        OreBlock ore = roll(ores, random);
-                        if (ore != null) {
-                            state = ore.in(rock);
-                        } else {
-                            Block hazard = roll(hazards, random);
-                            if (hazard != null) {
-                                state = hazard instanceof CompanyRockBlock company
-                                        ? company.in(rock)
-                                        : hazard.defaultBlockState();
+                        @Nullable BlockState rock = null;
+                        if (!onlyGround) {
+                            rock = section.getBlockState(x, y & 15, z);
+                            if (rock != lastRock) {
+                                lastRock = rock;
+                                lastIsGround = rock.is(LayerBlocks.GROUND);
+                                Arrays.fill(oreStates, null);
+                                Arrays.fill(hazardStates, null);
+                            }
+                            if (!lastIsGround) {
+                                continue;
                             }
                         }
-                        if (state != null) {
-                            chunk.setBlockState(pos.set(firstX + x, y, firstZ + z), state, Block.UPDATE_CLIENTS);
-                            placed = true;
+                        int ore = roll(oreFloors, random);
+                        int hazard = ore >= 0 ? -1 : roll(hazardFloors, random);
+                        if (ore < 0 && hazard < 0) {
+                            continue;
                         }
+                        if (rock == null) {
+                            rock = section.getBlockState(x, y & 15, z);
+                            if (rock != lastRock) {
+                                lastRock = rock;
+                                lastIsGround = true;
+                                Arrays.fill(oreStates, null);
+                                Arrays.fill(hazardStates, null);
+                            }
+                        }
+                        BlockState state;
+                        if (ore >= 0) {
+                            state = oreStates[ore];
+                            if (state == null) {
+                                state = ores.get(ore).block().in(rock);
+                                oreStates[ore] = state;
+                            }
+                        } else {
+                            state = hazardStates[hazard];
+                            if (state == null) {
+                                Block block = hazards.get(hazard).block();
+                                state = block instanceof CompanyRockBlock company
+                                        ? company.in(rock)
+                                        : block.defaultBlockState();
+                                hazardStates[hazard] = state;
+                            }
+                        }
+                        chunk.setBlockState(pos.set(firstX + x, y, firstZ + z), state, Block.UPDATE_CLIENTS);
+                        placed = true;
                     }
                 }
             }
@@ -134,19 +187,28 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
         return placed;
     }
 
-    /** One roll over the entries: the first whose chance the roll falls in, or null for none. */
-    private static <B extends Block> @Nullable B roll(List<Entry<B>> entries, RandomSource random) {
-        if (entries.isEmpty()) {
-            return null;
+    /** The running totals of the entries' chances, so that a roll finds its entry the way a sum over the list would. */
+    private static double[] floors(List<? extends Entry<?>> entries) {
+        double[] floors = new double[entries.size()];
+        double floor = 0;
+        for (int i = 0; i < floors.length; i++) {
+            floor += entries.get(i).chance();
+            floors[i] = floor;
+        }
+        return floors;
+    }
+
+    /** One roll over the running totals: the index of the first one the roll falls below, or -1 for none. No entries, no roll. */
+    private static int roll(double[] floors, RandomSource random) {
+        if (floors.length == 0) {
+            return -1;
         }
         double roll = random.nextDouble();
-        double floor = 0;
-        for (Entry<B> entry : entries) {
-            floor += entry.chance();
-            if (roll < floor) {
-                return entry.block();
+        for (int i = 0; i < floors.length; i++) {
+            if (roll < floors[i]) {
+                return i;
             }
         }
-        return null;
+        return -1;
     }
 }

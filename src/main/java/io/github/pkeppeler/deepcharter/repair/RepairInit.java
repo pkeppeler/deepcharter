@@ -9,5 +9,6 @@ public final class RepairInit {
 
     public static void init() {
         RepairRegistry.register();
+        FlueScrape.init();
     }
 }

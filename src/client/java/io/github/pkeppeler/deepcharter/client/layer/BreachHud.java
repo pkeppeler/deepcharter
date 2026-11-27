@@ -6,6 +6,9 @@ import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
+import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -31,28 +34,59 @@ public final class BreachHud {
 
     public static void init() {
         HudElementRegistry.addLast(ALTIMETER, BreachHud::extractAltimeter);
+        // keep-clear-ok: the fade is the whole screen going black, there is nothing in it to keep a popup off
         ClientLifecycleEvents.CLIENT_STARTED.register(
                 client -> HudElementRegistry.addLast(BREACH, BreachHud::extractBreach));
+        HudKeepClear.register(BreachHud::keepClear);
     }
 
-    private static void extractAltimeter(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-        Minecraft client = Minecraft.getInstance();
+    /** The altimeter's reading as it is drawn, and the box it covers. */
+    private record Reading(Component text, HudKeepClear.Rect box) {}
+
+    /**
+     * The altimeter on a GUI {@code guiWidth} x {@code guiHeight} with {@code jitter} on it: top centre, or in the ribbon's recess in the
+     * cockpit; empty when it is not drawn. The signal decay (#502) also fails the altimeter, which sits in the ribbon's recess: a dark
+     * depth gauge must not leave the depth readable. What is drawn and what is kept clear are this one box.
+     */
+    private static Optional<Reading> reading(
+            Minecraft client, int guiWidth, int guiHeight, BreachEffects.Offset jitter) {
         if (client.player == null || client.level == null) {
-            return;
+            return Optional.empty();
         }
-        // The depth instrument of the signal decay (#502) also fails the altimeter, which sits in the ribbon's recess:
-        // a dark depth gauge must not leave the depth readable.
-        Optional<Component> shown =
-                CockpitHud.altimeter(client, Altimeter.reading(client.level, client.player.getBlockY()));
-        if (shown.isEmpty()) {
-            return;
-        }
-        Component reading = shown.get();
-        BreachEffects.Offset jitter = BreachEffects.jitter();
-        int x = (graphics.guiWidth() - client.font.width(reading)) / 2 + jitter.x();
-        HudLook look = HudLook.current();
-        int top = CockpitHud.seated(client).map(CockpitLook.Layout::altimeterY).orElse(look.altimeterMargin());
-        graphics.text(client.font, reading, x, top + jitter.y(), look.altimeterColor());
+        return CockpitHud.altimeter(
+                        client, guiWidth, guiHeight, Altimeter.reading(client.level, client.player.getBlockY()))
+                .map(text -> {
+                    int width = client.font.width(text);
+                    int top = CockpitHud.seated(client, guiWidth, guiHeight)
+                            .map(CockpitLook.Layout::altimeterY)
+                            .orElse(HudLook.current().altimeterMargin());
+                    return new Reading(
+                            text,
+                            new HudKeepClear.Rect(
+                                    "altimeter",
+                                    (guiWidth - width) / 2 + jitter.x(),
+                                    top + jitter.y(),
+                                    width,
+                                    client.font.lineHeight));
+                });
+    }
+
+    /** The altimeter, wherever the breach's shake can put it. */
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        reading(client, guiWidth, guiHeight, new BreachEffects.Offset(0, 0))
+                .ifPresent(reading ->
+                        into.add(reading.box().grow(BreachLook.current().jitterPixels())));
+    }
+
+    public static void extractAltimeter(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+        Minecraft client = Minecraft.getInstance();
+        reading(client, graphics.guiWidth(), graphics.guiHeight(), BreachEffects.jitter())
+                .ifPresent(reading -> graphics.text(
+                        client.font,
+                        reading.text(),
+                        reading.box().x(),
+                        reading.box().y(),
+                        HudLook.current().altimeterColor()));
     }
 
     private static void extractBreach(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {

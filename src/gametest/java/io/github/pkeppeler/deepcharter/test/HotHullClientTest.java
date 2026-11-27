@@ -7,14 +7,13 @@ import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderState;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
 import io.github.pkeppeler.deepcharter.client.pod.PodHotLayer;
 import io.github.pkeppeler.deepcharter.client.pod.PodLook;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.StringReader;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -32,7 +31,7 @@ import net.minecraft.world.level.block.Blocks;
  * not drawn. The mask comes from the pod's look and is no colour in code.
  */
 public class HotHullClientTest implements FabricClientGameTest {
-    private static final int FEET_Y = 10;
+    private static final int FEET_Y = TestLayers.worldY(1, 10);
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -40,12 +39,16 @@ public class HotHullClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.setGameMode(GameType.SURVIVAL);
+                ServerLevel one = TestLayers.level(server, 1);
                 // Hung in a sealed room, in a 2 x 2 pool of lava, as the heat shield's test does.
                 RoomCarver.carve(one, -3, 3, FEET_Y - 1, FEET_Y + 6, -3, 3, Blocks.AIR);
                 RoomCarver.carve(one, -1, 0, FEET_Y, FEET_Y, -1, 0, Blocks.LAVA);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, 3);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, 0, FEET_Y, 0, Set.of(), 0f, 0f, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(0, FEET_Y, 0);
@@ -60,7 +63,7 @@ public class HotHullClientTest implements FabricClientGameTest {
                     "the pod in layer 1, burning",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity pod
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                            && TestLayers.clientIsIn(client, 1)
                             && pod.hullBurning());
             context.runOnClient(client -> {
                 PodEntity pod = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
@@ -83,15 +86,8 @@ public class HotHullClientTest implements FabricClientGameTest {
 
             singleplayer
                     .getServer()
-                    .runOnServer(server -> RoomCarver.carve(
-                            ClientLight.serverLevel(server, LayerChain.dimension(1)),
-                            -1,
-                            0,
-                            FEET_Y,
-                            FEET_Y,
-                            -1,
-                            0,
-                            Blocks.AIR));
+                    .runOnServer(server ->
+                            RoomCarver.carve(TestLayers.level(server, 1), -1, 0, FEET_Y, FEET_Y, -1, 0, Blocks.AIR));
             ClientWait.until(
                     context,
                     "the hull cool again",
@@ -129,11 +125,11 @@ public class HotHullClientTest implements FabricClientGameTest {
                 PodGeoRenderer.load(client.getResourceManager(), pod.chassis()).hot(),
                 "the mod's own look has a hot mask");
         PodLook bare = PodLook.parse("a look with no hot mask", new StringReader("""
-                        {"model": "deepcharter:pod/mole", "texture": "deepcharter:textures/entity/pod/mole_wreck.png",
-                         "glow": "never",
-                         "cutters": {"0": "tricone", "1": "stacked", "2": "fluted", "3": "cluster"},
-                         "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png"}}
-                        """));
+            {"model": "deepcharter:pod/mole", "texture": "deepcharter:textures/entity/pod/mole_wreck.png",
+             "glow": "never",
+             "cutters": {"0": "tricone", "1": "stacked", "2": "fluted", "3": "cluster"},
+             "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png"}}
+            """));
         require(
                 client.getResourceManager().getResource(bare.intact().hotmask()).isEmpty(),
                 "the test's texture has no hot mask, " + bare.intact().hotmask());

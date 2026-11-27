@@ -1,28 +1,46 @@
 #!/usr/bin/env bash
 # Tests tools/handoff.sh with a stub `gh` on PATH: it refuses a body over 1,000 words or with a
 # section the SessionStart hook derives, each with a message that names the fix and without
-# calling `gh issue edit`; a good body replaces the open handoff issue's body.
+# patching the issue; a good body replaces the open handoff issue's body.
 # Usage: tools/tests/handoff.test.sh
 set -euo pipefail
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+py=$root/tools/py
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
+
+# The Mac has no jq: the cases use the canned number the tool's --jq filter would print (STUB_NUMBER, default 14,
+# empty for none). The cases that check the filter itself (STUB_ISSUES, JSON) run only where jq exists.
+have_jq=0
+command -v jq >/dev/null && have_jq=1
 
 mkdir -p "$work/bin"
 cat >"$work/bin/gh" <<'S'
 #!/usr/bin/env bash
-# Stub: `issue list` prints STUB_ISSUE (empty = none); `issue edit` records its args and body file.
-case "$1 $2" in
-  "issue list") printf '%s\n' "${STUB_ISSUE-14}" ;;
-  "issue edit")
+# Stub, REST only: the issues list prints STUB_NUMBER, or runs STUB_ISSUES (a JSON array; the issues endpoint lists
+# PRs too, as entries with a pull_request key) through the tool's own --jq filter when set; a PATCH records its
+# args and body file.
+[[ $1 == api ]] || exit 1
+method=GET
+jq=
+prev=
+for a in "$@"; do
+  [[ $prev == -X ]] && method=$a
+  [[ $prev == --jq ]] && jq=$a
+  prev=$a
+done
+case "$method $2" in
+  "GET repos/"*"/issues?labels=handoff&state=open"*)
+    if [[ -n ${STUB_ISSUES-} ]]; then printf '%s\n' "$STUB_ISSUES" | jq -r "$jq"; else printf '%s\n' "${STUB_NUMBER-14}"; fi ;;
+  "PATCH "*)
     echo "$*" >>"$STUB_LOG"
-    while [[ $# -gt 0 ]]; do
-      [[ $1 == --body-file ]] && cat "$2" >"$STUB_LOG.body"
-      shift
-    done ;;
+    for a in "$@"; do
+      [[ $a == body=@* ]] && cat "${a#body=@}" >"$STUB_LOG.body"
+    done
+    true ;;
   *) exit 1 ;;
 esac
 S
@@ -50,11 +68,11 @@ printf '**Updated:** now\n\n**In flight:** #1 next: merge.\n\n**Next:** x\n\n**N
 run_tool "$good"
 check "good body passes" 0 "$status"
 check "good body edits the issue" yes "$(edited)"
-check "edit targets the handoff issue number" yes "$(grep -qF 'issue edit 14' "$work/log" && echo yes || echo no)"
+check "edit targets the handoff issue number" yes "$(grep -qF 'api -X PATCH repos/pkeppeler/deepcharter/issues/14 ' "$work/log" && echo yes || echo no)"
 check "edit sends the file's body" "$(cat "$good")" "$(cat "$work/log.body")"
 
 long="$work/long.md"
-python3 -I -c 'print("word " * 1001)' >"$long"
+"$py" -c 'print("word " * 1001)' >"$long"
 run_tool "$long"
 check "1,001 words refuses" 1 "$status"
 check "long refusal names the count and limit" yes "$(has '1001 words')"
@@ -62,7 +80,7 @@ check "long refusal names the fix" yes "$(has 'cut it to 1,000 words')"
 check "long refusal does not edit" no "$(edited)"
 
 exact="$work/exact.md"
-python3 -I -c 'print("word " * 1000)' >"$exact"
+"$py" -c 'print("word " * 1000)' >"$exact"
 run_tool "$exact"
 check "exactly 1,000 words passes" 0 "$status"
 
@@ -80,9 +98,22 @@ for prose in 'The hook lists merged PRs and open PRs itself.' '- Merged into the
   check "prose [$prose] is not a section" 0 "$status"
 done
 
-run_tool "$good" STUB_ISSUE=
+run_tool "$good" STUB_NUMBER=
 check "no open handoff issue refuses" 1 "$status"
 check "no-issue refusal names the label" yes "$(has 'label handoff')"
+
+# The issues endpoint also lists PRs carrying the label: the tool's filter skips them, wherever they sit in the list.
+if [[ $have_jq -eq 1 ]]; then
+  run_tool "$good" 'STUB_ISSUES=[{"number":31,"pull_request":{"url":"x"}},{"number":14}]'
+  check "a labelled PR listed first is skipped" yes "$(grep -qF 'issues/14 ' "$work/log" && echo yes || echo no)"
+  run_tool "$good" 'STUB_ISSUES=[{"number":31,"pull_request":{"url":"x"}}]'
+  check "only a labelled PR is no handoff issue" 1 "$status"
+  check "only a labelled PR is not edited" no "$(edited)"
+  run_tool "$good" 'STUB_ISSUES=[]'
+  check "an empty list is no handoff issue" 1 "$status"
+else
+  echo "skip handoff filter cases (no jq)"
+fi
 
 run_tool "$work/missing.md"
 check "missing file refuses" 1 "$status"

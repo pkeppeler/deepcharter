@@ -1,0 +1,32 @@
+{
+  "values": [
+    "minecraft:torch",
+    "minecraft:soul_torch",
+    "minecraft:copper_torch",
+    "minecraft:redstone_torch",
+    "minecraft:lantern",
+    "minecraft:soul_lantern",
+    "minecraft:copper_lantern",
+    "minecraft:exposed_copper_lantern",
+    "minecraft:weathered_copper_lantern",
+    "minecraft:oxidized_copper_lantern",
+    "minecraft:waxed_copper_lantern",
+    "minecraft:waxed_exposed_copper_lantern",
+    "minecraft:waxed_weathered_copper_lantern",
+    "minecraft:waxed_oxidized_copper_lantern",
+    "minecraft:campfire",
+    "minecraft:soul_campfire",
+    "minecraft:glowstone",
+    "minecraft:sea_lantern",
+    "minecraft:shroomlight",
+    "minecraft:jack_o_lantern",
+    "minecraft:end_rod",
+    "minecraft:ochre_froglight",
+    "minecraft:verdant_froglight",
+    "minecraft:pearlescent_froglight",
+    "deepcharter:company_lamp",
+    "deepcharter:wall_lamp",
+    "deepcharter:floodlight",
+    "deepcharter:glowcap"
+  ]
+}

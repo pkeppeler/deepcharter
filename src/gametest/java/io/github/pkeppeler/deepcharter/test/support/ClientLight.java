@@ -1,7 +1,11 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -10,10 +14,15 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.state.BlockState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Compares the light a client reads with the light the server holds (issue 427). A client that is sent a chunk while the server's light
@@ -24,6 +33,10 @@ import net.minecraft.world.level.LightLayer;
 public final class ClientLight {
     /** Ticks the client gets, after the server's light engine is idle, to receive the light packets that follow. */
     private static final int PACKET_TICKS = 10;
+    /** Comparisons, each after a flush of the client's light queue, before a mismatch stands. */
+    private static final int ROUNDS = 3;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClientLight.class);
 
     private ClientLight() {}
 
@@ -98,11 +111,77 @@ public final class ClientLight {
         int serverSky = server.computeOnServer(minecraftServer -> maxSky(serverLevel(minecraftServer, dimension), box));
         int serverBlock =
                 server.computeOnServer(minecraftServer -> maxBlock(serverLevel(minecraftServer, dimension), box));
+        int[] clientLights = context.computeOnClient(client -> clientLights(client, box));
+        String cells = server.computeOnServer(
+                minecraftServer -> differingCells(serverLevel(minecraftServer, dimension), box, clientLights));
+        List<BlockPos> first = server.computeOnServer(minecraftServer -> {
+            ServerLevel level = serverLevel(minecraftServer, dimension);
+            List<BlockPos> all = box.cells().map(BlockPos::immutable).toList();
+            int[] serverLights = serverLights(level, all);
+            return LightMismatchEvidence.firstDiffering(all, serverLights, clientLights);
+        });
+        // The failure path only: what makes the server or the client wrong (LightMismatchEvidence).
+        Map<BlockPos, BlockState> emitters = new LinkedHashMap<>();
+        BlockState[][] serverBlocks = new BlockState[1][];
+        String serverSide = server.computeOnServer(minecraftServer -> {
+            ServerLevel level = serverLevel(minecraftServer, dimension);
+            emitters.putAll(LightMismatchEvidence.emitters(level, first));
+            serverBlocks[0] = LightMismatchEvidence.surroundings(level, box);
+            return LightMismatchEvidence.server(level, box, first, clientLights)
+                    + LightMismatchEvidence.serverChunks(level, box);
+        });
         return Optional.of(context.computeOnClient(client -> {
             ClientLevel level = clientLevel(client);
-            return "client maxSky=" + maxSky(level, box) + " maxBlock=" + maxBlock(level, box) + " in "
-                    + level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock;
+            return cells + " client maxSky=" + maxSky(level, box) + " maxBlock=" + maxBlock(level, box) + " in "
+                    + level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock
+                    + serverSide + LightMismatchEvidence.client(level, emitters)
+                    + LightMismatchEvidence.blockDifferences(
+                            box, serverBlocks[0], LightMismatchEvidence.surroundings(level, box))
+                    + LightMismatchEvidence.clientChunks(level, box);
         }));
+    }
+
+    private static int[] serverLights(Level level, List<BlockPos> cells) {
+        return cells.stream()
+                .mapToInt(pos ->
+                        level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos))
+                .toArray();
+    }
+
+    /** The client's sky and block light of every cell of the box, as {@code sky * 16 + block}, in {@link Box#cells} order. */
+    private static int[] clientLights(Minecraft client, Box box) {
+        Level level = clientLevel(client);
+        return box.cells()
+                .mapToInt(pos ->
+                        level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos))
+                .toArray();
+    }
+
+    /** How many cells differ and the first few, for a failure message: which cells shows whether the light is late or wrong. */
+    private static String differingCells(Level server, Box box, int[] client) {
+        List<BlockPos> cells = box.cells().map(BlockPos::immutable).toList();
+        StringBuilder first = new StringBuilder();
+        int differing = 0;
+        for (int i = 0; i < client.length; i++) {
+            int serverLight = server.getBrightness(LightLayer.SKY, cells.get(i)) * 16
+                    + server.getBrightness(LightLayer.BLOCK, cells.get(i));
+            if (serverLight != client[i]) {
+                if (differing++ < 4) {
+                    first.append(" ")
+                            .append(cells.get(i).toShortString())
+                            .append(" client sky/block ")
+                            .append(client[i] / 16)
+                            .append("/")
+                            .append(client[i] % 16)
+                            .append(" server ")
+                            .append(serverLight / 16)
+                            .append("/")
+                            .append(serverLight % 16)
+                            .append(";");
+                }
+            }
+        }
+        return differing + " of " + client.length + " cells differ:" + first;
     }
 
     /** True when the client is in {@code dimension} and holds every chunk the box touches. */
@@ -127,6 +206,34 @@ public final class ClientLight {
                 .allMatch(chunk -> level.getChunkSource().hasChunk(chunk.x(), chunk.z()));
     }
 
+    /**
+     * True when the server holds every chunk the box touches, and the ring of chunks round them, as one it can send: the chunk is full and
+     * its light is done, the state vanilla's {@code ChunkMap.waitForLightBeforeSending} and {@code LightSync} hold a chunk back until.
+     * Light spreads at most 15 blocks, so a neighbour still generating is the only other chunk whose light can still change the box.
+     * {@link #serverLightIdle} alone is true for a chunk still below the light stage, or whose light job is not yet queued. A ring chunk
+     * outside the player's view is never generated, so only a ring chunk a player is sent counts.
+     */
+    public static boolean serverChunksSendable(TestServerContext server, ResourceKey<Level> dimension, Box box) {
+        return server.computeOnServer(minecraftServer -> {
+            ServerLevel level = serverLevel(minecraftServer, dimension);
+            ChunkMap chunkMap = level.getChunkSource().chunkMap;
+            ChunkPos low = ChunkPos.containing(box.min());
+            ChunkPos high = ChunkPos.containing(box.max());
+            for (ChunkPos chunk : ChunkPos.rangeClosed(
+                            new ChunkPos(low.x() - 1, low.z() - 1), new ChunkPos(high.x() + 1, high.z() + 1))
+                    .toList()) {
+                boolean inBox =
+                        chunk.x() >= low.x() && chunk.x() <= high.x() && chunk.z() >= low.z() && chunk.z() <= high.z();
+                boolean sent = level.players().stream()
+                        .anyMatch(player -> player.getChunkTrackingView().contains(chunk));
+                if ((inBox || sent) && chunkMap.getChunkToSend(chunk.pack()) == null) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+
     /** True when no level of the server has light work pending. */
     public static boolean serverLightIdle(ClientGameTestContext context, TestServerContext server) {
         return server.computeOnServer(minecraftServer -> {
@@ -140,8 +247,29 @@ public final class ClientLight {
     }
 
     /**
-     * Waits, on the wall clock, until the server's light engine is idle and the client has had {@link #PACKET_TICKS} ticks for the light
-     * packets after it, then returns what a comparison of the box finds. Sends nothing: a mismatch is a light the client will keep.
+     * Waits until the client has applied every light update it was sent. A client queues the light of each chunk packet and light packet
+     * and applies ten a frame, in order ({@code ClientLevel.pollLightUpdates}), so a chunk can be present while its light is still
+     * queued, and reads full sky light until then (#998): a marker queued behind them runs once they have, and the client's own light
+     * engine is idle after it.
+     */
+    private static void awaitClientLightApplied(ClientGameTestContext context) {
+        AtomicBoolean applied = new AtomicBoolean();
+        context.runOnClient(client -> clientLevel(client).queueLightUpdate(() -> applied.set(true)));
+        ClientWait.until(
+                context, "the client to apply the light it was sent", applied::get, () -> "the client's light queue");
+        ClientWait.until(
+                context,
+                "the client's light engine to be idle",
+                () -> context.computeOnClient(
+                        client -> !clientLevel(client).getLightEngine().hasLightWork()),
+                () -> "client light work pending");
+    }
+
+    /**
+     * Waits until the server's light engine is idle and the client has applied the light it was sent, then returns what a comparison of
+     * the box finds. A packet still in flight lands behind the client's marker, so a mismatch is compared again after another
+     * {@link #PACKET_TICKS} and a flush, up to {@link #ROUNDS} times: a light that stays different through them is one the client will
+     * keep. Sends nothing.
      */
     public static Optional<String> settledMismatch(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, Box box) {
@@ -150,9 +278,49 @@ public final class ClientLight {
                 "the server's light engine to be idle",
                 () -> serverLightIdle(context, server),
                 () -> "light work pending");
-        // tick-wait: the packets that follow the last light job arrive within a few ticks; the comparison after is the
-        // check
-        context.waitTicks(PACKET_TICKS);
-        return describeMismatch(context, server, dimension, box);
+        Optional<String> mismatch = Optional.empty();
+        for (int round = 1; round <= ROUNDS; round++) {
+            // tick-wait: a packet sent after the light job arrives within a few ticks; the comparison is the check
+            context.waitTicks(PACKET_TICKS);
+            awaitClientLightApplied(context);
+            mismatch = describeMismatch(context, server, dimension, box);
+            if (mismatch.isEmpty()) {
+                return mismatch;
+            }
+        }
+        int serverPrint = server.computeOnServer(s -> fingerprint(serverLevel(s, dimension), box));
+        return mismatch.map(m -> m + " after " + ROUNDS + " rounds, server light print " + serverPrint);
+    }
+
+    /** A tripwire (issue 832): shows whether client and server light agree at each evidence still. */
+    public static void logStillLight(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            String name,
+            BlockPos pos) {
+        String serverRead = server.computeOnServer(s -> {
+            ServerLevel level = serverLevel(s, dimension);
+            return "blockLight=" + level.getBrightness(LightLayer.BLOCK, pos) + " skyLight="
+                    + level.getBrightness(LightLayer.SKY, pos);
+        });
+        String clientRead = context.computeOnClient(client -> {
+            ClientLevel level = clientLevel(client);
+            var probe = client.gameRenderer.mainCamera().attributeProbe();
+            return "blockLight=" + level.getBrightness(LightLayer.BLOCK, pos) + " skyLight="
+                    + level.getBrightness(LightLayer.SKY, pos) + " dimension="
+                    + level.dimension().identifier() + " blockTint="
+                    + probe.getValue(EnvironmentAttributes.BLOCK_LIGHT_TINT, 1f) + " skyFactor="
+                    + probe.getValue(EnvironmentAttributes.SKY_LIGHT_FACTOR, 1f) + " ambient="
+                    + probe.getValue(EnvironmentAttributes.AMBIENT_LIGHT_COLOR, 1f) + " gamma="
+                    + client.options.gamma().get() + " darkness="
+                    + client.options.darknessEffectScale().get();
+        });
+        LOGGER.info(
+                "[still-light] still={} pos={} client: {} | server: {}",
+                name,
+                pos.toShortString(),
+                clientRead,
+                serverRead);
     }
 }

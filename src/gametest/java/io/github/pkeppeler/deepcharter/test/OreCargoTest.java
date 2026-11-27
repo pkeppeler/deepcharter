@@ -1,24 +1,25 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
-import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.List;
@@ -29,7 +30,6 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
@@ -39,7 +39,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -51,7 +50,6 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for ore items and the pod's item cargo. Timing follows PodDrillTest: wait on conditions with a
@@ -60,9 +58,6 @@ import org.jspecify.annotations.Nullable;
 public class OreCargoTest {
     private static final int MAX_TICKS = 20000;
     private static final int Z = 3200;
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
-    private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
     private static final double EPSILON = 1e-6;
     private static final float ENGINE_POWER = PodTuning.DEFAULT.movement().enginePower();
 
@@ -146,8 +141,8 @@ public class OreCargoTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drilledOreReachesTheCargoAndVanillaOreDoesNot(GameTestHelper helper) {
         int x = 3200;
-        int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        int floor = TestLayers.worldY(1, 60);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         level.setBlock(
                 new BlockPos(x - 1, floor - 1, Z - 1),
@@ -186,8 +181,8 @@ public class OreCargoTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drilledOreMassCutsLift(GameTestHelper helper) {
         int x = 3264;
-        int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        int floor = TestLayers.worldY(1, 60);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         for (int i = 0; i < 4; i++) {
             level.setBlock(
@@ -327,7 +322,7 @@ public class OreCargoTest {
     }
 
     @GameTest
-    public void sneakUseOnThePodOpensTheCargoScreen(GameTestHelper helper) {
+    public void sneakUseOnThePodOpensThePodScreenWithItsOre(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "ore-sneaker");
         try {
@@ -336,18 +331,19 @@ public class OreCargoTest {
             player.teleportTo(helper.getLevel(), pod.position().add(2, 0, 0), 0f, 0f);
             player.setInput(SNEAK);
             InteractionResult result = UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-            if (!result.consumesAction() || !(player.player().containerMenu instanceof OreCargoMenu menu)) {
+            if (!result.consumesAction() || !(player.player().containerMenu instanceof PodMenu menu)) {
                 throw failure(
                         helper,
-                        "sneak-use should open the cargo menu, got %s with %s",
+                        "sneak-use should open the pod screen, got %s with %s",
                         result,
                         player.player().containerMenu);
             }
-            List<ItemStack> shown = OreCargoSlots.shown(menu);
-            if (shown.size() != 2
-                    || !shown.get(0).is(OreRegistry.item(OreType.SILVERIUM))
-                    || !shown.get(1).is(OreRegistry.item(OreType.PLATINIUM))) {
-                throw failure(helper, "the menu should show the Silverium and the Platinium, it shows %s", shown);
+            menu.broadcastChanges();
+            ItemStack first = menu.holdSlot(0).getItem();
+            ItemStack second = menu.holdSlot(1).getItem();
+            if (!first.is(OreRegistry.item(OreType.SILVERIUM)) || !second.is(OreRegistry.item(OreType.PLATINIUM))) {
+                throw failure(
+                        helper, "the hold should show the Silverium and the Platinium, it shows %s, %s", first, second);
             }
             if (pod.getPassengers().contains(player.player())) {
                 throw failure(helper, "sneak-use must not board the pod");
@@ -439,8 +435,8 @@ public class OreCargoTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drillingOreIntoUnreadableCargoLosesTheOreLogsOnceAndKeepsTheData(GameTestHelper helper) {
         int x = 3328;
-        int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        int floor = TestLayers.worldY(1, 60);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         level.setBlock(
                 new BlockPos(x - 1, floor - 1, Z - 1),
@@ -610,7 +606,7 @@ public class OreCargoTest {
     }
 
     @GameTest
-    public void clickingTheCargoScreenChangesNothing(GameTestHelper helper) {
+    public void clickingTheHoldsOreMovesNoOre(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "ore-clicker");
         try {
@@ -618,20 +614,22 @@ public class OreCargoTest {
             player.teleportTo(helper.getLevel(), pod.position().add(2, 0, 0), 0f, 0f);
             player.setInput(SNEAK);
             UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-            OreCargoMenu menu = (OreCargoMenu) player.player().containerMenu;
-            menu.clicked(0, 0, ContainerInput.PICKUP, player.player());
+            PodMenu menu = (PodMenu) player.player().containerMenu;
+            int ore = menu.holdSlot(0).index;
+            menu.clicked(ore, 0, ContainerInput.PICKUP, player.player());
             if (!menu.getCarried().isEmpty()) {
-                throw failure(helper, "picking up from a read-only slot must give nothing, got %s", menu.getCarried());
+                throw failure(helper, "picking up the hold's ore must give nothing, got %s", menu.getCarried());
             }
             menu.setCarried(new ItemStack(Items.DIAMOND));
-            menu.clicked(3, 0, ContainerInput.PICKUP, player.player());
-            menu.clicked(0, 0, ContainerInput.QUICK_MOVE, player.player());
+            menu.clicked(ore, 0, ContainerInput.PICKUP, player.player());
+            menu.clicked(ore, 0, ContainerInput.QUICK_MOVE, player.player());
+            menu.clicked(ore, 0, ContainerInput.THROW, player.player());
             if (!menu.getCarried().is(Items.DIAMOND)
                     || pod.cargo().entries().size() != 1
-                    || OreCargoSlots.shown(menu).size() != 1) {
+                    || !menu.holdSlot(0).getItem().is(OreRegistry.item(OreType.SILVERIUM))) {
                 throw failure(
                         helper,
-                        "clicks must not move ore, carried %s, bay %s",
+                        "clicks must not move ore, carried %s, hold %s",
                         menu.getCarried(),
                         pod.cargo().entries());
             }
@@ -715,20 +713,5 @@ public class OreCargoTest {
             }
         }
         return found;
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 }

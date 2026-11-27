@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -23,10 +23,8 @@ import java.util.TreeSet;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The feature map (#510) covers the game. Every registered {@code deepcharter:} item, block, entity type, terminal,
@@ -65,7 +63,7 @@ public class FeatureMapCoverageTest {
             throw failure(
                     helper,
                     "%s is out of step with the game. Registered but on no node's covers: %s. Named by a node but not registered: %s. "
-                            + "Add the feature to a node, or fix the entry, then run python3 -I tools/feature_map.py (skill: .claude/skills/feature-map/SKILL.md)",
+                            + "Add the feature to a node, or fix the entry, then run tools/py tools/feature_map.py (skill: .claude/skills/feature-map/SKILL.md)",
                     MAP,
                     missing,
                     stale);
@@ -144,12 +142,6 @@ public class FeatureMapCoverageTest {
             }
         }
         return covered;
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static boolean ours(Identifier id) {

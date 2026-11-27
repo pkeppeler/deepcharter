@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.Inputs;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
@@ -100,8 +101,8 @@ public class TowChainScenario extends EvidenceScenario {
             int ticks,
             double distance) {
         two.server().runOnServer(server -> {
-            two.mock().player().setYRot(yaw);
-            two.mock().setInput(TowStage.FORWARD);
+            TowStage.turn(two, yaw);
+            two.mock().setInput(Inputs.FORWARD);
         });
         for (int done = 0; done < ticks; done += TowStage.TICKS_PER_FRAME) {
             context.waitTicks(TowStage.TICKS_PER_FRAME);

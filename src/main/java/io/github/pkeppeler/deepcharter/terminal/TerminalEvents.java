@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.terminal;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,17 +22,21 @@ public final class TerminalEvents {
                 }
             });
 
-    /** A player opened a terminal: it passed every check and the server is sending its screen. Not fired for a refusal. */
+    /**
+     * A player opened the terminal at {@code pos} (its lower half): it passed every check and the server has sent its screen. Not fired for
+     * a refusal.
+     */
     public static final Event<Opened> OPENED =
-            EventFactory.createArrayBacked(Opened.class, listeners -> (server, type, player) -> {
+            EventFactory.createArrayBacked(Opened.class, listeners -> (server, type, player, pos) -> {
                 for (Opened listener : listeners) {
-                    listener.onOpened(server, type, player);
+                    listener.onOpened(server, type, player, pos);
                 }
             });
 
     /**
-     * A terminal action ran and changed what it was asked to ({@link Terminals#INSERT_PART} included), just after the player's
-     * screen is refreshed. A listener that throws stops the call, but the action has taken effect and the screen is current.
+     * A terminal action ran and changed what it was asked to (a part going in is not an action), just after the
+     * player's screen is refreshed. A listener that throws stops the call, but the action has taken effect and the
+     * screen is current.
      */
     public static final Event<Acted> ACTED =
             EventFactory.createArrayBacked(Acted.class, listeners -> (server, type, player, action) -> {
@@ -65,7 +70,7 @@ public final class TerminalEvents {
 
     @FunctionalInterface
     public interface Opened {
-        void onOpened(MinecraftServer server, TerminalType type, ServerPlayer player);
+        void onOpened(MinecraftServer server, TerminalType type, ServerPlayer player, BlockPos pos);
     }
 
     @FunctionalInterface

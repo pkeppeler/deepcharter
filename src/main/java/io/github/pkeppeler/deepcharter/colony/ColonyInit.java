@@ -9,9 +9,14 @@ public final class ColonyInit {
 
     public static void init() {
         ColonyRegistry.register();
+        WorldFormat.init();
+        WorldFormatGate.init();
         ColonyBuilder.init();
         Conduit.init();
         FounderStatue.init();
         ColonyDisplays.init();
+        ColonyPhonograph.init();
+        ColonyRations.init();
+        ColonyReadout.init();
     }
 }

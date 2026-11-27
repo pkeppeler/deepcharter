@@ -77,8 +77,10 @@ public class HandbookContentScenario extends EvidenceScenario {
             case HandbookPage.Slip slip -> "issue-slip";
             case HandbookPage.Letter letter -> "founders-letter";
             case HandbookPage.Contents contents -> "contents-" + contents.part();
+            case HandbookPage.Controls controls -> "controls-" + controls.part();
             case HandbookPage.ChapterText text -> "chapter-" + text.number() + "-text-" + text.part();
             case HandbookPage.Chapter chapter -> "chapter-" + chapter.number() + "-directives";
+            case HandbookPage.Pencil pencil -> "pencil-" + pencil.part();
             case HandbookPage.Appendix appendix -> "end-of-chapters";
             case HandbookPage.Contract contract -> "appendix-a-" + contract.part();
         };

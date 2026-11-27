@@ -1,5 +1,11 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SIDE_STEP;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.STUCK_TICKS;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.withRotor;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -30,15 +36,18 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
+import io.github.pkeppeler.deepcharter.test.support.BoreBot.Side;
 import io.github.pkeppeler.deepcharter.test.support.DecayCells;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -148,7 +157,7 @@ public class LavaBoreTest {
     private static final boolean CHARGES = "1".equals(System.getenv(CHARGES_ENV));
     /** Blocks past {@code chargeReach} that the hovering bot holds above the blast, for its overshoot on the rotor. */
     private static final double HOVER_MARGIN = 0.6;
-    /** The charging bot waits this many times {@link #STUCK_TICKS} for a still pod with no Company rock under it before it sidesteps. */
+    /** The charging bot waits this many times {@code STUCK_TICKS} for a still pod with no Company rock under it before it sidesteps. */
     private static final int WAIT_FOR_NO_ROCK = 10;
     /** Ticks after the fuse has run out that a hull loss is booked to the charge. */
     private static final int BLAST_WINDOW_TICKS = 3;
@@ -205,7 +214,7 @@ public class LavaBoreTest {
     static final String BRACE_ENV = "DEEPCHARTER_LAVA_BORES_BRACE";
 
     private static final String REQUESTED_BRACE = System.getenv(BRACE_ENV);
-    /** The tier of the real heat shield part (#482) the pod carries; 1 is the only tier. */
+    /** The tier of the real heat shield part (#482, #712) the pod carries, 1 to 3; tier 3 rides a Mole-sized frame with a Prospector's cap. */
     static final String SHIELD_ENV = "DEEPCHARTER_LAVA_BORES_SHIELD";
 
     private static final String REQUESTED_SHIELD = System.getenv(SHIELD_ENV);
@@ -236,7 +245,6 @@ public class LavaBoreTest {
     /** A climb that has not got clear in this many ticks is given up: the pod is trapped under rock, and the pilot lines instead. */
     static final int FLEE_GIVE_UP_TICKS = 60;
 
-    private static final Input ROTOR = new Input(false, false, false, false, true, false, false);
     static final String LINER_ENV = "DEEPCHARTER_LAVA_BORES_LINER";
     private static final String REQUESTED_LINER = System.getenv(LINER_ENV);
     private static final String REQUESTED_LINING = System.getenv(LINING_ENV);
@@ -259,15 +267,15 @@ public class LavaBoreTest {
      * The smoke case starts its pods low, in a shaft cut with RoomCarver from the top of the rock, so that a bore is a thousand ticks
      * and not the six thousand of the whole layer. The control starts on the crust and must get through; the other starts in Deep Claim.
      */
-    private static final int SMOKE_CROSSING_Y = 3;
+    private static final int SMOKE_CROSSING_Y = TestLayers.worldY(1, 3);
 
-    private static final int SMOKE_LAVA_Y = 24;
+    private static final int SMOKE_LAVA_Y = TestLayers.worldY(1, 24);
     /**
      * The lava block the smoke bore must meet first, 3 slabs below its start: above any lava the world seed put in the shaft's way, and in the scanner's view from the first scan.
      * The height was picked for the game test world's seed 0, so a different seed may need a different value.
      * It is in the scan plane (the pod faces south, so the plane is the pod's x) and in the pod's footprint.
      */
-    private static final int SMOKE_LAVA_BLOCK_Y = 21;
+    private static final int SMOKE_LAVA_BLOCK_Y = TestLayers.worldY(1, 21);
 
     private static final int NO_SHAFT = Integer.MIN_VALUE;
     /** From this many bores the report prints a verdict as well: fewer say nothing about a rate. */
@@ -287,20 +295,17 @@ public class LavaBoreTest {
     /** Far from every other test's columns. Each bore has a chunk of its own, two chunks apart from the next. */
     private static final int FIRST_CHUNK_X = 2500;
 
-    private static final int CHUNK_Z = 2500;
+    private static final int CHUNK_Z = 2600;
     private static final int CHUNK_SPACING = 2;
-    private static final int PILOT_WAIT_Y = 150;
+    private static final int PILOT_WAIT_Y = TestLayers.worldY(1, 150);
 
-    private static final int SIDE_STEP = 2;
-    /** The chassis the bot drives, the Mole. Its footprint is as {@code PodFootprint} (package private in the main code) reads it: the bore square. */
+    /** The chassis the bot drives, the Mole. Its footprint is as {@code PodFootprint} reads it: the bore square. */
     private static final Chassis CHASSIS = Chassis.MOLE;
 
     private static final int FOOTPRINT_WIDTH = CHASSIS.boreWidth();
     private static final int POD_HEIGHT = CHASSIS.boreHeight();
     /** The bot does not stray farther than this from its first column, so that it stays inside its chunk (the drill will not bore at an unloaded edge). */
     private static final int MAX_DRIFT = 5;
-    /** Ticks a pod on the ground neither drills nor moves before the bot calls the slab refused. */
-    private static final int STUCK_TICKS = 12;
     /** Pod ticks between two touches of lava that still count as one encounter: about two slabs of drilling. */
     private static final int ENCOUNTER_GAP_TICKS = 60;
     /** A pod that gets no deeper in this many ticks is stalled. */
@@ -309,14 +314,6 @@ public class LavaBoreTest {
     private static final int BORE_TICK_BUDGET = 20000;
     private static final int LAVA_BODY_LIMIT = 256;
     private static final float REFUEL_BELOW_PERCENT = 3f;
-
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    /** The pod faces south (yaw 0), so forward is south and left is east. */
-    private static final Input STRAFE_EAST = new Input(false, false, true, false, false, false, false);
-
-    private static final Input STRAFE_WEST = new Input(false, false, false, true, false, false, false);
-    private static final Input DRIVE_SOUTH = new Input(true, false, false, false, false, false, false);
-    private static final Input DRIVE_NORTH = new Input(false, true, false, false, false, false, false);
 
     private enum Outcome {
         SURVIVED,
@@ -328,61 +325,6 @@ public class LavaBoreTest {
     private enum Phase {
         DOWN,
         SIDEWAYS
-    }
-
-    /** A way to step aside: the input that drives the pod that way (it faces south), and the axis it moves along. */
-    private enum Side {
-        EAST(1, 0, STRAFE_EAST),
-        WEST(-1, 0, STRAFE_WEST),
-        SOUTH(0, 1, DRIVE_SOUTH),
-        NORTH(0, -1, DRIVE_NORTH);
-
-        final int dx;
-        final int dz;
-        final Input input;
-
-        Side(int dx, int dz, Input input) {
-            this.dx = dx;
-            this.dz = dz;
-            this.input = input;
-        }
-
-        /** The compass direction of this side, as the sounder's marks name it. */
-        Direction direction() {
-            return switch (this) {
-                case EAST -> Direction.EAST;
-                case WEST -> Direction.WEST;
-                case SOUTH -> Direction.SOUTH;
-                case NORTH -> Direction.NORTH;
-            };
-        }
-
-        /** How far the pod is along this side's direction, in blocks from the world's origin. */
-        double along(PodEntity pod) {
-            return pod.getX() * dx + pod.getZ() * dz;
-        }
-
-        Side opposite() {
-            return switch (this) {
-                case EAST -> WEST;
-                case WEST -> EAST;
-                case SOUTH -> NORTH;
-                case NORTH -> SOUTH;
-            };
-        }
-
-        Side turnedRight() {
-            return switch (this) {
-                case EAST -> SOUTH;
-                case SOUTH -> WEST;
-                case WEST -> NORTH;
-                case NORTH -> EAST;
-            };
-        }
-
-        Side turnedLeft() {
-            return turnedRight().opposite();
-        }
     }
 
     /** One run of touching lava, how early the scanner had it in view, and what it cost the hull. */
@@ -498,8 +440,7 @@ public class LavaBoreTest {
         int lastCargoUsed;
         int lastCargoValue;
 
-        @Nullable
-        PodEntity pod;
+        final Arrival<PodEntity> pod = new Arrival<>("pod", "the far chunk ticks");
 
         int startY;
         /** What the cab lets the pilot read on this tick (#502): the plate's text and the scanner's window. Always true without the decay. */
@@ -638,14 +579,6 @@ public class LavaBoreTest {
             this.leaves = leaves;
         }
 
-        PodEntity pod() {
-            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
-        }
-
-        boolean ready() {
-            return pod != null;
-        }
-
         boolean done() {
             return outcome != null;
         }
@@ -658,7 +591,7 @@ public class LavaBoreTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + BORE_TICK_BUDGET + 2000)
     public void aStockMoleBoresFromTheTopOfLayerOneToLayerTwoAndTheLavaIsCounted(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         int count = boreCount(helper);
         boolean smoke = REQUESTED_BORES == null || REQUESTED_BORES.isBlank();
         int measuredLookahead = positiveEnv(helper, LINING_ENV, REQUESTED_LINING, 0);
@@ -707,7 +640,9 @@ public class LavaBoreTest {
         CharterId charter = null;
         for (int i = 0; i < count; i++) {
             MockPlayer pilot = MockPlayers.join(helper, "Bore pilot " + i);
-            pilot.player().setGameMode(GameType.SURVIVAL);
+            // Creative while the pilot waits inside the rock for the chunk to tick, where survival suffocates on a slow
+            // runner; launch() makes it survival.
+            pilot.player().setGameMode(GameType.CREATIVE);
             charter = joinTheCharter(helper, server, pilot, charter, i);
             int centreX = (FIRST_CHUNK_X + i * CHUNK_SPACING) * 16 + 8;
             int centreZ = CHUNK_Z * 16 + 8;
@@ -736,7 +671,7 @@ public class LavaBoreTest {
                 return;
             }
             for (Bore bore : bores) {
-                if (bore.ready() && !bore.done()) {
+                if (bore.pod.isPresent() && !bore.done()) {
                     step(helper, bore);
                 }
             }
@@ -783,7 +718,7 @@ public class LavaBoreTest {
     }
 
     /** The first pilot founds a charter and the rest join it, so a run of sixty bores leaves one charter in the world and not sixty. */
-    private static CharterId joinTheCharter(
+    static CharterId joinTheCharter(
             GameTestHelper helper, MinecraftServer server, MockPlayer pilot, @Nullable CharterId charter, int index) {
         ServerPlayer player = pilot.player();
         if (charter == null) {
@@ -839,13 +774,16 @@ public class LavaBoreTest {
                         Blocks.LAVA);
             }
         }
-        PodEntity pod = TestEntities.create(PodRegistry.typeOf(CHASSIS), level);
+        // A tier 3 shield needs the Prospector's cap (#712); OddPods.DEEP_MOLE is the Mole's frame with that cap.
+        PodEntity pod = TestEntities.create(
+                bore.shieldTier > CHASSIS.tierCap() ? OddPods.DEEP_MOLE_TYPE : PodRegistry.typeOf(CHASSIS), level);
         pod.setPos(bore.centreX, feetY, bore.centreZ);
         level.addFreshEntity(pod);
         ScannerPods.fit(server, bore.pilot.player(), pod, SCANNER_TIER);
         if (bore.lookahead > 0) {
             ScannerPods.fit(server, bore.pilot.player(), pod, ComponentTrack.SPOIL_HOPPER, 1);
         }
+        bore.pilot.player().setGameMode(GameType.SURVIVAL);
         if (!bore.pilot.player().startRiding(pod)) {
             throw helper.assertionException(Component.literal("pilot " + bore.index + " could not mount the pod"));
         }
@@ -883,13 +821,14 @@ public class LavaBoreTest {
         bore.lastHull = pod.hull();
         bore.lastHealth = bore.pilot.player().getHealth();
         bore.lastProgressTick = 0;
-        bore.pod = pod;
+        bore.pod.set(pod);
         bore.pilot.setInput(SPRINT);
     }
 
     /** The highest block in the columns of the bore. */
     private static int topOfTheRock(ServerLevel level, int centreX, int centreZ) {
-        for (int y = level.getMaxY() - 1; y >= level.getMinY(); y--) {
+        LayerChain.Band band = TestLayers.band(level, 1);
+        for (int y = band.maxY() - 1; y >= band.minY(); y--) {
             for (int x = centreX - FOOTPRINT_WIDTH / 2; x < centreX - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; x++) {
                 for (int z = centreZ - FOOTPRINT_WIDTH / 2; z < centreZ - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; z++) {
                     if (!level.getBlockState(new BlockPos(x, y, z)).isAir()) {
@@ -905,15 +844,15 @@ public class LavaBoreTest {
 
     private static void step(GameTestHelper helper, Bore bore) {
         ServerPlayer player = bore.pilot.player();
-        PodEntity pod = player.getVehicle() instanceof PodEntity ridden ? ridden : bore.pod();
-        boolean through = player.level().dimension().equals(LayerChain.dimension(2));
+        PodEntity pod = player.getVehicle() instanceof PodEntity ridden ? ridden : bore.pod.get();
+        boolean through = TestLayers.isIn(player, 2);
         if (through && player.isAlive() && player.getVehicle() instanceof PodEntity crossed) {
             finish(bore, Outcome.SURVIVED, "", crossed);
             crossed.discard();
             bore.pilot.releaseInput();
             return;
         }
-        bore.pod = pod;
+        bore.pod.replace(pod);
         bore.pilotTicks++;
         ServerLevel level = bore.level;
         boolean touching = LavaHazard.touchesLava(pod);
@@ -940,7 +879,8 @@ public class LavaBoreTest {
             bore.biggestOtherHit = hullLost;
             bore.biggestOtherHitY = pod.blockPosition().getY();
         }
-        boolean inCrust = pod.blockPosition().getY() <= level.getMinY() + CRUST_BAND;
+        boolean inCrust =
+                pod.blockPosition().getY() <= TestLayers.band(level, 1).minY() + CRUST_BAND;
         Cause cause = touching
                 ? Cause.LAVA
                 : gasPocketVanished(level, bore)
@@ -1089,11 +1029,6 @@ public class LavaBoreTest {
         return bore.phase == Phase.DOWN ? SPRINT : bore.side.input;
     }
 
-    private static Input withRotor(Input input) {
-        return new Input(
-                input.forward(), input.backward(), input.left(), input.right(), true, input.shift(), input.sprint());
-    }
-
     /** Holds the rotor on while the pod sinks faster than {@link #BRAKE_ABOVE_SINK}, and lets go once it is slower. */
     private static void brake(Bore bore, PodEntity pod) {
         boolean needed = !pod.onGround() && -pod.getDeltaMovement().y > BRAKE_ABOVE_SINK;
@@ -1151,8 +1086,8 @@ public class LavaBoreTest {
      * and sprints again when the part is done. Returns whether the bot is holding back. With an empty bay it drills on.
      */
     private static boolean braceIfAsked(Bore bore, PodEntity pod) {
-        // A pilot already letting go waits through a dark plate; one who has not let go acts only on a prompt it can
-        // read.
+        // A pilot already letting go waits through a dark plate; one who has not let go acts only on a prompt it
+        // can read.
         boolean asked = PodBrace.status(pod, true).patching() == PodBrace.Patching.WORKING
                 && (bore.bracing || bore.plateReadable);
         if (asked && bore.phase == Phase.DOWN && pod.onGround()) {
@@ -1526,6 +1461,7 @@ public class LavaBoreTest {
         bore.sideStart = side.along(pod);
         bore.lastAlong = bore.sideStart;
         bore.idleTicks = 0;
+        side.face(pod);
         bore.pilot.setInput(side.input);
     }
 
@@ -2122,7 +2058,7 @@ public class LavaBoreTest {
         if (!DECAY) {
             return;
         }
-        int minY = bores.getFirst().level.getMinY();
+        int minY = TestLayers.band(bores.getFirst().level, 1).minY();
         int onset = (int) Math.ceil(SignalDecayTuning.DEFAULT.band(1).onset()
                 * UpgradeTuning.DEFAULT.ratio(ComponentTrack.CONSOLE, CONSOLE_TIER));
         List<Bore> inBand = bores.stream().filter(b -> b.decayTicks > 0).toList();
@@ -2298,8 +2234,8 @@ public class LavaBoreTest {
                         "bore " + bore.index + ": the thermal scanner showed lava from farther than its reach of "
                                 + thermalReach + " slabs, so the lead is mismeasured"));
             }
-            // The thermal tier's slice contains the tier 1 slice, so it marks every block that tier 1 shows as open
-            // space.
+            // The thermal tier's slice contains the tier 1 slice, so it marks every block that tier 1 shows as
+            // open space.
             if (bore.encounters.stream()
                     .anyMatch(e -> e.thermalContactCellsShownAhead() < e.contactCellsShownAhead())) {
                 throw helper.assertionException(
@@ -2350,14 +2286,5 @@ public class LavaBoreTest {
                                     .map(e -> e.zone() + "@" + e.contactY())
                                     .toList()));
         }
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw helper.assertionException(
-                    Component.literal("dimension " + LayerChain.dimension(layer) + " did not load"));
-        }
-        return level;
     }
 }

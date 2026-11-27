@@ -20,12 +20,7 @@ public final class DeepestPoint {
         if (mode != GameType.SURVIVAL && mode != GameType.ADVENTURE) {
             return false;
         }
-        return LayerChain.indexOf(player.level()
-                        .dimensionTypeRegistration()
-                        .unwrapKey()
-                        .orElseThrow()
-                        .identifier())
-                .isPresent();
+        return LayerChain.bandAt(player.level(), player.getBlockY()).isPresent();
     }
 
     /** Checks every online member against their charter's record. A player on no charter, or unreadable saved charters, change nothing. */

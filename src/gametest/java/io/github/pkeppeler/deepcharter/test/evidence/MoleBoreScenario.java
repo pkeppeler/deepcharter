@@ -1,14 +1,13 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -53,10 +52,15 @@ public class MoleBoreScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 buildRoom(one);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, X - 6, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, ROOM);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X - 6, FLOOR_Y, Z);
                 pod.setFuel(100f);
@@ -70,7 +74,7 @@ public class MoleBoreScenario extends EvidenceScenario {
                     "the player riding a pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                            && TestLayers.clientIsIn(client, 1));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
@@ -107,15 +111,7 @@ public class MoleBoreScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
                 pod.setFuel(100f);
-                pod.teleportTo(
-                        ClientLight.serverLevel(server, LayerChain.dimension(1)),
-                        X - 2.5,
-                        FLOOR_Y,
-                        Z + 0.5,
-                        Set.of(),
-                        EAST,
-                        0f,
-                        true);
+                pod.teleportTo(TestLayers.level(server, 1), X - 2.5, FLOOR_Y, Z + 0.5, Set.of(), EAST, 0f, true);
                 player.setYRot(EAST);
             });
             context.runOnClient(client -> {
