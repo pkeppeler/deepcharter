@@ -174,8 +174,8 @@ public class SpecSheetsTest {
     public void whatAPlayerCraftedBeforeTheyJoinedShowsNothing(GameTestHelper helper) {
         MockPlayer veteran = MockPlayers.join(helper, "SpecVeteran");
         ServerPlayer player = veteran.player();
-        // The crafted count is already above zero when the server first looks at the player: that is history, not a
-        // craft.
+        // The crafted count is already above zero when the server first looks at the player: that is history, not
+        // a craft.
         player.getStats().setValue(player, net.minecraft.stats.Stats.ITEM_CRAFTED.get(item("stalk_planks")), 5);
         veteran.announceChannel(SpecSheetPayload.TYPE);
         helper.startSequence()

@@ -28,7 +28,7 @@ public record FuelTuning(
             25f,
             16,
             new Weight(0.6f, 0.4f, 0.5f),
-            new Soot(3f, 12f, 0.5f, 0.5f, 0.3f, 2f, 10, 1200, 11f));
+            new Soot(3f, 12f, 0.29f, 0.5f, 0.3f, 2f, 10, 1200, 11f));
 
     /** Mass of one item of each solid fuel. */
     public record Weight(float coal, float charcoal, float biofuel) {
@@ -48,13 +48,13 @@ public record FuelTuning(
      * @param graceLitres      the soot the engine takes before it loses anything: the readout and the first line come
      *                         here
      * @param limpLitres       the soot at which the engine drops to limp mode, which only a service at the colony ends
-     * @param lossAtLimit      the share of top speed and climb speed lost just under the limit
+     * @param lossAtLimit      the share of top speed and climb speed lost just under the limit: small enough that the
+     *                         pod still outruns a player there (#1276, PodSprintTest)
      * @param extraBurnAtLimit the extra share of fuel burned just under the limit
      * @param limpOutput       the share of top speed and climb speed left in limp mode
      * @param limpBurn         how many times the clean burn the engine burns in limp mode
      * @param servicePerLitre  dollars the repair station charges to clear a litre of soot
-     * @param scrapeTicks      ticks the free flue scrape at the colony's repair station takes (a minute, as long as
-     *                         the Company's recovery makes a stranded pilot wait)
+     * @param scrapeTicks      ticks the free flue scrape at the colony's repair station takes (a minute)
      * @param scrapeLeavesLitres the soot a flue scrape leaves: under the limp limit, so the pod launches, and over the
      *                         grace, so it is still slow until it is serviced
      */

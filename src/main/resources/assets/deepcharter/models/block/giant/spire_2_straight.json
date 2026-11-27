@@ -1,0 +1,156 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "spire": "deepcharter:block/spire_2",
+    "branch": "deepcharter:block/spire_1",
+    "particle": "deepcharter:block/spire_2"
+  },
+  "elements": [
+    {
+      "from": [
+        4.0,
+        -0.4,
+        4.0
+      ],
+      "to": [
+        12.0,
+        16.4,
+        12.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            16.0
+          ],
+          "texture": "#spire"
+        },
+        "south": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            16.0
+          ],
+          "texture": "#spire"
+        },
+        "east": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            16.0
+          ],
+          "texture": "#spire"
+        },
+        "west": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            16.0
+          ],
+          "texture": "#spire"
+        },
+        "up": {
+          "uv": [
+            4.0,
+            4.0,
+            12.0,
+            12.0
+          ],
+          "texture": "#spire"
+        },
+        "down": {
+          "uv": [
+            4.0,
+            4.0,
+            12.0,
+            12.0
+          ],
+          "texture": "#spire"
+        }
+      }
+    },
+    {
+      "from": [
+        4.0,
+        -0.4,
+        4.0
+      ],
+      "to": [
+        12.0,
+        16.4,
+        12.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            16.0
+          ],
+          "texture": "#spire"
+        },
+        "south": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            16.0
+          ],
+          "texture": "#spire"
+        },
+        "east": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            16.0
+          ],
+          "texture": "#spire"
+        },
+        "west": {
+          "uv": [
+            4.0,
+            0.0,
+            12.0,
+            16.0
+          ],
+          "texture": "#spire"
+        },
+        "up": {
+          "uv": [
+            4.0,
+            4.0,
+            12.0,
+            12.0
+          ],
+          "texture": "#spire"
+        },
+        "down": {
+          "uv": [
+            4.0,
+            4.0,
+            12.0,
+            12.0
+          ],
+          "texture": "#spire"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          8
+        ],
+        "axis": "y",
+        "angle": 45
+      }
+    }
+  ],
+  "ambientocclusion": false
+}

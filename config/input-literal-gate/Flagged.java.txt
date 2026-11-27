@@ -20,4 +20,6 @@ class Flagged {
 	boolean r = ready && event.key() == 82 // input-literal without a colon is no marker
 			&& other;
 	boolean t = event.button() == 0;
+	Object u = new KeyEvent(82, 0, 0);
+	Object v = new KeyEvent('R', 0, 0);
 }

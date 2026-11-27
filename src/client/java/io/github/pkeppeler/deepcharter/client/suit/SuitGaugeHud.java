@@ -95,7 +95,7 @@ public final class SuitGaugeHud {
         }
         float fraction = Math.clamp(state.reserve() / capacity, 0f, 1f);
         float secondsLeft = state.rate() > 0f ? state.reserve() / state.rate() : state.reserve();
-        Component axes = state.shortText(" ");
+        Component axes = state.shortText();
         return Optional.of(
                 switch (state.mode()) {
                     case BREACHED ->

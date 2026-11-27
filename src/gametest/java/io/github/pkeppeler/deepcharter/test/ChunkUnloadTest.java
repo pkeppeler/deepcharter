@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.test.mixin.ChunkMapAccess;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -22,7 +24,7 @@ public class ChunkUnloadTest {
         chunkMap.deepcharter$unloadQueue().add(() -> ran.set(true));
         chunkMap.deepcharter$processUnloads(() -> false);
         if (!ran.get()) {
-            throw helper.assertionException("a queued unload tail did not run in a tick with no time left");
+            throw failure(helper, "a queued unload tail did not run in a tick with no time left");
         }
         helper.succeed();
     }
@@ -38,11 +40,10 @@ public class ChunkUnloadTest {
         half.setPersistedStatus(ChunkStatus.FEATURES);
         half.markUnsaved();
         if (chunkMap.deepcharter$save(half)) {
-            throw helper.assertionException("a half-generated chunk was written");
+            throw failure(helper, "a half-generated chunk was written");
         }
         if (half.isUnsaved()) {
-            throw helper.assertionException(
-                    "a half-generated chunk was left marked unsaved, so the next unload tries again");
+            throw failure(helper, "a half-generated chunk was left marked unsaved, so the next unload tries again");
         }
         helper.succeed();
     }
@@ -51,10 +52,11 @@ public class ChunkUnloadTest {
     @GameTest
     public void aFullChunkIsSaved(GameTestHelper helper) {
         ChunkMapAccess chunkMap = (ChunkMapAccess) helper.getLevel().getChunkSource().chunkMap;
+        // sync-load: the chunk of the test's own structure, which is loaded
         LevelChunk full = helper.getLevel().getChunkAt(helper.absolutePos(BlockPos.ZERO));
         full.markUnsaved();
         if (!chunkMap.deepcharter$save(full)) {
-            throw helper.assertionException("a full chunk marked unsaved was not written");
+            throw failure(helper, "a full chunk marked unsaved was not written");
         }
         helper.succeed();
     }

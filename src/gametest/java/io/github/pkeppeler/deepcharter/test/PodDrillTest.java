@@ -803,12 +803,21 @@ public class PodDrillTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
-        int x = 3576;
+        lastCrustIsNotDrilled(helper, 3576, LayerBlocks.BREACH_CRUST);
+    }
+
+    /** A grained floor under the last layer leads nowhere either, whatever that floor's layer data says (#1022). */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theLastLayersGrainedCrustIsNotDrilled(GameTestHelper helper) {
+        lastCrustIsNotDrilled(helper, 4216, LayerBlocks.GRAINED_CRUST);
+    }
+
+    private static void lastCrustIsNotDrilled(GameTestHelper helper, int x, Block crust) {
         ServerLevel two = TestLayers.level(helper, CampaignBands.lastLayer());
         int floor = TestLayers.band(two, CampaignBands.lastLayer()).minY();
-        RoomCarver.carve(two, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(two, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, crust);
         RoomCarver.carve(two, x - 2, x + 2, floor + 3, floor + 10, Z - 2, Z + 2, Blocks.AIR);
-        Rig rig = Rig.await(helper, two, new Vec3(x, floor + 3, Z), 0f, "drill-last-crust", SPRINT);
+        Rig rig = Rig.await(helper, two, new Vec3(x, floor + 3, Z), 0f, "lastcrust-" + x, SPRINT);
         TestTicks.each(helper, () -> {
             if (!rig.pod.isPresent()) {
                 return;
@@ -821,7 +830,7 @@ public class PodDrillTest {
                 return;
             }
             if (!pod.onGround()
-                    || !two.getBlockState(new BlockPos(x, floor + 2, Z)).is(LayerBlocks.BREACH_CRUST)) {
+                    || !two.getBlockState(new BlockPos(x, floor + 2, Z)).is(crust)) {
                 throw failure(helper, "the pod should be standing on intact crust, it is at %s", pod.position());
             }
             pod.discard();

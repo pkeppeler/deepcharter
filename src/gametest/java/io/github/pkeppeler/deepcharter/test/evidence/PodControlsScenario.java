@@ -117,9 +117,11 @@ public class PodControlsScenario extends EvidenceScenario {
                     "the player in layer 1",
                     client -> client.player != null && TestLayers.clientIsIn(client, 1));
             context.waitTicks(30);
-            // The directive toast for boarding is queued some ticks after arrival; let it come and go before the first
-            // frame.
+            // The directive toast for boarding is queued some ticks after arrival; let it come and go before the
+            // first frame.
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, ROOM_RADIUS + WALL_DEPTH);
+            ClientWait.arrived(context, singleplayer.getServer());
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);

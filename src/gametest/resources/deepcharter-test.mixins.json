@@ -8,6 +8,8 @@
     "ChunkMapAccess",
     "ChunkMapSaveMixin",
     "ChunkMapUnloadMixin",
+    "ChunkTaskPriorityQueueAccess",
+    "ForceSendProbeMixin",
     "GameTestBatchFactoryMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
@@ -17,6 +19,7 @@
     "MinecraftServerAccess",
     "ServerChunkCacheAccess",
     "ServerChunkCacheBlockingLoadMixin",
+    "ServerGamePacketListenerAccess",
     "ServerLevelForcedMixin",
     "TicketAccess",
     "TicketStorageAccess"
@@ -25,6 +28,7 @@
     "CardinalLightingMixin",
     "ClientGameTestImplMixin",
     "ClientPacketListenerMixin",
+    "DrifterRendererMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudMixin",
@@ -32,6 +36,7 @@
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
     "MinecraftAttackMixin",
+    "SkyRendererMixin",
     "SoundManagerStopProbeMixin",
     "SpriteAnimationStateMixin"
   ],

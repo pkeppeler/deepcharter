@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -203,6 +204,8 @@ public class WorkOrdersTest {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = server.overworld();
         BlockPos far = TestLayers.pos(TestLayers.SURFACE, 14_000, 120, 14_000);
+        // sync-load: the case needs the chunk loaded and not yet ticking, as one a display is placed into; a forced
+        // chunk would tick
         level.getChunk(far.getX() >> 4, far.getZ() >> 4);
         for (String piece : List.of("founder_c", "founder_c_hands")) {
             server.getCommands()
@@ -328,7 +331,7 @@ public class WorkOrdersTest {
     }
 
     /** A world whose colony has no Host (one built before the rebuild) refuses the completing delivery before it takes any ore. */
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void theFoundersHandsRefuseWithNoHostInTheSquare(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         CompoundTag saved = ((CompoundTag) ColonySite.CODEC
@@ -727,8 +730,8 @@ public class WorkOrdersTest {
             if (carried(player, OreType.BRONZIUM) != 10) {
                 throw failure(helper, "a refused delivery must keep the ore");
             }
-            // A body of this version that does not parse (here: more handed in than the order asks) is kept unread, not
-            // dropped.
+            // A body of this version that does not parse (here: more handed in than the order asks) is kept unread,
+            // not dropped.
             CompoundTag entry = new CompoundTag();
             entry.putString("charter", UUID.randomUUID().toString());
             entry.putString("order", "founders_hands");

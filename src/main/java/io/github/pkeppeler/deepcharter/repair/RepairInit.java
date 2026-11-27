@@ -9,7 +9,6 @@ public final class RepairInit {
 
     public static void init() {
         RepairRegistry.register();
-        CompanyRecovery.init();
         FlueScrape.init();
     }
 }

@@ -1,6 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen;
+import io.github.pkeppeler.deepcharter.client.pod.PodScreen;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -15,7 +15,7 @@ import net.minecraft.world.InteractionHand;
 
 /**
  * Evidence scenario "m2-ore-cargo": a pod loaded with six kinds of ore, and the player sneak-using it. The
- * screenshot is the cargo screen with the ore in its slots and the mass underneath.
+ * screenshot is the pod screen with the ore in the hold's slots and the mass beside the gauge.
  */
 public class OreCargoScenario extends EvidenceScenario {
     private static final OreType[] LOAD = {
@@ -44,7 +44,7 @@ public class OreCargoScenario extends EvidenceScenario {
                 UseEntity.on(player, player.level(), InteractionHand.MAIN_HAND, pod);
                 player.setShiftKeyDown(false);
             });
-            ClientWait.screen(context, OreCargoScreen.class);
+            ClientWait.screen(context, PodScreen.class);
             context.waitTicks(10);
             frame(context);
             screenshot(context, "ore-cargo-screen");
