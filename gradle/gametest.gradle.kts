@@ -532,8 +532,7 @@ object GametestScan {
 		val serverEnvironments = mutableMapOf<String, Set<String>>()
 		var client = mutableListOf<String>()
 		val problems = mutableListOf<String>()
-		// Only a tree that has the table is checked against it: the fixture trees of the other gates stage with no table (#1182).
-		val siteTable = javaFiles.firstOrNull { it.name == SITE_TABLE }?.readText()
+		val siteTable = javaFiles.firstOrNull { it.name == SITE_TABLE }?.readText() ?: ""
 		val campaignEnvironments = javaFiles.filter { it.name == "CampaignEnvironments.java" }
 			.flatMap { file -> campaignEnvironmentName.findAll(file.readText()).map { it.groupValues[1] }.toList() }
 		for (source in javaFiles) {
@@ -643,7 +642,7 @@ object GametestScan {
 			val isServer = gameTestAnnotation.containsMatchIn(text)
 			if (isServer && !isClientSide) {
 				fixedSite(text)?.let { staging ->
-					if (siteTable != null && !siteTable.contains("\"$simpleName\"")) {
+					if (!siteTable.contains("\"$simpleName\"")) {
 						problems.add("$className stages at a fixed place ($staging) but $SITE_TABLE (test/support) names no \"$simpleName\"; claim its block columns with claim or row so no other test shares them, or exempt it with the reason it needs no claim (#1182)")
 					}
 				}
