@@ -311,14 +311,21 @@ jobs:
           shellcheck --version
           tools/shellcheck.sh
 
-  # The gate checks on fixtures (gate_checks.py): hundreds of fixture trees through one Gradle run, which needs the compiled
-  # build like the shards do. The eighth tool-test part (artifact tool-8); `tool-tests` below waits for it with the others.
+  # The gate checks on fixtures (gate_checks.py): hundreds of fixture trees through one Gradle run, which needs the compiled build like
+  # the shards do. Two jobs, the parts 8 and 9 of the tool tests (artifacts tool-main-8 and -9): the two checks that scan the real tree
+  # for each shard count, and every other check. `tool-tests` below waits for them with the others.
   tool-gates:
-    name: tool-tests-gates
+    name: tool-tests-gates ${{ matrix.part }}
     needs: compile
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { part: 8, checks: "server_shard client_filter" }
+          - { part: 9, checks: "--except server_shard client_filter" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -331,9 +338,9 @@ jobs:
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
-          name: tool-8
-          artifact: tool-main-8
-          file: "8"
+          name: tool-${{ matrix.part }}
+          artifact: tool-main-${{ matrix.part }}
+          file: ${{ matrix.part }}
       - id: compiled
         uses: ./.github/actions/download-compiled
         with:
@@ -347,7 +354,11 @@ jobs:
         with:
           cache-read-only: true
       - name: gate checks on fixtures
-        run: tools/ci-gradle-resolve.sh help && tools/py tools/tests/gate_checks.py
+        env:
+          CHECKS: ${{ matrix.checks }}
+        # CHECKS is word-split on purpose: check names.
+        # shellcheck disable=SC2086
+        run: tools/ci-gradle-resolve.sh help && tools/py tools/tests/gate_checks.py $CHECKS
 
   # The one name tools/merge-pr.sh requires for the tool tests. Succeeds only when every part did and they merged one main; then it
   # records that main in its own `merged-main` notice (tools/ci-shard-main.sh, main's copy). It never merges main itself.
@@ -376,6 +387,6 @@ jobs:
           pattern: tool-main-*
           merge-multiple: true
           path: ${{ runner.temp }}/shard-main
-      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" 8
+      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" 9
         env:
           SHARD_KIND: tool
