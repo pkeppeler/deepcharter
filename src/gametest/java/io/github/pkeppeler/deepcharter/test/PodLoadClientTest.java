@@ -55,8 +55,8 @@ public class PodLoadClientTest implements FabricClientGameTest {
             context.runOnClient(client -> client.options.guiScale().set(GUI_SCALE));
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
-                // The floor stays rock: the pod stands on it under gravity, which the climb limit is worked out
-                // against.
+                // The floor stays rock: the pod stands on it under gravity, which the climb limit is
+                // worked out against.
                 RoomCarver.carve(one, -4, 4, FEET_Y, FEET_Y + 8, -4, 4, Blocks.AIR);
             });
             ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, 4);
