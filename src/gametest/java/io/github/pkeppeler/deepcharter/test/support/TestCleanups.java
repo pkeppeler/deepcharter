@@ -7,7 +7,7 @@ import java.util.Map;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.AABB;
 
-/** Per-test cleanups for what lives outside the test's box (a pod a winch put on the shared colony pad), run from {@code GameTestInfoMixin}'s {@code finish} on every exit. Server thread only. */
+/** Per-test cleanups for what lives outside the test's box (a pod a teleport put on the shared colony pad), run from {@code GameTestInfoMixin}'s {@code finish} on every exit. Server thread only. */
 public final class TestCleanups {
     private static final Map<AABB, List<Runnable>> BY_TEST = new HashMap<>();
 

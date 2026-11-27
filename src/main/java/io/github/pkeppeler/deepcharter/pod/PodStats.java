@@ -221,6 +221,8 @@ public record PodStats(
                 drillingLitresPerSecond);
     }
 
+    // test-seam: ADR 0010 names the withers as how a MODIFY listener derives its copy (stats.withEnginePower(...)), so
+    // the set stays whole, one per stat
     public PodStats withHardLandingSpeed(float hardLandingSpeed) {
         return new PodStats(
                 maxHull,

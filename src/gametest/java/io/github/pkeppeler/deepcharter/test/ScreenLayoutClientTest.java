@@ -23,8 +23,10 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetScreen
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.outpost.IncidentReportScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
+import io.github.pkeppeler.deepcharter.client.ui.CrtMenuScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
@@ -33,20 +35,21 @@ import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.market.ProcessorView;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.IncidentReportPayload;
 import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability;
 import io.github.pkeppeler.deepcharter.outpost.Ratings;
 import io.github.pkeppeler.deepcharter.outpost.VisitCause;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.suit.OutpostRisks;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
+import io.github.pkeppeler.deepcharter.terminal.RepairMenu;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeatureProbe;
+import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -71,8 +74,10 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -85,6 +90,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -105,23 +111,28 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 
 /**
- * Client GameTest for #381: every mod screen fits the default window (854 x 480 at GUI scale 2, so 427 x 240), with the largest realistic
- * content. Each widget lies inside the screen and no two widgets overlap; a failure names the screen, the widget and the overflow in pixels.
+ * Client GameTest for #381: every mod screen fits the default window (854 x 480 at GUI scale 2, so 427 x 240), with the
+ * largest realistic content. Each widget lies inside the screen and no two widgets overlap; a failure names the screen,
+ * the widget and the overflow in pixels.
  *
- * <p>The screens are found, not listed. The terminal screens come from {@link TerminalTypes#all()} through {@link TerminalScreens#create},
- * so a new terminal is built the way the game builds it (the generic {@code TerminalScreen} is the offline screen of every type, and the online one of
- * a type that registers none); the container screens come from the menu types the mod registered and the screen
- * each registered with {@code MenuScreens}. A terminal type that adds a feature, or a menu type, with no fixture below fails the test and
- * says so, so a new one cannot be skipped. Only the screens nothing registers are named by hand ({@link #standalone}), and
- * {@code tools/tests/test_screen_layout_gate.py} fails when a screen class is neither registered nor named in this file.
+ * <p>The screens are found, not listed. The terminal screens come from {@link TerminalTypes#all()} through {@link
+ * TerminalScreens#create}, so a new terminal is built the way the game builds it (the generic {@code TerminalScreen} is
+ * the online one of a type that registers none; an unrepaired terminal opens the repair menu, a container screen); the
+ * container screens come from the menu types the mod registered and the screen each registered with {@code
+ * MenuScreens}. A terminal type that adds a feature, or a menu type, with no fixture below fails the test and says so,
+ * so a new one cannot be skipped. Only the screens nothing registers are named by hand ({@link #standalone}), and
+ * {@code tools/tests/test_screen_layout_gate.py} fails when a screen class is neither registered nor named in this
+ * file.
  *
- * <p>The text a screen draws itself ({@code graphics.text}, {@code CrtDraw.glowText}) is checked too (#411): {@link DrawnText} renders the screen
- * once into a recorder, and each string must lie inside the screen (or inside a declared scroll region) and must not overlap an interactive widget. Text
- * a widget draws on itself is the widget's, and is left out. A failure names the screen, the string and the overflow in pixels. The typewriters are
- * finished first, so the full text is drawn.
+ * <p>The text a screen draws itself ({@code graphics.text}, {@code CrtDraw.glowText}) is checked too (#411): {@link
+ * DrawnText} renders the screen once into a recorder, and each string must lie inside the screen (or inside a declared
+ * scroll region) and must not overlap an interactive widget. Text a widget draws on itself is the widget's, and is left
+ * out. A failure names the screen, the string and the overflow in pixels. The typewriters are finished first, so the
+ * full text is drawn.
  *
- * <p>No screen needs a scroll region declared: the repair station builds buttons for the rows that fit only, so its widgets are checked as they are.
- * The handbook is paged and the work order list pages, and each page is a variant here.
+ * <p>No screen needs a scroll region declared: the repair station builds buttons for the rows that fit only, so its
+ * widgets are checked as they are. The handbook is paged and the work order list pages, and each page is a variant
+ * here.
  */
 public class ScreenLayoutClientTest implements FabricClientGameTest {
     private static final int WIDTH = 427;
@@ -480,6 +491,10 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
 
     /** A typewriter draws the text it has revealed, so the layout is checked with all of it revealed: a step long enough to type any intro. The screen keeps its typewriters in a private map. */
     private static void finishTyping(Screen screen) {
+        if (screen instanceof CrtMenuScreen<?> menu) {
+            menu.typewriter().advance(TYPING_SECONDS);
+            return;
+        }
         if (!(screen instanceof CrtScreen)) {
             return;
         }
@@ -513,18 +528,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                             + (registers
                                     ? " adds a view feature but has no fixture in ScreenLayoutClientTest.features()"
                                     : " has a fixture there but registers no feature"));
-            List<TerminalView.PartStatus> missing = type.parts().stream()
-                    .map(part -> new TerminalView.PartStatus(BuiltInRegistries.ITEM.getKey(part), false))
-                    .toList();
             String id = type.id().getPath();
-            if (type.needsRepair()) {
-                TerminalView locked = new TerminalView(POS, type.id(), false, false, missing, Optional.empty());
-                TerminalView open = new TerminalView(POS, type.id(), false, true, missing, Optional.empty());
-                if (type.prerequisite().isPresent()) {
-                    cases.add(new Case(id + " offline, locked", () -> TerminalScreens.create(locked)));
-                }
-                cases.add(new Case(id + " offline, parts missing", () -> TerminalScreens.create(open)));
-            }
             TerminalView online = onlineView(type, features);
             List<Variant> variants = List.of();
             if (type == ContractTerminal.TYPE) {
@@ -553,18 +557,9 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return cases;
     }
 
-    /** The online view of {@code type}, its parts all in and its feature at its largest. */
+    /** The online view of {@code type}, its feature at its largest. */
     private static TerminalView onlineView(TerminalType type, Map<TerminalType, TerminalFeature> features) {
-        List<TerminalView.PartStatus> inserted = type.parts().stream()
-                .map(part -> new TerminalView.PartStatus(BuiltInRegistries.ITEM.getKey(part), true))
-                .toList();
-        return new TerminalView(
-                POS,
-                type.id(),
-                true,
-                true,
-                type.needsRepair() ? inserted : List.of(),
-                Optional.ofNullable(features.get(type)));
+        return new TerminalView(POS, type.id(), Optional.ofNullable(features.get(type)), List.of());
     }
 
     /**
@@ -575,9 +570,6 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return new TerminalView(
                 POS,
                 online.type(),
-                true,
-                true,
-                online.parts(),
                 online.feature(),
                 OutpostRisks.lines(
                         Optional.of(new Ratings(5, 5, 5, 5)),
@@ -658,9 +650,6 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return new TerminalView(
                 view.pos(),
                 view.type(),
-                view.repaired(),
-                view.unlocked(),
-                view.parts(),
                 Optional.of(new ProcessorView(new WorkOrdersView(true, orders), processor.cargo())),
                 view.notices());
     }
@@ -744,14 +733,39 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
     /** One screen for each menu type the mod registered, built with the screen constructor it registered with {@code MenuScreens}. */
     private static List<Case> menuCases() {
         Map<MenuType<?>, MenuFixture> fixtures = new LinkedHashMap<>();
+        TerminalType mostParts = TerminalTypes.all().stream()
+                .filter(type -> type.id().getNamespace().equals(DeepCharter.MOD_ID))
+                .max(Comparator.comparingInt(type -> type.parts().size()))
+                .orElseThrow();
+        fixtures.put(
+                RepairMenu.TYPE,
+                new MenuFixture(
+                        id -> new RepairMenu(
+                                id,
+                                ClientSession.player(Minecraft.getInstance()).getInventory(),
+                                new RepairMenu.Opening(POS, mostParts.id(), true)),
+                        mostParts.id().getPath() + " offline, "
+                                + mostParts.parts().size() + " parts",
+                        Component.translatable(mostParts.block().getDescriptionId())));
+        // The pod screen is one size whatever the pod: a big hold turns pages. Its largest is the biggest bay there
+        // is, so every hold slot shows and so do the page buttons.
         int bay = Math.round(PodTuning.Cargo.DEFAULT.slots()
                 * UpgradeTuning.DEFAULT.ratio(ComponentTrack.CARGO_BAY, ComponentTrack.CARGO_BAY.maxTier()));
         fixtures.put(
-                OreRegistry.CARGO_MENU,
+                PodMenu.TYPE,
                 new MenuFixture(
-                        id -> new OreCargoMenu(id, bay),
-                        "cargo bay of " + bay,
-                        Component.translatable("container.deepcharter.cargo")));
+                        id -> {
+                            PodMenu menu = new PodMenu(
+                                    id,
+                                    ClientSession.player(Minecraft.getInstance())
+                                            .getInventory(),
+                                    new PodMenu.Opening(-1, false));
+                            // The hold's size, as the server sends it.
+                            menu.setData(PodMenu.CAPACITY, bay);
+                            return menu;
+                        },
+                        "pod screen, hold of " + bay,
+                        Component.literal("PROSPECTOR-0001")));
         Map<?, ?> constructors = menuConstructors();
         List<Case> cases = new ArrayList<>();
         for (MenuType<?> type : BuiltInRegistries.MENU) {
@@ -775,7 +789,45 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         require(
                 fixtures.size() == cases.size(),
                 "a fixture names a menu the mod did not register: " + fixtures.keySet());
+        TerminalType locked = TerminalTypes.all().stream()
+                .filter(type -> type.id().getNamespace().equals(DeepCharter.MOD_ID))
+                .filter(type -> type.prerequisite().isPresent())
+                .max(Comparator.comparingInt(type -> type.parts().size()))
+                .orElseThrow();
+        cases.add(new Case("menu terminal_repair, " + locked.id().getPath() + " locked, longest refusal", () -> {
+            RepairMenu menu = new RepairMenu(
+                    1,
+                    ClientSession.player(Minecraft.getInstance()).getInventory(),
+                    new RepairMenu.Opening(POS, locked.id(), false));
+            menu.refusedByServer(longestRefusal());
+            return menuScreen(
+                    Objects.requireNonNull(constructors.get(RepairMenu.TYPE), "the repair menu's screen"),
+                    menu,
+                    Component.translatable(locked.block().getDescriptionId()));
+        }));
         return cases;
+    }
+
+    /**
+     * The terminal refusal that draws widest, upper-cased as the screen draws it. It must fit the panel's content width
+     * on one line, since the menu screen draws it unwrapped between the part slots and the inventory.
+     */
+    private static Component longestRefusal() {
+        Font font = Minecraft.getInstance().font;
+        Component longest = Arrays.stream(TerminalRefusal.values())
+                .map(TerminalRefusal::message)
+                .max(Comparator.comparingInt(
+                        message -> font.width(message.getString().toUpperCase(Locale.ROOT))))
+                .orElseThrow();
+        PanelLook.Insets content = PanelLook.current().content();
+        int room = WIDTH - content.left() - content.right();
+        int wide = font.width(longest.getString().toUpperCase(Locale.ROOT));
+        System.out.println("[screen-layout] longest refusal " + wide + " px of " + room + ": " + longest.getString());
+        require(
+                PanelLook.current().fits(WIDTH, HEIGHT) && wide <= room,
+                "the refusal '" + longest.getString() + "' is " + wide + " px, wider than the panel's " + room
+                        + " px of content");
+        return longest;
     }
 
     /** A menu at its largest, and the title the server opens it with. */

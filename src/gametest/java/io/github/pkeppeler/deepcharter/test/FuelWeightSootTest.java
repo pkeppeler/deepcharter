@@ -168,7 +168,7 @@ public class FuelWeightSootTest {
                     "the top speed at the grace",
                     clean.horizontalSpeed(),
                     PodStats.of(pod).horizontalSpeed());
-            // One litre past the grace is one ninth of the way to the limit: 1 - 0.5 / 9 and 1 + 0.5 / 9.
+            // One litre past the grace is one ninth of the way to the limit: 1 - 0.29 / 9 and 1 + 0.5 / 9.
             burn(pod, 1f);
             PodStats sooted = PodStats.of(pod);
             LOGGER.info(
@@ -180,17 +180,17 @@ public class FuelWeightSootTest {
                     sooted.maxClimbSpeed(),
                     clean.maxClimbSpeed(),
                     EngineSoot.serviceCost(pod));
-            near(helper, "the output one litre past the grace", 1 - 0.5 / 9, EngineSoot.output(4f));
+            near(helper, "the output one litre past the grace", 1 - 0.29 / 9, EngineSoot.output(4f));
             near(helper, "the burn one litre past the grace", 1 + 0.5 / 9, EngineSoot.burnMultiplier(pod));
             near(
                     helper,
                     "the top speed with 4 L of soot",
-                    clean.horizontalSpeed() * (1 - 0.5 / 9),
+                    clean.horizontalSpeed() * (1 - 0.29 / 9),
                     sooted.horizontalSpeed());
             near(
                     helper,
                     "the climb speed with 4 L of soot",
-                    clean.maxClimbSpeed() * (1 - 0.5 / 9),
+                    clean.maxClimbSpeed() * (1 - 0.29 / 9),
                     sooted.maxClimbSpeed());
             near(helper, "the engine power with 4 L of soot", clean.enginePower(), sooted.enginePower());
             expect(helper, !EngineSoot.isLimp(pod), "4 L of soot is not limp mode");
@@ -282,8 +282,7 @@ public class FuelWeightSootTest {
         try {
             player.player().setGameMode(GameType.SURVIVAL);
             fill(pod, player, Items.CHARCOAL, 10);
-            // A reserve tank rescue or a recovery sets the tank to a litre of other fuel: the account says 10 L of
-            // charcoal.
+            // The tank drops to a litre behind the account's back: the account says 10 L of charcoal.
             pod.setFuel(10f);
             burn(pod, 0.5f);
             // Then the pump fills it, and the pod burns a whole tank of pump fuel: none of that is solid.
