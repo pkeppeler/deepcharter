@@ -475,7 +475,7 @@ mkpr 5 shared.txt $'FIVE\ntwo\nthree'; mkpr 1; mkchain 2 1 shared.txt $'TWO\ntwo
 run_b 5 1 2 3 4
 exited "chain drop: exit 1" 1
 printed "chain drop: the conflicting link is dropped" "#2 (conflicts with main or an earlier PR in the batch)"
-printed "chain drop: the tail is dropped with the reason" "#3 (chained to PR #2, which is not in the batch)"
+printed "chain drop: the tail is dropped with the reason" "#3 (chained to #2, which did not land)"
 printed "chain drop: the rest merged" "merged:  #5 #1 #4"
 if [[ $(main_subjects) == "Title 5 (#5)|Title 1 (#1)|Title 4 (#4)|" ]]; then pass "chain drop: main has only the PRs before the break and the unchained one"; else fail "chain drop: $(main_subjects)"; fi
 not_logged "chain drop: the dropped tail is not closed" "pulls/3 -f state=closed"
@@ -485,7 +485,9 @@ reset
 mkpr 1; mkchain 2 1; mkpr 4
 : >"$ST/pre_fail.1"
 run_b 1 2 4
-printed "chain preflight: the successor is chained to nothing in the batch, so it is built whole" "merged:  #2 #4"
+printed "chain preflight: the successor of a refused PR is dropped" "dropped: #2 (chained to #1, which did not land)"
+printed "chain preflight: the unchained PR merged" "merged:  #4"
+not_logged "chain preflight: the successor never reaches the gate" "merge-pr 2"
 
 # --- red CI bisects a chain at prefixes: the prefix lands, the link behind a refused one is dropped ---
 reset
@@ -495,7 +497,7 @@ echo 2 >"$ST/bad"
 run_b 1 2 3 4
 printed "chain red: the prefix landed" "merged:  #1 #4"
 printed "chain red: the refused link is reported" "refused: #2 (REFUSED: PR #2 is not mergeable)"
-printed "chain red: the link behind it is dropped" "dropped: #3 (chained to PR #2, which is not in the batch)"
+printed "chain red: the link behind it is dropped" "dropped: #3 (chained to #2, which did not land)"
 logged "chain red: the bad link goes to the single gate" "merge-pr 2"
 logged "chain red: the prefix, a group of one, goes through the gate and merges" "merge-pr 1"
 count "chain red: batch PRs opened (all four, then each half)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 2
@@ -510,6 +512,43 @@ exited "chain tail: exit 0" 0
 printed "chain tail: all merged" "merged:  #1 #2 #3 #4"
 if [[ $(main_subjects) == "Title 1 (#1)|Title 2 (#2)|Title 3 (#3)|Title 4 (#4)|" ]]; then pass "chain tail: the second half lands link 3 on top of the landed prefix"; else fail "chain tail: $(main_subjects)"; fi
 if [[ $(git --git-dir="$ORIGIN" show refs/heads/main:shared.txt | head -n 1) == THREE ]]; then pass "chain tail: the last link's content is on main"; else fail "chain tail: shared.txt on main"; fi
+
+# --- red split with the prefix refused: the successor must not land carrying its content ---
+reset
+mkpr 1; mkchain 2 1; mkchain 3 2
+echo 1 >"$ST/bad"
+: >"$ST/single_fail.1"
+run_b 1 2 3
+printed "chain refused prefix: #1 is refused" "refused: #1 (REFUSED: PR #1 is not mergeable)"
+printed "chain refused prefix: #2 is dropped" "#2 (chained to #1, which did not land)"
+printed "chain refused prefix: #3 is dropped" "#3 (chained to #2, which did not land)"
+not_logged "chain refused prefix: #2 never reaches the gate" "merge-pr 2"
+not_logged "chain refused prefix: #3 never reaches the gate" "merge-pr 3"
+
+# --- a predecessor already on main: the successor lands as its own increment ---
+reset
+mkpr 1 shared.txt $'ONE\ntwo\nthree'; mkchain 2 1 shared.txt $'TWO\ntwo\nthree'; mkpr 4
+git -C "$work/dev" checkout -q -B land "$base"
+printf 'ONE\ntwo\nthree\n' >"$work/dev/shared.txt"
+git -C "$work/dev" add -A
+git -C "$work/dev" commit -q -m "Title 1 (#1)"
+git -C "$work/dev" push -q origin land:refs/heads/main 2>/dev/null
+run_b 1 2 4
+printed "chain on main: all merged" "merged:  #1 (already on main) #2 #4"
+if [[ $(git --git-dir="$ORIGIN" show refs/heads/main:shared.txt | head -n 1) == TWO ]]; then pass "chain on main: the increment is on main"; else fail "chain on main: shared.txt"; fi
+
+# --- listed out of order: the predecessor goes first; the nearest predecessor is the topological one ---
+reset
+mkpr 1 shared.txt $'ONE\ntwo\nthree'; mkchain 2 1 shared.txt $'TWO\ntwo\nthree'; mkchain 3 2 shared.txt $'THREE\ntwo\nthree'
+run_b 3 1 2
+exited "chain order: exit 0" 0
+if [[ $(main_subjects) == "Title 1 (#1)|Title 2 (#2)|Title 3 (#3)|" ]]; then pass "chain order: predecessors land first"; else fail "chain order: $(main_subjects)"; fi
+printed "chain order: PR 3 is chained to 2, not 1" "PR #3 is chained to PR #2"
+reset
+mkpr 1 shared.txt $'ONE\ntwo\nthree'; mkchain 2 1 shared.txt $'TWO\ntwo\nthree'; mkchain 3 2 shared.txt $'THREE\ntwo\nthree'
+run_b 2 1 3
+printed "chain order 2 1 3: PR 3 is chained to 2" "PR #3 is chained to PR #2"
+if [[ $(main_subjects) == "Title 1 (#1)|Title 2 (#2)|Title 3 (#3)|" ]]; then pass "chain order 2 1 3: predecessors land first"; else fail "chain order 2 1 3: $(main_subjects)"; fi
 
 # --- usage ---
 reset

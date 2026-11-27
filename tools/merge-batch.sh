@@ -75,8 +75,8 @@ refused=()
 stopped=
 not_attempted=()
 build_seq=0
-# Chains: chain_prev[n] is the nearest earlier batch PR whose head is an ancestor of n's head (n's branch merged it);
-# chain_head[n] is the head sha read when the chains were found.
+# Chains: chain_prev[n] is the nearest listed PR (preflight-refused ones too) whose head is an ancestor of n's head
+# (n's branch merged it); chain_head[n] is the head sha read when the chains were found.
 declare -A chain_prev=()
 declare -A chain_head=()
 
@@ -112,52 +112,91 @@ adr_duplicates() {
   sed -E 's#^docs/adr/([0-9]{4})-.*#\1#' <<<"$files" | sort | uniq -d
 }
 
-# is_landed <pr>: the PR is squashed onto the batch being built, or already merged by an earlier group.
-is_landed() {
+# on_main <pr>: origin/main holds a commit whose subject ends (#<pr>), or the PR is merged.
+on_main() {
+  [[ -n $(git log -1 --format=%h -E --grep="\\(#$1\\)$" origin/main 2>/dev/null) ]] && return 0
+  [[ $(pr_state_of "$1" 2>/dev/null || true) == MERGED ]]
+}
+
+# pred_landed <pr>: the PR is squashed onto the batch being built, merged by an earlier group, or on main.
+pred_landed() {
   local x
   for x in ${included[@]+"${included[@]}"}; do [[ $x == "$1" ]] && return 0; done
   for x in ${merged[@]+"${merged[@]}"}; do [[ $x == "#$1" || $x == "#$1 "* ]] && return 0; done
-  return 1
+  on_main "$1"
 }
 
-# find_chains <pr>...: fills chain_prev and chain_head. A PR is chained to the nearest earlier PR in the list whose head
-# is a proper ancestor of its own head. A head it cannot fetch stays unchained (build_batch drops it).
+# find_chains <pr>...: fills chain_prev and chain_head. A PR is chained to the listed PR whose head is its nearest
+# proper ancestor: the one no other ancestor found for it descends from. A head it cannot fetch stays unchained
+# (build_batch drops it).
 find_chains() {
-  local n p
-  local -a seen=()
+  local n p q anc best
   for n in "$@"; do
     if git fetch origin "refs/pull/$n/head" >/dev/null 2>&1; then chain_head[$n]=$(git rev-parse FETCH_HEAD); fi
   done
   for n in "$@"; do
-    if [[ -n ${chain_head[$n]:-} ]]; then
-      for p in ${seen[@]+"${seen[@]}"}; do
-        [[ -n ${chain_head[$p]:-} && ${chain_head[$p]} != "${chain_head[$n]}" ]] || continue
-        if git merge-base --is-ancestor "${chain_head[$p]}" "${chain_head[$n]}" 2>/dev/null; then chain_prev[$n]=$p; fi
+    [[ -n ${chain_head[$n]:-} ]] || continue
+    anc=()
+    for p in "$@"; do
+      [[ $p != "$n" && -n ${chain_head[$p]:-} && ${chain_head[$p]} != "${chain_head[$n]}" ]] || continue
+      if git merge-base --is-ancestor "${chain_head[$p]}" "${chain_head[$n]}" 2>/dev/null; then anc+=("$p"); fi
+    done
+    best=
+    for p in ${anc[@]+"${anc[@]}"}; do
+      for q in "${anc[@]}"; do
+        [[ $q != "$p" && ${chain_head[$q]} != "${chain_head[$p]}" ]] || continue
+        if git merge-base --is-ancestor "${chain_head[$p]}" "${chain_head[$q]}" 2>/dev/null; then continue 2; fi
       done
-      if [[ -n ${chain_prev[$n]:-} ]]; then say "PR #$n is chained to PR #${chain_prev[$n]}"; fi
+      best=$p
+    done
+    if [[ -n $best ]]; then
+      chain_prev[$n]=$best
+      say "PR #$n is chained to PR #$best"
     fi
-    seen+=("$n")
   done
+}
+
+# order_chains <pr>...: sets the array $ordered, the PRs with every predecessor before its successors, otherwise in the
+# given order.
+ordered=()
+order_chains() {
+  local n
+  ordered=()
+  for n in "$@"; do emit_chained "$n" "$@"; done
+}
+emit_chained() {
+  local n=$1 x prev
+  shift
+  for x in ${ordered[@]+"${ordered[@]}"}; do [[ $x == "$n" ]] && return 0; done
+  prev=${chain_prev[$n]:-}
+  if [[ -n $prev ]]; then
+    for x in "$@"; do
+      if [[ $x == "$prev" ]]; then emit_chained "$prev" "$@"; break; fi
+    done
+  fi
+  ordered+=("$n")
 }
 
 # squash_onto_batch <pr> <head>: stages the PR's squash in the build worktree. An unchained PR is a squash merge of
 # its head. A chained one is a three-way merge of the batch and its head with its predecessor's head as the merge
-# base, so only its own increment lands. Returns 1 on a conflict.
+# base, so only its own increment lands. Returns 1 on a conflict, 2 when merge-tree fails otherwise.
 squash_onto_batch() {
-  local n=$1 head=$2 prev tree
+  local n=$1 head=$2 prev tree mt_rc
   prev=${chain_prev[$n]:-}
   if [[ -z $prev ]]; then
     git -C "$build_wt" merge --squash --no-commit "$head" >/dev/null 2>&1
     return
   fi
-  tree=$(git -C "$build_wt" merge-tree --write-tree --merge-base="${chain_head[$prev]}" HEAD "$head" 2>/dev/null) || return 1
+  mt_rc=0
+  tree=$(git -C "$build_wt" merge-tree --write-tree --merge-base="${chain_head[$prev]}" HEAD "$head" 2>/dev/null) || mt_rc=$?
+  ((mt_rc == 0)) || return $((mt_rc == 1 ? 1 : 2))
   git -C "$build_wt" read-tree --reset -u "$tree"
 }
 
 # build_batch <pr>...: sets $b_branch, $b_sha and the array $included (the PRs squashed onto it); drops the rest.
 # The worktree is removed before it returns. Never resolves a conflict.
 build_batch() {
-  local n head fetched title branch issue msg dup stamp landed
+  local n head fetched title branch issue msg dup stamp landed sq_rc
   build_seq=$((build_seq + 1))
   stamp=${MERGE_BATCH_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}
   b_branch=batch/$stamp
@@ -180,8 +219,8 @@ build_batch() {
       continue
     fi
     if [[ -n ${chain_prev[$n]:-} ]]; then
-      if ! is_landed "${chain_prev[$n]}"; then
-        drop "$n" "chained to PR #${chain_prev[$n]}, which is not in the batch"
+      if ! pred_landed "${chain_prev[$n]}"; then
+        drop "$n" "chained to #${chain_prev[$n]}, which did not land"
         continue
       fi
       if [[ $head != "${chain_head[$n]}" ]]; then
@@ -189,7 +228,12 @@ build_batch() {
         continue
       fi
     fi
-    if ! squash_onto_batch "$n" "$head"; then
+    sq_rc=0
+    squash_onto_batch "$n" "$head" || sq_rc=$?
+    if ((sq_rc == 2)); then
+      drop_reset "$n" "git merge-tree failed on its chain (not a conflict)"
+      continue
+    elif ((sq_rc != 0)); then
       drop_reset "$n" "conflicts with main or an earlier PR in the batch"
       continue
     fi
@@ -289,6 +333,14 @@ finish_originals() {
 # merge_single <pr>: a group of one goes through the gate alone, with the queue's stale-base handling.
 merge_single() {
   local n=$1 branch sha out rc state reason stale_n=0
+  if [[ -n ${chain_prev[$n]:-} ]]; then
+    included=()
+    git fetch origin main >/dev/null 2>&1 || true
+    if ! pred_landed "${chain_prev[$n]}"; then
+      drop "$n" "chained to #${chain_prev[$n]}, which did not land"
+      return 0
+    fi
+  fi
   say "PR #$n alone: tools/merge-pr.sh"
   branch=$(pr_get "$n" .head.ref 2>/dev/null || true)
   while true; do
@@ -463,8 +515,11 @@ for n in "$@"; do
   fi
 done
 
-if ((${#passing[@]} > 1)); then find_chains "${passing[@]}"; fi
-if ((${#passing[@]} > 0)); then process_group "${passing[@]}"; fi
+if (($# > 1)); then find_chains "$@"; fi
+if ((${#passing[@]} > 0)); then
+  order_chains "${passing[@]}"
+  process_group "${ordered[@]}"
+fi
 
 echo "batch: summary"
 echo "  merged:  ${merged[*]:-none}"
