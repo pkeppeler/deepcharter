@@ -59,8 +59,8 @@ final class Teleports {
             // The bay cannot be emptied, and nothing mined may travel.
             return Consumables.refusal("cargo_unreadable");
         }
-        // Everything that can refuse comes before the first change: a refused teleport moves nothing and keeps the
-        // item.
+        // Everything that can refuse comes before the first change: a refused teleport moves nothing and keeps
+        // the item.
         Optional<Vec3> spot = safeLanding(to, pod, target.pos(), scatter);
         if (spot.isEmpty()) {
             return Consumables.refusal("teleport_blocked");
@@ -116,8 +116,8 @@ final class Teleports {
     }
 
     private static Optional<Vec3> fit(ServerLevel level, PodEntity pod, double x, double z, int nearY) {
-        // An unloaded chunk answers every height with the bottom of the world, so load what the pod will stand on
-        // first.
+        // An unloaded chunk answers every height with the bottom of the world, so load what the pod will stand
+        // on first.
         AABB reach = pod.getDimensions(pod.getPose())
                 .makeBoundingBox(new Vec3(x, nearY, z))
                 .inflate(1.0);

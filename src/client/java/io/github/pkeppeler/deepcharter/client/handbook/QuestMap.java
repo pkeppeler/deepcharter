@@ -110,6 +110,8 @@ final class QuestMap {
      * of steps when that row is partial (the empty columns beside it hold the note). The redaction bars with their
      * stamp and the note always stay. Nothing is scaled.
      */
+    // const-param: the screen passes font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font);
+    // the parameter keeps the layout tied to the font
     static Layout layout(int mapWidth, int availableHeight, Model model, int lineHeight, int noteLines) {
         Layout below = Objects.requireNonNull(
                 layoutOrNull(mapWidth, model, lineHeight, noteLines, false), "the plain layout always exists");
@@ -130,7 +132,7 @@ final class QuestMap {
         int columns =
                 Math.max(1, Math.min(q.stepColumns(), (mapWidth + q.stepGap()) / (q.stepMinWidth() + q.stepGap())));
         int boxWidth = (mapWidth - q.stepGap() * (columns - 1)) / columns;
-        List<Rect> main = grid(model.main().chapter().directives().size(), 0, columns, boxWidth);
+        List<Rect> main = grid(model.main().chapter().directives().size(), columns, boxWidth);
         int bottom = main.getLast().bottom();
         int noteY = 0;
         if (beside) {
@@ -163,15 +165,12 @@ final class QuestMap {
         return new Layout(columns, boxWidth, main, List.copyOf(bars), noteY, mapWidth, height);
     }
 
-    private static List<Rect> grid(int count, int top, int columns, int boxWidth) {
+    private static List<Rect> grid(int count, int columns, int boxWidth) {
         QuestMapTuning q = QuestMapTuning.current();
         List<Rect> boxes = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             boxes.add(new Rect(
-                    i % columns * (boxWidth + q.stepGap()),
-                    top + i / columns * q.stepPitch(),
-                    boxWidth,
-                    q.stepHeight()));
+                    i % columns * (boxWidth + q.stepGap()), i / columns * q.stepPitch(), boxWidth, q.stepHeight()));
         }
         return List.copyOf(boxes);
     }

@@ -94,12 +94,12 @@ public record GreatStalkLayout(Map<Cell, Part> parts, Map<Cell, Integer> owners,
             }
         }
 
-        void putOptional(int x, int y, int z, Part part, int owner) {
+        void putOptional(int x, int y, int z, int owner) {
             Cell cell = new Cell(x, y, z);
             if (!parts.containsKey(cell)) {
                 optional.add(cell);
             }
-            put(x, y, z, part, owner);
+            put(x, y, z, Part.TRUNK, owner);
         }
 
         /**

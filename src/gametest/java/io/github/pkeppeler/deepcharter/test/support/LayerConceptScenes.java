@@ -198,8 +198,8 @@ public final class LayerConceptScenes {
 
     /** The hold of the evidence world, which no GameTest owns: the client run discards the world when it ends. */
     public static final Hold EVIDENCE = new Hold(
-            // force-ok: the evidence world has no GameTestHelper; release() below lets go, and the run discards the
-            // world
+            // force-ok: the evidence world has no GameTestHelper; release() below lets go, and the run discards
+            // the world
             (level, x, z) -> level.setChunkForced(x, z, true),
             // force-ok: pairs with the force above
             (level, x, z) -> level.setChunkForced(x, z, false));
@@ -213,6 +213,8 @@ public final class LayerConceptScenes {
         for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
             for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
                 action.apply(level, cx, cz);
+                // sync-load: a scene is built and read in the call that holds its few chunks, which the hold keeps
+                // loaded after
                 level.getChunk(cx, cz);
             }
         }

@@ -198,8 +198,8 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
             }
             // A button's face is 4 pixels shorter than the button and a line of capitals is 6 high, so a one line label
             // needs a 12 pixel button for a clear row
-            // above and below it, and a two line label (the work orders, which sit 2 and 10 pixels down) a 20 pixel
-            // one.
+            // above and below it, and a two line label (the work orders, which sit 2 and 10 pixels down) a 20
+            // pixel one.
             int needed = button instanceof OrderRowButton ? MIN_TWO_LINE_BUTTON : MIN_BUTTON_HEIGHT;
             if (panel && button.getHeight() < needed) {
                 problems.add(when + ": " + ClientChecks.labelOf(button) + " is " + button.getHeight()
