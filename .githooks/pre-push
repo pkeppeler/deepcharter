@@ -97,7 +97,6 @@ tools/py tools/tests/conflict_markers.py \
   || fail "conflict markers"
 if [[ $need_gradle -eq 1 ]]; then
   # The fast part of CI's build in one Gradle run. Gradle skips up-to-date tasks, so a warm run redoes only what the branch changed.
-  # Dependencies resolve from Maven Central, or from the ADR 0101 mirror when its init script is in the Gradle home.
   echo "pre-push: Gradle checks (compile, spotless, gate tasks); waits if another Gradle build holds the lock. Ctrl-C and push with" \
     "--no-verify to skip." >&2
   gradle_log=$(mktemp)
