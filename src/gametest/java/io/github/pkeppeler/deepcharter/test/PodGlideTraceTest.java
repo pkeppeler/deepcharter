@@ -198,7 +198,8 @@ public class PodGlideTraceTest {
             if (behind > RECOVERED_WITHIN) {
                 throw failure(
                         helper,
-                        "%s: the pod was %s blocks behind its on-time course in tick %s, %s ticks after the last late move",
+                        "%s: the pod was %s blocks behind its on-time course in tick %s, %s ticks after the last late"
+                                + " move",
                         what,
                         behind,
                         tick,
@@ -310,7 +311,8 @@ public class PodGlideTraceTest {
             if (lead > furthest) {
                 throw failure(
                         helper,
-                        "%s: the glide drew the pod %s blocks past the last move in tick %s, beyond the coast's reach of %s",
+                        "%s: the glide drew the pod %s blocks past the last move in tick %s, beyond the coast's reach"
+                                + " of %s",
                         what,
                         lead,
                         tick,
