@@ -97,7 +97,8 @@ public class PodDumpTest {
 
     /** Puts one ironium in the hold that weighs as much as the pod can climb with, so a held jump no longer climbs. */
     private static void overload(PodEntity pod) {
-        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), PodLoad.of(pod).climbLimit());
+        pod.cargo()
+                .tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), PodLoad.of(pod).climbLimit());
     }
 
     private static PodMenu open(GameTestHelper helper, ServerPlayer player, PodEntity pod) {

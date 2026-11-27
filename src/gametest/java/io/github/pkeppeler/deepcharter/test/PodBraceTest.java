@@ -299,7 +299,8 @@ public class PodBraceTest {
                 || pod.cargo().count(OreType.SILVERIUM) != 1) {
             throw failure(
                     helper,
-                    "a patch burns the ironium, the cheapest ore, for %s hull: hull %s, %s ore, %s ironium, %s silverium",
+                    "a patch burns the ironium, the cheapest ore, for %s hull: hull %s, %s ore, %s ironium, %s"
+                            + " silverium",
                     hullPerOre,
                     pod.hull(),
                     pod.cargoUsed(),
