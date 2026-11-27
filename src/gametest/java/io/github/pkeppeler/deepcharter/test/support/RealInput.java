@@ -48,6 +48,26 @@ public final class RealInput {
         context.waitTicks(1);
     }
 
+    /** Puts {@code key} down and leaves it there: {@code KeyMapping.isDown} reads it held until {@link #up}. */
+    public static void down(ClientGameTestContext context, int key) {
+        context.runOnClient(client -> client.keyboardHandler.keyPress(
+                client.getWindow().handle(), InputConstants.PRESS, new KeyEvent(key, 0, 0)));
+    }
+
+    /** Lets {@code key} go after {@link #down}. */
+    public static void up(ClientGameTestContext context, int key) {
+        context.runOnClient(client -> client.keyboardHandler.keyPress(
+                client.getWindow().handle(), InputConstants.RELEASE, new KeyEvent(key, 0, 0)));
+    }
+
+    /** Holds {@code key} down for {@code ticks} client ticks, then lets it go and waits one tick. */
+    public static void hold(ClientGameTestContext context, int key, int ticks) {
+        down(context, key);
+        context.waitTicks(ticks);
+        up(context, key);
+        context.waitTicks(1);
+    }
+
     /**
      * Types {@code text} one character at a time, the way SDL sends it: the key that types the character goes down ({@link #keyEvent}),
      * then {@code KeyboardHandler.textInput} delivers its text (it calls {@code textEditing}, then {@code charTyped} per code point), then

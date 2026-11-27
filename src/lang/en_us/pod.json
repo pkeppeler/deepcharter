@@ -12,7 +12,7 @@
   "deepcharter.pod.lining.out": "Out of slag brick",
   "deepcharter.pod.lining.progress": "Lining: %s placed, %s left",
   "deepcharter.pod.lining.stopped": "Lining stopped: %s slag brick placed, %s left",
-  "deepcharter.pod.overloaded": "Pod overloaded: the rotor can't lift this cargo. Dump some",
+  "deepcharter.pod.overloaded": "Pod overloaded: the rotor can't lift this cargo. Hold %s to dump it",
   "deepcharter.pod.overloaded_load": "Pod overloaded: the rotor can't lift this load",
   "entity.deepcharter.pod": "Pod",
   "entity.deepcharter.prospector": "Prospector",
@@ -44,7 +44,7 @@
   "hud.deepcharter.pod.lava_above": "LAVA ABOVE %s OFF  CAP THE SHAFT OR LEAVE",
   "hud.deepcharter.pod.lava_near": "LAVA IN THE SHAFT %s OFF  LINE OR LEAVE",
   "hud.deepcharter.pod.liner": "LINER  next ring in %s",
-  "hud.deepcharter.pod.lining":"LINING %s",
+  "hud.deepcharter.pod.lining": "LINING %s",
   "hud.deepcharter.pod.lining_dry": "OUT OF SLAG BRICK",
   "hud.deepcharter.pod.seepage": "SEEPAGE %s",
   "hud.deepcharter.pod.seepage_beside": "SEEPAGE BESIDE %s",
@@ -60,5 +60,10 @@
   "hud.deepcharter.pod.sprint": "SPRINT  +%s%% SPEED",
   "hud.deepcharter.pod.stranded": "STRANDED",
   "key.deepcharter.line_slab": "Line the slab with slag brick",
-  "hud.deepcharter.pod.recovery": "WINCH IN %ss  FEE $%s  REFUEL TO CANCEL"
+  "hud.deepcharter.pod.recovery": "WINCH IN %ss  FEE $%s  REFUEL TO CANCEL",
+  "deepcharter.pod.dump.done": "Hold dumped under the pod",
+  "deepcharter.pod.dump.empty": "The hold is empty",
+  "deepcharter.pod.dump.hint": "Too heavy to lift. Dump cargo: hold %s",
+  "deepcharter.pod.dump.holding": "Dumping the hold %s",
+  "key.deepcharter.dump_cargo": "Dump the hold (hold it, aboard)"
 }
