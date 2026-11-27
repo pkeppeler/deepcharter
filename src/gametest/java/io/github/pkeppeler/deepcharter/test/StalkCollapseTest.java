@@ -436,8 +436,7 @@ public class StalkCollapseTest {
         if (grew == 0 || reachedOver == 0) {
             throw failure(
                     helper,
-                    "of %s origins the stalk grew from %s and its layout reached over a side from %s: both must be"
-                            + " some",
+                    "of %s origins the stalk grew from %s and its layout reached over a side from %s: both must be some",
                     BRAID_MAX_REACH + 1,
                     grew,
                     reachedOver);
@@ -874,8 +873,7 @@ public class StalkCollapseTest {
                         extra.removeAll(expected);
                         throw failure(
                                 helper,
-                                "after breaking %s, %s blocks should fall and %s did not fall (%s), %s fell that"
-                                        + " should stand (%s)",
+                                "after breaking %s, %s blocks should fall and %s did not fall (%s), %s fell that should stand (%s)",
                                 broken,
                                 fallen.size(),
                                 extra.size(),

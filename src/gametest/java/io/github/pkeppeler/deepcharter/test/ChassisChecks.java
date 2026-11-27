@@ -355,8 +355,7 @@ final class ChassisChecks {
             expect(
                     helper,
                     bricks == ring && PodLining.of(pod[0]).bricks() == 10,
-                    "lava 3 blocks beside the ring of a %d x %d footprint, %d tall, floods all %d cells: %d bricks"
-                            + " laid, %d left",
+                    "lava 3 blocks beside the ring of a %d x %d footprint, %d tall, floods all %d cells: %d bricks laid, %d left",
                     width,
                     width,
                     height,

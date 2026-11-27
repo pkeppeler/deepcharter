@@ -73,8 +73,7 @@ public class SignalDecayTest {
                 if (!(now > last) || now >= 1) {
                     throw failure(
                             helper,
-                            "layer %d: intensity must rise strictly toward the floor and stay under 1 above the"
-                                    + " blackout, got %s after %s at %d",
+                            "layer %d: intensity must rise strictly toward the floor and stay under 1 above the blackout, got %s after %s at %d",
                             layer,
                             now,
                             last,
