@@ -5,20 +5,15 @@
       "mood": {
         "block_search_extent": 8,
         "offset": 2.0,
-        "sound": "minecraft:ambient.cave",
+        "sound": "deepcharter:ambient.layer_1_creak",
         "tick_delay": 6000
       }
     },
     "minecraft:audio/background_music": {
-      "creative": {
-        "max_delay": 24000,
-        "min_delay": 12000,
-        "sound": "minecraft:music.creative"
-      },
       "default": {
         "max_delay": 24000,
         "min_delay": 12000,
-        "sound": "minecraft:music.game"
+        "sound": "deepcharter:music.layer_1"
       }
     },
     "minecraft:gameplay/bed_rule": {
