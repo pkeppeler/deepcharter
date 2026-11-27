@@ -127,6 +127,8 @@
   "deepcharter.handbook.controls.board.title": "The Mole: aboard",
   "deepcharter.handbook.controls.board.board": "Point at the Mole and press %s to climb in.",
   "deepcharter.handbook.controls.board.leave": "Press %s to climb out.",
+  "deepcharter.handbook.controls.cockpit.title": "The Mole: cockpit",
+  "deepcharter.handbook.controls.cockpit.readouts": "The bars up top are FUEL, HULL, LOAD (weight against lift), DEPTH and HEAT. On the plate the cart is the ore in the bay; the rest carry their bar's icon.",
   "deepcharter.handbook.controls.board.sprint": "Pilot: hold %s with %s to sprint: faster, more fuel.",
   "deepcharter.handbook.controls.seat.title": "The Mole: terminals from the seat",
   "deepcharter.handbook.controls.seat.terminal": "Seated, empty-handed or holding this handbook, %s opens the terminal in reach you look toward.",
