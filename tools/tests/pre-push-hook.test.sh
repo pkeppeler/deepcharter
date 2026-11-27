@@ -17,6 +17,7 @@ cat >"$work/gradlew" <<'S'
 #!/usr/bin/env bash
 echo "gradlew $*" >>"$STUB_LOG"
 echo "> Task :compileJava"
+[[ ${STUB_FAIL:-} != compile ]] || { echo "> Task :compileClientJava FAILED"; exit 1; }
 [[ ${STUB_FAIL:-} != gradle ]] || { echo "> Task :spotlessJavaCheck FAILED"; echo "Execution failed for task ':spotlessJavaCheck'."; exit 1; }
 S
 # The hook runs Python through tools/py, which runs uv: the stub uv plays the interpreter.
@@ -66,8 +67,9 @@ check "conflict-marker failure blocks, gradle not reached" "1:1" "$(STUB_FAIL=co
 check "conflict-marker failure message names the reason" "yes" "$(grep -q 'conflict markers failed' "$work/out" && echo yes || echo no)"
 check "gradle failure blocks, tool unit tests not reached" "1:2" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "failure message names the failing Gradle task" "yes" "$(grep -q 'pre-push: Gradle task :spotlessJavaCheck failed' "$work/out" && echo yes || echo no)"
-check "the time budget is printed before Gradle runs" "yes" "$(awk '/about [0-9]+ s warm, up to [0-9]+ s on a cold/ {b=NR} /^> Task :compileJava/ {t=NR} END {print (b && t && b < t) ? "yes" : "no"}' "$work/out")"
-check "one Gradle run covers compile, spotless, the gates and check minus the server tests" "gradlew --console=plain compileJava compileClientJava compileGametestJava check -x runGameTest" \
+check "a compile failure names its task" "yes" "$(STUB_FAIL=compile run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null; grep -q 'pre-push: Gradle task :compileClientJava failed' "$work/out" && echo yes || echo no)"
+check "the time budget is printed before Gradle runs" "yes" "$(awk '/budget about [0-9]+ s warm, up to [0-9]+ s on a cold/ {b=NR} /^> Task :compileJava/ {t=NR} END {print (b && t && b < t) ? "yes" : "no"}' "$work/out")"
+check "one Gradle run covers the compiles, spotless, generateGametestModJson and the source-scanning gates" "gradlew --console=plain compileJava compileClientJava compileGametestJava spotlessCheck generateGametestModJson checkColourGate checkConstantParams checkEntityQueryGate checkEnumSwitchGate checkFixedPosGate checkInputLiteralGate checkKeepClearGate checkLang checkNullMarkedGate checkOrphanCommentGate checkRecordHolderGate" \
   "$(STUB_FAIL=none run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null; grep '^gradlew' "$work/calls")"
 check "tool unit test failure blocks" "1:3" "$(STUB_FAIL=unittest run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "tool unit test failure message names the reason" "yes" "$(grep -q 'tool unit tests failed' "$work/out" && echo yes || echo no)"
@@ -139,6 +141,12 @@ done
 check "a range that includes a Gradle path anywhere in it runs everything" "0:5" "$(run_range "$tip" "$base")"
 check "a new branch with a Gradle path runs everything" "0:5" "$(run_range "$tip" "$zero")"
 check "an unknown remote sha runs everything" "0:5" "$(run_range "$docs" "$sha")"
+# A source moved out of src/ shows under its new name only when git detects the rename: the hook must still see the old path.
+prev=$(git -C "$g" rev-parse HEAD)
+git -C "$g" mv src/A.java docs/moved-from-src.txt
+git -C "$g" -c user.name=t -c user.email=t@example.com commit -q -m "move src/A.java out of src"
+moved=$(git -C "$g" rev-parse HEAD)
+check "a source moved out of src/ runs everything" "0:5" "$(run_range "$moved" "$prev")"
 git -C "$g" update-ref -d refs/remotes/origin/main
 check "a new branch with no origin/main runs everything" "0:5" "$(run_range "$docs" "$zero")"
 git -C "$g" update-ref refs/remotes/origin/main "$base"
@@ -242,6 +250,13 @@ if command -v flock >/dev/null; then
   status=0
   hook_with DEEPCHARTER_GRADLE_LOCK="$work/no/such/dir.lock" || status=$?
   check "an unopenable lock file blocks with its own message" "1:yes" "$status:$(grep -q 'cannot open the Gradle lock file' "$work/out" && echo yes || echo no)"
+  # A push made inside `flock <the lock>` would wait for itself: the hook fails at once and says so.
+  : >"$work/calls"
+  status=0
+  (cd "$work" && printf '%s' "$refs" | DEEPCHARTER_GRADLE_LOCK="$lock" STUB_LOG="$work/calls" PATH="$work/bin:$PATH" flock -o "$lock" bash "$work/.githooks/pre-push" origin url) \
+    >"$work/out" 2>&1 || status=$?
+  check "a push inside the Gradle lock fails at once" "1:0" "$status:$(grep -c gradlew "$work/calls" || true)"
+  check "the self-lock message says what to do" "yes" "$(grep -q 'already holds the Gradle lock.*outside the flock' "$work/out" && echo yes || echo no)"
   # The default lock is shared by every worktree of the clone: it lives in the git common dir.
   : >"$work/calls"
   (cd "$g" && printf 'refs/heads/b %s refs/heads/b %s\n' "$tip" "$zero" | STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$g/.githooks/pre-push" origin url) \
