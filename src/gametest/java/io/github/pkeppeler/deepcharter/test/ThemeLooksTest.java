@@ -71,8 +71,8 @@ public class ThemeLooksTest {
         }
     }
 
-    // The expected values below are the literals the Java held before #226, written out. Do not read them from the
-    // files.
+    // The expected values below are the literals the Java held before #226, written out, and the values added since
+    // (#1265 added the ghost veil, 0xA8050A06). Do not read them from the files.
 
     @GameTest
     public void theDefaultCrtLookIsTheOldOne(GameTestHelper helper) {
@@ -92,6 +92,7 @@ public class ThemeLooksTest {
                         0xFF2E7A45,
                         0xFF123D20,
                         0xFFFFB000,
+                        0xA8050A06,
                         6,
                         2,
                         1,
@@ -150,6 +151,8 @@ public class ThemeLooksTest {
                         4,
                         0xFFFFFFFF,
                         0xFF101820,
+                        0xFF0A0F14,
+                        0xFF1A2631,
                         0xFF5C5248,
                         0xFFE8E8F0,
                         0xFFFFD21E,
@@ -198,6 +201,7 @@ public class ThemeLooksTest {
                         0xFFC9B8F0,
                         0xFFE060E0,
                         0xFFFFB020,
+                        0xFF7FE8FF,
                         4,
                         0xFFFFFFFF,
                         4,
@@ -224,7 +228,7 @@ public class ThemeLooksTest {
         expect(
                 helper,
                 "readout",
-                new ReadoutLook(14, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
+                new ReadoutLook(77, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
                 ReadoutLook.of(area("readout", null)));
         expect(
                 helper,
@@ -738,7 +742,8 @@ public class ThemeLooksTest {
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cellAspect\": 3 }")), "cellAspect");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"jawSteps\": 0 }")), "jawSteps");
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"bodySolidTicks\": 21 }")), "bodySolidTicks");
-        // Gson reads NaN and Infinity as numbers: a timing that is not one is refused, or it would hold the button.
+        // Gson reads a bare NaN or Infinity leniently as a string, which the number check refuses: a timing that is not
+        // a number would hold the button.
         rejected(helper, () -> ContinuityLook.of(area("continuity", "{ \"cutSeconds\": NaN }")), "cutSeconds");
         rejected(
                 helper,
@@ -796,6 +801,11 @@ public class ThemeLooksTest {
     @GameTest
     public void theBlockReadoutStaysWithinItsBounds(GameTestHelper helper) {
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"scale\": 3 }")), "scale");
+        rejected(
+                helper,
+                () -> ReadoutLook.of(
+                        area("readout", "{ \"bottomOffset\": " + (ReadoutLook.CLEAR_OF_VANILLA - 1) + " }")),
+                "bottomOffset");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeInTicks\": 0 }")), "fadeInTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeOutTicks\": 41 }")), "fadeOutTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"settleTicks\": -1 }")), "settleTicks");

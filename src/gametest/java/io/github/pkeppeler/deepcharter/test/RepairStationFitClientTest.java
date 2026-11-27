@@ -90,8 +90,8 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
             BlockPos farAway = scene.station().offset(FAR, 0, FAR);
             // Both hull lines: the pod parked at the station, and no pod.
             for (BlockPos at : List.of(scene.station(), farAway)) {
-                TerminalView view = new TerminalView(
-                        at, TerminalTypes.REPAIR_STATION.id(), true, true, List.of(), Optional.empty());
+                TerminalView view =
+                        new TerminalView(at, TerminalTypes.REPAIR_STATION.id(), Optional.empty(), List.of());
                 // A size and the fewest rows it must show: a smaller list is a layout that wastes the screen.
                 for (int[] size : new int[][] {{427, 240, 4}, {320, 240, 3}}) {
                     context.setScreen(() -> new RepairStationScreen(view));

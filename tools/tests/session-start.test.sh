@@ -234,5 +234,39 @@ check "no note when every read succeeds" no "$(has 'mergeability not read')"
 out=$(LIMITS_JSON='{}' OPEN_MODE=fail run_hook)
 check "open PR fetch failure is noted" yes "$(has '(could not fetch PRs)')"
 
+# core.hooksPath: an unset value becomes .githooks (the fake clone shares it with its worktrees); a set one, even a different one, stays.
+hp() { git -C "$work/repo" config --get core.hooksPath || echo unset; }
+git -C "$work/repo" config --unset core.hooksPath || true
+out=$(LIMITS_JSON='{}' run_hook)
+check "an unset core.hooksPath is set to .githooks" .githooks "$(hp)"
+check "the worktree sees the shared setting" .githooks "$(git -C "$work/wt4" config --get core.hooksPath || echo unset)"
+git -C "$work/repo" config core.hooksPath /my/own/hooks
+out=$(LIMITS_JSON='{}' run_hook)
+check "a set core.hooksPath is left alone" /my/own/hooks "$(hp)"
+# A failing `git config` never fails the session start: the hook still prints its context and notes it.
+git -C "$work/repo" config --unset core.hooksPath
+cat >"$work/bin/git" <<S
+#!/usr/bin/env bash
+[[ \$1 != config ]] || exit 1
+exec $(command -v git) "\$@"
+S
+chmod +x "$work/bin/git"
+out=$(LIMITS_JSON='{}' run_hook)
+rm -f "$work/bin/git"
+check "a git config failure still prints the handoff" yes "$(has '## Orchestrator handoff')"
+check "a git config failure is noted" yes "$(has 'could not set core.hooksPath')"
+check "a git config failure leaves it unset" unset "$(hp)"
+
+# Only the write fails (the read succeeds, empty): the note still appears.
+cat >"$work/bin/git" <<S
+#!/usr/bin/env bash
+[[ "\$*" != "config core.hooksPath .githooks" ]] || exit 1
+exec $(command -v git) "\$@"
+S
+chmod +x "$work/bin/git"
+out=$(LIMITS_JSON='{}' run_hook)
+rm -f "$work/bin/git"
+check "a failing write alone is noted" yes "$(has 'could not set core.hooksPath')"
+
 [[ $failures -eq 0 ]] || { echo "$failures failure(s)"; exit 1; }
 echo "all passed"

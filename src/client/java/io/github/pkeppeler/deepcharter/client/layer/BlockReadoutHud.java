@@ -20,10 +20,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * The block readout under the crosshair (#859): the name of the block the client's own crosshair hit and, for some blocks, a short hint on how to
- * deal with them. What it says is {@link BlockReadouts}'; when it shows and fades is {@link ReadoutFade}'s; how it looks is {@code theme/readout.json}.
- * Nothing shows while the HUD is hidden (F1) or a screen is open, and the lines sit at a fixed place under the crosshair, so a sweep of the view
- * moves nothing.
+ * The block readout just above the hotbar (#859, #1261): the name of the block the client's own crosshair hit and, for
+ * some blocks, a short hint on how to deal with them. What it says is {@link BlockReadouts}'; when it shows and fades
+ * is {@link ReadoutFade}'s; how it looks is {@code theme/readout.json}. Nothing shows while the HUD is hidden (F1) or a
+ * screen is open, and the lines sit at a fixed place above vanilla's held-item name and action bar ({@link
+ * ReadoutLook#CLEAR_OF_VANILLA}), so a sweep of the view moves nothing and the two never overlap.
  */
 public final class BlockReadoutHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "block_readout");
@@ -41,8 +42,8 @@ public final class BlockReadoutHud {
     }
 
     /**
-     * The box of the lines under the crosshair on a GUI {@code guiWidth} x {@code guiHeight}, as the scale puts them: as wide as the wider
-     * line, the name and the hint under it. What is drawn and what is kept clear are this one box.
+     * The box of the lines above the hotbar on a GUI {@code guiWidth} x {@code guiHeight}, as the scale puts them: as
+     * wide as the wider line, the name and the hint under it. What is drawn and what is kept clear are this one box.
      */
     private static HudKeepClear.Rect box(Font font, Readout readout, int guiWidth, int guiHeight) {
         ReadoutLook look = ReadoutLook.current();
@@ -52,9 +53,9 @@ public final class BlockReadoutHud {
             height += font.lineHeight + look.lineGap();
         }
         int width = (int) Math.ceil(widest * look.scale());
+        int boxHeight = (int) Math.ceil(height * look.scale());
         return new HudKeepClear.Rect(
-                "block readout", (guiWidth - width) / 2, guiHeight / 2 + look.offsetY(), width, (int)
-                        Math.ceil(height * look.scale()));
+                "block readout", (guiWidth - width) / 2, look.blockTop(guiHeight, font.lineHeight), width, boxHeight);
     }
 
     private static int widest(Font font, Readout readout) {

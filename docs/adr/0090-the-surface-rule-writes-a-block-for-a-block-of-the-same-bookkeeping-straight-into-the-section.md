@@ -39,3 +39,5 @@ Issue [#1160](https://github.com/pkeppeler/deepcharter/issues/1160), part of [#1
 ## Amended
 
 2026-11-25, [#1277](https://github.com/pkeppeler/deepcharter/issues/1277): the one-pair cache is now a table of every pair judged, shared by the worker threads and replaced whole when a pair is added (`SurfaceWrites.known`, at most 64). Layer 1's strata make a column write a few pairs in turn, and the worker threads each write their own chunk's, so one last pair shared by every thread missed on most writes: layer 1's window cost about 1.4 times as much with three rocks as with one (numbers in the PR).
+
+2026-11-26, [#1472](https://github.com/pkeppeler/deepcharter/issues/1472): a neutral write of the block already there is skipped. `SurfaceWrites.set` returns the block without writing it: writing a block over itself changes no section, count, heightmap or light. The campaign's noise fill writes layer 1's strata rock in advance so that most of layer 1's rewrites are such writes ([ADR 0108](0108-the-campaigns-noise-fill-writes-layer-1s-strata-rock-in-advance.md)). The guard the tests assert on is now `SurfaceWrites.neutralWas`, which `set` calls; `fastSection` is gone.

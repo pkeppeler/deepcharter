@@ -9,7 +9,6 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -31,6 +30,8 @@ public final class SurfaceWrites {
     private static final AtomicInteger TAGS_GENERATION = new AtomicInteger();
 
     private static final LongAdder WATCHED_WRITES = new LongAdder();
+
+    private static final LongAdder WATCHED_SKIPS = new LongAdder();
 
     private static volatile @Nullable ChunkPos watched;
 
@@ -68,6 +69,7 @@ public final class SurfaceWrites {
     public static void watch(@Nullable ChunkPos pos) {
         watched = pos;
         WATCHED_WRITES.reset();
+        WATCHED_SKIPS.reset();
     }
 
     // test-seam: ClaimFeaturesTest counts the pairs worldgen judges from an empty table, to hold the working set well
@@ -86,30 +88,47 @@ public final class SurfaceWrites {
         return WATCHED_WRITES.sum();
     }
 
-    /** What {@code chunk.setBlockState(pos, state)} returns and does, by the cheaper way when that is provably the same. */
-    public static @Nullable BlockState set(ChunkAccess chunk, BlockPos pos, BlockState state) {
-        LevelChunkSection section = enabled ? fastSection(chunk, pos, state) : null;
-        if (section == null) {
-            return chunk.setBlockState(pos, state);
-        }
-        ChunkPos watching = watched;
-        if (watching != null && watching.equals(chunk.getPos())) {
-            WATCHED_WRITES.increment();
-        }
-        // false: no ThreadingDetector lock (ADR 0090).
-        return section.setBlockState(
-                SectionPos.sectionRelative(pos.getX()),
-                SectionPos.sectionRelative(pos.getY()),
-                SectionPos.sectionRelative(pos.getZ()),
-                state,
-                false);
+    // test-seam: StrataPrefillTest counts the fast writes of the watched chunk position that found their block there.
+    public static long watchedSkips() {
+        return WATCHED_SKIPS.sum();
     }
 
     /**
-     * The section to write {@code state} into at {@code pos}, when the fast path may, else null. It does not read the toggle, so a
-     * test of the guard does not depend on it.
+     * What {@code chunk.setBlockState(pos, state)} returns and does, by the cheaper way when that is provably the
+     * same. A neutral write of the block already there changes nothing, so it is skipped: the campaign's noise fill
+     * writes layer 1's strata rock in advance for that ({@code StrataPrefill}, #1472).
      */
-    public static @Nullable LevelChunkSection fastSection(ChunkAccess chunk, BlockPos pos, BlockState state) {
+    public static @Nullable BlockState set(ChunkAccess chunk, BlockPos pos, BlockState state) {
+        BlockState was = enabled ? neutralWas(chunk, pos, state) : null;
+        if (was == null) {
+            return chunk.setBlockState(pos, state);
+        }
+        ChunkPos watching = watched;
+        boolean watch = watching != null && watching.equals(chunk.getPos());
+        if (watch) {
+            WATCHED_WRITES.increment();
+        }
+        if (was == state) {
+            if (watch) {
+                WATCHED_SKIPS.increment();
+            }
+            return was;
+        }
+        // false: no ThreadingDetector lock (ADR 0090).
+        return chunk.getSection(chunk.getSectionIndex(pos.getY()))
+                .setBlockState(
+                        SectionPos.sectionRelative(pos.getX()),
+                        SectionPos.sectionRelative(pos.getY()),
+                        SectionPos.sectionRelative(pos.getZ()),
+                        state,
+                        false);
+    }
+
+    /**
+     * The block at {@code pos} when the fast path may write {@code state} over it, else null: the whole guard. It does
+     * not read the toggle, so a test of the guard does not depend on it.
+     */
+    public static @Nullable BlockState neutralWas(ChunkAccess chunk, BlockPos pos, BlockState state) {
         if (chunk.getClass() != ProtoChunk.class
                 || chunk.getPersistedStatus().isOrAfter(ChunkStatus.INITIALIZE_LIGHT)) {
             return null;
@@ -118,12 +137,12 @@ public final class SurfaceWrites {
         if (chunk.isOutsideBuildHeight(y)) {
             return null;
         }
-        LevelChunkSection section = chunk.getSection(chunk.getSectionIndex(y));
-        BlockState was = section.getBlockState(
-                SectionPos.sectionRelative(pos.getX()),
-                SectionPos.sectionRelative(y),
-                SectionPos.sectionRelative(pos.getZ()));
-        return neutral(was, state) ? section : null;
+        BlockState was = chunk.getSection(chunk.getSectionIndex(y))
+                .getBlockState(
+                        SectionPos.sectionRelative(pos.getX()),
+                        SectionPos.sectionRelative(y),
+                        SectionPos.sectionRelative(pos.getZ()));
+        return neutral(was, state) ? was : null;
     }
 
     /** Whether writing {@code now} over {@code was} leaves every side effect of {@code ProtoChunk.setBlockState} a no-op. */

@@ -5,6 +5,9 @@ import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -20,6 +23,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -29,7 +33,6 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -39,31 +42,29 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
- * Evidence scenario "crafted-parts" (#536): in a sealed room of layer 1 rock, a player lays the fuel tank unit's recipe and then the drill unit's
- * out in a crafting table (iron, copper and redstone, from the shipped recipe files) and takes each unit. Each is used on the Mole from outside,
- * the client's own interaction, and the pod holds a tier 1 fuel tank and a tier 1 drill, which the terminal no longer sells. Then a hazard unit: the pod, parked at the ore processor
- * with Bronzium in its cargo, gives one to the pack through WITHDRAW ORE (the account is not paid), and the lights unit made of it is fitted too.
+ * Evidence scenario "crafted-parts" (#536): in a sealed room of layer 1 rock, a player lays the fuel tank unit's
+ * recipe and then the drill unit's out in a crafting table (iron, copper and redstone, from the shipped recipe files)
+ * and takes each unit. Each is fitted to the Mole with the client's own right click, and the pod holds a tier 1 fuel
+ * tank and a tier 1 drill, which the terminal no longer sells. Then a hazard unit: the pod goes to the colony's ore
+ * processor with Bronzium in its cargo, WITHDRAW ORE gives one to the pack (the account is not paid), the pod and the
+ * player return to the room, and the lights unit made of it is fitted too.
  */
 public class CraftedPartsScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
@@ -81,6 +82,13 @@ public class CraftedPartsScenario extends EvidenceScenario {
     private static final int INGREDIENTS_EACH = 16;
     /** The Bronzium a dig left in the pod's cargo: the lights unit takes one. */
     private static final int ORE_IN_CARGO = 3;
+    /**
+     * The colony's ore processor is used from the pad south of it, with the pod parked to the west of the player
+     * (the fuel pump's side).
+     */
+    private static final Vec3i PLAYER_FROM_PROCESSOR = new Vec3i(0, 0, 4);
+
+    private static final Vec3i POD_FROM_PROCESSOR = new Vec3i(-3, 0, 3);
 
     private static final int TYPING_FRAMES = 40;
 
@@ -102,7 +110,9 @@ public class CraftedPartsScenario extends EvidenceScenario {
             context.waitTicks(40); // tick-wait: the chunks round the arrival come in before the room is cut
             BlockPos feet = RoomCarver.carveAroundFirstPlayer(server);
             ClientWait.lightSettled(context, server, 1, feet.getX(), feet.getZ(), RoomCarver.ARRIVAL_RADIUS);
-            BlockPos table = server.computeOnServer(CraftedPartsScenario::furnish);
+            Room room = server.computeOnServer(CraftedPartsScenario::furnish);
+            BlockPos table = room.table();
+            int podId = room.podId();
             ClientWait.until(
                     context,
                     "the crafting table in the client's world",
@@ -111,9 +121,7 @@ public class CraftedPartsScenario extends EvidenceScenario {
             context.waitTicks(20); // tick-wait: the lamps' light reaches the client's chunk
             waitOutTheTransmission(context);
             hold(context);
-            ClientWait.until(context, "the pod in the client's world", client -> podOf(client) != null);
-            PodEntity pod = Objects.requireNonNull(
-                    context.computeOnClient(CraftedPartsScenario::podOf), "the pod is in the client's world");
+            PodEntity pod = clientEntity(context, podId, PodEntity.class);
             screenshot(context, "bare-mole");
 
             for (ComponentTrack track : new ComponentTrack[] {ComponentTrack.FUEL_TANK, ComponentTrack.DRILL}) {
@@ -121,35 +129,38 @@ public class CraftedPartsScenario extends EvidenceScenario {
                         Identifier.fromNamespaceAndPath("deepcharter", track.id() + "_unit"));
                 layOutTheRecipe(context, server, table, track, unit);
                 takeTheUnit(context, server, track, unit);
-                context.getInput().lookAt(pod.blockPosition().above());
                 hold(context);
-                useTheUnit(context, pod);
+                rightClick(context, pod);
                 ClientWait.until(
                         context,
                         "the " + track.id() + " fitted to the pod",
                         () -> server.computeOnServer(
-                                minecraft -> PodComponents.effectiveTier(podOnServer(minecraft), track) == 1),
+                                minecraft -> PodComponents.effectiveTier(podOnServer(minecraft, podId), track) == 1),
                         () -> "no " + track.id() + " on the pod");
                 hold(context);
                 screenshot(context, track.id() + "-unit-used-on-the-mole");
             }
-            withdrawTheOreAndCraftTheLights(context, server, table, pod);
+            withdrawTheOreAndCraftTheLights(context, server, table, podId);
         }
     }
 
     /**
-     * A hazard unit's ore: a pod parked at the ore processor holds Bronzium from the dig, WITHDRAW ORE moves one into the pack (the account is not paid), the
-     * pilot crafts the lights unit from it, and fits it to the Mole.
+     * A hazard unit's ore: a pod parked at the colony's ore processor holds Bronzium from the dig, WITHDRAW ORE
+     * moves one into the pack (the account is not paid), and back in the room the pilot crafts the lights unit
+     * from it and fits it to the Mole.
      */
     private void withdrawTheOreAndCraftTheLights(
-            ClientGameTestContext context, TestServerContext server, BlockPos table, PodEntity pod) {
-        BlockPos processor = server.computeOnServer(CraftedPartsScenario::setUpTheProcessor);
+            ClientGameTestContext context, TestServerContext server, BlockPos table, int podId) {
+        Trip trip = server.computeOnServer(minecraft -> goToTheProcessor(minecraft, podId));
+        BlockPos processor = trip.processor();
         ClientWait.until(
                 context,
-                "the ore processor in the client's world",
-                client -> ClientLight.clientLevel(client)
-                        .getBlockState(processor)
-                        .is(TerminalTypes.ORE_PROCESSOR.block()));
+                "the player and the pod at the colony's ore processor",
+                client -> ClientSession.player(client).position().distanceToSqr(trip.playerAtProcessor()) < 1
+                        && podAt(client, podId, trip.podAtProcessor())
+                        && ClientLight.clientLevel(client)
+                                .getBlockState(processor)
+                                .is(TerminalTypes.ORE_PROCESSOR.block()));
         context.getInput().lookAt(processor);
         hold(context);
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
@@ -184,6 +195,12 @@ public class CraftedPartsScenario extends EvidenceScenario {
         hold(context);
         screenshot(context, "bronzium-withdrawn");
         context.setScreen(() -> null);
+        server.runOnServer(minecraft -> goBack(minecraft, podId, trip));
+        ClientWait.until(
+                context,
+                "the player and the pod back in the room",
+                client -> ClientSession.player(client).position().distanceToSqr(trip.playerHome()) < 1
+                        && podAt(client, podId, trip.podHome()));
 
         Item unit = BuiltInRegistries.ITEM.getValue(
                 Identifier.fromNamespaceAndPath("deepcharter", ComponentTrack.LIGHTS.id() + "_unit"));
@@ -198,38 +215,93 @@ public class CraftedPartsScenario extends EvidenceScenario {
                 }
             }
         });
-        context.getInput().lookAt(pod.blockPosition().above());
         hold(context);
-        useTheUnit(context, pod);
+        rightClick(context, clientEntity(context, podId, PodEntity.class));
         ClientWait.until(
                 context,
                 "the lights fitted to the pod",
-                () -> server.computeOnServer(
-                        minecraft -> PodComponents.effectiveTier(podOnServer(minecraft), ComponentTrack.LIGHTS) == 1),
+                () -> server.computeOnServer(minecraft ->
+                        PodComponents.effectiveTier(podOnServer(minecraft, podId), ComponentTrack.LIGHTS) == 1),
                 () -> "no lights on the pod");
         hold(context);
         screenshot(context, "lights-unit-used-on-the-mole");
     }
 
-    /** Repairs the pump and the processor, stands the processor between the table and the pod, and puts three Bronzium in the pod's cargo, where a dig leaves them. */
-    private static BlockPos setUpTheProcessor(MinecraftServer server) {
+    /** Where the processor beat takes the player and the pod, and where each stood in the room. */
+    private record Trip(
+            BlockPos processor, Vec3 playerAtProcessor, Vec3 podAtProcessor, Vec3 playerHome, Vec3 podHome) {}
+
+    /** What {@link #furnish} stood in the room: the crafting table, and the network id of the pod. */
+    private record Room(BlockPos table, int podId) {}
+
+    /**
+     * Whether the client's copy of the pod is within a block of {@code at}; looked up again on each call, as a
+     * teleport may replace it.
+     */
+    private static boolean podAt(Minecraft client, int podId, Vec3 at) {
+        return ClientLight.clientLevel(client).getEntity(podId) instanceof PodEntity pod
+                && pod.position().distanceToSqr(at) < 1;
+    }
+
+    /**
+     * Repairs the pump and the colony's ore processor, puts three Bronzium in the pod's cargo, where a dig leaves
+     * them, and parks the pod at the processor with the player in reach of it. Not a processor in the room: at
+     * depth one serves only in its charter's outpost hall (OutpostAccess), and the room is none.
+     */
+    private static Trip goToTheProcessor(MinecraftServer server, int podId) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-        ServerLevel level = player.level();
+        PodEntity pod = podOnServer(server, podId);
+        if (player.level() != server.overworld()) {
+            throw new AssertionError(
+                    "the room is not in the colony's level: " + player.level().dimension());
+        }
         RepairState state = RepairState.get(server);
         for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
             type.parts().forEach(part -> state.insert(type, part));
         }
-        BlockPos processor = player.blockPosition().offset(0, 0, POD_AHEAD);
-        level.setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
-        PodEntity pod = podOnServer(server);
         for (int i = 0; i < ORE_IN_CARGO; i++) {
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.BRONZIUM));
         }
-        return processor;
+        ColonySite.Placed colony =
+                Colony.placed(server).orElseThrow(() -> new AssertionError("the colony was not built"));
+        BlockPos processor = TestColony.anchor(colony, ColonyAnchor.ORE_PROCESSOR);
+        Trip trip = new Trip(
+                processor,
+                Vec3.atBottomCenterOf(processor.offset(PLAYER_FROM_PROCESSOR)),
+                Vec3.atBottomCenterOf(processor.offset(POD_FROM_PROCESSOR)),
+                player.position(),
+                pod.position());
+        pod.setPos(trip.podAtProcessor());
+        Vec3 look = Vec3.atCenterOf(processor).subtract(trip.playerAtProcessor().add(0, player.getEyeHeight(), 0));
+        player.teleportTo(
+                server.overworld(),
+                trip.playerAtProcessor().x,
+                trip.playerAtProcessor().y,
+                trip.playerAtProcessor().z,
+                Set.of(),
+                (float) Math.toDegrees(Math.atan2(-look.x, look.z)),
+                (float) Math.toDegrees(Math.atan2(-look.y, Math.hypot(look.x, look.z))),
+                true);
+        return trip;
+    }
+
+    /** Takes the player and the pod back to where they stood in the room. */
+    private static void goBack(MinecraftServer server, int podId, Trip trip) {
+        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+        podOnServer(server, podId).setPos(trip.podHome());
+        player.teleportTo(
+                server.overworld(),
+                trip.playerHome().x,
+                trip.playerHome().y,
+                trip.playerHome().z,
+                Set.of(),
+                0f,
+                0f,
+                true);
     }
 
     /** Lights the sealed room, stands a crafting table and a registered pod in it, and puts the ingredients in the pack. */
-    private static BlockPos furnish(MinecraftServer server) {
+    private static Room furnish(MinecraftServer server) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
         ServerLevel level = player.level();
         player.setGameMode(GameType.SURVIVAL);
@@ -255,7 +327,7 @@ public class CraftedPartsScenario extends EvidenceScenario {
         for (Item item : new Item[] {Items.IRON_INGOT, Items.COPPER_INGOT, Items.REDSTONE}) {
             inventory.add(new ItemStack(item, INGREDIENTS_EACH));
         }
-        return table;
+        return new Room(table, pod.getId());
     }
 
     /** The shipped recipe of a unit: the rows of its grid and the ingredient each letter stands for. */
@@ -354,35 +426,6 @@ public class CraftedPartsScenario extends EvidenceScenario {
             }
         }
         return -1;
-    }
-
-    /** The client's own use of the held item on the pod: what a right click on it does. */
-    private void useTheUnit(ClientGameTestContext context, PodEntity pod) {
-        context.runOnClient(client -> {
-            EntityHitResult hit = new EntityHitResult(pod, pod.position().add(0, 1, 0));
-            ClientSession.gameMode(client).interact(ClientSession.player(client), pod, hit, InteractionHand.MAIN_HAND);
-            ClientSession.player(client).swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
-        });
-        context.waitTicks(TICKS_PER_FRAME); // tick-wait: the use packet reaches the server
-    }
-
-    private static @Nullable PodEntity podOf(Minecraft client) {
-        for (Entity entity : ClientLight.clientLevel(client).entitiesForRendering()) {
-            if (entity instanceof PodEntity found) {
-                return found;
-            }
-        }
-        return null;
-    }
-
-    /** The room's pod on the server. */
-    private static PodEntity podOnServer(MinecraftServer server) {
-        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-        // entity-query: the room is sealed and 9 blocks across, so its one pod is within 10 blocks of the player, who
-        // is inside it
-        return player.level()
-                .getEntitiesOfClass(PodEntity.class, player.getBoundingBox().inflate(10))
-                .getFirst();
     }
 
     /** The charter's founding transmission types over the screen; the first still waits until it has come and gone. */

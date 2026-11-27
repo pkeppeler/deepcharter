@@ -1,5 +1,5 @@
 {
-  "feature": "deepcharter:fungal_stalk_column",
+  "feature": "deepcharter:fungal_stalk_cave",
   "placement": [
     {
       "type": "minecraft:count",
@@ -40,7 +40,7 @@
       "count": 6
     },
     {
-      "type": "minecraft:offset",
+      "type": "deepcharter:in_chunk_offset",
       "x": {
         "type": "minecraft:trapezoid",
         "min": -3,

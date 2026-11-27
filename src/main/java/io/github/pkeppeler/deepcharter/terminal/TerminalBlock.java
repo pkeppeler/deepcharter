@@ -3,11 +3,13 @@ package io.github.pkeppeler.deepcharter.terminal;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -190,6 +192,38 @@ public final class TerminalBlock extends BaseEntityBlock {
     @Override
     protected RenderShape getRenderShape(BlockState state) {
         return RenderShape.MODEL;
+    }
+
+    /**
+     * The shortcut of the repair menu: using one of an unrepaired terminal's own parts on it puts the part in ({@link
+     * Terminals#insert}) and opens the terminal. Any other item, or any item on a working terminal, uses the terminal
+     * as an empty hand does.
+     */
+    @Override
+    protected InteractionResult useItemOn(
+            ItemStack stack,
+            BlockState state,
+            Level level,
+            BlockPos pos,
+            Player player,
+            InteractionHand hand,
+            BlockHitResult hit) {
+        Optional<TerminalType> type =
+                TerminalTypes.of(state.getBlock()).filter(owner -> owner.parts().contains(stack.getItem()));
+        if (type.isEmpty()) {
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
+        }
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResult.SUCCESS;
+        }
+        RepairState repairs = RepairState.get(serverPlayer.level().getServer());
+        if (!repairs.isReadable() || repairs.online(type.get())) {
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
+        }
+        if (Terminals.insert(serverPlayer, pos, stack.getItem()).isEmpty()) {
+            Terminals.open(serverPlayer, pos);
+        }
+        return InteractionResult.SUCCESS;
     }
 
     @Override

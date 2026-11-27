@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.outpost.RatingAxis;
 import io.github.pkeppeler.deepcharter.outpost.Ratings;
 import io.github.pkeppeler.deepcharter.suit.OutpostRisks;
 import io.github.pkeppeler.deepcharter.suit.SuitTuning;
+import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalNotices;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -180,7 +181,15 @@ public class OutpostRiskLineTest {
                             hall.level().getBlockState(pump).is(TerminalTypes.FUEL_PUMP.block()),
                             "the pump stands against the north wall");
                     hall.standIn();
-                    expect(helper, Terminals.open(hall.player(), pump).isEmpty(), "the owner opens the pump");
+                    // A view goes only to a working terminal: an unrepaired one opens its repair menu (#1265).
+                    RepairState repaired = new RepairState();
+                    TerminalTypes.FUEL_PUMP.parts().forEach(part -> repaired.insert(TerminalTypes.FUEL_PUMP, part));
+                    WorldData.with(
+                            helper.getLevel().getServer(),
+                            RepairState.TYPE,
+                            repaired,
+                            () -> expect(
+                                    helper, Terminals.open(hall.player(), pump).isEmpty(), "the owner opens the pump"));
                     hall.player().setGameMode(GameType.SPECTATOR);
                 }))
                 .thenWaitUntil(() -> {
@@ -204,14 +213,7 @@ public class OutpostRiskLineTest {
                                     new Status(true, 40, 0, Set.of()))
                             .flatMap(status -> OutpostRisks.lines(Optional.of(EXAMPLE_LAYER), status).stream())
                             .toList();
-                    TerminalView withLines = new TerminalView(
-                            view.pos(),
-                            view.type(),
-                            view.repaired(),
-                            view.unlocked(),
-                            view.parts(),
-                            view.feature(),
-                            real);
+                    TerminalView withLines = new TerminalView(view.pos(), view.type(), view.feature(), real);
                     ByteBuf wire = Unpooled.buffer();
                     TerminalView.STREAM_CODEC.encode(wire, withLines);
                     TerminalView decoded = TerminalView.STREAM_CODEC.decode(wire);
