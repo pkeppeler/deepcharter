@@ -205,7 +205,8 @@ public class PodNearLethalLandingTest {
             boolean lethal = hit != Hit.LANDING || spare <= 0f;
             if (lethal != Wrecks.isWreck(subject) || Math.abs(hull - (lethal ? 0f : spare)) > HULL_EPSILON) {
                 throw helper.assertionException(Component.literal(String.format(
-                        "a landing that costs %s on %s hull should leave a wreck exactly when the hull is gone, hull %s wreck %s",
+                        "a landing that costs %s on %s hull should leave a wreck exactly when the hull is gone, hull"
+                                + " %s wreck %s",
                         cost[0], cost[0] + spare, hull, Wrecks.isWreck(subject))));
             }
             if (rider != null) {

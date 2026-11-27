@@ -212,7 +212,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         if (!Set.copyOf(CockpitHud.HIDDEN_WHILE_SEATED).equals(expected)
                 || CockpitHud.HIDDEN_WHILE_SEATED.size() != expected.size()) {
             throw new AssertionError(
-                    "The cockpit hides the hotbar, health, armour, food, air, mount health, experience bar and level and held item name, and leaves the action bar, got "
+                    "The cockpit hides the hotbar, health, armour, food, air, mount health, experience bar and level"
+                            + " and held item name, and leaves the action bar, got "
                             + CockpitHud.HIDDEN_WHILE_SEATED);
         }
     }
@@ -273,7 +274,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .collect(Collectors.toSet());
         if (!alerts.equals(expected)) {
             throw new AssertionError(
-                    "The warnings that light the fourth lamp are the burning hull, overloaded, the glaze that holds or is spent, stranded and the Company winch's countdown, the crust, the brace that cannot work, the seepage, no brick, a hard landing, lava in or above the shaft and the hollows' alarm: got "
+                    "The warnings that light the fourth lamp are the burning hull, overloaded, the glaze that holds or"
+                        + " is spent, stranded and the Company winch's countdown, the crust, the brace that cannot"
+                        + " work, the seepage, no brick, a hard landing, lava in or above the shaft and the hollows'"
+                        + " alarm: got "
                             + alerts);
         }
         PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
@@ -350,7 +354,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         double back = differing(bare, onFoot, VANILLA_BOX);
         if (back < DIFFERENT) {
             throw new AssertionError(
-                    "On foot the vanilla HUD is back: the middle of the bottom of the screen should differ from the bare game, but only "
+                    "On foot the vanilla HUD is back: the middle of the bottom of the screen should differ from the"
+                            + " bare game, but only "
                             + back + " of it does");
         }
         singleplayer.getServer().runOnServer(server -> {
@@ -613,7 +618,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             boolean[] truth = {true, true, true, true, true};
             if (!Arrays.equals(CockpitHud.decayedLamps(decay, truth), new boolean[] {false, true, true, false, true})) {
                 throw new AssertionError(
-                        "In the blackout the fuel lamp and the alert lamp are dark and the hull, burning and overloaded lamps stay lit, got "
+                        "In the blackout the fuel lamp and the alert lamp are dark and the hull, burning and"
+                                + " overloaded lamps stay lit, got "
                                 + Arrays.toString(CockpitHud.decayedLamps(decay, truth)));
             }
             if (CockpitHud.altimeter(
@@ -1256,7 +1262,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
         if (!context.computeOnClient(CockpitHud::showsReadout)) {
             throw new AssertionError(
-                    "The pilot's seat shows the readout on the plate, so the plain readout and the account line stay quiet");
+                    "The pilot's seat shows the readout on the plate, so the plain readout and the account line stay"
+                            + " quiet");
         }
     }
 }
