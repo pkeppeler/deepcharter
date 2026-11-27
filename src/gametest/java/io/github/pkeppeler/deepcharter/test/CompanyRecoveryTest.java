@@ -626,8 +626,7 @@ public class CompanyRecoveryTest {
             verify(
                     helper,
                     pod.level() == scene.layer,
-                    "a blocked landing leaves the pod where it is; it is at %s in %s, %d blocks flooded, the pilot was"
-                            + " told %s",
+                    "a blocked landing leaves the pod where it is; it is at %s in %s, %d blocks flooded, the pilot was told %s",
                     pod.position(),
                     pod.level().dimension(),
                     flooded.size(),

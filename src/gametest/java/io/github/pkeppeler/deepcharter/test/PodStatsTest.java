@@ -192,8 +192,7 @@ public class PodStatsTest {
             try {
                 if (pod.getY() - startY < 1.0 || !pod.flying()) {
                     throw helper.assertionException(
-                            "a pod loaded to the stock engine power but with ten times the engine should climb, rose"
-                                    + " %s, flying %s",
+                            "a pod loaded to the stock engine power but with ten times the engine should climb, rose %s, flying %s",
                             pod.getY() - startY, pod.flying());
                 }
                 helper.succeed();
@@ -377,8 +376,7 @@ public class PodStatsTest {
                 boolean landed = padded.onGround() && control.onGround();
                 if (!landed || padded.hull() != before || control.hull() >= before) {
                     throw helper.assertionException(
-                            "both pods should land from 12 blocks, the padded one keeping %s and the control losing"
-                                    + " hull, got %s and %s (landed %s)",
+                            "both pods should land from 12 blocks, the padded one keeping %s and the control losing hull, got %s and %s (landed %s)",
                             before, padded.hull(), control.hull(), landed);
                 }
                 helper.succeed();
@@ -606,8 +604,7 @@ public class PodStatsTest {
                 rigs[1].pod.get().discard();
                 if (fast >= slow || Math.abs(2 * fast - slow) > 4) {
                     throw helper.assertionException(Component.literal(String.format(
-                            "half the ticks per hardness should bore in about half the ticks, the control took %d and"
-                                    + " the other %d",
+                            "half the ticks per hardness should bore in about half the ticks, the control took %d and the other %d",
                             slow, fast)));
                 }
                 helper.succeed();
@@ -691,8 +688,7 @@ public class PodStatsTest {
             pod.discard();
             if (events != 1 || !wreck) {
                 throw helper.assertionException(Component.literal(
-                        "a crust bore costing 20 should take a hull of 15 to 0, fire HULL_DEPLETED once and leave a"
-                                + " wreck, got "
+                        "a crust bore costing 20 should take a hull of 15 to 0, fire HULL_DEPLETED once and leave a wreck, got "
                                 + events + " events, wreck " + wreck));
             }
             helper.succeed();

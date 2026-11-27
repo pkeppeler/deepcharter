@@ -78,8 +78,7 @@ public class SuitPacingTest {
                 ? Optional.empty()
                 : Optional.of(String.format(
                         Locale.ROOT,
-                        "row %s leaves a stock suit %s s dry, under the %s s floor: lower the row or raise the"
-                                + " capacity",
+                        "row %s leaves a stock suit %s s dry, under the %s s floor: lower the row or raise the capacity",
                         row,
                         seconds,
                         FLOOR_SECONDS));

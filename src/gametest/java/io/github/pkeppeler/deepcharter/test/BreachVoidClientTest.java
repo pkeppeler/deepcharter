@@ -388,11 +388,9 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         return Optional.of(
                 onScreen
                         ? name
-                                + ": the frame is dark where a lamp should show: a black or blank frame, or a camera"
-                                + " in rock"
+                                + ": the frame is dark where a lamp should show: a black or blank frame, or a camera in rock"
                         : name
-                                + ": no lamp is on the screen by the camera maths, so the frame has nothing to prove"
-                                + " it is a picture of the room");
+                                + ": no lamp is on the screen by the camera maths, so the frame has nothing to prove it is a picture of the room");
     }
 
     /** Whether a pixel near ({@code px}, {@code py}) is brighter than {@link #LIT}, or stands out from {@code fog} by more than it. */

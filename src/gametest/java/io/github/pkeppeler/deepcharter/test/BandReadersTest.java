@@ -313,8 +313,7 @@ public class BandReadersTest {
                                 .toList();
                         throw failure(
                                 helper,
-                                "the outpost in layer 1's band was refused: %s; entities near the hall: %s; the"
-                                        + " builder is %s (removed %s, health %s) at %s; game time %s",
+                                "the outpost in layer 1's band was refused: %s; entities near the hall: %s; the builder is %s (removed %s, health %s) at %s; game time %s",
                                 refusal.get().getString(),
                                 inShell,
                                 mock.player().isAlive() ? "alive" : "dead",

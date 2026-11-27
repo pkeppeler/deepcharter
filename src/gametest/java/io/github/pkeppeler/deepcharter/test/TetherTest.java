@@ -625,8 +625,7 @@ public class TetherTest {
                     expect(
                             helper,
                             hang > 8 && hang <= TUNING.length() - 5 + TUNING.snapMargin() + 1,
-                            "the fall below the lip should be caught by the bent line, the person hung %s below the"
-                                    + " winch",
+                            "the fall below the lip should be caught by the bent line, the person hung %s below the winch",
                             hang);
                     player.setNoGravity(true);
                     expect(helper, PodTether.setWinching(player, true), "the winch starts below the lip");

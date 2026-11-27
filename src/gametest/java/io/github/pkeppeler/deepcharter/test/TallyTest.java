@@ -246,8 +246,7 @@ public class TallyTest {
                     if (clampedAt[0] < TUNING.trailTicks() || clampedAt[0] > TUNING.trailTicks() + APPROACH_TICKS_MAX) {
                         throw failure(
                                 helper,
-                                "the Tally clamped after %s ticks, outside the trail of %s and an approach of at most"
-                                        + " %s",
+                                "the Tally clamped after %s ticks, outside the trail of %s and an approach of at most %s",
                                 clampedAt[0],
                                 TUNING.trailTicks(),
                                 APPROACH_TICKS_MAX);
