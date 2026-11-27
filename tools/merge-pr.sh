@@ -26,9 +26,9 @@
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
-# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each client-gametest-shard, when they ran) runs
-# each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
-# from it only by docs/ROADMAP.md or .papercuts.jsonl.
+# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each build-shard, build-checks and
+# client-gametest-shard, when they ran) runs each recorded exactly the current origin/main as the main they merged (see the
+# check below; #979), or main differs from it only by docs/ROADMAP.md or .papercuts.jsonl.
 # A failing-check refusal carries [client-only] when every check that is not passing is a failed, timed-out or cancelled
 # client-gametest or client-gametest-shard <i>, and build and tool-tests passed: the queue re-runs the whole Client tests run.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
@@ -113,6 +113,8 @@ if [[ $gate_only -eq 1 ]]; then
 else
   [[ -z $review_pass_refusal ]] || refuse "$review_pass_refusal"
 fi
+
+check_px_review
 
 if [[ $mode == preflight ]]; then
   # The batch build finds a conflict itself, so mergeability is not read here.

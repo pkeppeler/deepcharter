@@ -60,7 +60,7 @@ public class RepairStationScenario extends EvidenceScenario {
                                     .getServer()
                                     .computeOnServer(server -> scene.pod().hull()));
             hold(context);
-            RepairStationClientTest.clickRow(context, "BUY DYNAMITE $100");
+            RepairStationClientTest.clickRow(context, "BUY DYNAMITE $120");
             ClientWait.until(
                     context,
                     "one dynamite carried",
