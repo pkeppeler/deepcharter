@@ -229,9 +229,13 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
             return floors.isEmpty() ? Optional.empty() : Optional.of(floors.get(random.nextInt(floors.size())));
         }
 
-        /** The floor of the column with the most room over it: a parasol is as tall as its room lets it be. */
-        private Optional<Floor> roomiestFloor(int localX, int localZ, int least) {
-            return floors(localX, localZ, least).stream().max((a, b) -> Integer.compare(a.room(), b.room()));
+        /**
+         * The floor of the column with the most room over it, at least the shortest stem and a cap high: a parasol is as
+         * tall as its room lets it be.
+         */
+        private Optional<Floor> roomiestFloor(int localX, int localZ) {
+            return floors(localX, localZ, ParasolShape.LEAST_STEM + ParasolShape.CAP_ROWS).stream()
+                    .max((a, b) -> Integer.compare(a.room(), b.room()));
         }
 
         /**
@@ -297,7 +301,7 @@ public record GiantFungusFeature(int layer, int zone, int rarity, Weights weight
             for (int tries = 0; tries < COLUMNS; tries++) {
                 int wantX = column();
                 int wantZ = column();
-                Optional<Floor> floor = roomiestFloor(wantX, wantZ, ParasolShape.LEAST_STEM + ParasolShape.CAP_ROWS);
+                Optional<Floor> floor = roomiestFloor(wantX, wantZ);
                 if (floor.isEmpty()) {
                     continue;
                 }
