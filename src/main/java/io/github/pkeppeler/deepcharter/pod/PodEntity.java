@@ -5,11 +5,13 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import net.minecraft.core.Direction;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.HasCustomInventoryScreen;
 import net.minecraft.world.entity.InterpolationHandler;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -20,7 +22,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /** A pod: a vehicle with seats and no walkable interior (ADR 0004). Part logic hooks in through tick() and the accessors. */
-public class PodEntity extends Entity {
+public class PodEntity extends Entity implements HasCustomInventoryScreen {
     private static final String CHASSIS_KEY = "chassis";
     private static final String HULL_KEY = "hull";
     private static final String FUEL_KEY = "fuel";
@@ -322,6 +324,18 @@ public class PodEntity extends Entity {
     @Override
     protected boolean isLocalClientAuthoritative() {
         return false;
+    }
+
+    /**
+     * The inventory key aboard, as for a horse or a chest boat: vanilla's client sends the open-inventory command when the
+     * rider sits in a {@link HasCustomInventoryScreen}, and the server calls this. {@link PodMenu#open} decides, and
+     * says why when it refuses.
+     */
+    @Override
+    public void openCustomInventoryScreen(Player player) {
+        if (player instanceof ServerPlayer server) {
+            PodMenu.open(server, this).ifPresent(server::sendOverlayMessage);
+        }
     }
 
     @Override

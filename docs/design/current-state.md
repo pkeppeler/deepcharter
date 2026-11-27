@@ -514,7 +514,7 @@ Swap **(c)**.
 
 ### Pod screen
 
-Opened by sneaking and using a pod, or with the pod screen key from a seat (#1270). Source `client/pod/PodScreen.java`, on the CRT menu screen
+Opened by sneaking and using a pod, or with the inventory key from a seat (#1270, #1537), as on a horse: `PodEntity` is a `HasCustomInventoryScreen`. Source `client/pod/PodScreen.java`, on the CRT menu screen
 (`client/ui/CrtMenuScreen.java`) the terminals' slot screens use: the part slots, the fuel slot and its gauge, and a page of the hold beside the inventory. Vanilla: **no**.
 
 Swap **(a)** the CRT theme, as for the terminals, **(c)** the layout, `pod/PodMenu.java` and `client/pod/PodScreen.java`.

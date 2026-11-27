@@ -14,7 +14,6 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.pod.PodScreenPayload;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -38,6 +37,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -186,15 +186,18 @@ public class PodScreenTest {
     }
 
     @GameTest
-    public void theKeyOpensTheScreenOfThePodTheSenderSitsIn(GameTestHelper helper) {
+    public void theInventoryKeyOpensTheScreenOfThePodTheSenderSitsIn(GameTestHelper helper) {
         Scene scene = scene(helper);
         expect(helper, scene.player().startRiding(scene.pod(), true, false), "the crew should board");
-        scene.mock().send(new PodScreenPayload());
+        scene.player()
+                .connection
+                .handlePlayerCommand(new ServerboundPlayerCommandPacket(
+                        scene.player(), ServerboundPlayerCommandPacket.Action.OPEN_INVENTORY));
         helper.succeedWhen(() -> {
             expect(
                     helper,
                     scene.player().containerMenu instanceof PodMenu,
-                    "the key should open the pod screen, open %s",
+                    "the inventory key should open the pod screen, open %s",
                     scene.player().containerMenu);
         });
     }
