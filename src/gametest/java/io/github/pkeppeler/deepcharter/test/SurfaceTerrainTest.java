@@ -220,7 +220,8 @@ public class SurfaceTerrainTest {
             if (blocking != surface || blockingNoLeaves != surface) {
                 throw failure(
                         helper,
-                        "%s at %d %d: WORLD_SURFACE %d, MOTION_BLOCKING %d, MOTION_BLOCKING_NO_LEAVES %d, expected all equal",
+                        "%s at %d %d: WORLD_SURFACE %d, MOTION_BLOCKING %d, MOTION_BLOCKING_NO_LEAVES %d, expected all"
+                                + " equal",
                         column.getKey(),
                         at.getX(),
                         at.getZ(),
@@ -250,7 +251,8 @@ public class SurfaceTerrainTest {
         if (!missing.isEmpty()) {
             throw failure(
                     helper,
-                    "these blocks have collision but the heightmaps skip them; add them to src/main/resources/data/minecraft/tags/block/blocks_motion_no_leaves.json: %s",
+                    "these blocks have collision but the heightmaps skip them; add them to"
+                            + " src/main/resources/data/minecraft/tags/block/blocks_motion_no_leaves.json: %s",
                     missing);
         }
         helper.succeed();
@@ -302,7 +304,8 @@ public class SurfaceTerrainTest {
         if (server.getGameRules().get(GameRules.SPAWN_WANDERING_TRADERS)) {
             throw failure(
                     helper,
-                    "the wandering trader spawns in a fresh world: its spawner ignores the biomes, so the rule must be off");
+                    "the wandering trader spawns in a fresh world: its spawner ignores the biomes, so the rule must be"
+                            + " off");
         }
         helper.succeed();
     }
@@ -374,7 +377,8 @@ public class SurfaceTerrainTest {
         if (lowest > -5 || highest < 9) {
             throw failure(
                     helper,
-                    "the land runs from %d to %d blocks about the pad: expected a crater at least 5 deep and a mesa at least 9 high",
+                    "the land runs from %d to %d blocks about the pad: expected a crater at least 5 deep and a mesa at"
+                            + " least 9 high",
                     lowest,
                     highest);
         }
@@ -443,7 +447,8 @@ public class SurfaceTerrainTest {
                     if (step > allowed) {
                         throw failure(
                                 helper,
-                                "a cliff of %d blocks at %d %d, %d out from the pad's middle, the biggest step allowed there is %d",
+                                "a cliff of %d blocks at %d %d, %d out from the pad's middle, the biggest step allowed"
+                                        + " there is %d",
                                 step,
                                 x,
                                 z,
@@ -532,7 +537,8 @@ public class SurfaceTerrainTest {
             if (next == null || !next.isJsonObject()) {
                 throw failure(
                         helper,
-                        "campaign_sample.json's density was restructured: no object at \"%s\" on the path to the unbuilt depth",
+                        "campaign_sample.json's density was restructured: no object at \"%s\" on the path to the"
+                                + " unbuilt depth",
                         step);
             }
             choice = next.getAsJsonObject();
@@ -555,8 +561,8 @@ public class SurfaceTerrainTest {
         expect(
                 helper,
                 EMPTY_BELOW == lastLayerFloor - 32,
-                "EMPTY_BELOW is %d but must be 32 rows under the last layer's floor (%d): a layer was added, so move EMPTY_BELOW "
-                        + "and campaign_sample.json's max_exclusive down to match",
+                "EMPTY_BELOW is %d but must be 32 rows under the last layer's floor (%d): a layer was added, so move"
+                        + " EMPTY_BELOW and campaign_sample.json's max_exclusive down to match",
                 EMPTY_BELOW,
                 lastLayerFloor - 32);
         helper.succeed();

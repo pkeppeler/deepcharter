@@ -415,8 +415,8 @@ public class CampaignCostTest {
     private static void report(GameTestHelper helper, Map<String, List<Measurement>> results) {
         String tree = tree();
         LOGGER.info(
-                "[campaign-cost] {} columns per world and round, run {} of tree {}; gate (ADR 0086): each band's CPU per filled"
-                        + " row at most {}x {}'s, or its ratchet",
+                "[campaign-cost] {} columns per world and round, run {} of tree {}; gate (ADR 0086): each band's CPU"
+                        + " per filled row at most {}x {}'s, or its ratchet",
                 ColumnCost.measuredColumns(),
                 RUN,
                 tree,
@@ -425,8 +425,8 @@ public class CampaignCostTest {
         List<Reading> readings = new ArrayList<>();
         results.forEach((world, all) -> {
             LOGGER.info(
-                    "[campaign-cost] {}: CPU ms per column, in round order: {}; heap MB: {}; wall ms per column: {}; GC ms per"
-                            + " column: {}; GC count: {}; medians {} CPU, {} MB",
+                    "[campaign-cost] {}: CPU ms per column, in round order: {}; heap MB: {}; wall ms per column: {};"
+                            + " GC ms per column: {}; GC count: {}; medians {} CPU, {} MB",
                     world,
                     all.stream().map(m -> ColumnCost.format(m.cpuMsPerColumn())).toList(),
                     all.stream().map(m -> Math.round(m.heapMb())).toList(),
@@ -444,7 +444,8 @@ public class CampaignCostTest {
         for (String world : ALL_WORLDS) {
             if (pool.has(world)) {
                 LOGGER.info(
-                        "[campaign-cost] pooled {}: median {} CPU ms per column over {} rounds of {} runs, {} blocks tall",
+                        "[campaign-cost] pooled {}: median {} CPU ms per column over {} rounds of {} runs, {} blocks"
+                                + " tall",
                         world,
                         ColumnCost.format(pool.median(world)),
                         pool.rounds(world),
@@ -455,7 +456,8 @@ public class CampaignCostTest {
         if (pool.has(CAMPAIGN) && pool.has(BASELINE)) {
             double perColumn = pool.median(CAMPAIGN) / pool.median(BASELINE);
             LOGGER.info(
-                    "[campaign-cost] whole world (tracked, not a gate): {} over {}, {}x per column, {}x per block of height",
+                    "[campaign-cost] whole world (tracked, not a gate): {} over {}, {}x per column, {}x per block of"
+                            + " height",
                     CAMPAIGN,
                     BASELINE,
                     ColumnCost.format(perColumn),
@@ -488,8 +490,8 @@ public class CampaignCostTest {
         }
         if (!pool.judged(GATED)) {
             LOGGER.info(
-                    "[campaign-cost] not judged: the gate needs {} runs with as many rounds each and {} in all, of every world,"
-                            + " pooled through {}",
+                    "[campaign-cost] not judged: the gate needs {} runs with as many rounds each and {} in all, of"
+                            + " every world, pooled through {}",
                     BandCost.RUNS,
                     BandCost.ROUNDS,
                     POOL_ENV);

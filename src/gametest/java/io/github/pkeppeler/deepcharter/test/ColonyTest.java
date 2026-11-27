@@ -406,7 +406,8 @@ public class ColonyTest {
             if (displaysBefore == 0) {
                 throw failure(
                         helper,
-                        "the colony should stand with block displays on its pad: the Host, the sheave wheels, the conveyor");
+                        "the colony should stand with block displays on its pad: the Host, the sheave wheels, the"
+                                + " conveyor");
             }
             if (interrupted.isBuilt() || interrupted.started().isEmpty()) {
                 throw failure(helper, "the interrupted record should be begun and not finished");
