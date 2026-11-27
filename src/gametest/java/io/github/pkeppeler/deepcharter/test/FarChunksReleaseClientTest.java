@@ -22,6 +22,7 @@ public class FarChunksReleaseClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context, "the client in the world", client -> client.player != null && client.level != null);
             singleplayer.getServer().runOnServer(server -> {
+                // force-ok: this client test exercises pin and its release at server stop
                 FarChunks.pin(server.overworld(), 0, 0);
                 require(FarChunks.heldCount() > 0, "a pinned chunk should be held while its world runs");
             });
