@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PlayerDeaths;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import java.io.IOException;
 import java.io.Reader;
@@ -36,6 +37,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Util;
+import net.minecraft.world.damagesource.DamageSources;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.TeleportTransition;
@@ -58,23 +60,25 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
     private static final String DISCONNECT = "DISCONNECT";
     /**
      * The latest the button may come for a broken envelope, from the death: the cut, the skip and the steady fallback laugh (3.68 s) take
-     * under 5 s, with room for a slow machine. An envelope read as it is would take the cap, 40 s, or never come.
+     * under 5 s, with room for a slow machine. An envelope read as it is would put the button well past this, at the cap, or never.
      */
     private static final double FALLBACK_BUTTON_SECONDS = 10.0;
 
     /**
      * The broken envelopes, each a pack's {@code continuity/laugh_envelope.json}: a length that is not a number, endless, negative,
-     * absurdly long or missing, no values a second, a value that is not a number, and not JSON.
+     * absurdly long, just over the bound or missing, no values a second, a value that is not a number, and not JSON.
      */
     private static final List<String> BROKEN = List.of(
             "{\"framesPerSecond\": 25, \"seconds\": NaN, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": Infinity, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": -1, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"seconds\": 1e9, \"values\": [0.5, 0.5]}",
+            // Just over LaughEnvelope.MAX_SECONDS, so raising that bound fails here.
+            "{\"framesPerSecond\": 25, \"seconds\": 21, \"values\": [0.5, 0.5]}",
             "{\"framesPerSecond\": 25, \"values\": [0.5, 0.5]}",
             // Lengths a valid envelope may have, so the button would come late if these were read as they are.
-            "{\"framesPerSecond\": 0, \"seconds\": 20, \"values\": [0.5, 0.5]}",
-            "{\"framesPerSecond\": 25, \"seconds\": 20, \"values\": [NaN]}",
+            "{\"framesPerSecond\": 0, \"seconds\": 15, \"values\": [0.5, 0.5]}",
+            "{\"framesPerSecond\": 25, \"seconds\": 15, \"values\": [NaN]}",
             "{ this is not json");
 
     @Override
@@ -154,6 +158,7 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
         buttonShown(context, "RETURN TO WORK shown");
         context.runOnClient(client -> {
             Screen sequence = shown(client);
+            // Pressed directly, not via RealInput: the press and the staged second death must land in one client batch.
             ClientChecks.button(sequence, RETURN).onPress(new KeyEvent(InputConstants.KEY_RETURN, 0, 0));
             LocalPlayer died = Objects.requireNonNull(client.player, "<in the world>");
             LocalPlayer again = Objects.requireNonNull(client.gameMode, "<in the world>")
@@ -214,23 +219,9 @@ public class ContinuityPackClientTest implements FabricClientGameTest {
                 client -> client.gui.screen() == null && client.player != null && client.player.isAlive());
     }
 
-    /**
-     * The player dies, on the server, as {@code /kill} kills. The server does not let a player be hurt until their client says it has
-     * loaded the world, which can be a while after the join, so the blow is struck again until it lands.
-     */
+    /** The player dies, on the server, as {@code /kill} kills. */
     private static void kill(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-        ClientWait.until(
-                context,
-                "the player dead",
-                () -> singleplayer.getServer().computeOnServer(server -> {
-                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                    if (!player.isDeadOrDying()) {
-                        player.hurtServer(
-                                player.level(), player.level().damageSources().genericKill(), 1000f);
-                    }
-                    return player.isDeadOrDying();
-                }),
-                () -> "a player who could not be hurt");
+        PlayerDeaths.strikeUntilDead(context, singleplayer, DamageSources::genericKill);
     }
 
     /** The laugh envelope the game reads now, as text; empty when there is none. */

@@ -8,6 +8,8 @@ Player chat reaches the caller only through `classify`, which sanitises it: the 
 from __future__ import annotations
 
 import argparse
+import collections
+import datetime
 import hashlib
 import json
 import os
@@ -35,7 +37,14 @@ SESSION = "deepcharter-server"
 PLAYER = re.compile(r"[A-Za-z0-9_]{3,16}")
 ISSUE = re.compile(r"[1-9][0-9]*")
 TAILSCALE = ("tailscale", "/Applications/Tailscale.app/Contents/MacOS/Tailscale")
-FEEDBACK_CAP = 300
+CHAT_CAP = 300
+REPLY_LINE = 100
+REPLY_LINES = 3
+REPLY_PREFIX = "[Claude] "
+CHAT_LIMIT = 5
+CHAT_WINDOW = 60.0
+EXIT_WAIT = 60.0
+OPERATORS_FILE = "claude-operators.txt"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -57,6 +66,7 @@ class Env:
     prism_running: Callable[[], bool]
     sleep: Callable[[float], None]
     clock: Callable[[], float]
+    utcnow: Callable[[], datetime.datetime]
 
 
 def _real_download(url: str) -> bytes:
@@ -90,6 +100,7 @@ def real_env() -> Env:
         prism_running=_real_prism_running,
         sleep=time.sleep,
         clock=time.monotonic,
+        utcnow=lambda: datetime.datetime.now(datetime.UTC),
     )
 
 
@@ -478,19 +489,26 @@ def _addresses(env: Env, server_dir: Path) -> list[str]:
     return [f"{host}:{port}" for host in hosts]
 
 
-def server_start(env: Env, server_dir: Path, wait: float) -> str:
-    if not (server_dir / "start.sh").is_file():
-        raise Fail(f"{server_dir} has no start.sh: run server-install first")
-    if not _eula_accepted(server_dir):
-        raise Fail(f"{server_dir / 'eula.txt'} is not eula=true", EXIT_EULA)
-    if _session_alive(env):
-        return "already running\nJoin: " + ", ".join(_addresses(env, server_dir))
+def archive_world(env: Env, server_dir: Path) -> Path | None:
+    """Move `world/` to `world-<utc stamp>`, never delete it. None when there is no world."""
+    world = server_dir / "world"
+    if not world.is_dir():
+        return None
+    target = server_dir / f"world-{env.utcnow().strftime('%Y%m%dT%H%M%SZ')}"
+    if target.exists():
+        raise Fail(f"{target} already exists: not overwriting an archive")
+    world.rename(target)
+    return target
+
+
+def _launch(env: Env, server_dir: Path, wait: float) -> str:
     tail = LogTail(_log(server_dir))
     _run(env, ["tmux", "new-session", "-d", "-s", SESSION, "-c", str(server_dir), "./start.sh"])
     deadline = env.clock() + wait
+    gate = ChatGate(frozenset(), env.clock)
     while True:
         for line in tail.poll():
-            for event in classify(line, set()):
+            for event in classify(line, set(), gate):
                 if event.startswith("REFUSED "):
                     raise Fail(event, EXIT_REFUSED)
             parsed = parse_log_line(line)
@@ -501,6 +519,43 @@ def server_start(env: Env, server_dir: Path, wait: float) -> str:
         if env.clock() >= deadline:
             raise Fail(f"no 'Done (' in the log after {wait:g}s; the server may still be starting (tmux attach -t {SESSION})", EXIT_TIMEOUT)
         env.sleep(1)
+
+
+def _wait_stopped(env: Env, server_dir: Path) -> None:
+    """Block until nothing holds the server log open: the world must not move under a java process still writing it."""
+    deadline = env.clock() + EXIT_WAIT
+    while server_running(env, server_dir):
+        if env.clock() >= deadline:
+            raise Fail(f"the refused server is still running after {EXIT_WAIT:g}s: stop it, then start again", EXIT_TIMEOUT)
+        env.sleep(1)
+
+
+def server_start(env: Env, server_dir: Path, wait: float, fresh: bool) -> str:
+    """Start the server. An old-format world (REFUSED) is archived and the start retried once; `fresh` archives first."""
+    if not (server_dir / "start.sh").is_file():
+        raise Fail(f"{server_dir} has no start.sh: run server-install first")
+    if not _eula_accepted(server_dir):
+        raise Fail(f"{server_dir / 'eula.txt'} is not eula=true", EXIT_EULA)
+    if fresh and server_running(env, server_dir):
+        raise Fail("the server is running: stop it first (server-stop), then start with --fresh")
+    if _session_alive(env):
+        return "already running\nJoin: " + ", ".join(_addresses(env, server_dir))
+    if fresh:
+        archived = archive_world(env, server_dir)
+        note = f"archived the old world to {archived}\n" if archived else ""
+        return note + _launch(env, server_dir, wait)
+    try:
+        return _launch(env, server_dir, wait)
+    except Fail as failure:
+        if failure.code != EXIT_REFUSED:
+            raise
+        refusal = failure.message
+    _call(env, ["tmux", "kill-session", "-t", SESSION])
+    _wait_stopped(env, server_dir)
+    archived = archive_world(env, server_dir)
+    if archived is None:
+        raise Fail(refusal, EXIT_REFUSED)
+    return f"{refusal}\narchived the old world to {archived} and started a new one\n" + _launch(env, server_dir, wait)
 
 
 def _send(env: Env, text: str) -> None:
@@ -544,21 +599,80 @@ def server_status(env: Env, server_dir: Path) -> tuple[bool, list[str]]:
     return True, []
 
 
-def ack(env: Env, player: str, issue: str, existing: bool) -> None:
+ACK_TITLE_MAX = 80
+
+
+def _ack_title(title: str) -> str:
+    title = title.strip()
+    if not title:
+        raise Fail("the issue title is empty")
+    if any(ord(c) < 32 or ord(c) == 127 for c in title):
+        raise Fail("refusing an issue title with control characters")
+    if len(title) > ACK_TITLE_MAX:
+        title = title[: ACK_TITLE_MAX - 1].rstrip() + "\u2026"
+    return title if title[-1] in ".?!\u2026" else title + "."
+
+
+def ack(env: Env, player: str, issue: str, title: str, existing: bool) -> None:
     if not PLAYER.fullmatch(player):
         raise Fail(f"not a player name: {player!r}")
     if not ISSUE.fullmatch(issue):
         raise Fail(f"not an issue number: {issue!r}")
+    shown = _ack_title(title)
     verb = "Added to" if existing else "Logged as"
-    text = {"text": f"[Deep Charter] Thanks! {verb} issue #{issue}.", "color": "gold"}
+    text = {"text": f"[Deep Charter] Thanks! {verb} issue #{issue}: {shown}", "color": "gold"}
     _send(env, f"tellraw {player} {json.dumps(text)}")
+
+
+def _reply_lines(text: str) -> list[str]:
+    """The reply cleaned of control characters and `§` (legacy colour codes), wrapped at word boundaries, at most REPLY_LINES lines of REPLY_LINE characters."""
+    words = _clean(text.replace("§", ""), REPLY_LINE * REPLY_LINES).split()
+    if not words:
+        raise Fail("the reply is empty")
+    lines: list[str] = []
+    for word in words:
+        while len(word) > REPLY_LINE:
+            lines.append(word[:REPLY_LINE])
+            word = word[REPLY_LINE:]
+        if lines and len(lines[-1]) + 1 + len(word) <= REPLY_LINE:
+            lines[-1] += " " + word
+        else:
+            lines.append(word)
+    if len(lines) > REPLY_LINES:
+        lines = lines[:REPLY_LINES]
+        lines[-1] = lines[-1][: REPLY_LINE - 1].rstrip() + "\u2026"
+    return lines
+
+
+def say_claude(env: Env, text: str) -> None:
+    """Reply to everyone in chat with a fixed prefix. Plain text components only: no selectors, clicks or colour codes from `text`."""
+    for line in _reply_lines(text):
+        component = ["", {"text": REPLY_PREFIX, "color": "aqua"}, {"text": line}]
+        _send(env, f"tellraw @a {json.dumps(component)}")
+
+
+def _read_properties(server_dir: Path) -> dict[str, str]:
+    properties = server_dir / "server.properties"
+    if not properties.is_file():
+        return {}
+    pairs = (line.split("=", 1) for line in properties.read_text().splitlines() if "=" in line and not line.lstrip().startswith("#"))
+    return {key.strip(): value.strip() for key, value in pairs}
+
+
+def operators(server_dir: Path) -> frozenset[str]:
+    """Lower-cased operator names. Honoured only when server.properties says online-mode=true: offline, anyone can claim a name."""
+    listing = server_dir / OPERATORS_FILE
+    if _read_properties(server_dir).get("online-mode", "").lower() != "true" or not listing.is_file():
+        return frozenset()
+    names = (line.strip() for line in listing.read_text().splitlines())
+    return frozenset(name.lower() for name in names if PLAYER.fullmatch(name))
 
 
 # ---------------------------------------------------------------- log classification
 
 LOG_LINE = re.compile(r"^\[[^\]]*\] \[[^\]/]*/(?P<level>[A-Z]+)\](?: \[[^\]]*\])?: (?P<msg>.*)$")
 CHAT = re.compile(r"^(?:\[Not Secure\] )?<([A-Za-z0-9_]{3,16})> (.*)$")
-FEEDBACK = re.compile(r"^!(?:feedback|fb)(?:\s+(.*))?$", re.IGNORECASE | re.DOTALL)
+ADDRESSED = re.compile(r"^@?claude[,:\s]\s*(.*)$", re.IGNORECASE | re.DOTALL)
 UUID = re.compile(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b")
 HEX = re.compile(r"\b0x[0-9a-fA-F]+\b")
 NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
@@ -570,13 +684,42 @@ def parse_log_line(line: str) -> tuple[str, str] | None:
     return (match.group("level"), match.group("msg")) if match else None
 
 
-def _clean(text: str) -> str:
+def _clean(text: str, cap: int = CHAT_CAP) -> str:
     kept = "".join(" " if unicodedata.category(c).startswith("C") else c for c in text)
-    return " ".join(kept.split())[:FEEDBACK_CAP]
+    return " ".join(kept.split())[:cap]
 
 
-def classify(line: str, seen: set[str]) -> list[str]:
-    """The watch events a log line produces. `seen` holds the WARN/ERROR signatures already reported this run."""
+class ChatGate:
+    """Who may be trusted and how fast: the operator names (lower case) and a per-player sliding-window rate limit."""
+
+    def __init__(self, operators: frozenset[str], clock: Callable[[], float]):
+        self.operators = operators
+        self.clock = clock
+        self.recent: dict[str, collections.deque[float]] = {}
+        self.slowed: set[str] = set()
+
+    def admit(self, player: str) -> str:
+        """"ok", "slow" (dropped, and the first drop of a burst, so the player is told once) or "drop"."""
+        now = self.clock()
+        times = self.recent.setdefault(player, collections.deque())
+        while times and now - times[0] >= CHAT_WINDOW:
+            times.popleft()
+        if len(times) >= CHAT_LIMIT:
+            if player in self.slowed:
+                return "drop"
+            self.slowed.add(player)
+            return "slow"
+        self.slowed.discard(player)
+        times.append(now)
+        for name in [name for name, stamps in self.recent.items() if now - stamps[-1] >= CHAT_WINDOW]:
+            del self.recent[name]
+            self.slowed.discard(name)
+        return "ok"
+
+
+def classify(line: str, seen: set[str], gate: ChatGate) -> list[str]:
+    """The watch events a log line produces. `seen` holds the WARN/ERROR signatures already reported this run.
+    Chat addressed to Claude becomes `CHAT <player> op|- <text>`: the watch itself marks an operator, never the text."""
     parsed = parse_log_line(line)
     if parsed is None:
         return []
@@ -585,9 +728,15 @@ def classify(line: str, seen: set[str]) -> list[str]:
         return [f"REFUSED {_clean(msg.partition(':')[2])}"]
     if level == "INFO":
         chat = CHAT.match(msg)
-        feedback = FEEDBACK.match(chat.group(2)) if chat else None
-        text = _clean(feedback.group(1) or "") if feedback else ""
-        return [f"FEEDBACK {chat.group(1)} {text}"] if chat and text else []
+        addressed = ADDRESSED.match(chat.group(2)) if chat else None
+        text = _clean(addressed.group(1)) if addressed else ""
+        if not chat or not text:
+            return []
+        player = chat.group(1)
+        verdict = gate.admit(player)
+        if verdict != "ok":
+            return [f"SLOW {player}"] if verdict == "slow" else []
+        return [f"CHAT {player} {'op' if player.lower() in gate.operators else '-'} {text}"]
     if level in ("WARN", "ERROR", "FATAL"):
         label = "WARN" if level == "WARN" else "ERROR"
         signature = f"{label} {NUMBER.sub('N', HEX.sub('H', UUID.sub('U', msg)))}"
@@ -602,11 +751,20 @@ def watch(env: Env, server_dir: Path, emit: Callable[[str], None]) -> None:
     """Follow the log from its current end until the server is gone; STOPPED is always the last event."""
     tail = LogTail(_log(server_dir))
     seen: set[str] = set()
+    gate = ChatGate(frozenset(), env.clock)
     while True:
         alive = _session_alive(env)  # read before the log, so a crash's last lines are not lost
+        gate.operators = operators(server_dir)  # re-read each pass: an edit to the file or to online-mode applies at once
         for line in tail.poll():
-            for event in classify(line, seen):
-                emit(event)
+            for event in classify(line, seen, gate):
+                if event.startswith("SLOW "):
+                    if alive:
+                        try:
+                            say_claude(env, f"{event.removeprefix('SLOW ')}, slow down: too many messages a minute.")
+                        except Fail as failure:  # the note is a courtesy: a dead session must not end the watch before STOPPED
+                            emit(f"WARN playtest: could not send the slow-down note: {failure.message}")
+                else:
+                    emit(event)
         if not alive:
             emit("STOPPED")
             return
@@ -624,14 +782,18 @@ def main(argv: list[str], env: Env) -> int:
     sub.add_parser("build")
     sub.add_parser("client").add_argument("--mrpack", type=Path)
     sub.add_parser("server-install", parents=[server]).add_argument("--zip", type=Path)
-    sub.add_parser("server-start", parents=[server]).add_argument("--wait", type=float, default=600)
+    start_parser = sub.add_parser("server-start", parents=[server])
+    start_parser.add_argument("--wait", type=float, default=600)
+    start_parser.add_argument("--fresh", action="store_true", help="move world/ to world-<utc stamp> and start a new world")
     sub.add_parser("server-stop")
     sub.add_parser("server-status", parents=[server])
     sub.add_parser("server-cmd", parents=[server]).add_argument("words", nargs="+")
     sub.add_parser("server-watch", parents=[server])
+    sub.add_parser("say-claude").add_argument("words", nargs="+", help="the reply, shown to everyone as [Claude] <text>")
     ack_parser = sub.add_parser("ack", parents=[server])
     ack_parser.add_argument("player")
     ack_parser.add_argument("issue")
+    ack_parser.add_argument("title", help="the issue's title, shown in the ack so the player can tell their notes apart")
     ack_parser.add_argument("--existing", action="store_true")
     args = parser.parse_args(argv)
     try:
@@ -656,7 +818,7 @@ def run_command(args: argparse.Namespace, env: Env) -> None:
                 print(f"warning: {warning}")
             print(f"installed into {args.dir}")
         case "server-start":
-            print(server_start(env, args.dir, args.wait))
+            print(server_start(env, args.dir, args.wait, args.fresh))
         case "server-stop":
             print(server_stop(env))
         case "server-status":
@@ -666,8 +828,11 @@ def run_command(args: argparse.Namespace, env: Env) -> None:
             print("\n".join(server_cmd(env, args.dir, " ".join(args.words))))
         case "server-watch":
             watch(env, args.dir, lambda event: print(event, flush=True))
+        case "say-claude":
+            say_claude(env, " ".join(args.words))
+            print("said")
         case "ack":
-            ack(env, args.player, args.issue, args.existing)
+            ack(env, args.player, args.issue, args.title, args.existing)
             print("acknowledged")
 
 

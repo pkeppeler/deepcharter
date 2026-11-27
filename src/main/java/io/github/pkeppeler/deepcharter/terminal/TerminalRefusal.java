@@ -16,6 +16,8 @@ public enum TerminalRefusal {
     PREREQUISITE_UNREPAIRED,
     ALREADY_REPAIRED,
     NOT_A_PART,
+    /** A part of this terminal, put into another part's slot. */
+    WRONG_SLOT,
     ALREADY_INSERTED,
     MISSING_PART,
     NO_SUCH_ACTION,

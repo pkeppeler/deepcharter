@@ -5,6 +5,9 @@
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
 # BoreTripsClientTest: one CI run (45741859329, #1418), which added a settle to two of its trips; refresh from CI.
 # PodDriveLateClientTest and PodDriveSmoothClientTest: the mean of three local runs after #1112 split the class; refresh from CI.
+# PodLoadClientTest: one local run (#1449), 24 s, scaled by CockpitHudClientTest's local-to-CI ratio (48 s to 36); refresh from CI.
+# ContinuityPackClientTest: one CI run (#1377, shard 2), from its START line to the next; refresh from CI.
+# RealInputTypingClientTest: one local run (#1385); refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
 BlockReadoutClientTest 16
@@ -18,10 +21,12 @@ CatalogueAnySlotClientTest 21
 CatalogueEffectsClientTest 20
 CatalogueFavouritesClientTest 12
 CatalogueHistoryClientTest 14
+CatalogueMaterialsClientTest 14
 CatalogueToggleClientTest 22
 CavernSkyClientTest 49
 CharterCoreClientTest 26
 CockpitHudClientTest 36
+ContinuityPackClientTest 101
 ContractTerminalClientTest 12
 CrtTitleCornerClientTest 68
 CrtUiKitClientTest 4
@@ -64,6 +69,7 @@ PodHeatShieldClientTest 14
 PodLavaWatchClientTest 16
 PodLinerClientTest 13
 PodLiningClientTest 10
+PodLoadClientTest 18
 PodLookFallbackClientTest 28
 PodMovementClientTest 21
 PodRecoveryHudClientTest 14
@@ -73,6 +79,7 @@ PodShellClientTest 11
 PodSounderClientTest 14
 ProspectorChassisClientTest 18
 QuestMapClientTest 9
+RealInputTypingClientTest 13
 RecipeFillClientTest 20
 RepairStationClientTest 12
 RepairStationFitClientTest 14
@@ -84,6 +91,7 @@ ScannerMapReleaseClientTest 13
 ScannerOreHostClientTest 16
 ScannerTexturesClientTest 32
 ScannerTiersClientTest 23
+ScannerWindowFillClientTest 21
 ScreenLayoutClientTest 13
 ScrollListClientTest 1
 SeamAdoptionClientTest 25

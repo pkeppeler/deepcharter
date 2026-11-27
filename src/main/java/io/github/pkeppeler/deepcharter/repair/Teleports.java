@@ -29,6 +29,9 @@ final class Teleports {
     /** How many random spots a scattering teleporter tries before it falls back to the exact column. */
     private static final int SCATTER_TRIES = 5;
 
+    /** Chunks out from the landing chunk that its arrival ticket loads: 2 makes the landing chunk tick entities. */
+    private static final int ARRIVAL_RADIUS = 2;
+
     private Teleports() {}
 
     /**
@@ -77,6 +80,10 @@ final class Teleports {
         if (arrived == null) {
             return Consumables.refusal("teleport_blocked");
         }
+        // The look-up loaded the landing chunk with a ticket that lapses next tick, and the pilot's own tickets follow
+        // only once its client answers the teleport: hold the chunk until then, as a tow holds a towed pod's (#1353).
+        to.getChunkSource()
+                .addTicketWithRadius(RepairRegistry.TELEPORT_ARRIVAL, arrived.chunkPosition(), ARRIVAL_RADIUS);
         arrived.getPassengersAndSelf().forEach(Entity::resetFallDistance);
         // The ore is spilled first, so that a failure after it loses nothing: the bay is emptied last.
         for (PodCargo.Entry entry : held) {

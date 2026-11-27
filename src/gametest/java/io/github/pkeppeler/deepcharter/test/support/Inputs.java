@@ -21,4 +21,7 @@ public final class Inputs {
     public static final Input FORWARD_JUMP = new Input(true, false, false, false, true, false, false);
     public static final Input SNEAK = new Input(false, false, false, false, false, true, false);
     public static final Input SPRINT = new Input(false, false, false, false, false, false, true);
+    public static final Input FORWARD_SPRINT = new Input(true, false, false, false, false, false, true);
+    public static final Input BACK_SPRINT = new Input(false, true, false, false, false, false, true);
+    public static final Input FORWARD_JUMP_SPRINT = new Input(true, false, false, false, true, false, true);
 }
