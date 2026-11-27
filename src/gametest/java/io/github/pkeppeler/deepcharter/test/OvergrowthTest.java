@@ -502,6 +502,7 @@ public class OvergrowthTest {
                         "a slab of growth should cost about twice a slab of stone in fuel, it cost %.2f times",
                         slabRatio);
             }
+            // sync-load: onceReady waited for the chunk to tick before every body and helper here
             Set<Long> bored = bores(level.getChunkAt(new BlockPos(x, FLOOR, Z))).cells();
             if (bored.stream()
                                     .filter(cell -> BlockPos.of(cell).getY() == FLOOR - 1)
@@ -785,6 +786,7 @@ public class OvergrowthTest {
     }
 
     private static LevelChunk chunkOf(ServerLevel level, int x) {
+        // sync-load: onceReady waited for the chunk to tick before every body and helper here
         return level.getChunkAt(new BlockPos(x, FLOOR, Z));
     }
 

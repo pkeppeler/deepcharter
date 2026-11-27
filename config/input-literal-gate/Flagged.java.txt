@@ -1,0 +1,25 @@
+// Fixture for checkInputLiteralGate: every indented code line below must be flagged. Not compiled.
+class Flagged {
+	boolean a = event.button() == 0;
+	boolean b = event.button() != 1;
+	boolean c = 1 == event.button();
+	boolean d = event.key() == 82;
+	boolean e = event.key() == 'R';
+	boolean f = 259 != event.key();
+	boolean g = this.event . button ( ) == 2;
+	boolean h = event.button() == 0 && event.button() == InputConstants.MOUSE_BUTTON_LEFT;
+	Object i = new MouseButtonInfo(0, 0);
+	boolean j = event.button() == 0; // input-literal without a colon is no marker
+	boolean k = event.button() == 0; // input-literal:
+	/* block comment */ boolean l = event.button() == 0;
+	String m = "//"; boolean n = event.button() == 0;
+	String o = "// input-literal: not a comment"; boolean p = event.button() == 0;
+	boolean q = ready
+			&& event.button()
+					== 0;
+	boolean r = ready && event.key() == 82 // input-literal without a colon is no marker
+			&& other;
+	boolean t = event.button() == 0;
+	Object u = new KeyEvent(82, 0, 0);
+	Object v = new KeyEvent('R', 0, 0);
+}

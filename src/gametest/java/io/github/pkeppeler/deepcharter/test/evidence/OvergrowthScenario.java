@@ -51,6 +51,7 @@ import net.minecraft.world.phys.Vec3;
 public class OvergrowthScenario extends EvidenceScenario {
     private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int TUNNEL = 12;
+    private static final int SCENE_RADIUS = 24;
     private static final int BORE_WIDTH = 3;
     private static final int BORE_HEIGHT = 3;
     /** The tunnels' axes lie this far either side of the middle; the rock between them is 5 blocks thick. */
@@ -99,7 +100,9 @@ public class OvergrowthScenario extends EvidenceScenario {
                 player.addEffect(new MobEffectInstance(
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
+                // light-settled-ok: the pod is parked empty behind the camera, so the carve cannot affect a rider
                 pod.setPos(middle.getX() - 6.5, FLOOR_Y, middle.getZ() - 6.5);
+                // light-settled-ok: the same empty pod
                 one.addFreshEntity(pod);
                 return new Scene(middle, pod.getUUID());
             });
@@ -113,6 +116,7 @@ public class OvergrowthScenario extends EvidenceScenario {
                     "the server's light engine to be idle",
                     () -> ClientLight.serverLightIdle(context, singleplayer.getServer()),
                     () -> "light work pending");
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, site.getX(), site.getZ(), SCENE_RADIUS);
             singleplayer
                     .getServer()
                     .runOnServer(server -> server.getPlayerList()

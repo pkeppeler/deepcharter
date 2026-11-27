@@ -19,4 +19,4 @@ SPEC section 4 makes ore a physical, heavy, non-stacking item that the pod hauls
 ## Consequences
 
 - No pod state is new, so no attachment is added: the bay keeps its existing save path and its synced count and mass.
-- The cargo screen is a plain read-only panel. Taking ore out of a pod belongs to the terminals.
+- The cargo screen is a plain read-only panel. Taking ore out of a pod belongs to the terminals. (Amended: the pod screen, #1270 and [ADR 0102](0102-the-pod-screen-holds-any-item-keeps-ore-until-a-terminal-and-feeds-the-tank-from-a-fuel-slot.md), replaces it, and cargo can be dumped to the ground, #1456 and [ADR 0103](0103-cargo-dumps-to-the-ground-under-the-pod-and-a-seated-player-picks-up-no-ore.md).)

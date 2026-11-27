@@ -64,6 +64,7 @@ public class TallyClientTest implements FabricClientGameTest {
                 BlockPos cell = pod.blockPosition()
                         .above(ScannerHudTest.GOLD_UP)
                         .relative(pod.getDirection(), ScannerHudTest.GOLD_AHEAD - 1);
+                // Beside the riding player and gone within the test: never idle 32 blocks from a player (#1237).
                 Tally made = TestEntities.create(CreatureRegistry.TALLY, player.level());
                 made.setNoAi(true);
                 made.setPos(Vec3.atBottomCenterOf(cell));

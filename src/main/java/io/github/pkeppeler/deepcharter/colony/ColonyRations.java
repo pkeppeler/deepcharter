@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.colony;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import java.util.Optional;
-import java.util.function.UnaryOperator;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
@@ -12,7 +11,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
@@ -20,8 +18,8 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * Company rations, so a new player does not starve before the first crop: the tins every player starts with, the ones the ore cars
- * still hold ({@link OreCarBlock}), the canteen's one a day ({@link CanteenBlock}), and the poor meal a fungal stalk cooks into
- * ({@code recipe/stalk_meal_campfire.json} and {@code stalk_meal_smoking.json}; a furnace still turns a stalk into charcoal).
+ * still hold ({@link OreCarBlock}), the canteen's one on every use ({@link CanteenBlock}), and the poor meal a fungal stalk cooks
+ * into ({@code recipe/stalk_meal_campfire.json} and {@code stalk_meal_smoking.json}; a furnace still turns a stalk into charcoal).
  *
  * <p>What a player has been handed is the attachment {@link #LEDGER}. A crate may hold a ration too
  * ({@code loot_table/blocks/salvage_crate.json}).
@@ -54,19 +52,14 @@ public final class ColonyRations {
 
     /** Gives {@code player} the starting rations if the ledger says they have none yet; a second call gives nothing. */
     static void giveStartingRations(ServerPlayer player) {
-        // A new player's ledger comes from the initializer and is always readable: only data another version wrote is
-        // skipped.
+        // A new player's ledger comes from the initializer and is always readable: only data another version wrote
+        // is skipped.
         Optional<RationLedger> ledger = Versioned.readable(player, LEDGER);
         if (ledger.isEmpty() || ledger.get().starterGiven()) {
             return;
         }
-        change(player, held -> new RationLedger(true, held.canteenDay()));
+        player.setAttached(LEDGER, Versioned.of(new RationLedger(true)));
         give(player, STARTING_RATIONS);
-    }
-
-    /** The in-game day {@code level}'s server is on: the overworld's clock over a day of 24,000 ticks. */
-    static long today(ServerLevel level) {
-        return Math.floorDiv(level.getServer().overworld().getOverworldClockTime(), 24_000L);
     }
 
     /** Puts {@code count} rations in the player's inventory, and drops what does not fit at their feet. */
@@ -76,11 +69,6 @@ public final class ColonyRations {
         if (!stack.isEmpty()) {
             player.spawnAtLocation(player.level(), stack);
         }
-    }
-
-    /** Rewrites the player's ledger. Call only after {@link Versioned#readable} showed it readable. */
-    static void change(ServerPlayer player, UnaryOperator<RationLedger> change) {
-        Versioned.modifyOrThrow(player, LEDGER, change);
     }
 
     private static Item item(String path, FoodProperties food) {

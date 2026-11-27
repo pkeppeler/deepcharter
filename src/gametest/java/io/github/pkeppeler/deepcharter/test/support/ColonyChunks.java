@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
@@ -16,7 +18,6 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Display;
@@ -74,11 +75,10 @@ public final class ColonyChunks {
                 throw failed[0];
             }
             if (ticking[0] < positions.size()) {
-                throw helper.assertionException(
-                        Component.literal("waiting for the chunks to tick: " + ticking[0] + " of " + positions.size()));
+                throw failure(helper, "waiting for the chunks to tick: %s of %s", ticking[0], positions.size());
             }
             if (!ready.getAsBoolean()) {
-                throw helper.assertionException(Component.literal("waiting for the entities of the chunks to load"));
+                throw failure(helper, "waiting for the entities of the chunks to load");
             }
             if (ran[0]) {
                 return;
@@ -127,6 +127,7 @@ public final class ColonyChunks {
     public static void removeHands(MinecraftServer server) {
         FounderStatue.markerPos(server).ifPresent(pos -> {
             ServerLevel overworld = server.overworld();
+            // sync-load: the marker is on the colony's pad, which FarChunks.pin keeps loaded
             overworld.getChunk(pos);
             if (overworld.getBlockState(pos).is(Blocks.STRUCTURE_VOID)) {
                 overworld.setBlock(pos, ColonyKit.RIVETED_PLATE_RED.defaultBlockState(), Block.UPDATE_CLIENTS);
@@ -141,6 +142,7 @@ public final class ColonyChunks {
             return List.of();
         }
         ServerLevel overworld = server.overworld();
+        // sync-load: the statue is on the colony's pad, which FarChunks.pin keeps loaded
         overworld.getChunk(anchor.get());
         // entity-query: the statue's displays that are loaded, for a test that counts his body; whether he has hands is
         // saved data

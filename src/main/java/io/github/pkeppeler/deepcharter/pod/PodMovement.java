@@ -1,14 +1,14 @@
 package io.github.pkeppeler.deepcharter.pod;
 
-import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Input;
-import org.jspecify.annotations.Nullable;
+import net.minecraft.world.phys.Vec3;
 
 /**
- * Server-authoritative pod movement: treads on the ground, a rotor to climb. The server reads the
- * pilot's vanilla input, so there is no packet of our own; clients only see the pod move.
+ * Server-authoritative pod movement: treads on the ground, a rotor to climb. The server reads the pilot's vanilla
+ * input, so there is no packet of our own; clients only see the pod move. W, S, A and D steer it as a boat is steered
+ * ({@link PodSteering}).
  */
 public final class PodMovement {
     private PodMovement() {}
@@ -27,11 +27,21 @@ public final class PodMovement {
                 : null;
         Input input = pilot == null ? Input.EMPTY : pilot.getLastClientInput();
 
-        Direction drive = pilot == null ? null : driveDirection(input, pilot.getYRot());
-        double vx = drive == null ? 0 : drive.getStepX() * stats.horizontalSpeed();
-        double vz = drive == null ? 0 : drive.getStepZ() * stats.horizontalSpeed();
+        // Steer first: the throttle drives along the facing it gives. The drill and a bore as wide as the pod
+        // hold the grid, so neither takes A and D freely (PodSteering).
+        if (pilot == null || pod.drilling()) {
+            PodSteering.stopTurning(pod);
+            pod.setTurnTarget(null);
+        } else if (!PodSteering.boreTurn(pod, input)) {
+            PodSteering.steer(pod, input);
+        }
+        PodSteering.noteTurnKey(pod, input);
+        Vec3 facing = Vec3.directionFromRotation(0, pod.getYRot());
+        double throttle = pilot == null ? 0 : PodSteering.throttle(input, stats);
+        double vx = facing.x * throttle;
+        double vz = facing.z * throttle;
 
-        float lift = Math.max(0f, stats.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
+        float lift = PodLoad.of(pod, stats).lift();
         boolean thrusting = input.jump() && lift > 0f;
         double vy = pod.getDeltaMovement().y;
         if (thrusting) {
@@ -45,26 +55,11 @@ public final class PodMovement {
         // noPhysics makes Entity.move skip block collision; only this hook sets it on a pod.
         pod.noPhysics = PodEvents.ignoresBlockCollision(pod);
         pod.move(MoverType.SELF, pod.getDeltaMovement());
-        // Entity.move leaves the speed it ran into. Clear it only if it still points into the surface, so a bounce
-        // survives.
+        // Entity.move leaves the speed it ran into. Clear it only if it still points into the surface, so a
+        // bounce survives.
         double after = pod.getDeltaMovement().y;
         if (pod.verticalCollision && (pod.verticalCollisionBelow ? after < 0 : after > 0)) {
             pod.setDeltaMovement(pod.getDeltaMovement().multiply(1, 0, 1));
         }
-    }
-
-    /**
-     * Snap WASD to one horizontal axis, relative to where the pilot looks. Forward and back win over
-     * strafing, so a diagonal press never moves diagonally. Null when no direction key is held.
-     */
-    static @Nullable Direction driveDirection(Input input, float pilotYaw) {
-        Direction facing = Direction.fromYRot(pilotYaw);
-        if (input.forward() != input.backward()) {
-            return input.forward() ? facing : facing.getOpposite();
-        }
-        if (input.left() != input.right()) {
-            return input.right() ? facing.getClockWise() : facing.getCounterClockWise();
-        }
-        return null;
     }
 }

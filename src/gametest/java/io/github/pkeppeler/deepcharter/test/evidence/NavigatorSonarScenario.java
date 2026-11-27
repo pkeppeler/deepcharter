@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
 import java.util.Set;
@@ -56,8 +57,8 @@ public class NavigatorSonarScenario extends EvidenceScenario {
     private static final int ZOOM_MARGIN = 12;
     private static final int TOAST_SETTLE_TICKS = 30;
     private static final String LONG_STEP =
-            "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
-                    + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
+            "Carry the whole of a very long instruction through the hatch, past the second sump pump and the old tally"
+                    + " board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
 
     @Override
     protected String name() {
@@ -69,6 +70,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             two.server().runOnServer(server -> buildSite(server.overworld(), two));
             ClientWait.chunksAround(context, X, Z, REACH);
+            ClientWait.lightSettled(context, two.server(), TestLayers.SURFACE, X, Z, REACH);
             two.server().runOnServer(server -> board(server.overworld(), two));
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ClientWait.until(
@@ -211,8 +213,8 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         }
         put(level, new BlockPos(X + 8, FLOOR_Y + 1, Z - 9), HazardBlocks.GAS_POCKET);
         put(level, new BlockPos(X - 18, FLOOR_Y + 1, Z + 6), HazardBlocks.GAS_POCKET);
-        // A body standing in a hollow of its own, east: it is in the echo tag the test mod adds, so it returns an ore
-        // echo.
+        // A body standing in a hollow of its own, east: it is in the echo tag the test mod adds, so it returns an
+        // ore echo.
         room(level, X + 4 * CELL, FLOOR_Y, Z - 2 * CELL, 1, 1);
         ArmorStand body = TestEntities.create(EntityTypes.ARMOR_STAND, level);
         body.setNoGravity(true);
@@ -221,7 +223,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         // Far west, a Tally (a Company machine) in a hollow of its own: it echoes as ore. Far east, a Retained in
         // another: the hollow returns an open cave and the figure in it returns nothing.
         room(level, X - 5 * CELL, FLOOR_Y, Z - 3 * CELL, 1, 1);
-        Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+        Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
         tally.setNoAi(true);
         tally.setPos(X - 5 * CELL + 2, FLOOR_Y + 1, Z - 3 * CELL + 2);
         level.addFreshEntity(tally);

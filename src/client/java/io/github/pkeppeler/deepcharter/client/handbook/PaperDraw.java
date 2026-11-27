@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -93,30 +95,73 @@ final class PaperDraw {
      * marks themselves are not drawn. A redacted part is always drawn as bars, never as text. Returns the y below the last line.
      */
     static int redacted(GuiGraphicsExtractor graphics, Font font, String text, int x, int y, int width, int color) {
-        int spaceWidth = font.width(" ");
-        int cursor = x;
+        List<List<Piece>> lines = redactedLines(font, text, width, color);
         int lineY = y;
+        for (List<Piece> line : lines) {
+            redactedLine(graphics, font, line, x, lineY, color);
+            lineY += redactedPitch(font);
+        }
+        return y + Math.max(1, lines.size()) * redactedPitch(font);
+    }
+
+    /**
+     * How far down one line of {@link #redacted} text starts below the last: the bars stand a pixel above and below the
+     * letters.
+     */
+    static int redactedPitch(Font font) {
+        return font.lineHeight + 3;
+    }
+
+    /** A piece of a line of {@link #redactedLines}, {@code x} pixels from the left of its line. */
+    sealed interface Piece permits Word, Bar {}
+
+    /** A word in ink. */
+    record Word(Component word, int x) implements Piece {}
+
+    /** A black bar over a redacted run of words. */
+    record Bar(int x, int width) implements Piece {}
+
+    /** The lines {@link #redacted} draws {@code text} in, wrapped to {@code width}, without drawing them. */
+    static List<List<Piece>> redactedLines(Font font, String text, int width, int color) {
+        int spaceWidth = font.width(" ");
+        List<List<Piece>> lines = new ArrayList<>();
+        List<Piece> line = new ArrayList<>();
+        int cursor = 0;
         boolean previousRedacted = false;
         for (RedactionText.Token token : RedactionText.parse(text)) {
             Component word = ink(Component.literal(token.text()), color);
             int wordWidth = font.width(word);
             int gap = token.spaceBefore() ? spaceWidth : 0;
-            if (cursor > x && cursor + gap + wordWidth > x + width) {
-                cursor = x;
-                lineY += font.lineHeight + 3;
+            if (cursor > 0 && cursor + gap + wordWidth > width) {
+                lines.add(line);
+                line = new ArrayList<>();
+                cursor = 0;
                 gap = 0;
                 previousRedacted = false;
             }
             if (token.redacted()) {
                 int barStart = previousRedacted ? cursor : cursor + gap;
-                redaction(graphics, barStart, lineY - 1, cursor + gap + wordWidth - barStart, font.lineHeight + 1);
+                line.add(new Bar(barStart, cursor + gap + wordWidth - barStart));
             } else {
-                graphics.text(font, word, cursor + gap, lineY, Colors.opaque(color), false);
+                line.add(new Word(word, cursor + gap));
             }
             cursor += gap + wordWidth;
             previousRedacted = token.redacted();
         }
-        return lineY + font.lineHeight + 3;
+        if (!line.isEmpty()) {
+            lines.add(line);
+        }
+        return lines;
+    }
+
+    /** Draws one line of {@link #redactedLines} with its left edge at {@code x} and its letters' top at {@code y}. */
+    static void redactedLine(GuiGraphicsExtractor graphics, Font font, List<Piece> line, int x, int y, int color) {
+        for (Piece piece : line) {
+            switch (piece) {
+                case Bar bar -> redaction(graphics, x + bar.x(), y - 1, bar.width(), font.lineHeight + 1);
+                case Word word -> graphics.text(font, word.word(), x + word.x(), y, Colors.opaque(color), false);
+            }
+        }
     }
 
     /** The faint ruled lines of a slip of paper spanning {@code left} to {@code right}: one every rule spacing from {@code top} to short of {@code bottom}. */

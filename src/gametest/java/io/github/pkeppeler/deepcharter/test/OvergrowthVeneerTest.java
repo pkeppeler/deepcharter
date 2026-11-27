@@ -63,6 +63,7 @@ public class OvergrowthVeneerTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void theFilmCreepsAheadOfTheFill(GameTestHelper helper) {
         onceReady(helper, 5000, (level, x) -> {
+            // sync-load: onceReady waited for the chunk to tick before every body and helper here
             LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
             cutBore(level, x);
             Overgrowth.grow(level, chunk, lastVisit(level, x) + TUNING.delayTicks() - 1);
@@ -113,6 +114,7 @@ public class OvergrowthVeneerTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void theFilmSpillsRoundAClosedMouthInPatchesAndHangsFromTheRoof(GameTestHelper helper) {
         onceReady(helper, 5080, (level, x) -> {
+            // sync-load: onceReady waited for the chunk to tick before every body and helper here
             LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
             cutBore(level, x);
             long now = lastVisit(level, x) + TUNING.delayTicks();
@@ -153,6 +155,7 @@ public class OvergrowthVeneerTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void theFilmGoesWhenTheGrowthIsCutAndStaysWhileItStands(GameTestHelper helper) {
         onceReady(helper, 5160, (level, x) -> {
+            // sync-load: onceReady waited for the chunk to tick before every body and helper here
             LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
             cutBore(level, x);
             long now = lastVisit(level, x) + TUNING.delayTicks();
@@ -183,6 +186,7 @@ public class OvergrowthVeneerTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void theFilmGoesWhenTheBoreIsVisitedAndNeverBlocksAnything(GameTestHelper helper) {
         onceReady(helper, 5240, (level, x) -> {
+            // sync-load: onceReady waited for the chunk to tick before every body and helper here
             LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
             List<BlockPos> film = filmWithSomeOutOfReach(level, chunk, x);
             if (film.isEmpty()) {
@@ -233,6 +237,7 @@ public class OvergrowthVeneerTest {
                 return;
             }
             long now = level.getGameTime();
+            // sync-load: onceReady waited for the chunk to tick before every body and helper here
             LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
             // The chunk's own growth pass runs on the real tick path every passTicks, and would grow cells in the
             // middle of the two waits: start the tick after it, so the 90 ticks of the test fall between two passes.
@@ -481,6 +486,7 @@ public class OvergrowthVeneerTest {
     }
 
     private static void setLastVisit(ServerLevel level, int x, long time) {
+        // sync-load: onceReady waited for the chunk to tick before every body and helper here
         LevelChunk chunk = level.getChunkAt(new BlockPos(x, FLOOR, Z));
         Overgrowth.Bores bores = Versioned.readable(chunk, Overgrowth.BORES).orElseThrow();
         chunk.setAttached(Overgrowth.BORES, Versioned.of(new Overgrowth.Bores(time, bores.cells())));
@@ -511,6 +517,7 @@ public class OvergrowthVeneerTest {
         }
         long now = level.getGameTime();
         setLastVisit(level, x, now - TUNING.delayTicks() - 1);
+        // sync-load: onceReady waited for the chunk to tick before every body and helper here
         Overgrowth.grow(level, level.getChunkAt(new BlockPos(x, FLOOR, Z)), now);
         for (int[] offset : offsets) {
             if (!level.getBlockState(new BlockPos(x + offset[0], FLOOR, Z + offset[1]))
@@ -626,6 +633,7 @@ public class OvergrowthVeneerTest {
     }
 
     private static long lastVisit(ServerLevel level, int x) {
+        // sync-load: onceReady waited for the chunk to tick before every body and helper here
         return Versioned.readable(level.getChunkAt(new BlockPos(x, FLOOR, Z)), Overgrowth.BORES)
                 .orElseThrow()
                 .lastVisit();

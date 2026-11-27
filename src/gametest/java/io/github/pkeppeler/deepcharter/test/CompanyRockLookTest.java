@@ -20,9 +20,11 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.IntConsumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -41,7 +43,6 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -80,15 +81,27 @@ public class CompanyRockLookTest {
         return layer == 1 ? Host.PACKED_SHALE : Host.GREEN_SHALE;
     }
 
-    @GameTest(maxTicks = 6000)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void generatedCompanyRockInEachLayerSitsInThatLayersRock(GameTestHelper helper) {
+        List<FarChunks.At> chunks = new ArrayList<>();
+        for (int layer = 1; layer <= 2; layer++) {
+            chunks.addAll(FarChunks.rect(
+                    TestLayers.level(helper, layer),
+                    FIRST_CHUNK,
+                    FIRST_CHUNK,
+                    FIRST_CHUNK + SIDE - 1,
+                    FIRST_CHUNK + SIDE - 1));
+        }
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> generatedCompanyRockSitsInThatLayersRock(helper));
+    }
+
+    private static void generatedCompanyRockSitsInThatLayersRock(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             LayerChain.Band levelBand = TestLayers.band(level, layer);
             Map<Host, Integer> found = new EnumMap<>(Host.class);
             for (int cx = FIRST_CHUNK; cx < FIRST_CHUNK + SIDE; cx++) {
                 for (int cz = FIRST_CHUNK; cz < FIRST_CHUNK + SIDE; cz++) {
-                    level.getChunk(cx, cz, ChunkStatus.FULL);
                     for (int x = cx << 4; x < (cx << 4) + 16; x++) {
                         for (int z = cz << 4; z < (cz << 4) + 16; z++) {
                             for (int y = levelBand.minY();
@@ -110,14 +123,16 @@ public class CompanyRockLookTest {
                 }
             }
             int total = found.values().stream().mapToInt(Integer::intValue).sum();
-            int right = found.getOrDefault(expectedHost(layer), 0);
+            Set<Host> hosts = OreHostTest.generatedHosts(layer);
+            int right =
+                    hosts.stream().mapToInt(host -> found.getOrDefault(host, 0)).sum();
             if (total < AT_LEAST || right != total) {
                 throw failure(
                         helper,
                         "layer_%s should hold at least %s Company rock, all in %s, it holds %s",
                         layer,
                         AT_LEAST,
-                        expectedHost(layer),
+                        hosts,
                         found);
             }
         }

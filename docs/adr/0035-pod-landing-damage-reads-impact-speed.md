@@ -4,6 +4,8 @@ status: accepted
 
 # Pod landing damage reads the sink speed, in a new `HardLanding` part
 
+Amended 2026-11-25 (#1432), a user decision after the friends-server playtest: a landing needs a clear buffer a pilot can see, and a hard landing cost too much. The buffer stays a sink speed, `hardLandingSpeed` 0.7 blocks a tick (14 blocks a second), because a gauge can show a speed while the pod falls and a drop height only after it lands. `hullDamagePerSpeed` goes from 70 to 50 in `PodTuning.Movement`, the one change to that frozen file. This amendment supersedes the Decision's "and nothing else" for that one value: the exception now also covers this retune, and nothing more. `HardLanding` adds the rotor's ground cushion: in the last 3 blocks above the ground, a crewed, powered pod's sink is braked by 0.12 a tick, down to 0.4 (`HardLandingTuning`, a `PodEvents.AFTER_TICK` listener, so `PodMovement` is unchanged). A free fall down the layer 1 shaft still wrecks a stock pod. The numbers are in [mechanics.md](../design/mechanics.md#soft-landings-1432-a).
+
 Issue #319. Changes the landing code that the README's M2 rules freeze (`PodData`, `PodEntity`, `PodMovement`, `PodTuning` take no more changes, except #60's).
 
 ## Decision

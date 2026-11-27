@@ -20,6 +20,7 @@ import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
+import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
@@ -39,19 +40,25 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A real {@link ServerPlayer} whose connection is a Netty {@link EmbeddedChannel}. Create one
  * with {@link MockPlayers#join}. Everything here runs on the server thread.
  */
 public final class MockPlayer {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MockPlayer.class);
     private static final int TELEPORT_IDS = 32;
     private final MinecraftServer server;
     private final ServerPlayer player;
@@ -61,6 +68,7 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final List<ItemStack> slotUpdates = new ArrayList<>();
     private final List<PlacedSound> soundsAtPlaces = new ArrayList<>();
     private final List<Identifier> soundsStopped = new ArrayList<>();
     private final Map<Integer, List<Identifier>> soundsByEntity = new HashMap<>();
@@ -77,6 +85,14 @@ public final class MockPlayer {
     private final Set<RecipeDisplayId> recipeDisplaysEverSent = new HashSet<>();
     private int recipeToasts;
     private boolean loaded;
+    /** Server ticks in a row that the mock has not ticked, for want of a loaded chunk. */
+    private int skippedTicks;
+
+    @Nullable
+    private ChunkPos ticketedChunk;
+
+    @Nullable
+    private ServerLevel ticketedLevel;
 
     MockPlayer(
             MinecraftServer server,
@@ -90,6 +106,11 @@ public final class MockPlayer {
         this.channel = channel;
         this.ownerDone = ownerDone;
         this.clientLevel = player.level().dimension();
+    }
+
+    /** Every item stack the server has sent this player for a container slot so far, oldest first, as copies. */
+    public List<ItemStack> slotUpdates() {
+        return List.copyOf(slotUpdates);
     }
 
     /** Every action-bar message the server has sent this player so far, oldest first. */
@@ -136,7 +157,10 @@ public final class MockPlayer {
         return List.copyOf(soundsByEntity.getOrDefault(source.getId(), List.of()));
     }
 
-    /** The level game time at which the mock read each sound of {@link #soundsHeard()}, in order: the play tick or the next. */
+    /**
+     * The level game time at which the mock read each sound of {@link #soundsHeard()}, in order. The mock reads at
+     * END_SERVER_TICK, so a sound sent earlier in that tick carries its play tick.
+     */
     public List<Long> soundTicks() {
         return List.copyOf(soundTicks);
     }
@@ -340,8 +364,33 @@ public final class MockPlayer {
         }
     }
 
+    /**
+     * Holds a loading ticket on the player's chunk, and whether the chunk is loaded; the ticket is released when the
+     * player moves on or leaves.
+     */
+    private boolean standsInLoadedChunk() {
+        ServerLevel level = player.level();
+        ChunkPos at = player.chunkPosition();
+        if (!at.equals(ticketedChunk) || level != ticketedLevel) {
+            releaseTicket();
+            level.getChunkSource().addTicketWithRadius(TicketType.PLAYER_LOADING, at, 0);
+            ticketedChunk = at;
+            ticketedLevel = level;
+        }
+        return level.getChunkSource().getChunkNow(at.x(), at.z()) != null;
+    }
+
+    private void releaseTicket() {
+        if (ticketedChunk != null && ticketedLevel != null) {
+            ticketedLevel.getChunkSource().removeTicketWithRadius(TicketType.PLAYER_LOADING, ticketedChunk, 0);
+        }
+        ticketedChunk = null;
+        ticketedLevel = null;
+    }
+
     /** Disconnect and remove the player, also one that respawned (#698). Safe to call when it has already left. */
     public void leave() {
+        releaseTicket();
         if (connection.isConnected()) {
             connection.disconnect(Component.literal("mock player left"));
             connection.handleDisconnection();
@@ -362,8 +411,8 @@ public final class MockPlayer {
     }
 
     /**
-     * One server tick of the fake network: tick the connection (which runs the packet listener
-     * and sends keep-alives), then drain everything the server wrote to the channel, answering
+     * One server tick of the fake network, skipped while the mock's chunk is not loaded: tick the connection (which
+     * runs the packet listener and sends keep-alives), then drain everything the server wrote to the channel, answering
      * each keep-alive as a real client would.
      */
     void tick() {
@@ -374,6 +423,27 @@ public final class MockPlayer {
         if (loaded) {
             confirmDimensionChange();
         }
+        // A player's tick reads its block (isInWall), which loads an unloaded chunk on the server thread and starves
+        // every test beside
+        // it (#1020). The mock holds a ticket on its chunk, which loads it on the worker threads, and does not tick
+        // until it has loaded.
+        if (!standsInLoadedChunk()) {
+            // The level's own entity tick never reaches a mock here: it ticks only entities of entity-ticking chunks,
+            // which are loaded.
+            if (++skippedTicks >= FarChunks.AWAIT_BUDGET_TICKS) {
+                // Not a throw: an exception in a tick event stops the server and every test with it. The mock goes, so
+                // its test fails on it.
+                LOGGER.error(
+                        "Mock player {} stood in the unloaded chunk {} of {} for {} ticks; load it with FarChunks.whenBlocksLoaded before teleporting the mock there",
+                        player.getGameProfile().name(),
+                        player.chunkPosition(),
+                        player.level().dimension().identifier(),
+                        skippedTicks);
+                leave();
+            }
+            return;
+        }
+        skippedTicks = 0;
         connection.tick();
         Object outbound;
         while ((outbound = channel.readOutbound()) != null) {
@@ -384,6 +454,9 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundCustomPayloadPacket packet) {
                     payloads.add(packet.payload());
+                }
+                if (outbound instanceof ClientboundContainerSetSlotPacket packet) {
+                    slotUpdates.add(packet.getItem().copy());
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());

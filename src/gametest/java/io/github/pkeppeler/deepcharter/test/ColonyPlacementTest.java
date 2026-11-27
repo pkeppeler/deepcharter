@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestRegions;
+import io.github.pkeppeler.deepcharter.test.support.TourShots;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
@@ -37,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.function.IntBinaryOperator;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -49,7 +51,6 @@ import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
@@ -96,6 +97,13 @@ public class ColonyPlacementTest {
     private static final double EYE = 1.62;
 
     private static final double REACH = 4.5;
+    /** The design tour's views of the colony from beyond the pad's edge, which only the tour checks. */
+    private static final Set<String> OFF_PAD_VIEWS = Set.of(
+            "colony-aerial-south",
+            "colony-aerial-northwest",
+            "colony-aerial-northeast",
+            "colony-margin-looking-back-south",
+            "colony-margin-from-the-east");
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void everyBlockOfEveryPieceOfTheLayoutStandsInTheWorld(GameTestHelper helper) {
@@ -241,12 +249,21 @@ public class ColonyPlacementTest {
     /** The display scale that makes the Host 10 blocks tall, from his soles to his raised hand. */
     private static final double HOST_SCALE = 3.4752;
 
-    @GameTest(maxTicks = 400)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aPlayerWalksFromTheContinuityOfficeToEveryPlaceTheColonyIsFor(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
-        loadPad(level, colony);
+        whenPadLoaded(
+                helper,
+                level,
+                colony,
+                () -> aPlayerWalksFromTheContinuityOfficeToEveryPlaceTheColonyIsForLoaded(helper, level, colony));
+    }
+
+    private static void aPlayerWalksFromTheContinuityOfficeToEveryPlaceTheColonyIsForLoaded(
+            GameTestHelper helper, ServerLevel level, ColonySite.Placed colony) {
+        MinecraftServer server = server(helper);
         BlockPos spawn = TestColony.anchor(colony, ColonyAnchor.CONTINUITY_OFFICE);
         Set<BlockPos> reach = reach(level, colony, spawn);
         if (!reach.contains(spawn)) {
@@ -383,12 +400,23 @@ public class ColonyPlacementTest {
         return !level.getBlockCollisions(null, box).iterator().hasNext();
     }
 
-    @GameTest
-    public void aPlayerFitsEveryDoorAndAPodEveryBayAndTheHangar(GameTestHelper helper) throws IOException {
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aPlayerFitsEveryDoorAndAPodEveryBayAndTheHangar(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
-        loadPad(level, colony);
+        whenPadLoaded(helper, level, colony, () -> {
+            try {
+                aPlayerFitsEveryDoorAndAPodEveryBayAndTheHangarLoaded(helper, level, colony);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+    }
+
+    private static void aPlayerFitsEveryDoorAndAPodEveryBayAndTheHangarLoaded(
+            GameTestHelper helper, ServerLevel level, ColonySite.Placed colony) throws IOException {
+        MinecraftServer server = server(helper);
         List<String> problems = new ArrayList<>();
         JsonObject layout;
         try (Reader reader =
@@ -479,12 +507,17 @@ public class ColonyPlacementTest {
         return true;
     }
 
-    @GameTest(maxTicks = 400)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void noBlockOfTheColonyFloatsOrHangsOverTheVoid(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
-        loadPad(level, colony);
+        whenPadLoaded(
+                helper, level, colony, () -> noBlockOfTheColonyFloatsOrHangsOverTheVoidLoaded(helper, level, colony));
+    }
+
+    private static void noBlockOfTheColonyFloatsOrHangsOverTheVoidLoaded(
+            GameTestHelper helper, ServerLevel level, ColonySite.Placed colony) {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         BlockPos centre = colony.center();
         List<String> problems = new ArrayList<>();
@@ -558,10 +591,23 @@ public class ColonyPlacementTest {
      * than a player climbs. Reads the pad's ground at its outermost columns (a solid block at the pad's ground) and the margins'
      * surface by the heightmap. The test world is flat: {@link #theMarginReachesTheNaturalGroundOfAHillAPitAndAMesa} has the relief.
      */
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void theBuiltMarginHasNoStepOverOneBlockAroundThePad(GameTestHelper helper) {
         ServerLevel level = server(helper).overworld();
         ColonySite.Placed colony = placed(helper);
+        BlockPos centre = colony.center();
+        int reach = ColonyTuning.DEFAULT.padSize() / 2 + ColonyTuning.DEFAULT.edgeMargin();
+        whenColumnsLoaded(
+                helper,
+                level,
+                centre.getX() - reach,
+                centre.getX() + reach - 1,
+                centre.getZ() - reach,
+                centre.getZ() + reach - 1,
+                () -> theBuiltMarginHasNoStep(helper, level, colony));
+    }
+
+    private static void theBuiltMarginHasNoStep(GameTestHelper helper, ServerLevel level, ColonySite.Placed colony) {
         BlockPos centre = colony.center();
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         int reach = half + ColonyTuning.DEFAULT.edgeMargin();
@@ -570,7 +616,7 @@ public class ColonyPlacementTest {
         // loaded (#393).
         int minChunkX = (centre.getX() - reach) >> 4;
         int minChunkZ = (centre.getZ() - reach) >> 4;
-        LevelChunk[][] chunks = loadChunks(
+        LevelChunk[][] chunks = loadedChunks(
                 level,
                 centre.getX() - reach,
                 centre.getX() + reach - 1,
@@ -736,10 +782,22 @@ public class ColonyPlacementTest {
      * What shows on the pad's rim and on the margin: the plain's own surface blocks and nothing else, the packed regolith and rock of
      * its layers scattered by the pad's edge and thinning outward.
      */
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void theMarginIsTheSurfacesBlocksWithRockAndPackedRegolithScatteredByThePad(GameTestHelper helper) {
         ServerLevel level = server(helper).overworld();
         ColonySite.Placed colony = placed(helper);
+        int pad = ColonyTuning.DEFAULT.padSize() / 2;
+        whenColumnsLoaded(
+                helper,
+                level,
+                colony.center().getX() - pad,
+                colony.center().getX() + pad - 1,
+                colony.center().getZ() - pad - ColonyTuning.DEFAULT.edgeMargin(),
+                colony.center().getZ() - pad - 1,
+                () -> theMarginIsScattered(helper, level, colony));
+    }
+
+    private static void theMarginIsScattered(GameTestHelper helper, ServerLevel level, ColonySite.Placed colony) {
         BlockPos centre = colony.center();
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         int margin = ColonyTuning.DEFAULT.edgeMargin();
@@ -752,7 +810,6 @@ public class ColonyPlacementTest {
             for (int dx = -half; dx < half; dx++) {
                 int x = centre.getX() + dx;
                 int z = centre.getZ() - half - dz;
-                level.getChunk(x >> 4, z >> 4);
                 BlockState top = level.getBlockState(
                         new BlockPos(x, level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1, z));
                 if (!top.is(SurfaceBlocks.REGOLITH)
@@ -781,11 +838,15 @@ public class ColonyPlacementTest {
     }
 
     /** The pad is the plain's own ground: regolith, with the rock of its layers scattered only on the rim. */
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void thePadCornersAreThePlainsRegolith(GameTestHelper helper) {
         ServerLevel level = server(helper).overworld();
         ColonySite.Placed colony = placed(helper);
-        loadPad(level, colony);
+        whenPadLoaded(helper, level, colony, () -> thePadCornersAreThePlainsRegolithLoaded(helper, level, colony));
+    }
+
+    private static void thePadCornersAreThePlainsRegolithLoaded(
+            GameTestHelper helper, ServerLevel level, ColonySite.Placed colony) {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         int rim = ColonyTuning.DEFAULT.rimWidth();
         BlockPos centre = colony.center();
@@ -801,6 +862,58 @@ public class ColonyPlacementTest {
         finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
     }
 
+    /**
+     * Every still the design tour takes of the colony from over the pad has its subject in sight (#1291). A view from
+     * beyond the pad's edge crosses natural ground, which this world does not share with the tour's fixed seed, so only
+     * the tour checks it: those are the {@link #OFF_PAD_VIEWS}, and a close-up that moves off the pad fails here.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void everyDesignTourViewFromOverThePadSeesItsSubject(GameTestHelper helper) {
+        ServerLevel level = server(helper).overworld();
+        ColonySite.Placed colony = placed(helper);
+        AABB pad = pad(colony);
+        List<TourShots.Shot> checked = new ArrayList<>();
+        Set<String> offPad = new TreeSet<>();
+        for (List<TourShots.Shot> shots : List.of(TourShots.overviews(colony), TourShots.closeUps(colony))) {
+            for (TourShots.Shot shot : shots) {
+                if (overThe(pad, shot.eye()) && overThe(pad, shot.target())) {
+                    checked.add(shot);
+                } else {
+                    offPad.add(shot.name());
+                }
+            }
+        }
+        // A subject is looked for up to its radius round the target, so the chunks reach that far past the pad.
+        int reach = (int) Math.ceil(checked.stream()
+                .mapToDouble(shot -> shot.subject().radius())
+                .max()
+                .orElse(0));
+        List<FarChunks.At> chunks = new ArrayList<>();
+        for (int chunkX = ((int) pad.minX - reach) >> 4; chunkX <= ((int) pad.maxX + reach) >> 4; chunkX++) {
+            for (int chunkZ = ((int) pad.minZ - reach) >> 4; chunkZ <= ((int) pad.maxZ + reach) >> 4; chunkZ++) {
+                chunks.add(new FarChunks.At(level, chunkX, chunkZ));
+            }
+        }
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> {
+            List<String> problems = new ArrayList<>();
+            if (!offPad.equals(OFF_PAD_VIEWS)) {
+                problems.add("the views off the pad are " + offPad + ", not " + OFF_PAD_VIEWS);
+            }
+            for (TourShots.Shot shot : checked) {
+                String problem = TourShots.problem(level, shot.eye(), shot.target(), shot.subject());
+                if (problem != null) {
+                    problems.add(shot.name() + ": " + problem);
+                }
+            }
+            finish(helper, problems);
+        });
+    }
+
+    /** Whether {@code point} is over the pad, at whatever height. */
+    private static boolean overThe(AABB pad, Vec3 point) {
+        return point.x >= pad.minX && point.x <= pad.maxX && point.z >= pad.minZ && point.z <= pad.maxZ;
+    }
+
     private static AABB pad(ColonySite.Placed colony) {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         BlockPos centre = colony.center();
@@ -813,20 +926,38 @@ public class ColonyPlacementTest {
                 centre.getZ() + half);
     }
 
-    /** Loads every chunk of the pad, so a height read there is not the world minimum. */
-    private static void loadPad(ServerLevel level, ColonySite.Placed colony) {
+    /** Runs {@code body} once every chunk of the pad is loaded, so a height read there is not the world minimum. */
+    private static void whenPadLoaded(
+            GameTestHelper helper, ServerLevel level, ColonySite.Placed colony, Runnable body) {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         BlockPos centre = colony.center();
-        loadChunks(
-                level, centre.getX() - half, centre.getX() + half - 1, centre.getZ() - half, centre.getZ() + half - 1);
+        whenColumnsLoaded(
+                helper,
+                level,
+                centre.getX() - half,
+                centre.getX() + half - 1,
+                centre.getZ() - half,
+                centre.getZ() + half - 1,
+                body);
     }
 
-    /** Loads the chunks over the columns {@code x1..x2}, {@code z1..z2}; indexed from the chunk of {@code x1}, {@code z1}. */
-    private static LevelChunk[][] loadChunks(ServerLevel level, int x1, int x2, int z1, int z2) {
+    /** Runs {@code body} once the chunks over the columns {@code x1..x2}, {@code z1..z2} are loaded. */
+    private static void whenColumnsLoaded(
+            GameTestHelper helper, ServerLevel level, int x1, int x2, int z1, int z2, Runnable body) {
+        FarChunks.whenBlocksLoaded(helper, FarChunks.overBlocks(level, x1, z1, x2, z2), body);
+    }
+
+    /**
+     * The chunks over the columns {@code x1..x2}, {@code z1..z2}, loaded already; indexed from the chunk of {@code x1},
+     * {@code z1}.
+     */
+    private static LevelChunk[][] loadedChunks(ServerLevel level, int x1, int x2, int z1, int z2) {
         LevelChunk[][] chunks = new LevelChunk[(x2 >> 4) - (x1 >> 4) + 1][(z2 >> 4) - (z1 >> 4) + 1];
         for (int i = 0; i < chunks.length; i++) {
             for (int j = 0; j < chunks[i].length; j++) {
-                chunks[i][j] = level.getChunk((x1 >> 4) + i, (z1 >> 4) + j);
+                chunks[i][j] = Objects.requireNonNull(
+                        level.getChunkSource().getChunkNow((x1 >> 4) + i, (z1 >> 4) + j),
+                        "the chunk was not waited for with whenColumnsLoaded");
             }
         }
         return chunks;
@@ -843,8 +974,7 @@ public class ColonyPlacementTest {
 
     private static void finish(GameTestHelper helper, List<String> problems) {
         if (!problems.isEmpty()) {
-            throw helper.assertionException(
-                    Component.literal(problems.size() + " problem(s):\n  " + String.join("\n  ", problems)));
+            throw failure(helper, "%s problem(s):\n  %s", problems.size(), String.join("\n  ", problems));
         }
         helper.succeed();
     }

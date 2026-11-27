@@ -6,6 +6,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.creature.DrifterAssets;
+import io.github.pkeppeler.deepcharter.creature.DrifterVariant;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -42,11 +44,13 @@ import org.jspecify.annotations.Nullable;
  */
 public class AssetCompletenessTest {
     /**
-     * Pods render GeckoLib models from their look files, with their textures under textures/entity/pod/ (see SkinAssetsTest), so they
-     * have no {@code textures/entity/<id>.png}. The thrown kit (#985) is drawn as the item it carries, each with its own item texture.
+     * Pods render GeckoLib models from their look files, with their textures under textures/entity/pod/ (see
+     * SkinAssetsTest), so they have no {@code textures/entity/<id>.png}. The thrown kit (#985) is drawn as the item it
+     * carries, each with its own item texture. A drifter has three forms, each with its own files, checked below.
      * Every other registered entity needs one.
      */
-    private static final Set<String> ENTITIES_DRAWN_FROM_LOOK_FILES = Set.of("pod", "prospector", "thrown_kit");
+    private static final Set<String> ENTITIES_DRAWN_FROM_LOOK_FILES =
+            Set.of("pod", "prospector", "thrown_kit", "drifter");
 
     private static final String CONNECTED = DeepCharter.MOD_ID + ":connected";
     private static final List<String> CONNECTED_TILES = List.of("alone", "horizontal", "vertical", "corner", "centre");
@@ -98,6 +102,13 @@ public class AssetCompletenessTest {
             if (!ENTITIES_DRAWN_FROM_LOOK_FILES.contains(id.getPath())) {
                 requireFile(problems, "entity " + id, "textures/entity/" + id.getPath() + ".png");
             }
+        }
+        for (DrifterVariant variant : DrifterVariant.values()) {
+            String owner = "drifter " + variant.id();
+            requireFile(problems, owner, DrifterAssets.texture(variant).getPath());
+            requireFile(problems, owner, DrifterAssets.glowmask(variant).getPath());
+            requireFile(problems, owner, DrifterAssets.modelFile(variant).getPath());
+            requireFile(problems, owner, DrifterAssets.animationFile(variant).getPath());
         }
         for (String path : ENTITIES_DRAWN_FROM_LOOK_FILES) {
             if (!BuiltInRegistries.ENTITY_TYPE.containsKey(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path))) {

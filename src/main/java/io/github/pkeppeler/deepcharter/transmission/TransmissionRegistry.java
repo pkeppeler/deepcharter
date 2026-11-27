@@ -2,13 +2,14 @@ package io.github.pkeppeler.deepcharter.transmission;
 
 import io.github.pkeppeler.deepcharter.charter.CharterEvents;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
+import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 
 /**
  * Registers the transmission payload and every hook that fires or delivers a transmission: login, founding, joining and leaving a charter
- * (delivery, replay and each member's place), and the zone and breach triggers. The saved data needs no registration.
+ * (delivery, replay and each member's place), the zone and breach triggers, and the events of {@link TransmissionTriggers}. The saved data needs no registration.
  */
 public final class TransmissionRegistry {
     private TransmissionRegistry() {}
@@ -21,8 +22,10 @@ public final class TransmissionRegistry {
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> Transmissions.stopped());
         ServerPlayConnectionEvents.JOIN.register(
                 (handler, sender, server) -> Transmissions.deliverOnLogin(server, handler.getPlayer()));
-        CharterEvents.FOUNDED.register(
-                (server, charter) -> Transmissions.replayTo(server, TransmissionData.get(server), charter.id()));
+        CharterEvents.FOUNDED.register(TransmissionTriggers::onFounded);
+        TerminalEvents.REPAIRED.register(
+                (server, type, charter, player) -> TransmissionTriggers.onRepaired(server, type, charter));
+        TerminalEvents.ACTED.register(TransmissionTriggers::onActed);
         CharterEvents.REVIVED.register((server, charter, director) ->
                 Transmissions.deliver(server, TransmissionData.get(server), charter.id()));
         CharterEvents.JOINED.register(

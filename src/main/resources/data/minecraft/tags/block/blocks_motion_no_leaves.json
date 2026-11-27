@@ -56,11 +56,22 @@
     "deepcharter:upgrade_terminal",
     "deepcharter:wall_lamp",
     "deepcharter:window_glass",
+    "deepcharter:wreck_phonograph",
     "deepcharter:packed_shale",
+    "deepcharter:hardpan",
+    "deepcharter:black_shale",
+    "deepcharter:lunch_pail",
     "deepcharter:packed_shale_rubble",
     "deepcharter:green_shale",
     "deepcharter:green_shale_rubble",
     "deepcharter:basalt_core",
-    "deepcharter:columnar_basalt"
+    "deepcharter:columnar_basalt",
+    "deepcharter:parasol_stem",
+    "deepcharter:parasol_ring",
+    "deepcharter:parasol_gills",
+    "deepcharter:parasol_cap",
+    "deepcharter:fungal_flare",
+    "deepcharter:spire",
+    "deepcharter:spire_base"
   ]
 }

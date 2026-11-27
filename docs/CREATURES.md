@@ -92,7 +92,7 @@ Moloch's: brass Company counting drones from the Boom. They ride the Conduit's c
 
 - **Sensed:** clicking; an echo as ore; a small amber eye.
 - **Pod:** one that trails a pod for about 30 seconds clamps to the cargo hatch and takes an ore as a "quality sample". The cutter bites it there.
-- **On foot:** takes an ore you carry. One blow breaks it.
+- **On foot:** takes an ore you carry. One blow breaks it. A light in hand keeps one off, but doesn't free a person it has already clamped.
 - **Act 3:** a Tally that sees an unauthorised pod calls the Recovery units. In act 3 the Conduit, your landmark all game, is watched.
 
 ### Layer 2: The Old Workings
@@ -108,7 +108,7 @@ Act 2 opens. The navigator seat is new, and this is the first real on-foot explo
 
 #### Drifters
 
-The Sleeper's: pod-sized glowing spore bladders that drift toward drill noise and footsteps.
+The Sleeper's: glowing spore creatures that drift toward drill noise and footsteps. Each placement draws one of three forms ([#1203](https://github.com/pkeppeler/deepcharter/issues/1203)): a **jellyfish** (a translucent bell round a cyan core, with long tendrils), a **spore sac** (a veined, bone-white puffball with gills underneath) or a **chain** (a string of small blue-white bulbs on glowing filaments). For now the form is the look only: every form has the same size and gas, and reads on sonar the same. [#1203](https://github.com/pkeppeler/deepcharter/issues/1203) stage 2 gives each form its own size and gas.
 
 The mechanics are built before the layer is ([#973](https://github.com/pkeppeler/deepcharter/issues/973), numbers and decisions in [mechanics.md](design/mechanics.md#drifters-and-the-alarm-973-a)); they key on the biome tag `deepcharter:fungal_hollows`, which #972 fills.
 

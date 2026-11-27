@@ -40,18 +40,18 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.gamerules.GameRules;
 
 /**
- * Server GameTests for #845: a charter knows the recipes its quest step asks for and the ones its members' items touch, the server
- * sends each player only their charter's, a player on no charter has their own, and they carry into a charter and back out of it.
- * Recipes used: the bucket and the diamond pickaxe, which share no item; the redstone and copper ingot recipes, which the scanner
- * step of chapter 1 asks for.
+ * Server GameTests for #845: a charter knows the recipes its quest step asks for and the ones its members' items touch,
+ * the server sends each player only their charter's, a player on no charter has their own, and they carry into a
+ * charter and back out of it. Recipes used: the bucket and the chest, which share no item (the world has no diamond, so
+ * the diamond pickaxe is not loaded, ADR 0093); the scanner unit recipe, which the scanner step of chapter 1 asks for
+ * (it names the scanner unit, not its ingredients).
  */
 public class KnownRecipesTest {
     private static final Identifier BUCKET = Identifier.withDefaultNamespace("bucket");
-    private static final Identifier DIAMOND_PICKAXE = Identifier.withDefaultNamespace("diamond_pickaxe");
+    private static final Identifier CHEST = Identifier.withDefaultNamespace("chest");
     private static final Identifier STONE_PICKAXE = Identifier.withDefaultNamespace("stone_pickaxe");
     private static final Identifier CRAFTING_TABLE = Identifier.withDefaultNamespace("crafting_table");
-    private static final Identifier REDSTONE = Identifier.withDefaultNamespace("redstone");
-    private static final Identifier COPPER_INGOT = Identifier.withDefaultNamespace("copper_ingot");
+    private static final Identifier SCANNER_UNIT = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "scanner_unit");
     private static final Identifier SCANNER_STEP =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/craft_scanner");
 
@@ -133,7 +133,7 @@ public class KnownRecipesTest {
         helper.succeedWhen(() -> {
             expectKnows(helper, server, director, BUCKET, true);
             expectKnows(helper, server, member, BUCKET, true);
-            expectKnows(helper, server, member, DIAMOND_PICKAXE, false);
+            expectKnows(helper, server, member, CHEST, false);
         });
     }
 
@@ -143,10 +143,10 @@ public class KnownRecipesTest {
         ServerPlayer director = MockPlayers.join(helper, "Director").player();
         ServerPlayer member = MockPlayers.join(helper, "Member").player();
         join(helper, server, found(helper, server, director), director, member);
-        member.getInventory().add(new ItemStack(Items.DIAMOND));
+        member.getInventory().add(new ItemStack(Items.OAK_PLANKS));
 
         helper.succeedWhen(() -> {
-            expectKnows(helper, server, director, DIAMOND_PICKAXE, true);
+            expectKnows(helper, server, director, CHEST, true);
             expectKnows(helper, server, director, BUCKET, false);
         });
     }
@@ -158,7 +158,7 @@ public class KnownRecipesTest {
         ServerPlayer behind = MockPlayers.join(helper, "Behind").player();
         CharterId aheadId = found(helper, server, ahead);
         found(helper, server, behind);
-        // The scanner step asks for redstone and copper ingots; it is current once every step before it is done.
+        // The scanner step asks for the scanner unit; it is current once every step before it is done.
         for (Identifier directive : HandbookChapters.directivesOrEmpty(server)) {
             if (directive.equals(SCANNER_STEP)) {
                 break;
@@ -167,10 +167,8 @@ public class KnownRecipesTest {
         }
 
         helper.succeedWhen(() -> {
-            expectKnows(helper, server, ahead, REDSTONE, true);
-            expectKnows(helper, server, ahead, COPPER_INGOT, true);
-            expectKnows(helper, server, behind, REDSTONE, false);
-            expectKnows(helper, server, behind, COPPER_INGOT, false);
+            expectKnows(helper, server, ahead, SCANNER_UNIT, true);
+            expectKnows(helper, server, behind, SCANNER_UNIT, false);
         });
     }
 
@@ -272,15 +270,15 @@ public class KnownRecipesTest {
         found(helper, server, first.player());
         found(helper, server, second.player());
         first.player().getInventory().add(new ItemStack(Items.BUCKET));
-        helper.runAfterDelay(40, () -> first.player().getInventory().add(new ItemStack(Items.DIAMOND)));
+        helper.runAfterDelay(40, () -> first.player().getInventory().add(new ItemStack(Items.OAK_PLANKS)));
 
         // The second batch arrives as an update to the book the client already holds.
         helper.succeedWhen(() -> {
             expectHeld(helper, first, BUCKET, true);
-            expectHeld(helper, first, DIAMOND_PICKAXE, true);
-            expectInBook(helper, first.player(), DIAMOND_PICKAXE, true);
+            expectHeld(helper, first, CHEST, true);
+            expectInBook(helper, first.player(), CHEST, true);
             expectHeld(helper, second, BUCKET, false);
-            expectHeld(helper, second, DIAMOND_PICKAXE, false);
+            expectHeld(helper, second, CHEST, false);
             expectHeld(helper, loner, BUCKET, false);
             if (first.recipeToasts() != 0) {
                 throw helper.assertionException(
@@ -323,16 +321,16 @@ public class KnownRecipesTest {
         MockPlayer director = MockPlayers.join(helper, "Director");
         MockPlayer joiner = MockPlayers.join(helper, "Joiner");
         CharterId id = found(helper, server, director.player());
-        KnownRecipesData.get(server).addToCharter(id, Set.of(DIAMOND_PICKAXE));
+        KnownRecipesData.get(server).addToCharter(id, Set.of(CHEST));
         KnownRecipesData.get(server).addToPlayer(joiner.player().getUUID(), Set.of(BUCKET));
 
         join(helper, server, id, director.player(), joiner.player());
 
-        if (!KnownRecipesData.get(server).charter(id).equals(Set.of(DIAMOND_PICKAXE, BUCKET))) {
+        if (!KnownRecipesData.get(server).charter(id).equals(Set.of(CHEST, BUCKET))) {
             throw helper.assertionException("the charter should hold its own recipes and the joiner's");
         }
         helper.succeedWhen(() -> {
-            expectHeld(helper, joiner, DIAMOND_PICKAXE, true);
+            expectHeld(helper, joiner, CHEST, true);
             expectHeld(helper, joiner, BUCKET, true);
             expectHeld(helper, director, BUCKET, true);
         });
@@ -343,17 +341,17 @@ public class KnownRecipesTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer director = MockPlayers.join(helper, "Director");
         CharterId id = found(helper, server, director.player());
-        KnownRecipesData.get(server).addToCharter(id, Set.of(DIAMOND_PICKAXE));
+        KnownRecipesData.get(server).addToCharter(id, Set.of(CHEST));
         expectDone(helper, Charters.leave(server, director.player().getUUID()), "the last person leaving");
         KnownRecipesData.get(server).addToPlayer(director.player().getUUID(), Set.of(BUCKET));
 
         expectDone(helper, Charters.revive(server, director.player().getUUID(), id), "reviving");
 
-        if (!KnownRecipesData.get(server).charter(id).equals(Set.of(DIAMOND_PICKAXE, BUCKET))) {
+        if (!KnownRecipesData.get(server).charter(id).equals(Set.of(CHEST, BUCKET))) {
             throw helper.assertionException("the dormant charter keeps its recipes and takes the reviver's");
         }
         helper.succeedWhen(() -> {
-            expectHeld(helper, director, DIAMOND_PICKAXE, true);
+            expectHeld(helper, director, CHEST, true);
             expectHeld(helper, director, BUCKET, true);
         });
     }
@@ -364,19 +362,19 @@ public class KnownRecipesTest {
         MockPlayer director = MockPlayers.join(helper, "Director");
         MockPlayer member = MockPlayers.join(helper, "Member");
         CharterId id = found(helper, server, director.player());
-        KnownRecipesData.get(server).addToCharter(id, Set.of(DIAMOND_PICKAXE));
+        KnownRecipesData.get(server).addToCharter(id, Set.of(CHEST));
         KnownRecipesData.get(server).addToPlayer(member.player().getUUID(), Set.of(BUCKET));
         join(helper, server, id, director.player(), member.player());
 
         expectDone(helper, Charters.leave(server, member.player().getUUID()), "leaving");
 
         expectKnows(helper, server, member.player(), BUCKET, true);
-        expectKnows(helper, server, member.player(), DIAMOND_PICKAXE, false);
-        expectInBook(helper, member.player(), DIAMOND_PICKAXE, false);
+        expectKnows(helper, server, member.player(), CHEST, false);
+        expectInBook(helper, member.player(), CHEST, false);
         helper.succeedWhen(() -> {
             expectHeld(helper, member, BUCKET, true);
-            expectHeld(helper, member, DIAMOND_PICKAXE, false);
-            expectHeld(helper, director, DIAMOND_PICKAXE, true);
+            expectHeld(helper, member, CHEST, false);
+            expectHeld(helper, director, CHEST, true);
         });
     }
 
@@ -407,8 +405,8 @@ public class KnownRecipesTest {
         player.awardRecipes(List.of(stonePickaxe));
 
         expectInBook(helper, player, STONE_PICKAXE, false);
-        // A recipe saved in the player's own data is not sent either: the book matches what is known when it is first
-        // sent.
+        // A recipe saved in the player's own data is not sent either: the book matches what is known when it is
+        // first sent.
         player.getRecipeBook().add(key(STONE_PICKAXE));
         player.getRecipeBook().sendInitialRecipeBook(player);
         expectInBook(helper, player, STONE_PICKAXE, false);
@@ -467,7 +465,7 @@ public class KnownRecipesTest {
         CharterId charter = CharterId.random();
         KnownRecipesData data = new KnownRecipesData();
         data.addToPlayer(player, Set.of(BUCKET));
-        data.addToCharter(charter, Set.of(DIAMOND_PICKAXE, BUCKET));
+        data.addToCharter(charter, Set.of(CHEST, BUCKET));
 
         Tag saved = KnownRecipesData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
         if (!(saved instanceof CompoundTag compound) || compound.getIntOr("version", -1) != KnownRecipesData.VERSION) {
@@ -477,7 +475,7 @@ public class KnownRecipesTest {
         KnownRecipesData loaded =
                 KnownRecipesData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
         if (!loaded.player(player).equals(Set.of(BUCKET))
-                || !loaded.charter(charter).equals(Set.of(DIAMOND_PICKAXE, BUCKET))) {
+                || !loaded.charter(charter).equals(Set.of(CHEST, BUCKET))) {
             throw helper.assertionException("the saved recipes should load as they were saved");
         }
         helper.succeed();

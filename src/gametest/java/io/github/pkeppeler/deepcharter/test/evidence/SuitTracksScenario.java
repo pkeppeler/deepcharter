@@ -15,14 +15,11 @@ import io.github.pkeppeler.deepcharter.test.support.ScreenScroll;
 import io.github.pkeppeler.deepcharter.test.support.SuitScenes;
 import io.github.pkeppeler.deepcharter.test.support.SuitScenes.Pocket;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
-import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
-import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,7 +34,6 @@ public class SuitTracksScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
     private static final int HOLD_FRAMES = 8;
     private static final int TYPING_FRAMES = 45;
-    private static final Identifier FIRST_BONUS = Identifier.fromNamespaceAndPath("deepcharter", "t05");
     private static final int OUTSIDE_X = 8000;
     private static final float FACE_NORTH = 180f;
     private static final float LOOK_SLIGHTLY_DOWN = 8f;
@@ -57,13 +53,10 @@ public class SuitTracksScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
-            // The layer 2 breach pays the Company's first bonus when the scenario drops into the unbuilt depth. It is
-            // marked fired now, so
-            // the balance the stills show stays the one the purchases leave.
             singleplayer
                     .getServer()
-                    .runOnServer(server -> TransmissionData.get(server)
-                            .fire(scene.charter().id(), TransmissionCatalog.require(FIRST_BONUS)));
+                    .runOnServer(
+                            server -> markBonusesFired(server, scene.charter().id()));
             ClientWait.until(
                     context,
                     "the charter's balance",
@@ -91,8 +84,8 @@ public class SuitTracksScenario extends EvidenceScenario {
             screenshot(context, "suit-tracks-2-heat-tier-1-bought");
             context.setScreen(() -> null);
 
-            // A stock suit in the unbuilt depth: 180 suit-seconds at 5.5 a second is 0:33, short 5 on heat and
-            // pressure.
+            // A stock suit in the unbuilt depth: 180 suit-seconds at 5.5 a second is 0:33, short 5 on heat
+            // and pressure.
             singleplayer.getServer().runOnServer(server -> {
                 first(server).setPermanentlyInvulnerable(true);
                 SuitScenes.setTracks(first(server), SuitTracks.STOCK);

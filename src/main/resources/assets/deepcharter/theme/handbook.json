@@ -40,8 +40,6 @@
   "stepMaxLines": 2,
   "mapPad": 10,
   "aheadGap": 4,
-  "aheadLabelGap": 10,
-  "chapterLinkInset": 12,
   "arrowHeadSize": 2,
   "dashOn": 2,
   "dashOff": 1,
@@ -72,6 +70,8 @@
   "cardBottomPad": 4,
   "itemIconSize": 16,
   "itemCountGap": 2,
+  "anyCueGap": 3,
+  "cycleTicks": 20,
   "itemCountTop": 5,
   "stampLeft": 120,
   "stampTop": 8,
@@ -83,8 +83,10 @@
   "toastGap": 2,
   "toastStaleMillis": 500,
   "toastWaitMillis": 30000,
+  "slipWidth": 140,
+  "slipHeight": 26,
+  "slipMillis": 4000,
   "barsNoteGap": 3,
-  "chapterLinkTop": 3,
   "dropLinkPercent": 33,
   "stampXPercent": 75,
   "stampYOffset": 7,
@@ -114,5 +116,7 @@
   "pencilLineGap": 1,
   "pencilTipGap": 4,
   "pencilStartGap": 1,
-  "pencilMarkGap": 2
+  "pencilMarkGap": 2,
+  "clickCueSize": 3,
+  "clickCueInset": 3
 }

@@ -206,6 +206,66 @@
               }
             }
           ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "volta_counting"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "volta_hamlet"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "sullivan_toast"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "edison_around_the_world"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "lost_chord"
+              }
+            }
+          ]
         }
       ]
     }

@@ -24,7 +24,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * The popup of a finished step: a slip of handbook paper with a red head rule, "Directive complete" and the step's own line. The line
  * wraps to the slip's width and the slip is as tall as its lines. It slides in from the left edge and out again, and is the only trace
- * on screen; nothing stays pinned.
+ * on screen; nothing stays pinned. The slip of a new spec sheet ({@link #specSlip}) is the same paper under another
+ * head, so it is placed and kept clear of the HUD, the vanilla toasts and the other slips the same way.
  *
  * <p>It never covers the HUD (#1030). It sits in the left column, at the highest place where it is clear of every rectangle that
  * {@link HudKeepClear} lists and of the slips above it; it moves down when a part of the HUD grows under it. Where the left column has
@@ -36,6 +37,10 @@ public final class StepToast implements Toast {
     private static final List<StepToast> PLACED = new ArrayList<>();
 
     private final List<String> lines;
+    private final Component head;
+    private final int width;
+    private final int minHeight;
+    private final int millis;
     private Visibility visibility = Visibility.HIDE;
     /** Where the slip was put when {@link #placedAtMillis} says; null when it found no clear place. */
     private HudKeepClear.@Nullable Rect placement;
@@ -47,17 +52,47 @@ public final class StepToast implements Toast {
     private long waitedMillis;
     private boolean gaveUp;
 
-    private StepToast(List<String> lines) {
+    private StepToast(List<String> lines, Component head, int width, int minHeight, int millis) {
         this.lines = lines;
+        this.head = head;
+        this.width = width;
+        this.minHeight = minHeight;
+        this.millis = millis;
     }
 
     /** The popup of a step whose line is {@code text}. Client thread. */
     public static StepToast of(Component text) {
-        Font font = Minecraft.getInstance().font;
+        QuestMapTuning q = QuestMapTuning.current();
         return new StepToast(
-                font.getSplitter().splitLines(Component.literal(text.getString()), lineWidth(), Style.EMPTY).stream()
-                        .map(FormattedText::getString)
-                        .toList());
+                wrap(text, q.toastWidth()),
+                Component.translatable("deepcharter.handbook.quest.toast"),
+                q.toastWidth(),
+                q.toastHeight(),
+                q.toastMillis());
+    }
+
+    /**
+     * The slip of a spec sheet just offered: the same paper, placement and clearing as a step popup, smaller and
+     * shorter-lived, with the item's name and the key that opens its sheet. Client thread.
+     */
+    public static StepToast specSlip(Component item, Component key) {
+        QuestMapTuning q = QuestMapTuning.current();
+        return new StepToast(
+                wrap(Component.translatable("deepcharter.handbook.spec_slip.line", item, key), q.slipWidth()),
+                Component.translatable("deepcharter.handbook.spec_slip.head"),
+                q.slipWidth(),
+                q.slipHeight(),
+                q.slipMillis());
+    }
+
+    private static List<String> wrap(Component text, int width) {
+        Font font = Minecraft.getInstance().font;
+        return font
+                .getSplitter()
+                .splitLines(Component.literal(text.getString()), lineWidth(width), Style.EMPTY)
+                .stream()
+                .map(FormattedText::getString)
+                .toList();
     }
 
     private static int textLeft() {
@@ -65,9 +100,8 @@ public final class StepToast implements Toast {
                 + QuestMapTuning.current().toastInset();
     }
 
-    private static int lineWidth() {
-        QuestMapTuning q = QuestMapTuning.current();
-        return q.toastWidth() - textLeft() - q.toastInset();
+    private static int lineWidth(int width) {
+        return width - textLeft() - QuestMapTuning.current().toastInset();
     }
 
     private static int textTop() {
@@ -156,7 +190,7 @@ public final class StepToast implements Toast {
                     waitedMillis,
                     String.join(" ", lines));
         }
-        visibility = fullyVisibleForMs - waitedMillis < q.toastMillis() * manager.getNotificationDisplayTimeMultiplier()
+        visibility = fullyVisibleForMs - waitedMillis < millis * manager.getNotificationDisplayTimeMultiplier()
                         && waitedMillis < q.toastWaitMillis()
                 ? Visibility.SHOW
                 : Visibility.HIDE;
@@ -199,7 +233,7 @@ public final class StepToast implements Toast {
 
     @Override
     public int width() {
-        return QuestMapTuning.current().toastWidth();
+        return width;
     }
 
     /** At least the tuned height; taller when the lines and the space under them need it. */
@@ -207,7 +241,7 @@ public final class StepToast implements Toast {
     public int height() {
         QuestMapTuning q = QuestMapTuning.current();
         int lineHeight = Minecraft.getInstance().font.lineHeight + 1;
-        return Math.max(q.toastHeight(), textTop() + lines.size() * lineHeight - 1 + q.cardBottomPad());
+        return Math.max(minHeight, textTop() + lines.size() * lineHeight - 1 + q.cardBottomPad());
     }
 
     @Override
@@ -230,7 +264,7 @@ public final class StepToast implements Toast {
         int left = textLeft();
         graphics.text(
                 font,
-                PaperDraw.ink(Component.translatable("deepcharter.handbook.quest.toast"), t.faintInkColor()),
+                PaperDraw.ink(head, t.faintInkColor()),
                 left,
                 q.cardHeadTop(),
                 Colors.opaque(t.faintInkColor()),

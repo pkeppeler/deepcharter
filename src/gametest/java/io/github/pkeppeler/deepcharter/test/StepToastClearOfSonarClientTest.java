@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +63,13 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
             two.server().runOnServer(server -> SonarHudClientTest.buildSite(server.overworld(), two));
             ClientWait.chunksAround(
                     context, SonarHudClientTest.X, SonarHudClientTest.Z, SonarHudClientTest.SITE_RADIUS);
+            ClientWait.lightSettled(
+                    context,
+                    two.server(),
+                    TestLayers.SURFACE,
+                    SonarHudClientTest.X,
+                    SonarHudClientTest.Z,
+                    SonarHudClientTest.SITE_RADIUS);
             int podId = two.server().computeOnServer(server -> SonarHudClientTest.board(server.overworld(), two));
             context.runOnClient(client -> client.options.guiScale().set(GUI_SCALE));
             EvidencePins.lightFlickerOff = true;
@@ -190,7 +198,7 @@ public class StepToastClearOfSonarClientTest implements FabricClientGameTest {
     }
 
     /** A plain toast as vanilla's are: the default size and place, top right, and shown until cleared. */
-    private static final class SlotToast implements Toast {
+    static final class SlotToast implements Toast {
         @Override
         public Visibility getWantedVisibility() {
             return Visibility.SHOW;

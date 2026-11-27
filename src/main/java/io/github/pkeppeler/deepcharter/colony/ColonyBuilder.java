@@ -13,10 +13,15 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkLevel;
+import net.minecraft.server.level.FullChunkStatus;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.Ticket;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -48,6 +53,12 @@ import org.jspecify.annotations.Nullable;
 public final class ColonyBuilder {
     /** A block set without neighbour updates. */
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+
+    /**
+     * What fills the gap under the pad down to the ground: a block a player can dig out, so its drop is obtainable (ADR
+     * 0093).
+     */
+    public static final Block FILL = Blocks.DIRT;
 
     /** How many blocks under the surface the packed regolith goes before the rock. */
     private static final int LAYER_PACKED = 2;
@@ -100,8 +111,8 @@ public final class ColonyBuilder {
 
     /** Chooses the pad and records it, before any block is set. */
     private static ColonySite.Placed begin(MinecraftServer server, ServerLevel overworld, ColonySite site) {
-        // The server's own answer is the default until the first tick; the saved world data is the spawn the world
-        // chose.
+        // The server's own answer is the default until the first tick; the saved world data is the spawn the
+        // world chose.
         LevelData.RespawnData spawn = server.getWorldData().overworldData().getRespawnData();
         BlockPos wanted = new BlockPos(spawn.pos().getX(), 0, spawn.pos().getZ());
         BlockPos centre = findDryGround(overworld, wanted).orElseGet(() -> {
@@ -169,6 +180,21 @@ public final class ColonyBuilder {
 
     private static void loadPadChunks(ServerLevel level, BlockPos centre) {
         forEachPadChunk(level, centre, chunk -> {});
+    }
+
+    /**
+     * Loads every chunk the box from {@code minX}, {@code minZ} to {@code maxX}, {@code maxZ} touches (block
+     * coordinates, inclusive). Each gets the ticket {@code getChunk} would give it before the first is waited for, so
+     * the worker threads generate them side by side, where {@code getChunk} alone generates one at a time while the
+     * server thread waits (#1297). On the server thread, {@code getChunkFuture} waits for its chunk too.
+     */
+    private static void loadChunks(ServerLevel level, int minX, int minZ, int maxX, int maxZ) {
+        ChunkPos min = new ChunkPos(minX >> 4, minZ >> 4);
+        ChunkPos max = new ChunkPos(maxX >> 4, maxZ >> 4);
+        ChunkPos.rangeClosed(min, max)
+                .forEach(chunk -> level.getChunkSource()
+                        .addTicket(new Ticket(TicketType.UNKNOWN, ChunkLevel.byStatus(FullChunkStatus.FULL)), chunk));
+        ChunkPos.rangeClosed(min, max).forEach(chunk -> level.getChunk(chunk.x(), chunk.z()));
     }
 
     private static void forEachPadChunk(ServerLevel level, BlockPos centre, Consumer<LevelChunk> action) {
@@ -257,12 +283,16 @@ public final class ColonyBuilder {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         int minX = centre.getX() - half;
         int minZ = centre.getZ() - half;
+        // Every grade reads the least margin, so it is loaded early; the final grid's box below covers the rest.
+        int least = ColonyTuning.DEFAULT.edgeMargin();
+        loadChunks(level, minX - least, minZ - least, minX + 2 * half - 1 + least, minZ + 2 * half - 1 + least);
         ColonyEdge.Margins margins = ColonyEdge.margins(
                 centre.getY(), minX, minZ, minX + 2 * half - 1, minZ + 2 * half - 1, this::naturalGround);
         int originX = minX - margins.west().width();
         int originZ = minZ - margins.north().width();
         int sizeX = margins.sizeX();
         int sizeZ = margins.sizeZ();
+        loadChunks(level, originX - 1, originZ - 1, originX + sizeX, originZ + sizeZ);
         int[][] natural = new int[sizeX][sizeZ];
         for (int i = 0; i < sizeX; i++) {
             for (int j = 0; j < sizeZ; j++) {
@@ -450,7 +480,7 @@ public final class ColonyBuilder {
                                 ? scatter(x, z, 0, SurfaceBlocks.REGOLITH.defaultBlockState())
                                 : SurfaceBlocks.REGOLITH.defaultBlockState());
                 for (int y = ground - 1; y >= bottom && !isGround(level.getBlockState(pos.set(x, y, z))); y--) {
-                    set(pos, Blocks.DIRT.defaultBlockState());
+                    set(pos, FILL.defaultBlockState());
                 }
             }
         }

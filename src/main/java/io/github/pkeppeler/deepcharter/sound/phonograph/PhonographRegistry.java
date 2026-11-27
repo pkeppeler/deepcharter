@@ -18,7 +18,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
 /**
- * Registers the phonograph, the colony's phonograph, the wax cylinder and the component that names its recording. The colony's is the
+ * Registers the phonograph, the colony's phonograph, the wreck's phonograph, the wax cylinder and the component that names its recording. The colony's is the
  * same block as the player's, as Company property: unbreakable like the rest of the colony's blocks, with no item and no drop.
  */
 public final class PhonographRegistry {
@@ -37,15 +37,13 @@ public final class PhonographRegistry {
             key -> new Item(new Item.Properties().setId(key).stacksTo(1).component(RECORDING, Recording.values()[0])));
 
     /** The phonograph a player crafts and carries: it holds one cylinder at a time. */
-    public static final Block PHONOGRAPH = registerBlock(
-            "phonograph",
-            key -> new PhonographBlock(
-                    BlockBehaviour.Properties.of()
-                            .setId(key)
-                            .strength(1.0F)
-                            .sound(SoundType.WOOD)
-                            .noOcclusion(),
-                    false));
+    public static final Block PHONOGRAPH = registerBlock(key -> new PhonographBlock(
+            BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(1.0F)
+                    .sound(SoundType.WOOD)
+                    .noOcclusion(),
+            false));
 
     /**
      * The colony's phonograph, on the counter of the Lamp and Pick: Company property that holds the rack of the colony's cylinders, which
@@ -67,6 +65,24 @@ public final class PhonographRegistry {
             id("phonograph"),
             new BlockEntityType<>(PhonographBlockEntity::new, Set.of(PHONOGRAPH, COLONY_PHONOGRAPH)));
 
+    /**
+     * The cabin phonograph of a wrecked pod (#861): the colony's kind of phonograph, Company-grade unbreakable, with no item and no loot,
+     * but it holds no cylinder and plays one song of its own, for a player who comes close.
+     */
+    public static final Block WRECK_PHONOGRAPH = register(
+            "wreck_phonograph",
+            key -> new WreckPhonographBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(-1.0F, Blocks.BEDROCK.getExplosionResistance())
+                    .sound(SoundType.WOOD)
+                    .noOcclusion()
+                    .noLootTable()));
+
+    public static final BlockEntityType<WreckPhonographBlockEntity> WRECK_BLOCK_ENTITY = Registry.register(
+            BuiltInRegistries.BLOCK_ENTITY_TYPE,
+            id("wreck_phonograph"),
+            new BlockEntityType<>(WreckPhonographBlockEntity::new, Set.of(WRECK_PHONOGRAPH)));
+
     private PhonographRegistry() {}
 
     /** Loads this class, which registers everything above. */
@@ -86,8 +102,9 @@ public final class PhonographRegistry {
         return Registry.register(BuiltInRegistries.BLOCK, key, factory.apply(key));
     }
 
-    /** A block and its item. */
-    private static Block registerBlock(String path, Function<ResourceKey<Block>, Block> factory) {
+    /** The phonograph block and its item. */
+    private static Block registerBlock(Function<ResourceKey<Block>, Block> factory) {
+        String path = "phonograph";
         Block block = register(path, factory);
         registerItem(
                 path,

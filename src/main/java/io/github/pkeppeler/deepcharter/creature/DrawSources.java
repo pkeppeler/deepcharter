@@ -14,8 +14,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * What draws creatures, or keeps them off, that a person puts in the world for a while (#985): the one place the thrown kit speaks to creature code,
- * so a creature that arrives later reads this and a new thrown item needs no change in the creature.
+ * What draws creatures, or keeps them off, that a person puts in the world for a while (#985): the one place the thrown
+ * kit, and the tether winch's noise (#1027), speak to creature code, so a creature that arrives later reads this and a
+ * new thrown item needs no change in the creature.
  *
  * <ul>
  *   <li>A <b>flare</b> lights the dark within its reach. The Retained are drawn to the dark ({@link LamplessFigure#draws}), so a pod within a burning
