@@ -415,6 +415,9 @@ object GametestScan {
 	/** A class with no entry in client-test-weights.txt counts as this many seconds, so a new class lands in a shard without anyone editing the file. */
 	const val DEFAULT_CLIENT_WEIGHT = 10
 
+	/** An evidence scenario (a name ending in Scenario) does nothing outside tools/record-evidence.sh, so it counts as this many seconds unless the file lists it. */
+	const val SCENARIO_CLIENT_WEIGHT = 1
+
 	/** The same for server-test-weights.txt: about the mean of the listed classes. */
 	const val DEFAULT_SERVER_WEIGHT = 6
 
@@ -433,7 +436,8 @@ object GametestScan {
 		if (index < 1 || index > count) {
 			throw GradleException("$property is '$shard', expected i/n with 1 <= i <= n, like 2/3")
 		}
-		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)] ?: defaultWeight
+		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)]
+			?: if (name.endsWith("Scenario")) SCENARIO_CLIENT_WEIGHT else defaultWeight
 		fun weight(unit: List<String>) = unit.sumOf { weight(it) }
 		val loads = IntArray(count)
 		val mine = mutableListOf<String>()
