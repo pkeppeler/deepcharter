@@ -301,6 +301,13 @@ public class ShapedChargeTest {
                 },
                 pod -> {
                     guard[0] = PodCharge.wreckingHull(pod, TUNING, depth);
+                    if (guard[0] <= TUNING.chargeDamage()) {
+                        throw failure(
+                                helper,
+                                "the %d row drop should cost hull over the cushion, the guard is only %.2f",
+                                depth,
+                                guard[0]);
+                    }
                     ChargeUse.refuseAtGuardThenClearIt(helper, pod, Consumable.SHAPED_CHARGE, guard[0]);
                 },
                 pod -> {},
