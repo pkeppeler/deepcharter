@@ -109,7 +109,7 @@ public class RockTintTest {
     public void aRockOutsideItsRowsOrABlockThatIsNotStrataRockKeepsItsColour(GameTestHelper helper) {
         expect(
                 helper,
-                RockTint.of(state(LayerBlocks.BLACK_SHALE), LAYER.maxY()) == RockTint.home(LayerBlocks.BLACK_SHALE),
+                RockTint.of(state(LayerBlocks.BLACK_SHALE), LAYER.maxY() + 1) == RockTint.home(LayerBlocks.BLACK_SHALE),
                 "black shale above layer 1 is not its own colour");
         expect(
                 helper,

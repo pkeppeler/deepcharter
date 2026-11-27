@@ -545,7 +545,9 @@ public class FungalHollowsTest {
     }
 
     private static boolean isCandidate(BlockState state) {
+        // The green shale interbedded with the core in layer 3's top rows (#1551) is rock the fill decided too.
         return state.is(LayerBlocks.BASALT_CORE)
+                || state.is(LayerBlocks.GREEN_SHALE)
                 || state.is(LayerBlocks.COLUMNAR_BASALT)
                 || OreRegistry.typeOf(state.getBlock()).isPresent()
                 || state.is(HazardBlocks.COMPANY_ROCK)
