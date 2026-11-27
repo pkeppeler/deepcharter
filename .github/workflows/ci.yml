@@ -242,8 +242,8 @@ jobs:
           tools/shellcheck.sh
 
   # The gate checks on fixtures (gate_checks.py): hundreds of fixture trees through one Gradle run, which needs the compiled build like
-  # the shards do. Two jobs, the parts 8 and 9 of the tool tests (artifacts tool-main-8 and -9): the two checks that scan the real tree
-  # for each shard count, and every other check. `tool-tests` below waits for them with the others.
+  # the shards do. Three jobs, the parts 8 to 10 of the tool tests (artifacts tool-main-8 to -10): the two checks that scan the real tree
+  # for each shard count, one job each (4:30 together), and every other check (1:30). `tool-tests` below waits for them with the others.
   tool-gates:
     name: tool-tests-gates ${{ matrix.part }}
     needs: compile
@@ -254,8 +254,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { part: 8, checks: "server_shard client_filter" }
-          - { part: 9, checks: "--except server_shard client_filter" }
+          - { part: 8, checks: "server_shard" }
+          - { part: 9, checks: "client_filter" }
+          - { part: 10, checks: "--except server_shard client_filter" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -301,9 +302,10 @@ jobs:
     steps:
       - env:
           PARTS: ${{ needs.tool-part.result }}
+          GATES: ${{ needs.tool-gates.result }}
         run: |
-          if [ "$PARTS" != success ]; then
-            echo "::error::The tool-test parts finished as '$PARTS', not success"
+          if [ "$PARTS" != success ] || [ "$GATES" != success ]; then
+            echo "::error::The tool-test parts finished as '$PARTS' and the gate checks as '$GATES', not both success"
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -317,6 +319,6 @@ jobs:
           pattern: tool-main-*
           merge-multiple: true
           path: ${{ runner.temp }}/shard-main
-      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" 9
+      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" 10
         env:
           SHARD_KIND: tool

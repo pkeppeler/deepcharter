@@ -38,7 +38,7 @@ merge_pr=${MERGE_PR:-$root/tools/merge-pr.sh}
 lock=${MERGE_QUEUE_LOCK:-$HOME/.cache/deepcharter/merge-queue.lock}
 ci_poll=${MERGE_QUEUE_CI_POLL:-20}
 # Must stay above the longest CI chain: the compile job (5 minutes), a build shard or build-checks (5) and the build aggregate (5), or
-# the changes job (5), the client compile job (5), the client shards in waves of max-parallel (30 shards at 10: 3 waves of 5) and the
+# the changes job (5), the client compile job (5), the client shards in waves of max-parallel (29 shards at 10: 3 waves of 5) and the
 # client aggregate (5), with room for queueing.
 ci_max=${MERGE_QUEUE_CI_MAX:-4200}
 stale_sleep=${MERGE_QUEUE_STALE_SLEEP:-90}
