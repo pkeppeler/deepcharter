@@ -1,10 +1,10 @@
 """Runs the gate checks: one Gradle invocation for the fixture trees of the source-text gates, and javac plus the gate itself for the test-only and constant-parameter gates.
 
-Needs the repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and
-the pre-push hook run it. A failing check names itself: a failing test is <check>_gate_check.<Class>.<method>.
+Needs the repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build-checks CI
+job and the pre-push hook run it. A failing check names itself: a failing test is <check>_gate_check.<Class>.<method>.
 A passing run leaves the mod json in build/generated/gametest-resources untouched: the fixtures never reach the generation task.
 A run also fails when a fixture case is never read by an assertion (gate_batch.unread_message).
-Usage: tools/py tools/tests/gate_checks.py [room_carver] [world_data] [world_clock] [tick_wait] [light_wait] [await_expect] [light_settled] [client_filter] [hud_toggle] [testonly] [enum_switch] [entity_query] [each_tick] [fixed_pos] [record_holder] [keep_clear] [orphan_comment] [null_marked] [force] [one_shot] [failure_copy] [campaign_environment] [constant_param] [sync_load]   (no argument runs all)
+Usage: tools/py tools/tests/gate_checks.py [room_carver] [world_data] [world_clock] [tick_wait] [light_wait] [await_expect] [light_settled] [client_filter] [hud_toggle] [testonly] [enum_switch] [entity_query] [each_tick] [fixed_pos] [record_holder] [keep_clear] [orphan_comment] [keybind] [vanilla_sound] [null_marked] [force] [one_shot] [failure_copy] [campaign_environment] [constant_param] [sync_load] [server_shard]   (no argument runs all)
 """
 import importlib
 import sys
@@ -14,7 +14,7 @@ from pathlib import Path
 if sys.version_info < (3, 10):
     sys.exit(f"gate_checks: {sys.executable} is Python {sys.version.split()[0]}; the tools need 3.10 or newer. Run it through tools/py.")
 
-CHECKS = ("room_carver", "world_data", "world_clock", "tick_wait", "light_wait", "await_expect", "light_settled", "client_filter", "hud_toggle", "testonly", "enum_switch", "entity_query", "each_tick", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "null_marked", "force", "one_shot", "failure_copy", "campaign_environment", "constant_param", "sync_load")
+CHECKS = ("room_carver", "world_data", "world_clock", "tick_wait", "light_wait", "await_expect", "light_settled", "client_filter", "hud_toggle", "testonly", "enum_switch", "entity_query", "each_tick", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "keybind", "vanilla_sound", "null_marked", "force", "one_shot", "failure_copy", "campaign_environment", "constant_param", "sync_load", "server_shard")
 
 
 def main(selected: list[str]) -> int:

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Usage: tools/merge-queue.sh <pr-number>...
 #
-# Merges the given PRs one at a time, in order, through tools/merge-pr.sh (the gate).
+# Merges the given PRs one at a time, in order, through tools/merge-pr.sh --direct (the gate and GitHub's own squash
+# merge, so each PR shows as merged).
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
 #   - refusal carrying the "[stale-base]" marker (stale base): re-run the whole runs holding the head's
@@ -37,7 +38,8 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 merge_pr=${MERGE_PR:-$root/tools/merge-pr.sh}
 lock=${MERGE_QUEUE_LOCK:-$HOME/.cache/deepcharter/merge-queue.lock}
 ci_poll=${MERGE_QUEUE_CI_POLL:-20}
-# Must stay above the longest CI job limit (the build job, 45 minutes) plus the changes job lead time.
+# Must stay above the longest CI chain: a build shard or build-checks (30 minutes) then the build aggregate (5), or a client shard (30)
+# after the changes job (5), with room for queueing.
 ci_max=${MERGE_QUEUE_CI_MAX:-4200}
 stale_sleep=${MERGE_QUEUE_STALE_SLEEP:-90}
 unknown_sleep=${MERGE_QUEUE_UNKNOWN_SLEEP:-30}
@@ -109,7 +111,7 @@ run_pr() {
     fi
     say "running the gate on PR #$pr"
     rc=0
-    "$merge_pr" "$pr" >"$tmp/out" 2>&1 || rc=$?
+    "$merge_pr" --direct "$pr" >"$tmp/out" 2>&1 || rc=$?
     out=$(cat "$tmp/out")
     if [[ -n $out ]]; then echo "$out"; fi
     state=$(pr_state "$pr")

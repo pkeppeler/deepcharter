@@ -14,7 +14,7 @@ The user grants creative liberty over dig mechanics, hazards, pod upgrades and c
 
 ## Copy what is already solved
 
-When a system has an established precedent in vanilla or a major mod (vanilla boats for vehicles, EMI or JEI for recipe viewing, GTNH or BetterQuesting for quests), copy its behaviour and controls, read the source to do it, and deviate only where our mechanics require it. Say each deviation and its reason in the PR and the design doc. Don't re-derive solved UX: players already know it, and the user has twice had to ask for it back (#1281 and the questbook).
+When a system has an established precedent in vanilla or a major mod (vanilla boats for vehicles on water, tank controls for the pod's ground steering (ADR 0095, #1442), EMI or JEI for recipe viewing, GTNH or BetterQuesting for quests), copy its behaviour and controls, read the source to do it, and deviate only where our mechanics require it. Say each deviation and its reason in the PR and the design doc. Don't re-derive solved UX: players already know it, and the user has twice had to ask for it back (#1281 and the questbook).
 
 ## What makes a mechanic good here
 
@@ -27,6 +27,8 @@ When a system has an established precedent in vanilla or a major mod (vanilla bo
   1. by hand: slow, teaches the danger;
   2. a pod upgrade that automates it: costs cargo, money or speed;
   3. mastery: a later chassis or hull that makes the old counterplay unnecessary. The old tool keeps a niche, such as a cheaper spare pod.
+- **Prefer vanilla keys and clicks.** Playtests keep replacing custom keys with vanilla ones or a click (#1537, #1540). A new key needs an entry in `gradle/keybind-allowlist.txt` with the reason no vanilla key or click fits; `checkKeybindGate` fails the build without it.
+- **Sound is ours.** A vanilla explosion, vanilla music or a vanilla cave ambience breaks the tone (#1293, #1296). Give a mechanic a `DeepSound`; `checkVanillaSoundGate` fails a Java reference or a JSON sound id on `gradle/banned-vanilla-sounds.txt` unless the Java line says `// vanilla-ok: <reason>` or `gradle/vanilla-sound-allowlist.txt` lists the id with a reason.
 - **Trade-offs.** Every upgrade costs something the player also wants: cargo slots, drill speed, fuel, money, or a component slot.
 - **Say when a default gets harder.** A tuning change that makes the default build harder than main says so in Decisions, with the unpacked and early-game columns, even when it restores an earlier design.
 - **A pacing table labels each row measured or modelled.** Measured is asserted by a test; modelled is computed from assumed shares, and a modelled row names its assumptions.

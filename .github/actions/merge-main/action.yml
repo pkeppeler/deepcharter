@@ -7,6 +7,12 @@
 name: Merge main into the PR head
 description: Merge origin/main (fetched now) into the checked-out PR head, check the result and record the main sha.
 
+inputs:
+  main-sha:
+    description: Merge exactly this origin/main commit, picked once per workflow run by a setup job (#1571). Empty means the tip of main now.
+    required: false
+    default: ""
+
 outputs:
   main-sha:
     description: The origin/main sha that was merged.
@@ -19,5 +25,6 @@ runs:
       shell: bash
       env:
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        MAIN_SHA: ${{ inputs.main-sha }}
       run: |
-        "$GITHUB_ACTION_PATH/../../../tools/ci-merge-main.sh" "$HEAD_SHA"
+        "$GITHUB_ACTION_PATH/../../../tools/ci-merge-main.sh" "$HEAD_SHA" ${MAIN_SHA:+"$MAIN_SHA"}

@@ -154,6 +154,35 @@ public class PodSonarTest {
         });
     }
 
+    /**
+     * As {@link #scene(GameTestHelper, int, List, Consumer, Consumer)}, running {@code check} on the first tick after the settle on which the bodies at
+     * {@code landed} (indices into {@code bodies}) are on the ground. A body falls from where the build put it, and the settle ticks are a count, not
+     * a landing: a loaded runner's cow was still in the air when they ran out (#1569). Name only the bodies the check needs grounded: one that starts
+     * airborne on purpose never lands in time. The wait fails under a {@link FarChunks.Deadline}, naming the body in the air.
+     */
+    private static void sceneLanded(
+            GameTestHelper helper,
+            int x,
+            List<Entity> bodies,
+            List<Integer> landed,
+            Consumer<ServerLevel> build,
+            Consumer<Scene> check) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        FarChunks.Deadline landing = FarChunks.deadline();
+        run(helper, x, bodies, build, scene -> {
+            Optional<Entity> airborne = landed.stream()
+                    .map(bodies::get)
+                    .filter(body -> !body.onGround())
+                    .findFirst();
+            landing.await(helper, level, airborne.isEmpty(), () -> airborne.get() + " had not landed");
+            if (airborne.isPresent()) {
+                return false;
+            }
+            check.accept(scene);
+            return true;
+        });
+    }
+
     /** As {@link #scene}, running {@code perTick} on every tick after the settle until it returns true. */
     private static void run(GameTestHelper helper, int x, Consumer<ServerLevel> build, Predicate<Scene> perTick) {
         run(helper, x, List.of(), build, perTick);
@@ -568,10 +597,11 @@ public class PodSonarTest {
     public void aMobStandingOnTheFloorEchoesStillAndAWalkingOneAsMovedAndHollowWins(GameTestHelper helper) {
         int x = 8216;
         List<Entity> bodies = new ArrayList<>();
-        scene(
+        sceneLanded(
                 helper,
                 x,
                 bodies,
+                List.of(0),
                 level -> {
                     room(level, x + 8, FLOOR, Z, 2, 1, 4);
                     bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR, Z + 1.5));
@@ -579,7 +609,6 @@ public class PodSonarTest {
                     bodies.add(still(level, EntityTypes.PIG, x + 11.5, FLOOR, Z + 2.5));
                 },
                 scene -> {
-                    expect(helper, bodies.get(0).onGround(), "the cow has settled on the floor");
                     bodies.get(1)
                             .setDeltaMovement(
                                     TUNING.movingSpeed() * 2, bodies.get(1).getDeltaMovement().y, 0);
@@ -608,6 +637,8 @@ public class PodSonarTest {
     public void aCreatureInTheChunkBesideThePodsIsWaitedForUntilItTicks(GameTestHelper helper) {
         int x = 9100;
         List<Entity> bodies = new ArrayList<>();
+        ServerLevel world = TestLayers.level(helper, 1);
+        FarChunks.Deadline landing = FarChunks.deadline();
         run(
                 helper,
                 x,
@@ -618,12 +649,12 @@ public class PodSonarTest {
                     bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR, Z + 1.5));
                 },
                 scene -> {
-                    expect(
+                    landing.await(
                             helper,
+                            world,
                             bodies.get(0).onGround(),
-                            "the cow has settled on the floor, on tick %s",
-                            helper.getTick());
-                    return true;
+                            () -> "the cow had not settled on the floor, on tick " + helper.getTick());
+                    return bodies.get(0).onGround();
                 });
     }
 
@@ -790,17 +821,17 @@ public class PodSonarTest {
     public void aCreatureInTheCaveTagReadsAsAnEmptyCaveStillOrMoving(GameTestHelper helper) {
         int x = 8600;
         List<Entity> bodies = new ArrayList<>();
-        scene(
+        sceneLanded(
                 helper,
                 x,
                 bodies,
+                List.of(0),
                 level -> {
                     room(level, x + 8, FLOOR, Z, 2, 1, 4);
                     bodies.add(still(level, EntityTypes.SHEEP, x + 9.5, FLOOR, Z + 1.5));
                     bodies.add(still(level, EntityTypes.SHEEP, x + 13.5, FLOOR, Z + 1.5));
                 },
                 scene -> {
-                    expect(helper, bodies.get(0).onGround(), "the sheep have settled on the floor");
                     bodies.get(1).setDeltaMovement(TUNING.movingSpeed() * 4, 0, 0);
                     PodSonar.ping(scene.pod());
                     for (Entity sheep : bodies) {
@@ -820,17 +851,17 @@ public class PodSonarTest {
     public void aCreatureRisingInTheAirReadsAsMovedAndOneOnTheGroundDoesNotForAVerticalSpeed(GameTestHelper helper) {
         int x = 8664;
         List<Entity> bodies = new ArrayList<>();
-        scene(
+        sceneLanded(
                 helper,
                 x,
                 bodies,
+                List.of(1),
                 level -> {
                     room(level, x + 8, FLOOR, Z, 2, 1, 4);
                     bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR + 2, Z + 1.5));
                     bodies.add(still(level, EntityTypes.COW, x + 13.5, FLOOR, Z + 1.5));
                 },
                 scene -> {
-                    expect(helper, bodies.get(1).onGround(), "the second cow has settled on the floor");
                     bodies.get(0).setNoGravity(true);
                     bodies.get(0).setDeltaMovement(0, TUNING.movingSpeed() * 2, 0);
                     bodies.get(1).setDeltaMovement(0, TUNING.movingSpeed() * 2, 0);

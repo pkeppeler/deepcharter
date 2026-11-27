@@ -20,7 +20,7 @@ public final class PodChase {
     /** Ticks the mouse is still before the chase view starts to settle behind the pod. */
     static final int LOOK_HOLD_TICKS = 20;
 
-    /** Degrees a tick the chase view settles at: well under the 10 of the pod's full steering turn, so it eases. */
+    /** Degrees a tick the chase view settles at: under the pod's own steering turn, so it eases. */
     static final float SETTLE_DEGREES = 4f;
 
     /** Blocks a tick the pod must be driving at for the chase view to settle behind it. */

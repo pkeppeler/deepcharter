@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 # Usage: tools/merge-pr.sh <pr-number>
+#        tools/merge-pr.sh --direct <pr-number>
 #        tools/merge-pr.sh --check <pr-number>
 #        tools/merge-pr.sh --preflight <pr-number>
 #        tools/merge-pr.sh --ci <pr-number>
+#
+# Without a flag the PR merges as a batch of one (tools/merge-batch.sh, #1567): this script's --preflight, one CI run on
+# the merged tree, then a fast-forward push with the roadmap folded in; its own CI need only be green, not current.
+# That tool takes the merge lock: exit 3 means another batch or queue holds it, nothing merged, retry later.
+# The checks described below are shared by --preflight, --ci, --check and --direct.
+# --direct is the old merge (below): it squash-merges through GitHub's merge endpoint so the PR shows as merged, and
+# regenerates the roadmap in a commit after it. tools/merge-queue.sh uses it.
 #
 # --preflight and --ci are the two halves of the gate that tools/merge-batch.sh runs apart. --preflight is every
 # check except CI and mergeability (open, not a draft, review-passed at the head, closes its branch's issue, targets
@@ -17,7 +25,8 @@
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` first-line comment from the trusted account for the
-# current head (see tools/mark-review-passed.sh), closes exactly its branch's
+# current head (see tools/mark-review-passed.sh; a head that is only clean merges of origin/main on a passed commit
+# carries that pass, tools/lib/pass-carry.sh, #1568), closes exactly its branch's
 # issue (the body's closing keywords name {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
 # mergeable, shows a demo if it changes in-game code (see the demo check below), changes docs/feature-map/map.json
@@ -26,9 +35,9 @@
 # `pass` or `skipping` (at least one check, and all of REQUIRED_CHECKS passing). A
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
-# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each client-gametest-shard, when they ran) runs
-# each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
-# from it only by docs/ROADMAP.md or .papercuts.jsonl.
+# Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each build-shard, build-checks and
+# client-gametest-shard, when they ran) runs each recorded exactly the current origin/main as the main they merged (see the
+# check below; #979), or main differs from it only by a generated path (tools/lib/generated-paths.sh).
 # A failing-check refusal carries [client-only] when every check that is not passing is a failed, timed-out or cancelled
 # client-gametest or client-gametest-shard <i>, and build and tool-tests passed: the queue re-runs the whole Client tests run.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
@@ -39,18 +48,25 @@ set -euo pipefail
 
 repo=pkeppeler/deepcharter
 gate_only=0
-mode=merge
+mode='batch'
 case ${1-} in
-  --check) gate_only=1 && shift ;;
+  --check) gate_only=1 && mode=merge && shift ;;
+  --direct) mode=merge && shift ;;
   --preflight | --ci) mode=${1#--} && shift ;;
 esac
 if [[ $# -ne 1 || ! $1 =~ ^[0-9]+$ ]]; then
-  echo "usage: tools/merge-pr.sh [--check|--preflight|--ci] <pr-number>" >&2
+  echo "usage: tools/merge-pr.sh [--direct|--check|--preflight|--ci] <pr-number>" >&2
   exit 2
 fi
 pr=$1
 
 cd "$(dirname "$0")/.."
+# A batch of one: the batch tool runs this script's --preflight and --ci itself.
+if [[ $mode == batch ]]; then
+  exec "${MERGE_BATCH:-tools/merge-batch.sh}" "$pr"
+fi
+# shellcheck source=lib/generated-paths.sh
+source tools/lib/generated-paths.sh
 # shellcheck source=lib/adr.sh
 source tools/lib/adr.sh
 # shellcheck source=lib/pr-body-checks.sh
@@ -61,6 +77,8 @@ source tools/lib/ci-gate.sh
 source tools/lib/roadmap.sh
 # shellcheck source=lib/stacked.sh
 source tools/lib/stacked.sh
+# shellcheck source=lib/pass-carry.sh
+source tools/lib/pass-carry.sh
 origin=$(git remote get-url origin)
 [[ $origin =~ github\.com[:/]$repo(\.git)?$ ]] \
   || { echo "REFUSED: origin is '$origin', not $repo" >&2; exit 1; }
@@ -100,19 +118,25 @@ base=$(pr_field .base.ref) || refuse "has no readable base branch"
 load_labels
 # Bodies are compared whole (as JSON strings), so a longer comment cannot match.
 review_pass_refusal=
+review_pass_note=
+carried_from=
 has_label review-passed || review_pass_refusal="lacks the review-passed label"
 if [[ -z $review_pass_refusal ]]; then
   # Only the trusted account's comments, and only a comment's first line: the cloud proxy appends a footer to every
   # comment it posts.
   gh api "repos/$repo/issues/$pr/comments?per_page=100" --paginate \
     --jq ".[] | select(.user.login == \"$TRUSTED_LOGIN\") | .body | split(\"\\n\")[0] | @json" | grep -qxF "\"review-passed $sha\"" \
+    || carry_review_pass "$sha" \
     || review_pass_refusal="has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
+  [[ -z $carried_from ]] || review_pass_note=" (carried from ${carried_from:0:9} across a clean merge of origin/main)"
 fi
 if [[ $gate_only -eq 1 ]]; then
-  if [[ -n $review_pass_refusal ]]; then echo "review-passed: no ($review_pass_refusal)"; else echo "review-passed: yes"; fi
+  if [[ -n $review_pass_refusal ]]; then echo "review-passed: no ($review_pass_refusal)"; else echo "review-passed: yes$review_pass_note"; fi
 else
   [[ -z $review_pass_refusal ]] || refuse "$review_pass_refusal"
 fi
+
+check_px_review
 
 if [[ $mode == preflight ]]; then
   # The batch build finds a conflict itself, so mergeability is not read here.

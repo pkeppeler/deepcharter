@@ -19,12 +19,21 @@ EXCHANGE = REPO / "build/gate-checks"
 @dataclass(frozen=True)
 class Case:
     """One tree for the scan: `files` (relative to the test package) are written into a fresh tree, or a Path is scanned where it is.
-    `gate` names a gate to run over the tree instead of the gametest entrypoint scan (`entity_query`, `fixed_pos`, `record_holder`, `keep_clear`, `orphan_comment`, `null_marked`, `null_marked_roots`)."""
+    `gate` names a gate to run over the tree instead of the gametest entrypoint scan (`entity_query`, `fixed_pos`, `record_holder`, `keep_clear`, `orphan_comment`, `keybind`, `vanilla_sound`, `null_marked`, `null_marked_roots`)."""
     files: Mapping[str, str] | Path
     client_tests: str | None
-    gate: Literal["entity_query", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "null_marked", "null_marked_roots"] | None = None
+    gate: Literal["entity_query", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "keybind", "vanilla_sound", "null_marked", "null_marked_roots"] | None = None
     client_shard: str | None = None
     client_weights: Mapping[str, int] | None = None
+    server_shard: str | None = None
+    server_weights: Mapping[str, int] | None = None
+
+
+def checked_in_weights(file_name: str) -> dict[str, int]:
+    """gradle/<file_name>, a shard weight file, so a real-tree shard case is the one CI runs."""
+    lines = (REPO / "gradle" / file_name).read_text().splitlines()
+    pairs = [line.split("#")[0].split() for line in lines if line.split("#")[0].strip()]
+    return {name: int(seconds) for name, seconds in pairs}
 
 
 @dataclass(frozen=True)
@@ -81,7 +90,7 @@ def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
                     path = root / PACKAGE / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(body)
-            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "clientShard": case.client_shard, "clientWeights": case.client_weights, "gate": case.gate})
+            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "clientShard": case.client_shard, "clientWeights": case.client_weights, "serverShard": case.server_shard, "serverWeights": case.server_weights, "gate": case.gate})
         # Fixed paths: the properties are inputs of Gradle's configuration cache, so a new path each run would add a cache entry each run.
         cases_file = EXCHANGE / "cases.json"
         results_file = EXCHANGE / "results.json"

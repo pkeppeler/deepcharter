@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Usage: tools/merge-batch.sh <pr-number>...
 #
-# Merges several review-passed PRs with one CI run, as one squashed commit per PR landed by a fast-forward push.
+# Merges review-passed PRs (one or more: a single PR is a batch of one, #1567) with one CI run, as one squashed commit
+# per PR landed by a fast-forward push. The roadmap is regenerated into the landing, as one more commit before the push.
 # Steps, retries and the exit status: .claude/skills/deepcharter-conventions/merging.md ("Batches") and ADR 0106.
 # The exit trap closes an open batch PR and deletes its branch unless it landed. Shares the merge lock with
 # merge-queue.sh (exit 3 when one is running).
@@ -16,7 +17,8 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 merge_pr=${MERGE_PR:-$root/tools/merge-pr.sh}
 lock=${MERGE_QUEUE_LOCK:-$HOME/.cache/deepcharter/merge-queue.lock}
 ci_poll=${MERGE_BATCH_CI_POLL:-20}
-# Must stay above the longest CI job limit (the build job, 45 minutes) plus the changes job lead time.
+# Must stay above the longest CI chain: a build shard or build-checks (30 minutes) then the build aggregate (5), or a client shard (30)
+# after the changes job (5), with room for queueing.
 ci_max=${MERGE_BATCH_CI_MAX:-4200}
 stale_sleep=${MERGE_BATCH_STALE_SLEEP:-90}
 pending_max=${MERGE_BATCH_PENDING_RETRIES:-10}
@@ -41,14 +43,14 @@ mkdir -p "$(dirname "$lock")"
 source "$root/tools/lib/merge-lock.sh"
 acquire_lock
 tmp=$(mktemp -d)
-roadmap_tmp=
 build_wt=
+land_wt=
 open_bpr=
 open_branch=
 release() {
   if [[ -n $open_bpr ]]; then retire_batch "$open_bpr" "$open_branch" "Closed: the batch tool stopped before this batch merged."; fi
   if [[ -n $build_wt ]]; then git worktree remove --force "$build_wt" >/dev/null 2>&1 || true; fi
-  roadmap_cleanup
+  drop_land_wt
   rm -rf "$tmp"
   git worktree prune >/dev/null 2>&1 || true
   if [[ $(readlink "$lock" 2>/dev/null || true) == "$$" ]]; then rm -f "$lock"; fi
@@ -62,12 +64,12 @@ source "$root/tools/lib/gh-rest.sh"
 source "$root/tools/lib/ci-wait.sh"
 # shellcheck source=lib/merge-cleanup.sh
 source "$root/tools/lib/merge-cleanup.sh"
-# shellcheck source=lib/roadmap.sh
-source "$root/tools/lib/roadmap.sh"
 # shellcheck source=lib/stacked.sh
 source "$root/tools/lib/stacked.sh"
 # shellcheck source=lib/adr.sh
 source "$root/tools/lib/adr.sh"
+# shellcheck source=lib/generated-paths.sh
+source "$root/tools/lib/generated-paths.sh"
 
 merged=()
 dropped=()
@@ -79,6 +81,8 @@ build_seq=0
 # (n's branch merged it); chain_head[n] is the head sha read when the chains were found.
 declare -A chain_prev=()
 declare -A chain_head=()
+# pf_head[n] is the head sha the preflight judged for PR n; a build drops a PR whose head is anything else.
+declare -A pf_head=()
 
 # comment <n> <text>: a comment on an issue or PR.
 comment() { gh api -X POST "repos/$repo/issues/$1/comments" -f body="$2" >/dev/null; }
@@ -214,6 +218,10 @@ build_batch() {
       continue
     fi
     fetched=$(git rev-parse FETCH_HEAD)
+    if [[ $head != "${pf_head[$n]:-}" ]]; then
+      drop "$n" "head moved from ${pf_head[$n]:0:9} (judged at its preflight) to ${head:0:9}; its review pass no longer covers it"
+      continue
+    fi
     if [[ $fetched != "$head" ]]; then
       drop "$n" "head moved from ${head:0:9} to ${fetched:0:9} while building; its review pass no longer covers it"
       continue
@@ -330,53 +338,57 @@ finish_originals() {
   done
 }
 
-# merge_single <pr>: a group of one goes through the gate alone, with the queue's stale-base handling.
-merge_single() {
-  local n=$1 branch sha out rc state reason stale_n=0
-  if [[ -n ${chain_prev[$n]:-} ]]; then
-    included=()
-    git fetch origin main >/dev/null 2>&1 || true
-    if ! pred_landed "${chain_prev[$n]}"; then
-      drop "$n" "chained to #${chain_prev[$n]}, which did not land"
-      return 0
+# drop_land_wt: remove the landing worktree, if any.
+drop_land_wt() {
+  if [[ -n $land_wt ]]; then git worktree remove --force "$land_wt" >/dev/null 2>&1 || true; fi
+  land_wt=
+}
+
+# prepare_landing <batch pr> <pr>...: sets $land_sha, the commit to push to main: the CI-verified batch head, replayed
+# onto origin/main when main moved only by generated files since the batch was built (no job reads them, so the CI
+# verdict still holds), plus one commit regenerating the roadmap as it reads once the batch has landed (#1567). Returns
+# 1 with $land_why when main moved by anything else or the replay does not apply: the caller rebuilds the batch.
+# A roadmap that cannot be generated is a warning, not a stop: the next regeneration catches it up.
+prepare_landing() {
+  local bpr_n=$1 main_now moved n branch args=() tree_moved
+  shift
+  main_now=$(git rev-parse origin/main) || { land_why="could not read origin/main"; return 1; }
+  land_sha=$b_sha
+  land_why=
+  if [[ $main_now != "$b_base" ]]; then
+    moved=$(moved_code_paths "$b_base" "$main_now") || { land_why="could not read what origin/main changed"; return 1; }
+    [[ -z $moved ]] || { land_why="origin/main moved"; return 1; }
+  fi
+  land_wt=$tmp/land-$build_seq
+  git worktree add --detach "$land_wt" "$main_now" >/dev/null 2>&1 || { land_wt=; land_why="could not create the landing worktree"; return 1; }
+  if [[ $main_now != "$b_base" ]]; then
+    say "origin/main moved only by generated files since the batch was built; replaying the batch on it"
+    if ! git -C "$land_wt" cherry-pick "$b_base..$b_sha" >/dev/null 2>&1; then
+      land_why="the batch does not replay on the new origin/main"
+      drop_land_wt
+      return 1
+    fi
+    tree_moved=$(moved_code_paths "$b_sha" "$(git -C "$land_wt" rev-parse HEAD)") || tree_moved=unreadable
+    [[ -z $tree_moved ]] || { land_why="the replayed batch differs from the CI-verified one"; drop_land_wt; return 1; }
+  else
+    git -C "$land_wt" reset -q --hard "$b_sha"
+  fi
+  if git -C "$land_wt" cat-file -e HEAD:tools/roadmap.py 2>/dev/null; then
+    for n in "$@"; do
+      branch=$(pr_get "$n" .head.ref 2>/dev/null || true)
+      [[ $branch =~ ^([0-9]+)- ]] && args+=(--landing "$n:${BASH_REMATCH[1]}")
+    done
+    if (cd "$land_wt" && "$root/tools/py" tools/roadmap.py ${args[@]+"${args[@]}"} --hide "$bpr_n" >/dev/null); then
+      if [[ -n $(git -C "$land_wt" status --porcelain -- docs/ROADMAP.md) ]]; then
+        git -C "$land_wt" add docs/ROADMAP.md
+        git -C "$land_wt" commit -q --no-verify -m "Regenerate roadmap after batch #$bpr_n"
+      fi
+    else
+      echo "WARNING: the roadmap could not be generated; landing batch PR #$bpr_n without it" >&2
     fi
   fi
-  say "PR #$n alone: tools/merge-pr.sh"
-  branch=$(pr_get "$n" .head.ref 2>/dev/null || true)
-  while true; do
-    sha=$(pr_get "$n" .head.sha 2>/dev/null || true)
-    if [[ -n $branch && -n $sha ]] && ! wait_ci "$branch" "$sha"; then
-      refused+=("#$n (CI on ${sha:0:9} still unfinished after ${ci_max}s)")
-      return 0
-    fi
-    rc=0
-    out=$("$merge_pr" "$n" 2>&1) || rc=$?
-    [[ -z $out ]] || echo "$out"
-    state=$(pr_state_of "$n" 2>/dev/null || echo unknown)
-    if [[ $state == MERGED ]]; then
-      merged+=("#$n")
-      [[ -z $branch ]] || cleanup_pr "$branch" "$sha"
-      return 0
-    fi
-    reason=$(grep -m1 -E '^(REFUSED|ERROR):' <<<"$out" || true)
-    [[ -n $reason ]] || reason="the gate exited $rc: $(tail -n 1 <<<"$out")"
-    if [[ $out == *"[stale-base]"* ]]; then
-      if ((stale_n >= stale_max)); then
-        refused+=("#$n ($reason; still stale after $stale_max reruns)")
-        return 0
-      fi
-      stale_n=$((stale_n + 1))
-      say "PR #$n has a stale base; re-running CI ($stale_n of $stale_max)"
-      if ! rerun_ci "$n" "$sha"; then
-        refused+=("#$n ($rerun_err)")
-        return 0
-      fi
-      sleep "$stale_sleep"
-    else
-      refused+=("#$n ($reason)")
-      return 0
-    fi
-  done
+  land_sha=$(git -C "$land_wt" rev-parse HEAD)
+  drop_land_wt
 }
 
 # process_group <pr>...: merge them as one batch, or split on red. Sets $stopped when the tool must stop.
@@ -386,20 +398,11 @@ process_group() {
     not_attempted+=("${prs[@]/#/#}")
     return 0
   fi
-  if ((${#prs[@]} == 1)); then
-    merge_single "${prs[0]}"
-    return 0
-  fi
   while true; do
     build_batch "${prs[@]}" || return 0
     prs=(${included[@]+"${included[@]}"})
     if ((${#prs[@]} == 0)); then
       discard_local_branch "$b_branch"
-      return 0
-    fi
-    if ((${#prs[@]} == 1)); then
-      discard_local_branch "$b_branch"
-      merge_single "${prs[0]}"
       return 0
     fi
     say "batch $b_branch holds ${prs[*]/#/#}"
@@ -451,29 +454,26 @@ process_group() {
     case $verdict in
       green)
         git fetch origin main >/dev/null 2>&1 || { stopped="batch PR #$bpr: could not fetch origin/main before landing it"; return 0; }
-        if [[ $(git rev-parse origin/main) != "$b_base" ]]; then
-          say "origin/main moved since the batch was built"
+        if ! prepare_landing "$bpr" "${prs[@]}"; then
+          say "$land_why"
           verdict=stale
-          reason="origin/main moved"
+          reason=$land_why
         # --no-verify: the sha is CI-verified, and .githooks/pre-push checks the working tree, not the pushed sha.
-        elif push_out=$(git push --no-verify origin "$sha:refs/heads/main" 2>&1); then
-          say "landed batch PR #$bpr: ${sha:0:9} is origin/main"
+        elif push_out=$(git push --no-verify origin "$land_sha:refs/heads/main" 2>&1); then
+          say "landed batch PR #$bpr: ${land_sha:0:9} is origin/main"
           open_bpr=
-          comment "$bpr" "Landed on main as $sha by a fast-forward push."$'\n\n'"$footer" || say "could not comment on batch PR #$bpr"
+          comment "$bpr" "Landed on main as $land_sha by a fast-forward push."$'\n\n'"$footer" || say "could not comment on batch PR #$bpr"
           close_pr "$bpr" || true
           delete_remote_branch "$b_branch"
           discard_local_branch "$b_branch"
           finish_originals "$bpr" "${prs[@]}"
-          if ! regenerate_roadmap "batch #$bpr"; then
-            stopped="batch PR #$bpr is MERGED, but the roadmap regeneration FAILED"
-          fi
           return 0
         elif [[ $push_out == *"non-fast-forward"* || $push_out == *"fetch first"* ]]; then
-          say "the push of ${sha:0:9} to main was rejected as non-fast-forward (main moved)"
+          say "the push of ${land_sha:0:9} to main was rejected as non-fast-forward (main moved)"
           verdict=stale
           reason="push rejected as non-fast-forward"
         else
-          stopped="batch PR #$bpr: pushing ${sha:0:9} to main failed: $push_out"
+          stopped="batch PR #$bpr: pushing ${land_sha:0:9} to main failed: $push_out"
           return 0
         fi
         ;;
@@ -489,6 +489,12 @@ process_group() {
         retire_batch "$bpr" "$b_branch" "Rebuilding on the new main: the base of this batch is stale."
         ;;
       red)
+        if ((${#prs[@]} == 1)); then
+          say "CI is red on batch PR #$bpr (${reason:-no reason read}); PR #${prs[0]} cannot be split further"
+          retire_batch "$bpr" "$b_branch" "CI is red: this batch holds one PR, so it is not merged."
+          refused+=("#${prs[0]} (CI is red on its batch of one: ${reason:-no reason read})")
+          return 0
+        fi
         say "CI is red on batch PR #$bpr (${reason:-no reason read}); splitting ${#prs[@]} PRs"
         retire_batch "$bpr" "$b_branch" "CI is red: splitting this batch in two."
         half=$(((${#prs[@]} + 1) / 2))
@@ -507,7 +513,12 @@ for n in "$@"; do
   rc=0
   out=$("$merge_pr" --preflight "$n" 2>&1) || rc=$?
   if ((rc == 0)); then
-    passing+=("$n")
+    if [[ $out =~ PREFLIGHT\ OK:\ PR\ \#$n\ at\ ([0-9a-f]+) ]]; then
+      pf_head[$n]=${BASH_REMATCH[1]}
+      passing+=("$n")
+    else
+      refused+=("#$n (the preflight did not name the head it judged)")
+    fi
   else
     [[ -z $out ]] || echo "$out"
     reason=$(grep -m1 -E '^(REFUSED|ERROR):' <<<"$out" || true)

@@ -147,7 +147,14 @@ cat >"$work/bin/git" <<'STUB'
 echo "git $*" >>"$LOG"
 case "$1" in
   fetch) [[ ${STUB_FETCH_FAIL-0} == 1 ]] && exit 1 ;;
-  rev-parse) [[ ${STUB_REVPARSE_FAIL-0} == 1 ]] && exit 1; echo "${STUB_MAIN_SHA-$MAIN_SHA}" ;;
+  rev-parse)
+    [[ ${STUB_REVPARSE_FAIL-0} == 1 ]] && exit 1
+    # The pass carry reads the fetched head and a commit's tree (#1568).
+    [[ $* != *FETCH_HEAD* ]] || { echo "${STUB_FETCH_HEAD-}"; exit 0; }
+    [[ $* != *'^{tree}'* ]] || { echo "${STUB_TREE-}"; exit 0; }
+    echo "${STUB_MAIN_SHA-$MAIN_SHA}" ;;
+  rev-list) printf '%s\n' "${STUB_REVLIST-}" ;; # the head's "<sha> <parent>..." line
+  merge-tree) printf '%s\n' "${STUB_MTREE-}"; exit "${STUB_MTREE_RC:-0}" ;; # the tree git makes of the merge, or a conflict
   merge-base) exit "${STUB_MERGE_BASE_RC:-0}" ;; # a recorded sha that is (0) or is not (1) on origin/main
   diff) [[ ${STUB_DIFF_FAIL-0} == 1 ]] && exit 1; printf '%s' "${STUB_DIFF-}" ;; # files changed on main since the recorded sha
   ls-tree)
@@ -239,11 +246,14 @@ fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
 reset() { rm -f "$LOG" "$LOG".{merged,push,body,message,title,RUNS,ANN,FILES}; : >"$LOG"; }
 
-# run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
+# run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh, as --direct: the merge through GitHub's endpoint, #1567)
+# on PR 7 with stub env overrides.
 run_script() {
+  local flag=(--direct)
   reset
   rc=0
-  out=$(env "$@" PATH="$work/bin:$PATH" bash "${SCRIPT:-$script}" 7 2>&1) || rc=$?
+  [[ ${SCRIPT-} != "$mark" ]] || flag=()
+  out=$(env "$@" PATH="$work/bin:$PATH" bash "${SCRIPT:-$script}" ${flag[@]+"${flag[@]}"} 7 2>&1) || rc=$?
 }
 
 # The pattern is one log line: grep -F splits a multi-line pattern into several, and an empty one matches any blank line.
@@ -674,7 +684,7 @@ refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/e
 # A relative $0 (./merge-pr.sh from tools/) must still find tools/lib/adr.sh after the script's cd.
 reset
 rc=0
-out=$(cd "$tools" && env PATH="$work/bin:$PATH" ./merge-pr.sh 7 2>&1) || rc=$?
+out=$(cd "$tools" && env PATH="$work/bin:$PATH" ./merge-pr.sh --direct 7 2>&1) || rc=$?
 exited "runs as ./merge-pr.sh from tools/" 0
 
 # Required checks: a copy of the script with the array filled in (the production
@@ -749,6 +759,60 @@ refusal "another docs file moving is not neutral" "$stale_hint" "STUB_MERGED_MAI
 refusal "code beside the roadmap is not neutral" "tools/merge-pr.sh" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=docs/ROADMAP.md${nl}tools/merge-pr.sh"
 refusal "nested papercuts lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/.papercuts.jsonl"
 refusal "nested roadmap lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/docs/ROADMAP.md"
+# The build runs as `build-shard <i>` jobs and `build-checks` beside the `build` aggregate (#1327). The gate reads the merged-main
+# notice of each passing shard, of build-checks and of the aggregate, which records the main all of them agreed on.
+bs_specs=("build:2:success" "tool-tests:3:success" "build-shard 1:11:success" "build-shard 2:12:success" "build-checks:13:success")
+annotations_of() { echo "gh api repos/pkeppeler/deepcharter/check-runs/$1/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"; }
+run_script "STUB_RUNS=$(runs "${bs_specs[@]}")"
+exited "build shards: all passed and merged the current main merges" 0
+logged "build shards: the aggregate's annotations read" "$(annotations_of 2)"
+logged "build shards: shard 1's annotations read" "$(annotations_of 11)"
+logged "build shards: shard 2's annotations read" "$(annotations_of 12)"
+logged "build shards: build-checks's annotations read" "$(annotations_of 13)"
+refusal "build shards: one shard failed" "build-shard 2 (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 2:14:failure")"
+# A newer skipped run (a re-run whose matrix never started) does not hide the older failed one.
+refusal "build shards: a skipped run over a failed shard" "build-shard 2 (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 2:14:failure" "build-shard 2:15:skipped")"
+refusal "build shards: one shard cancelled" "build-shard 1 (newest non-skipped run: cancelled)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 1:14:cancelled")"
+refusal "build shards: one shard still running" "build-shard 1 (newest non-skipped run: in_progress)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 1:14:in_progress")"
+refusal "build shards: build-checks failed" "build-checks (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-checks:14:failure")"
+refusal "build shards: one shard merged an older main" "build-shard 2 run 12 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_12=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: a shard merging an older main is stale-base" "$stale_hint" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_12=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: build-checks merged an older main" "build-checks run 13 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_13=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: a shard with no record" "build-shard 1 run 11 recorded no merged main sha" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_11="
+refusal "build shards: the aggregate's stale notice still refuses" "build run 2 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}")" "STUB_MERGED_MAIN_2=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "build shards: a shard only skipped" "has a build shard that was only skipped: build-shard 3" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-shard 3:14:skipped")"
+refusal "build shards: shards passed but build-checks never ran" "build-checks did not pass" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success "build-shard 1:11:success")"
+refusal "build shards: build-checks only skipped" "build-checks did not pass" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" "build-checks:14:skipped" | grep -v $'^build-checks\t[^\t]*\t13\t')"
+refusal "build shards: build-checks passed but no shard did" "no build-shard run passed" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success)"
+# shellcheck disable=SC2016 # a literal template, not an expansion
+refusal "build shards: only a never-started template shard beside the aggregate" "no build-shard run passed" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success 'build-shard ${{ matrix.shard }}:14:cancelled')"
+# shellcheck disable=SC2016 # a literal template, not an expansion
+run_script "STUB_RUNS=$(runs "${bs_specs[@]}" 'build-shard ${{ matrix.shard }}:14:cancelled')"
+exited "build shards: passing shards beside a never-started template shard merge" 0
+refusal "build shards: shards passed but the aggregate never ran" "lacks required check: build" \
+  "STUB_RUNS=$(runs tool-tests:3:success "build-shard 1:11:success" build-checks:13:success)"
+refusal "build shards: shards passed but the aggregate failed" "build (newest non-skipped run: failure)" \
+  "STUB_RUNS=$(runs "${bs_specs[@]}" build:14:failure)"
+# CI from before #1327: one `build` job, no shard run, its own notice decides (the default runs are this shape).
+run_script "STUB_RUNS=$(runs build:2:success tool-tests:3:success)"
+exited "legacy single build job merges" 0
+refusal "legacy single build job merged an older main" "build run 2 merged main bbbbbbbbb" \
+  "STUB_RUNS=$(runs build:2:success tool-tests:3:success)" "STUB_MERGED_MAIN_2=$OLD_MAIN" "STUB_DIFF=src/A.java"
 if command -v jq >/dev/null; then
   # The recorded annotations of a real run (fixtures/gh-rest/README.md): the script's own filter reads its sha.
   run_script STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.json" "STUB_MAIN_SHA=$(gh_fixture_jq "$FIXTURES/check-run-annotations.json" '.[] | select(.title == "merged-main") | .message')"
@@ -879,6 +943,70 @@ exited "push rejected twice fails" 1
 printed "push rejected twice says merged" "is MERGED, but the roadmap regeneration FAILED"
 count "no third push" "push origin HEAD:main" 2
 
+# --- a review pass carried across a clean merge of origin/main (#1568; the rules over real git: pass-carry.test.sh) ---
+carried_p=$(printf 'c%.0s' {1..40})
+carried_m=$(printf 'd%.0s' {1..40})
+carry_env=("STUB_COMMENT=review-passed $carried_p" STUB_FETCH_HEAD=abc123 "STUB_REVLIST=abc123 $carried_p $carried_m" STUB_MTREE=tree1 STUB_TREE=tree1)
+run_check "${carry_env[@]}"
+exited "carry: a clean merge of main on a passed head passes the gate" 0
+printed "carry: the check says where the pass came from" "review-passed: yes (carried from ccccccccc across a clean merge of origin/main)"
+run_script "${carry_env[@]}"
+exited "carry: the merge goes ahead" 0
+merged_via_rest "carry: merged through the pinned sha"
+refusal "carry voided: a conflicted merge (merge-tree exits 1)" "has no 'review-passed abc123' comment" "${carry_env[@]}" STUB_MTREE_RC=1
+refusal "carry voided: a tree that merge-tree does not reproduce" "has no 'review-passed abc123' comment" "${carry_env[@]}" STUB_TREE=tree2
+refusal "carry voided: a head that is not a merge" "has no 'review-passed abc123' comment" "${carry_env[@]}" "STUB_REVLIST=abc123 $carried_p"
+refusal "carry voided: an octopus merge" "has no 'review-passed abc123' comment" "${carry_env[@]}" "STUB_REVLIST=abc123 $carried_p $carried_m $carried_m"
+refusal "carry voided: a second parent that is not on origin/main" "has no 'review-passed abc123' comment" "${carry_env[@]}" STUB_MERGE_BASE_RC=1
+refusal "carry voided: a fetched head that is not the PR's head" "has no 'review-passed abc123' comment" "${carry_env[@]}" STUB_FETCH_HEAD=999999
+refusal "carry voided: the pass is for another commit" "has no 'review-passed abc123' comment" "${carry_env[@]}" "STUB_COMMENT=review-passed $carried_m"
+
+# mark --carry re-pins the pass to the head, and only when it carries.
+run_carry_mark() {
+  reset
+  rc=0
+  out=$(env "$@" PATH="$work/bin:$PATH" bash "$mark" --carry 7 2>&1) || rc=$?
+}
+run_carry_mark "${carry_env[@]}"
+exited "mark --carry: a carriable head is marked" 0
+printed "mark --carry: names the carried pass" "Carrying the pass of ccccccccc to abc123"
+logged "mark --carry: comments the head's own pass" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed abc123"
+run_carry_mark "${carry_env[@]}" STUB_MTREE_RC=1
+exited "mark --carry: a conflicted merge is refused" 1
+printed "mark --carry: says it needs a review" "cannot carry a review pass to abc123"
+not_logged "mark --carry: a refused carry writes nothing" "^gh api -X POST"
+reset
+rc=0
+out=$(PATH="$work/bin:$PATH" bash "$mark" --carry 2>&1) || rc=$?
+exited "mark --carry without a PR is a usage error" 2
+
+# Without a flag the PR merges as a batch of one (#1567): the script hands the PR to the batch tool and touches neither
+# GitHub nor git itself. MERGE_BATCH is the test seam.
+cat >"$work/batch" <<'STUB'
+#!/usr/bin/env bash
+echo "batch $*" >>"$LOG"
+exit "${STUB_BATCH_RC:-0}"
+STUB
+chmod +x "$work/batch"
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" 7 2>&1) || rc=$?
+exited "no flag: merges as a batch of one" 0
+logged "no flag: the batch tool gets the PR" "batch 7"
+not_logged "no flag: the script itself calls neither gh nor git" "^gh\|^git"
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" STUB_BATCH_RC=1 PATH="$work/bin:$PATH" bash "$script" 7 2>&1) || rc=$?
+exited "no flag: the batch tool's refusal is the exit status" 1
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --direct 7 2>&1) || rc=$?
+not_logged "--direct never reaches the batch tool" "^batch"
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --check 7 2>&1) || rc=$?
+not_logged "--check never reaches the batch tool" "^batch"
+
 # Argument validation: exit 2, and gh is never called.
 check_args() { # <name> <args...>
   local name=$1
@@ -961,6 +1089,45 @@ exited "mark-review-passed exits 0" 0
 logged "mark reads head sha and branch in one call" "gh api repos/pkeppeler/deepcharter/pulls/7 --jq .head.sha + \" \" + .head.ref"
 logged "mark comments exact body" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed def456"
 logged "mark adds label" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/labels -f labels[]=review-passed"
+# The player-experience pass (#1555): a gameplay PR numbered PX_REVIEW_FIRST_PR or above needs the px-reviewed label; a lower number is exempt.
+px_first=$(sed -n 's/^PX_REVIEW_FIRST_PR=\([0-9][0-9]*\)$/\1/p' "$tools/lib/pr-body-checks.sh")
+[[ -n $px_first ]] || { echo "cannot read PX_REVIEW_FIRST_PR from tools/lib/pr-body-checks.sh" >&2; exit 1; }
+# px_run <script> <pr> [VAR=value ...]
+px_run() {
+  local s=$1 n=$2 flag=(--direct)
+  shift 2
+  reset
+  rc=0
+  [[ $s == "$script" ]] || flag=() # the merge is the direct one (#1567); mark takes no flag
+  out=$(env STUB_BODY="Closes #12
+No map change: test" "$@" PATH="$work/bin:$PATH" bash "$s" ${flag[@]+"${flag[@]}"} "$n" 2>&1) || rc=$?
+}
+gpl="STUB_LABELS=gameplay
+demo
+review-passed"
+gpx="STUB_LABELS=gameplay
+demo
+review-passed
+px-reviewed"
+for who in mark merge; do
+  if [[ $who == mark ]]; then s=$mark; else s=$script; fi
+  px_run "$s" $((px_first - 1)) "$gpl" "STUB_BRANCH=12-some-slug"
+  if [[ $out == *"px-reviewed"* ]]; then fail "$who: a gameplay PR below PX_REVIEW_FIRST_PR is exempt (out: $out)"; else pass "$who: a gameplay PR below PX_REVIEW_FIRST_PR is exempt"; fi
+  px_run "$s" "$px_first" "$gpl"
+  exited "$who: a gameplay PR at PX_REVIEW_FIRST_PR without the label is refused" 1
+  printed "$who: names the px fix" "lacks the 'px-reviewed' label"
+  px_run "$s" $((px_first + 5)) "$gpl"
+  exited "$who: a gameplay PR above PX_REVIEW_FIRST_PR without the label is refused" 1
+  px_run "$s" "$px_first" "$gpx"
+  if [[ $out == *"px-reviewed"* ]]; then fail "$who: px-reviewed lets a gameplay PR through (out: $out)"; else pass "$who: px-reviewed lets a gameplay PR through"; fi
+  px_run "$s" "$px_first" STUB_LABELS=infra
+  if [[ $out == *"px-reviewed"* ]]; then fail "$who: a non-gameplay PR is unaffected (out: $out)"; else pass "$who: a non-gameplay PR is unaffected"; fi
+done
+px_run "$mark" "$px_first" "$gpl"
+not_logged "mark refuses a gameplay PR without px-reviewed before writing anything" "^gh api -X POST"
+px_run "$mark" "$px_first" "$gpx"
+exited "mark allows a gameplay PR with px-reviewed" 0
+count "the px check reads no comments (no lookup that can fail open)" "comments?per_page" 0
 # merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
 # check_pr_body_and_labels: the two lists must hold the same steps.
 lib=$tools/lib/pr-body-checks.sh
