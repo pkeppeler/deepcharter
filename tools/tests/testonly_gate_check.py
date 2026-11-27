@@ -3,8 +3,8 @@ fails the build, unless production references it too, it overrides a supertype's
 `// test-seam: <reason>` marker with a reason binds to its exact declaration. Nothing is grandfathered.
 
 Each tree is compiled with javac (a mod tree, then a test tree against it) and scanned by the gate, so it needs JDK 25 on PATH. It does not use the
-Gradle batch of the other checks, so CASES is empty. Its name (testonly, not test_only) misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job
-and the pre-push hook run it.
+Gradle batch of the other checks, so CASES is empty. Its name (testonly, not test_only) misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build-checks
+CI job and the pre-push hook run it.
 Usage: tools/py tools/tests/gate_checks.py testonly
 """
 import re

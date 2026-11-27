@@ -1,0 +1,112 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "all": "deepcharter:block/overgrowth_veneer_mold",
+    "strand": "deepcharter:block/overgrowth_strands_mold",
+    "particle": "deepcharter:block/overgrowth_veneer_mold"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        15.9,
+        0
+      ],
+      "to": [
+        16,
+        15.9,
+        16
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#all"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#all"
+        }
+      },
+      "light_emission": 6,
+      "shade": false
+    },
+    {
+      "from": [
+        0,
+        10,
+        8
+      ],
+      "to": [
+        16,
+        16,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            6
+          ],
+          "texture": "#strand"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            6
+          ],
+          "texture": "#strand"
+        }
+      },
+      "light_emission": 6,
+      "shade": false
+    },
+    {
+      "from": [
+        8,
+        10,
+        0
+      ],
+      "to": [
+        8,
+        16,
+        16
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            6
+          ],
+          "texture": "#strand"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            6
+          ],
+          "texture": "#strand"
+        }
+      },
+      "light_emission": 6,
+      "shade": false
+    }
+  ]
+}

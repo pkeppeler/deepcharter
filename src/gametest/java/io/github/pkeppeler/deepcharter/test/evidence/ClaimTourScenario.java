@@ -41,7 +41,8 @@ import org.jspecify.annotations.Nullable;
  * the game's own fog and ambient light), and with night vision, which shows the shapes. The views:
  *
  * <ul> <li>a cave pocket in the surface band's underground, the first caves on the way down; <li>the longest open run
- * in a cave of each zone of layer 1; <li>a cut face across each contact between two strata: Topsoil Claims' hardpan
+ * in a cave of each zone of layer 1; <li>the floor of the open room over layer 1's rock, where Topsoil Claims' stalks
+ * grow (#1401); <li>a cut face across each contact between two strata: Topsoil Claims' hardpan
  * over Stone Benches' packed shale, and that over Deep Claim's black shale; <li>the abandoned shaft nearest the start
  * that has a candle niche: up from its foot, at the niche, and down it from part way up.
  * </ul>
@@ -73,6 +74,15 @@ public class ClaimTourScenario extends EvidenceScenario {
 
     private static final int SURFACE_CAVES_HIGH = 16;
     private static final int LAMP = 15;
+    /** The room-floor view: the eye's rows over the floor, and how far out it looks down to the floor. */
+    private static final int ROOM_EYE = 5;
+
+    private static final int ROOM_LOOK = 18;
+    /** The room's floor is searched for down from this many rows under layer 1's top, under its rock roof. */
+    private static final int ROOM_SEARCH_BELOW_TOP = 8;
+
+    private static final List<Block> STALKS =
+            List.of(block("fungal_stalk"), block("great_stalk"), block("great_stalk_cap"));
 
     /** A view: where the eye is and what it looks at. */
     private record View(Vec3 eye, Vec3 target) {}
@@ -114,6 +124,8 @@ public class ClaimTourScenario extends EvidenceScenario {
                     singleplayer.getServer().computeOnServer(server -> caveView(level(server), low, span.high() - 3));
             shootBoth(context, singleplayer, zones[zone] + "-cave", cave);
         }
+        View room = singleplayer.getServer().computeOnServer(server -> roomView(level(server)));
+        shootBoth(context, singleplayer, "topsoil-claims-room-floor", room);
         for (int zone = 0; zone < Zones.COUNT - 1; zone++) {
             int edge = Zones.span(band.minY(), band.height(), zone).low();
             String name = zone == 0 ? "contact-hardpan-packed-shale" : "contact-packed-shale-black-shale";
@@ -187,8 +199,9 @@ public class ClaimTourScenario extends EvidenceScenario {
         return placed;
     }
 
+    /** A lamp in an open cell; a stalk counts as open, so the lamps hang in the same cells with stalks or without. */
     private static void lamp(ServerLevel level, BlockPos at, List<BlockPos> placed) {
-        if (level.getBlockState(at).isAir()) {
+        if (open(level, at)) {
             level.setBlock(at, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, LAMP), Block.UPDATE_ALL);
             placed.add(at.immutable());
         }
@@ -224,14 +237,17 @@ public class ClaimTourScenario extends EvidenceScenario {
                 client -> ready(client, eye, subject, nightVision));
     }
 
-    /** The first block the line of sight meets: the client holds the view once it holds this block. */
+    /**
+     * The first block the line of sight meets past open cells and lamps: the client holds the view once it holds this
+     * block. A stalk counts as open, so it is the same block with stalks or without.
+     */
     private static BlockPos subject(ServerLevel level, View view) {
         Vec3 step = view.target().subtract(view.eye()).normalize().scale(0.5);
         Vec3 at = view.eye();
         for (int i = 0; i < 128; i++) {
             at = at.add(step);
             BlockPos pos = BlockPos.containing(at);
-            if (!level.getBlockState(pos).isAir() && !level.getBlockState(pos).is(Blocks.LIGHT)) {
+            if (!open(level, pos) && !level.getBlockState(pos).is(Blocks.LIGHT)) {
                 return pos;
             }
         }
@@ -288,6 +304,50 @@ public class ClaimTourScenario extends EvidenceScenario {
         Vec3 eye = Vec3.atBottomCenterOf(best).add(0, EYE, 0);
         Vec3 ahead = Vec3.atLowerCornerOf(bestDirection.getUnitVec3i()).scale(LOOK);
         return new View(eye, eye.add(ahead).add(0, -1.5, 0));
+    }
+
+    /**
+     * The view across the floor of the open room over layer 1's rock from over the start column, along the axis with
+     * the longest open run and down to the floor {@value #ROOM_LOOK} blocks out. A stalk counts as open, so the view is
+     * the same with stalks or without.
+     */
+    private static View roomView(ServerLevel level) {
+        CampaignBands.Band band = CampaignBands.LAYER_1;
+        BlockPos column = new BlockPos(X, 0, Z);
+        int floor = band.topExclusive() - ROOM_SEARCH_BELOW_TOP;
+        while (floor > band.minY() && open(level, column.atY(floor))) {
+            floor--;
+        }
+        Zones.Span topsoil = Zones.span(band.minY(), band.height(), 0);
+        if (floor < topsoil.low() || floor > topsoil.high()) {
+            throw new AssertionError("the room's floor over " + X + ", " + Z + " is at y=" + floor
+                    + ", outside Topsoil Claims " + topsoil.low() + ".." + topsoil.high());
+        }
+        BlockPos eye = column.atY(floor + ROOM_EYE);
+        if (!level.getBlockState(eye).isAir()) {
+            throw new AssertionError("the room view's eye over " + X + ", " + Z + " at y=" + eye.getY() + " is in "
+                    + level.getBlockState(eye));
+        }
+        Direction bestDirection = Direction.SOUTH;
+        int bestRun = -1;
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            int run = 0;
+            while (run < 3 * ROOM_LOOK && open(level, eye.relative(direction, run + 1))) {
+                run++;
+            }
+            if (run > bestRun) {
+                bestDirection = direction;
+                bestRun = run;
+            }
+        }
+        Vec3 from = Vec3.atCenterOf(eye);
+        Vec3 ahead = Vec3.atLowerCornerOf(bestDirection.getUnitVec3i()).scale(ROOM_LOOK);
+        return new View(from, from.add(ahead).add(0, 1 - ROOM_EYE, 0));
+    }
+
+    private static boolean open(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return state.isAir() || STALKS.stream().anyMatch(state::is);
     }
 
     /**

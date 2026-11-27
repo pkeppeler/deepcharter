@@ -444,6 +444,7 @@ public class HandbookChaptersSixToNineTest {
                                 Items.CRAFTING_TABLE,
                                 Items.STONE_AXE,
                                 HandbookChaptersOneToFiveTest.ours("scrap_iron"),
+                                Items.CHARCOAL,
                                 Items.IRON_INGOT,
                                 HandbookChaptersOneToFiveTest.ours("scanner_unit"),
                                 Items.TORCH)) {

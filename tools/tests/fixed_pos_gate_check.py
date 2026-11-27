@@ -10,7 +10,7 @@ way anywhere but in TestLayers.java, unless a `// level-height: <reason>` marker
 a level, so a test asks TestLayers.band for its floor, top and height. A `fixed-pos` marker does not count for it.
 
 Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
-on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build-checks CI job and the pre-push hook run it.
 Usage: tools/py tools/tests/gate_checks.py fixed_pos
 """
 import unittest

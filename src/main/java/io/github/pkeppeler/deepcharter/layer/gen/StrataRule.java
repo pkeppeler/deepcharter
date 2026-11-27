@@ -322,7 +322,10 @@ public record StrataRule(
         found.add(bottom.getBlock());
     }
 
-    /** {@code jitter}, a 31-bit hash, spread over 0 to {@code length} less 1 by a multiply and a shift, where a remainder divides. */
+    /**
+     * {@code jitter}, a 31-bit hash, spread over 0 to {@code length} less 1 by a multiply and a shift, where a
+     * remainder divides.
+     */
     private static int spread(int jitter, int length) {
         return (int) (((long) jitter * length) >>> 31);
     }

@@ -56,6 +56,37 @@ public final class LayerBlocks {
                     .noLootTable()));
 
     /**
+     * The moss growth that closes an unvisited bore (#974, {@link Overgrowth}). A soft block with no drop: a hand cuts
+     * it in seconds, the drill bores it at extra fuel.
+     */
+    public static final Block OVERGROWTH = registerBlock(
+            id("overgrowth"),
+            key -> new OvergrowthBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(OvergrowthTuning.DEFAULT.hardness())
+                    .sound(SoundType.MOSS)
+                    .noLootTable()));
+
+    /**
+     * The moss film round the growth (#974, {@link OvergrowthVeneerBlock}): a thin layer on the faces of rock, with no
+     * collision, no light cost and no drop, that goes before the fill, spills round a closed mouth and hangs from a
+     * roof. It has no item: only {@link Overgrowth} places it. It glows faintly in the dark as a warning: its models
+     * set a face {@code light_emission} (the rock does the same), which draws the film brighter while the block's light
+     * level stays 0, so it lights nothing.
+     */
+    public static final Block OVERGROWTH_VENEER = registerBlockOnly(
+            id("overgrowth_veneer"),
+            key -> new OvergrowthVeneerBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .instabreak()
+                    .sound(SoundType.MOSS)
+                    .noCollision()
+                    .noOcclusion()
+                    .replaceable()
+                    .pushReaction(PushReaction.POPPED)
+                    .noLootTable()));
+
+    /**
      * The roof bolt (#987): set in a roof by the bolt driver, it holds the roof round it against a cave-in ({@link CaveIns}). The id is
      * permanent, since a bolt set in the roof stays in a saved world. It has no item: only the driver sets one.
      */
