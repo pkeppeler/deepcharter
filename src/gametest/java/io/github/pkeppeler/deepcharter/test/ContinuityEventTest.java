@@ -396,35 +396,39 @@ public class ContinuityEventTest {
         ServerLevel nether =
                 Objects.requireNonNull(helper.getLevel().getServer().getLevel(Level.NETHER), "no nether");
         // The mock ticks only in a loaded chunk, so the Nether chunk is awaited before the player is sent there.
-        FarChunks.whenBlocksLoaded(helper, List.of(new FarChunks.At(nether, 0, 0)), () -> helper.startSequence()
-                .thenExecute(() -> {
-                    // fixed-pos: a place in the Nether's own rows, only somewhere that is not the campaign; nothing
-                    // reads it
-                    mock.teleportTo(nether, Vec3.atBottomCenterOf(new BlockPos(0, 100, 0)), 0f, 0f);
-                    player.hurtServer(nether, nether.damageSources().lava(), 1000f);
-                })
-                .thenIdle(2)
-                .thenExecute(() -> {
-                    List<TranslatableContents> lines = linesFor(mock, "continuity-nether", NO_DEPTH_KEY);
-                    expect(
-                            helper,
-                            lines.size() == 1 && lines.getFirst().getArgs().length == 3,
-                            "a death in the Nether gets one line with no depth, the chat was %s",
-                            mock.chatMessages());
-                    expect(
-                            helper,
-                            linesFor(mock, "continuity-nether").isEmpty(),
-                            "and no line with a depth, the chat was %s",
-                            mock.chatMessages());
-                    expect(
-                            helper,
-                            key(lines.getFirst().getArgs()[2])
-                                    .equals(Optional.of("deepcharter.continuity.cause.burned")),
-                            "the line still names the cause, it was %s",
-                            lines.getFirst());
-                    player.setGameMode(GameType.SPECTATOR);
-                })
-                .thenSucceed());
+        FarChunks.whenBlocksLoaded(
+                helper,
+                List.of(new FarChunks.At(nether, 0, 0)),
+                () -> helper.startSequence()
+                        .thenExecute(() -> {
+                            // fixed-pos: a place in the Nether's own rows, only somewhere that is not the campaign;
+                            // nothing
+                            // reads it
+                            mock.teleportTo(nether, Vec3.atBottomCenterOf(new BlockPos(0, 100, 0)), 0f, 0f);
+                            player.hurtServer(nether, nether.damageSources().lava(), 1000f);
+                        })
+                        .thenIdle(2)
+                        .thenExecute(() -> {
+                            List<TranslatableContents> lines = linesFor(mock, "continuity-nether", NO_DEPTH_KEY);
+                            expect(
+                                    helper,
+                                    lines.size() == 1 && lines.getFirst().getArgs().length == 3,
+                                    "a death in the Nether gets one line with no depth, the chat was %s",
+                                    mock.chatMessages());
+                            expect(
+                                    helper,
+                                    linesFor(mock, "continuity-nether").isEmpty(),
+                                    "and no line with a depth, the chat was %s",
+                                    mock.chatMessages());
+                            expect(
+                                    helper,
+                                    key(lines.getFirst().getArgs()[2])
+                                            .equals(Optional.of("deepcharter.continuity.cause.burned")),
+                                    "the line still names the cause, it was %s",
+                                    lines.getFirst());
+                            player.setGameMode(GameType.SPECTATOR);
+                        })
+                        .thenSucceed());
     }
 
     /** With {@code showDeathMessages} off there is no line at all, and the death still counts. */
