@@ -15,7 +15,8 @@
 			"io.github.pkeppeler.deepcharter.test.support.OddPods",
 			"io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes",
 			"io.github.pkeppeler.deepcharter.test.support.TestPacks",
-			"io.github.pkeppeler.deepcharter.test.support.WorldDataGuard"
+			"io.github.pkeppeler.deepcharter.test.support.WorldDataGuard",
+			"io.github.pkeppeler.deepcharter.test.support.ColonyPadPin"
 		],
 		"client": [
 			"io.github.pkeppeler.deepcharter.test.support.QuietTransmissions"
