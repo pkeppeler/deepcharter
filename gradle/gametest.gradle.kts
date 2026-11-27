@@ -19,7 +19,8 @@ tasks.named("runGameTest") { dependsOn(deleteGameTestWorld) }
 // Filter: -PclientTests=<name or glob>[,...] keeps only matching client classes, so one client test can run alone (see .claude/skills/deepcharter-conventions/tests.md).
 // Shard: -PclientShard=i/n keeps the i-th of n shards of what is left, so CI runs the suite in parallel jobs (weights: gradle/client-test-weights.txt).
 // -PgametestShard=i/n does the same for the server list (weights: gradle/server-test-weights.txt), keeping together every class that
-// runs a test in the same campaign environment, so that environment's batches are the ones a whole run makes (ADR 0111).
+// runs a test in the same campaign environment, so that environment's batches are the ones a whole run makes (ADR 0111), except a group heavier
+// than an even shard, which is broken into its classes (#1574).
 // Order: classes are listed sorted by name. The suite must not depend on that order: -PgametestOrder=reverse
 // lists them in reverse name order, to catch a test that leaks world state into a later one.
 //
@@ -418,12 +419,16 @@ object GametestScan {
 	/** The same for server-test-weights.txt: about the mean of the listed classes. */
 	const val DEFAULT_SERVER_WEIGHT = 6
 
+	/** A class named `...Scenario` is an evidence scenario: without DEEPCHARTER_EVIDENCE it returns at once, so an unlisted one counts as this many seconds, not the default. */
+	const val SCENARIO_CLIENT_WEIGHT = 1
+
 	private val campaignEnvironmentUse = Regex("""\bCampaignEnvironments\s*\.\s*(\w+)""")
 
 	/**
 	 * Shard `i/n` (1-based) of [units], each a list of classes that must share a shard: longest-processing-time-first onto the lightest shard,
 	 * by [weights] (fully qualified or simple class name to seconds; the full name wins; a unit weighs the sum of its classes). Every shard
 	 * computes the same partition from the same list, and each unit lands in exactly one, so the union of the n shards is the whole list.
+	 * A unit heavier than an even shard is broken into its classes first.
 	 * [property] and [kind] name the option and the list in a refusal.
 	 */
 	fun shardOf(units: List<List<String>>, shard: String, weights: Map<String, Int>, defaultWeight: Int, property: String, kind: String): List<String> {
@@ -433,11 +438,18 @@ object GametestScan {
 		if (index < 1 || index > count) {
 			throw GradleException("$property is '$shard', expected i/n with 1 <= i <= n, like 2/3")
 		}
-		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)] ?: defaultWeight
+		fun weight(name: String): Int {
+			val simple = name.substring(name.lastIndexOf(".") + 1)
+			return weights[name] ?: weights[simple] ?: if (simple.endsWith("Scenario")) SCENARIO_CLIENT_WEIGHT else defaultWeight
+		}
 		fun weight(unit: List<String>) = unit.sumOf { weight(it) }
+		// A unit heavier than an even shard (the campaign classes of an environment kept together) cannot be balanced whole, so it is
+		// broken into its classes: those runs of the environment's batches cost a little more start-up, which the weights absorb.
+		val even = units.sumOf { weight(it) } / count
+		val parts = units.flatMap { unit -> if (unit.size > 1 && weight(unit) > even) unit.map { listOf(it) } else listOf(unit) }
 		val loads = IntArray(count)
 		val mine = mutableListOf<String>()
-		for (unit in units.map { it.sorted() }.sortedWith(compareBy({ -weight(it) }, { it.first() }))) {
+		for (unit in parts.map { it.sorted() }.sortedWith(compareBy({ -weight(it) }, { it.first() }))) {
 			val target = loads.indices.minBy { loads[it] }
 			loads[target] += weight(unit)
 			if (target == index - 1) {

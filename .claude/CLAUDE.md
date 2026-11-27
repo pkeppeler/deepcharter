@@ -29,6 +29,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 - **Durable state:** GitHub Issues and Milestones on `pkeppeler/deepcharter`. Use one issue per PR-sized change. The PR closes its issue.
 - **Branches:** `<issue>-<slug>`. Create the issue first, then name the branch from its number (numbers race); the merge gate checks that the PR closes the issue its branch names, so keep `Closes #N` through body rewrites. Changes are squash-merged and branches are deleted automatically.
 - **CI runs on free standard runners** (the repo is public), so minutes are not rationed. Client tests run on every PR that changes `src/main`, `src/client`, `src/gametest` or `src/lang` (`tools/ci-client-needed.sh`), and on any PR labelled `gameplay`; docs and tools PRs skip them, for run time. Run recording jobs locally.
+  - **No CI job runs longer than 5 minutes** (`timeout-minutes: 5` on every job; `tools/tests/test_ci_budget.py` fails otherwise). A suite that does not fit is cut into more shards (budgets in `gradle/ci-budget.txt`), never given a longer limit ([ADR 0113](../docs/adr/0113-no-ci-job-runs-longer-than-five-minutes.md)).
 - **Sessions:**
   - For unattended runs, use `/loop` in dynamic mode.
   - Once context passes about 500k tokens, hand over: let in-flight agents finish, rewrite the handoff, stop the loop, then start the successor:

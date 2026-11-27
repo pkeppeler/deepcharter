@@ -1,0 +1,29 @@
+# Hands the compile job's work to the jobs that need it (#1574): the project's `build/` (classes, resources, generated launch files)
+# and `.gradle/` (task history and configuration cache), so a job that downloads them (.github/actions/download-compiled) finds
+# every compile task up to date instead of recompiling for a minute or two. Gradle compares input hashes, not times, and every
+# runner checks out to the same path, so the history is valid there; if main moved between the jobs' merges, Gradle just
+# recompiles what changed. The artifact is named by the caller's workflow, so ci.yml and client-tests.yml do not collide.
+name: Upload the compile output
+description: Upload build/ and .gradle/ as the artifact named by `name`, for download-compiled.
+
+inputs:
+  name:
+    description: The artifact name.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ${{ inputs.name }}
+        path: |
+          build
+          .gradle
+        # `.gradle` is a hidden directory, which v4+ leaves out by default.
+        include-hidden-files: true
+        # A re-run uploads the same name again, which v4+ rejects without this.
+        overwrite: true
+        # Already compressed jars and classes: a low level saves seconds and costs little size.
+        compression-level: 1
+        retention-days: 1

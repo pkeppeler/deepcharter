@@ -26,7 +26,7 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIsNotNone(count, "no CLIENT_SHARDS")
         shards = [int(n) for n in matrix[1].split(",")]
         self.assertEqual(shards, list(range(1, int(count[1]) + 1)))
-        self.assertEqual(len(shards), 5, "#1553: four shards ran 13-14 minutes of tests in a 20-minute budget, and a slow runner timed one out")
+        # That the count is enough for the weights, and no larger, is test_ci_budget.py's.
 
     def test_the_job_hands_its_shard_and_the_count_to_the_action(self):
         self.assertIn("client-shard: ${{ matrix.shard }}/${{ env.CLIENT_SHARDS }}", self.shard_job())
@@ -38,7 +38,8 @@ class ClientShardWorkflowTest(unittest.TestCase):
         aggregate = re.search(r"^  client-gametest:\n(.*)", WORKFLOW, re.M | re.S)
         self.assertIsNotNone(aggregate, "no client-gametest aggregate job")
         self.assertIn("name: client-gametest\n", aggregate[1])
-        self.assertIn("needs: [changes, client-shard]", aggregate[1])
+        self.assertIn("needs: [changes, compile, client-shard]", aggregate[1])
+        self.assertIn("needs.compile.result", aggregate[1])
         self.assertIn("always()", aggregate[1])
         self.assertIn("needs.client-shard.result", aggregate[1])
 
@@ -61,32 +62,32 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIn("name: client-gametest-screenshots${{ inputs.artifact-suffix }}", ACTION)
         self.assertIn("artifact-suffix: -${{ matrix.shard }}", self.shard_job())
 
-    def deadline_for(self, branch: str) -> int:
-        """The max_seconds the action sets when CLIENT_SHARD is set ("sharded") or empty ("whole")."""
-        match = re.search(
-            r'if \[ -n "\$CLIENT_SHARD" \]; then\n\s+max_seconds=(\d+)\n\s+else\n\s+max_seconds=(\d+)\n\s+fi', ACTION
-        )
-        self.assertIsNotNone(match, "the action does not pick max_seconds by whether CLIENT_SHARD is set")
-        return int(match[1 if branch == "sharded" else 2])
+    def test_a_shard_runs_at_most_5_minutes_and_the_action_stops_before_that(self):
+        # The job's limit kills it with no message; the action's deadline ends the run first, with one (#1574).
+        job = self.shard_job()
+        self.assertEqual(5, int(re.search(r"timeout-minutes: (\d+)", job)[1]))
+        deadline = int(re.search(r"^\s+max_seconds=(\d+)$", ACTION, re.M)[1])
+        self.assertLess(deadline + 65, 5 * 60, "65 s of setup before the step, then the run's deadline, inside the job limit")
 
-    def test_a_shard_keeps_20_minutes_inside_its_30_minute_job(self):
-        limit = int(re.search(r"timeout-minutes: (\d+)", self.shard_job())[1])
-        self.assertEqual(30, limit)
-        self.assertEqual(1200, self.deadline_for("sharded"))
-        self.assertLess(self.deadline_for("sharded"), limit * 60)
+    def test_a_shard_downloads_the_compiled_build_and_leaves_the_cache_to_the_compile_job(self):
+        job = self.shard_job()
+        self.assertIn("needs: [changes, compile]", job)
+        self.assertIn("name: compiled-client", job)
+        self.assertIn('gradle-cache-read-only: "true"', job)
+
+    def test_the_shards_run_at_most_10_at_once_so_a_full_run_leaves_runners_for_other_prs(self):
+        self.assertIn("max-parallel: 10", self.shard_job())
 
     def test_a_step_warns_at_80_percent_of_its_budget(self):
         self.assertIn("warn_seconds=$((max_seconds * 8 / 10))", ACTION)
         self.assertIn('if [ "$SECONDS" -ge "$warn_seconds" ] && [ -z "$warned" ]; then', ACTION)
         self.assertIn("echo \"::warning::Client GameTests passed 80% of their", ACTION)
 
-    def test_a_whole_suite_run_gets_3000_seconds_inside_a_60_minute_job(self):
-        # Pre-shard workflows (still on queued PRs) run the whole suite in one 60-minute job, as does record-evidence.yml (#1135).
-        self.assertEqual(3000, self.deadline_for("whole"))
+    def test_the_evidence_run_has_the_same_limit_and_no_shard(self):
+        # record-evidence.yml runs one scenario with no client-shard; its jobs stop at 5 minutes like the rest.
         evidence = (REPO / ".github/workflows/record-evidence.yml").read_text()
         self.assertNotIn("client-shard:", evidence)
-        self.assertIn("timeout-minutes: 60", evidence)
-        self.assertLess(self.deadline_for("whole"), 60 * 60)
+        self.assertIn("name: compiled-evidence", evidence)
 
 
 if __name__ == "__main__":

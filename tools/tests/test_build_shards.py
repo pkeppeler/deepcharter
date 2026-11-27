@@ -35,13 +35,26 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn('runGameTest "-PgametestShard=${{ matrix.shard }}/${{ env.BUILD_SHARDS }}"', shard)
         self.assertIn("fail-fast: false", shard)
 
-    def test_the_checks_job_runs_the_rest_of_the_build_and_the_gate_checks_once(self):
+    def test_the_checks_job_runs_the_rest_of_the_build(self):
         checks = job("checks")
         self.assertIn("name: build-checks\n", checks)
         self.assertIn("tools/ci-gradle-resolve.sh build -x runGameTest", checks)
         self.assertIn("--dry-run --configuration-cache", checks)
+
+    def test_the_gate_checks_run_once_in_a_tool_test_part(self):
         self.assertEqual(WORKFLOW.count("tools/tests/gate_checks.py"), 1)
-        self.assertIn("tools/tests/gate_checks.py", checks)
+        self.assertIn("tools/tests/gate_checks.py", job("tool-part"))
+
+    def test_the_shards_and_the_checks_job_download_what_the_compile_job_built(self):
+        self.assertIn("name: compile\n", job("compile"))
+        self.assertIn("name: compiled-ci", job("compile"))
+        for key in ("build", "checks"):
+            with self.subTest(key):
+                self.assertIn("needs: compile\n", job(key))
+                self.assertIn("name: compiled-ci", job(key))
+
+    def test_the_shards_run_at_most_6_at_once_so_a_full_run_leaves_runners_for_other_prs(self):
+        self.assertIn("max-parallel: 6", job("build"))
 
     def test_every_job_that_tests_uploads_the_main_sha_it_merged(self):
         for key, suffix in (("build", "${{ matrix.shard }}"), ("checks", "checks")):
@@ -59,8 +72,9 @@ class BuildShardWorkflowTest(unittest.TestCase):
     def test_the_aggregate_is_build_needs_every_job_and_runs_after_a_failure(self):
         aggregate = job("build-result")
         self.assertIn("name: build\n", aggregate)
-        self.assertIn("needs: [build, checks]", aggregate)
+        self.assertIn("needs: [compile, build, checks]", aggregate)
         self.assertIn("always()", aggregate)
+        self.assertIn("needs.compile.result", aggregate)
         self.assertIn("needs.build.result", aggregate)
         self.assertIn("needs.checks.result", aggregate)
 

@@ -67,6 +67,23 @@ rc=0
 out=$(SHARD_KIND='a b' bash "$script" "$work/d" 1 2>&1) || rc=$?
 check "a SHARD_KIND that is not a word: exit 2" "$rc" 2
 
+# SHARD_PREFIX: the tool-test parts' files are main-sha-tool-<i>, which a build aggregate in the same directory never reads.
+rm -rf "$work/d"
+mkdir "$work/d"
+printf '%s\n' "$A" >"$work/d/main-sha-tool-1"
+printf '%s\n' "$A" >"$work/d/main-sha-tool-2"
+printf '%s\n' "$B" >"$work/d/main-sha-1"
+rc=0
+out=$(SHARD_KIND=tool SHARD_PREFIX=tool- GITHUB_OUTPUT="$work/output" bash "$script" "$work/d" 2 2>&1) || rc=$?
+check "prefixed parts: exit 0" "$rc" 0
+has "prefixed parts: named in the message" "Every tool shard merged origin/main $A"
+rc=0
+out=$(SHARD_PREFIX=tool- bash "$script" "$work/d" 3 2>&1) || rc=$?
+check "a prefixed part missing: exit 1" "$rc" 1
+rc=0
+out=$(SHARD_PREFIX='a b' bash "$script" "$work/d" 1 2>&1) || rc=$?
+check "a SHARD_PREFIX that is not a word and a dash: exit 2" "$rc" 2
+
 rc=0
 out=$(bash "$script" 2>&1) || rc=$?
 check "no arguments: usage, exit 2" "$rc" 2

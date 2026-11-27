@@ -4,6 +4,8 @@
 # class; an entry for a class that no longer exists is ignored. Stale numbers only unbalance the shards, never
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
 # Refreshed (#1553) from the five-shard CI run 46042722092 (head 7b52fef1): the START-to-next-START seconds of each class, applied where the old weight was off by more than 15%; the others keep their older means. StaleClientLightClientTest measured 286 (shard 1 ran 821 s against 616-783 s for the rest); the old 195 and 220 were too low. Expected shard totals: 669, 668, 667, 667, 667.
+# Split (#1574): StaleClientLightClientTest (286 s) became it plus three StaleClientLightTrials*ClientTest classes, and HandBreakClientTest (163 s) became it plus HandBreakIronClientTest, so no class outruns a shard (gradle/ci-budget.txt). The new weights are estimates: the old time split by the cases each runs, plus a world's start-up each; refresh from the first CI run.
+# Any class named ...Scenario not listed counts 1 s, not 10: an evidence scenario returns at once without DEEPCHARTER_EVIDENCE (GametestScan.SCENARIO_CLIENT_WEIGHT).
 # BoreTripsClientTest: one CI run (45741859329, #1418), which added a settle to two of its trips; refresh from CI.
 # PodDriveLateClientTest and PodDriveSmoothClientTest: the mean over CI runs 45808423857 and 45806374168, not the two runs above.
 # PodLoadClientTest: one local run (#1449), 24 s, scaled by CockpitHudClientTest's local-to-CI ratio (48 s to 36); refresh from CI.
@@ -39,7 +41,8 @@ FarChunksReleaseClientTest 10
 FloodlightBeamsClientTest 11
 FrontCameraClientTest 36
 FuelPumpClientTest 14
-HandBreakClientTest 163
+HandBreakClientTest 88
+HandBreakIronClientTest 80
 HandbookScreenClientTest 13
 HangarClientTest 14
 HotHullClientTest 21
@@ -101,7 +104,10 @@ SkyClientTest 20
 SonarHudClientTest 31
 SoundWiringClientTest 45
 SpecSheetClientTest 27
-StaleClientLightClientTest 286
+StaleClientLightClientTest 110
+StaleClientLightTrialsAClientTest 100
+StaleClientLightTrialsBClientTest 100
+StaleClientLightTrialsCClientTest 100
 StepToastClearOfHudClientTest 1
 StepToastClearOfSonarClientTest 34
 StepToastClientTest 11
