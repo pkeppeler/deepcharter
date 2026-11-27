@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.SlotClicks;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -605,8 +606,9 @@ public class OreCargoTest {
         });
     }
 
+    /** ADR 0110: ore moves from the hold to the cursor and into the pack like any item; it is loose ore there. */
     @GameTest
-    public void clickingTheHoldsOreMovesNoOre(GameTestHelper helper) {
+    public void clickingTheHoldsOreMovesItToTheCursorAndThePack(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "ore-clicker");
         try {
@@ -617,21 +619,22 @@ public class OreCargoTest {
             PodMenu menu = (PodMenu) player.player().containerMenu;
             int ore = menu.holdSlot(0).index;
             menu.clicked(ore, 0, ContainerInput.PICKUP, player.player());
-            if (!menu.getCarried().isEmpty()) {
-                throw failure(helper, "picking up the hold's ore must give nothing, got %s", menu.getCarried());
-            }
-            menu.setCarried(new ItemStack(Items.DIAMOND));
-            menu.clicked(ore, 0, ContainerInput.PICKUP, player.player());
-            menu.clicked(ore, 0, ContainerInput.QUICK_MOVE, player.player());
-            menu.clicked(ore, 0, ContainerInput.THROW, player.player());
-            if (!menu.getCarried().is(Items.DIAMOND)
-                    || pod.cargo().entries().size() != 1
-                    || !menu.holdSlot(0).getItem().is(OreRegistry.item(OreType.SILVERIUM))) {
+            if (!menu.getCarried().is(OreRegistry.item(OreType.SILVERIUM))
+                    || pod.cargo().entries().size() != 0) {
                 throw failure(
                         helper,
-                        "clicks must not move ore, carried %s, hold %s",
+                        "picking up the hold's ore puts it on the cursor, carried %s, hold %s",
                         menu.getCarried(),
                         pod.cargo().entries());
+            }
+            menu.clicked(SlotClicks.inventorySlot(menu, Items.AIR).index, 0, ContainerInput.PICKUP, player.player());
+            if (!menu.getCarried().isEmpty()
+                    || player.player().getInventory().countItem(OreRegistry.item(OreType.SILVERIUM)) != 1) {
+                throw failure(
+                        helper,
+                        "the ore goes into the pack, carried %s, pack holds %s",
+                        menu.getCarried(),
+                        player.player().getInventory().countItem(OreRegistry.item(OreType.SILVERIUM)));
             }
             helper.succeed();
         } finally {
