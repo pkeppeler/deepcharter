@@ -128,7 +128,6 @@ if [[ -z $review_pass_refusal ]]; then
     --jq ".[] | select(.user.login == \"$TRUSTED_LOGIN\") | .body | split(\"\\n\")[0] | @json" | grep -qxF "\"review-passed $sha\"" \
     || carry_review_pass "$sha" \
     || review_pass_refusal="has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
-  # shellcheck disable=SC2154 # carry_review_pass assigns carried_from
   [[ -z $carried_from ]] || review_pass_note=" (carried from ${carried_from:0:9} across a clean merge of origin/main)"
 fi
 if [[ $gate_only -eq 1 ]]; then
