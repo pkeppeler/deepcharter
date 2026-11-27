@@ -283,6 +283,8 @@ public class StructureLightBorderTest {
                                     server,
                                     () -> placement.withRing().forEach(chunk -> {
                                         FarChunks.force(helper, level, chunk.x(), chunk.z());
+                                        // sync-load: the conduit swap of inContext lasts one tick, and the chunk must
+                                        // generate inside it
                                         level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
                                     }));
                         } else {

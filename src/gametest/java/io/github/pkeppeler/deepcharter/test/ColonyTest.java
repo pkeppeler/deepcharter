@@ -25,6 +25,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
@@ -51,6 +52,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -199,7 +201,7 @@ public class ColonyTest {
         helper.succeed();
     }
 
-    @GameTest
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD)
     public void dataOfAnotherVersionIsKeptAndTheCallbackPathsSkipIt(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ColonySite unreadable = ColonySite.CODEC
@@ -226,6 +228,7 @@ public class ColonyTest {
                 throw new IllegalStateException("unreadable data answered a lookup");
             }
         });
+        // sync-load: the case is the chunk load itself, asked for while the colony's saved data is unreadable
         paths.put("chunk load", () -> TestLayers.level(server, 1).getChunk(7000 >> 4, 7000 >> 4));
         UnreadableChecks.assertSavedDataNoThrow(helper, "colony", server, ColonySite.TYPE, paths);
         helper.succeed();
@@ -311,13 +314,19 @@ public class ColonyTest {
         helper.succeed();
     }
 
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aSpawnInWaterMakesTheBuildSearchForDryGround(GameTestHelper helper) {
         ServerLevel level = server(helper).overworld();
         // A lake 181 blocks across on the flat ground, far from every other test.
         int lake = 9000;
         int half = 90;
-        level.getChunk(lake >> 4, lake >> 4);
+        FarChunks.whenBlocksLoaded(
+                helper,
+                FarChunks.overBlocks(level, lake - half, lake - half, lake + half, lake + half),
+                () -> aSpawnInWaterMakesTheBuildSearch(helper, level, lake, half));
+    }
+
+    private static void aSpawnInWaterMakesTheBuildSearch(GameTestHelper helper, ServerLevel level, int lake, int half) {
         int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, lake, lake);
         for (int x = lake - half; x <= lake + half; x++) {
             for (int z = lake - half; z <= lake + half; z++) {
@@ -384,13 +393,28 @@ public class ColonyTest {
 
     /** Runs {@code body} once, when every chunk of the pad ticks: a rebuild takes the first try's displays away only in chunks that tick. */
     private static void whenThePadTicks(GameTestHelper helper, ColonySite.Placed colony, Runnable body) {
+        whenThePadTicks(helper, colony, () -> true, body);
+    }
+
+    /** As above, and once {@code also} holds. */
+    private static void whenThePadTicks(
+            GameTestHelper helper, ColonySite.Placed colony, BooleanSupplier also, Runnable body) {
         MinecraftServer server = helper.getLevel().getServer();
         ColonyChunks.whenTicking(
                 helper,
                 server.overworld(),
                 ColonyChunks.of(colony),
-                () -> ColonyChunks.displaysOnThePad(server.overworld(), colony) == ColonyChunks.displaysOf(server),
+                () -> also.getAsBoolean()
+                        && ColonyChunks.displaysOnThePad(server.overworld(), colony) == ColonyChunks.displaysOf(server),
                 body);
+    }
+
+    /** The chunks of {@link #eastLand}, which reaches past the chunks of the pad. */
+    private static List<FarChunks.At> eastLandChunks(ServerLevel level, ColonySite.Placed colony) {
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        BlockPos centre = colony.center();
+        return FarChunks.overBlocks(
+                level, centre.getX() + half + 1, centre.getZ() - 20, centre.getX() + half + 32, centre.getZ() + 20);
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
@@ -790,6 +814,7 @@ public class ColonyTest {
         BlockPos centre = colony.center();
         Map<BlockPos, BlockState> land = new LinkedHashMap<>();
         for (BlockPos at : BlockPos.betweenClosed(centre.offset(half + 1, -3, -20), centre.offset(half + 32, 8, 20))) {
+            // sync-load: the caller waited for the strip's chunks with FarChunks.whenBlocksLoaded (eastLandChunks)
             level.getChunk(at.getX() >> 4, at.getZ() >> 4);
             land.put(at.immutable(), level.getBlockState(at));
         }
@@ -815,7 +840,9 @@ public class ColonyTest {
         MinecraftServer server = server(helper);
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
-        whenThePadTicks(helper, colony, () -> {
+        boolean[] stripLoaded = {false};
+        FarChunks.whenBlocksLoaded(helper, eastLandChunks(level, colony), () -> stripLoaded[0] = true);
+        whenThePadTicks(helper, colony, () -> stripLoaded[0], () -> {
             int half = ColonyTuning.DEFAULT.padSize() / 2;
             BlockPos centre = colony.center();
             Map<BlockPos, BlockState> original = eastLand(level, colony);
@@ -864,7 +891,9 @@ public class ColonyTest {
         MinecraftServer server = server(helper);
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
-        whenThePadTicks(helper, colony, () -> {
+        boolean[] stripLoaded = {false};
+        FarChunks.whenBlocksLoaded(helper, eastLandChunks(level, colony), () -> stripLoaded[0] = true);
+        whenThePadTicks(helper, colony, () -> stripLoaded[0], () -> {
             int half = ColonyTuning.DEFAULT.padSize() / 2;
             BlockPos centre = colony.center();
             Map<BlockPos, BlockState> original = eastLand(level, colony);

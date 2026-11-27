@@ -31,7 +31,6 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.jspecify.annotations.Nullable;
@@ -122,10 +121,9 @@ public class LightSyncSafetyNetTest {
             try {
                 switch (phase[0]) {
                     case 0 -> {
-                        forEach(home, chunk -> {
-                            FarChunks.force(helper, level, chunk.x(), chunk.z());
-                            level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
-                        });
+                        if (!forceAllLoaded(helper, level, home, deadline)) {
+                            return;
+                        }
                         phase[0] = 1;
                     }
                     case 1 -> {
@@ -169,6 +167,7 @@ public class LightSyncSafetyNetTest {
                         // The player is sent the lit chunk.
                         ServerPlayer player = mock.player();
                         player.connection.chunkSender.dropChunk(player, home);
+                        // sync-load: home ticks (phase 1), so this finds the loaded chunk
                         player.connection.chunkSender.markChunkPendingToSend(level.getChunk(home.x(), home.z()));
                     }
                     case 5 -> {
@@ -307,8 +306,12 @@ public class LightSyncSafetyNetTest {
                 }
                 switch (phase[0]) {
                     case 0 -> {
-                        loadAround(level, home);
                         FarChunks.force(helper, level, home.x(), home.z());
+                        boolean loaded = loadAround(level, home);
+                        deadline.await(helper, level, loaded, () -> "the chunks round " + home + " did not load");
+                        if (!loaded) {
+                            return;
+                        }
                         phase[0] = 1;
                     }
                     case 1 -> {
@@ -430,14 +433,31 @@ public class LightSyncSafetyNetTest {
         }
     }
 
-    /** Loads the chunks round the player's chunk to FULL, held by a ticket that loads and does not simulate. */
-    private static void loadAround(ServerLevel level, ChunkPos home) {
+    /**
+     * Loads the chunks round the player's chunk to FULL, held by a ticket that loads and does not simulate; the chunks
+     * load on the worker threads. True once all of them are loaded.
+     */
+    private static boolean loadAround(ServerLevel level, ChunkPos home) {
+        boolean loaded = true;
         for (int x = home.x() - 2; x <= home.x() + 4; x++) {
             for (int z = home.z() - 2; z <= home.z() + 2; z++) {
                 level.getChunkSource().addTicketWithRadius(TicketType.PLAYER_LOADING, new ChunkPos(x, z), 0);
-                level.getChunk(x, z, ChunkStatus.FULL);
+                loaded &= level.getChunkSource().getChunkNow(x, z) != null;
             }
         }
+        return loaded;
+    }
+
+    /** Forces every chunk of the case, and is true once all of them are loaded; they load on the worker threads. */
+    private static boolean forceAllLoaded(
+            GameTestHelper helper, ServerLevel level, ChunkPos home, FarChunks.Deadline deadline) {
+        boolean[] loaded = {true};
+        forEach(home, chunk -> {
+            FarChunks.force(helper, level, chunk.x(), chunk.z());
+            loaded[0] &= level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null;
+        });
+        deadline.await(helper, level, loaded[0], () -> "the chunks round " + home + " did not load");
+        return loaded[0];
     }
 
     /**
@@ -510,10 +530,9 @@ public class LightSyncSafetyNetTest {
                 switch (phase[0]) {
                     case 0 -> {
                         // Every chunk of the case is loaded and forced, so it ticks as far as its neighbours allow.
-                        forEach(home, chunk -> {
-                            FarChunks.force(helper, level, chunk.x(), chunk.z());
-                            level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
-                        });
+                        if (!forceAllLoaded(helper, level, home, deadline)) {
+                            return;
+                        }
                         phase[0] = 1;
                     }
                     case 1 -> {

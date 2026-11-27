@@ -6,8 +6,10 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.surface.SurfaceWrites;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -101,34 +103,40 @@ public class SurfaceWritesTest {
     }
 
     /** A chunk that is not a plain proto chunk, or has reached the light status, keeps vanilla's write. */
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aLiveOrLitChunkIsWrittenTheVanillaWay(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockState sandstone = Blocks.SANDSTONE.defaultBlockState();
         expect(helper, SurfaceWrites.neutral(sandstone, GREEN), "the pair is one the fast path would take");
         // A chunk far from every test, wrapped as the generator wraps a finished one.
-        LevelChunk live = level.getChunk(1_000_100, 1_000_100);
-        ImposterProtoChunk imposter = new ImposterProtoChunk(live, true);
-        BlockPos at = at(live, 3, level.getMinY() + 10, 3); // level-height: a far chunk of the test level
-        expect(helper, live.getBlockState(at) == sandstone, "the far chunk holds sandstone at %s", at);
-        expect(helper, SurfaceWrites.neutralWas(imposter, at, GREEN) == null, "an imposter chunk takes the fast path");
-        imposter.setBlockState(at, GREEN, 3);
-        expect(helper, live.getBlockState(at) == GREEN, "the vanilla write did not reach the live chunk");
-        live.setBlockState(at, sandstone, 3);
+        FarChunks.whenBlocksLoaded(helper, List.of(new FarChunks.At(level, 1_000_100, 1_000_100)), () -> {
+            LevelChunk live = Objects.requireNonNull(
+                    level.getChunkSource().getChunkNow(1_000_100, 1_000_100), "whenBlocksLoaded loaded the chunk");
+            ImposterProtoChunk imposter = new ImposterProtoChunk(live, true);
+            BlockPos at = at(live, 3, level.getMinY() + 10, 3); // level-height: a far chunk of the test level
+            expect(helper, live.getBlockState(at) == sandstone, "the far chunk holds sandstone at %s", at);
+            expect(
+                    helper,
+                    SurfaceWrites.neutralWas(imposter, at, GREEN) == null,
+                    "an imposter chunk takes the fast path");
+            imposter.setBlockState(at, GREEN, 3);
+            expect(helper, live.getBlockState(at) == GREEN, "the vanilla write did not reach the live chunk");
+            live.setBlockState(at, sandstone, 3);
 
-        ProtoChunk lit = chunk(level, 1_000_110, ChunkStatus.BIOMES);
-        BlockPos inLit = at(lit, 3, level.getMinY() + 10, 3); // level-height: a hand-built chunk
-        lit.setBlockState(inLit, GREEN, 3);
-        expect(
-                helper,
-                SurfaceWrites.neutralWas(lit, inLit, PACKED) != null,
-                "a proto chunk before the light status does not");
-        lit.setPersistedStatus(ChunkStatus.INITIALIZE_LIGHT);
-        expect(
-                helper,
-                SurfaceWrites.neutralWas(lit, inLit, PACKED) == null,
-                "a chunk at the light status takes the fast path");
-        helper.succeed();
+            ProtoChunk lit = chunk(level, 1_000_110, ChunkStatus.BIOMES);
+            BlockPos inLit = at(lit, 3, level.getMinY() + 10, 3); // level-height: a hand-built chunk
+            lit.setBlockState(inLit, GREEN, 3);
+            expect(
+                    helper,
+                    SurfaceWrites.neutralWas(lit, inLit, PACKED) != null,
+                    "a proto chunk before the light status does not");
+            lit.setPersistedStatus(ChunkStatus.INITIALIZE_LIGHT);
+            expect(
+                    helper,
+                    SurfaceWrites.neutralWas(lit, inLit, PACKED) == null,
+                    "a chunk at the light status takes the fast path");
+            helper.succeed();
+        });
     }
 
     /**
@@ -147,6 +155,7 @@ public class SurfaceWritesTest {
         LevelChunk off;
         boolean was = SurfaceWrites.setEnabled(false);
         try {
+            // sync-load: the fast path is off only while this chunk generates, which must end in this tick
             off = campaign.getChunk(1_000_200, 1_000_200);
         } finally {
             SurfaceWrites.setEnabled(was);
@@ -154,6 +163,7 @@ public class SurfaceWritesTest {
         LevelChunk on;
         SurfaceWrites.watch(new ChunkPos(1_000_200, 1_000_200));
         try {
+            // sync-load: the watched count is of this one chunk, so its generation must end while the watch is set
             on = window.getChunk(1_000_200, 1_000_200);
             long taken = SurfaceWrites.watchedWrites();
             expect(

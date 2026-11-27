@@ -213,6 +213,8 @@ public final class LayerConceptScenes {
         for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
             for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
                 action.apply(level, cx, cz);
+                // sync-load: a scene is built and read in the call that holds its few chunks, which the hold keeps
+                // loaded after
                 level.getChunk(cx, cz);
             }
         }

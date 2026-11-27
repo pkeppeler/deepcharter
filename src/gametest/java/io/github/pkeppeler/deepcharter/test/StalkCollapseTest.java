@@ -961,6 +961,8 @@ public class StalkCollapseTest {
         BlockPos here = helper.absolutePos(new BlockPos(0, BASE_ROW, 0));
         int chunkX = (here.getX() >> 4) + UNLOADED_CHUNKS_AWAY;
         int chunkZ = here.getZ() >> 4;
+        // sync-load: the case needs this one chunk loaded alone, its east neighbour not; a forced chunk loads
+        // its neighbours
         LevelChunk chunk = level.getChunk(chunkX, chunkZ);
         if (level.getChunkSource().hasChunk(chunkX + 1, chunkZ)) {
             throw failure(helper, "the chunk beside the test chunk is loaded before the test starts");

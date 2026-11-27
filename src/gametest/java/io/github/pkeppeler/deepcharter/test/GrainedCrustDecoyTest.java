@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource.Layer;
 import io.github.pkeppeler.deepcharter.layer.gen.GrainedCrustPass;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -56,7 +57,7 @@ import net.minecraft.world.level.material.PushReaction;
 public class GrainedCrustDecoyTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final String GRAIN_SAMPLE = "deepcharter:campaign_grain_sample";
-    private static final int MAX_TICKS = 6000;
+    private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 6000;
 
     /** The synthetic bands: boundaries this far apart, from the top of the first, and a seed list that is not special. */
     private static final int BAND_HEIGHT = 64;
@@ -315,26 +316,28 @@ public class GrainedCrustDecoyTest {
     /** The first breach is breach crust, in the layer data: handbook chapter 8 teaches it. */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theFirstBreachIsNormalCrustInTheLayerData(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        List<Layer> layers =
-                ((BandBiomeSource) level.getChunkSource().getGenerator().getBiomeSource()).layers();
-        expect(
-                helper,
-                layers.getFirst().floorCrust() == FloorCrust.NORMAL,
-                "layer 1's floor is %s",
-                layers.getFirst().floorCrust());
-        for (BlockPos column : sample()) {
-            for (int y = CampaignBands.LAYER_1.minY();
-                    y < CampaignBands.LAYER_1.minY() + CampaignBands.crustRows();
-                    y++) {
-                expect(
-                        helper,
-                        level.getChunk(column).getBlockState(column.atY(y)).is(LayerBlocks.BREACH_CRUST),
-                        "the first breach has no breach crust at %s",
-                        column.atY(y));
+        whenSampleLoaded(helper, () -> {
+            ServerLevel level = helper.getLevel();
+            List<Layer> layers =
+                    ((BandBiomeSource) level.getChunkSource().getGenerator().getBiomeSource()).layers();
+            expect(
+                    helper,
+                    layers.getFirst().floorCrust() == FloorCrust.NORMAL,
+                    "layer 1's floor is %s",
+                    layers.getFirst().floorCrust());
+            for (BlockPos column : sample()) {
+                for (int y = CampaignBands.LAYER_1.minY();
+                        y < CampaignBands.LAYER_1.minY() + CampaignBands.crustRows();
+                        y++) {
+                    expect(
+                            helper,
+                            stateAt(level, column.atY(y)).is(LayerBlocks.BREACH_CRUST),
+                            "the first breach has no breach crust at %s",
+                            column.atY(y));
+                }
             }
-        }
-        helper.succeed();
+            helper.succeed();
+        });
     }
 
     /**
@@ -344,21 +347,23 @@ public class GrainedCrustDecoyTest {
      */
     @GameTest(dimension = GRAIN_SAMPLE, maxTicks = MAX_TICKS)
     public void aGeneratedBoundaryIsTheSameKindInEveryChunk(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        List<Layer> layers =
-                ((BandBiomeSource) level.getChunkSource().getGenerator().getBiomeSource()).layers();
-        expect(
-                helper,
-                layers.getFirst().floorCrust() == FloorCrust.GRAINED,
-                "layer 1's floor is %s",
-                layers.getFirst().floorCrust());
-        expect(
-                helper,
-                layers.get(1).floorCrust() == FloorCrust.DRAW,
-                "layer 2's floor is %s",
-                layers.get(1).floorCrust());
-        expectEveryBoundaryIsTheDraw(helper, level, layers);
-        helper.succeed();
+        whenSampleLoaded(helper, () -> {
+            ServerLevel level = helper.getLevel();
+            List<Layer> layers =
+                    ((BandBiomeSource) level.getChunkSource().getGenerator().getBiomeSource()).layers();
+            expect(
+                    helper,
+                    layers.getFirst().floorCrust() == FloorCrust.GRAINED,
+                    "layer 1's floor is %s",
+                    layers.getFirst().floorCrust());
+            expect(
+                    helper,
+                    layers.get(1).floorCrust() == FloorCrust.DRAW,
+                    "layer 2's floor is %s",
+                    layers.get(1).floorCrust());
+            expectEveryBoundaryIsTheDraw(helper, level, layers);
+            helper.succeed();
+        });
     }
 
     /**
@@ -370,25 +375,27 @@ public class GrainedCrustDecoyTest {
      */
     @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void layerFloorsTwoAndThreeAreTheSeedsDrawInEveryChunkOfTheCampaignWorld(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        List<Layer> layers =
-                ((BandBiomeSource) level.getChunkSource().getGenerator().getBiomeSource()).layers();
-        expect(helper, layers.size() == 3, "the campaign world has %d layers, not 3", layers.size());
-        expect(
-                helper,
-                layers.get(1).minY() == CampaignBands.LAYER_2.minY(),
-                "layer 2's band starts at %d",
-                layers.get(1).minY());
-        List<Boolean> kinds = expectEveryBoundaryIsTheDraw(helper, level, layers);
-        expect(
-                helper,
-                !kinds.get(1) && kinds.get(2),
-                "the seed %d draws layer 2's floor %s and layer 3's %s, not breach then grained: the sample no longer"
-                        + " sees both kinds",
-                level.getSeed(),
-                kinds.get(1) ? "grained" : "breach",
-                kinds.get(2) ? "grained" : "breach");
-        helper.succeed();
+        whenSampleLoaded(helper, () -> {
+            ServerLevel level = helper.getLevel();
+            List<Layer> layers =
+                    ((BandBiomeSource) level.getChunkSource().getGenerator().getBiomeSource()).layers();
+            expect(helper, layers.size() == 3, "the campaign world has %d layers, not 3", layers.size());
+            expect(
+                    helper,
+                    layers.get(1).minY() == CampaignBands.LAYER_2.minY(),
+                    "layer 2's band starts at %d",
+                    layers.get(1).minY());
+            List<Boolean> kinds = expectEveryBoundaryIsTheDraw(helper, level, layers);
+            expect(
+                    helper,
+                    !kinds.get(1) && kinds.get(2),
+                    "the seed %d draws layer 2's floor %s and layer 3's %s, not breach then grained: the sample"
+                            + " no longer sees both kinds",
+                    level.getSeed(),
+                    kinds.get(1) ? "grained" : "breach",
+                    kinds.get(2) ? "grained" : "breach");
+            helper.succeed();
+        });
     }
 
     /**
@@ -405,7 +412,7 @@ public class GrainedCrustDecoyTest {
             kinds.add(expected);
             for (BlockPos column : sample()) {
                 for (int y = layer.minY(); y < layer.minY() + CampaignBands.crustRows(); y++) {
-                    BlockState state = level.getChunk(column).getBlockState(column.atY(y));
+                    BlockState state = stateAt(level, column.atY(y));
                     if (expected) {
                         expect(
                                 helper,
@@ -506,6 +513,24 @@ public class GrainedCrustDecoyTest {
         try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);
         }
+    }
+
+    /** Loads the chunks {@link #sample} reads, in the test's own level, before {@code body} runs. */
+    private static void whenSampleLoaded(GameTestHelper helper, Runnable body) {
+        FarChunks.whenBlocksLoaded(
+                helper,
+                FarChunks.rect(
+                        helper.getLevel(),
+                        SAMPLE_CHUNK,
+                        SAMPLE_CHUNK,
+                        SAMPLE_CHUNK + SAMPLE_CHUNKS - 1,
+                        SAMPLE_CHUNK + SAMPLE_CHUNKS - 1),
+                body);
+    }
+
+    private static BlockState stateAt(ServerLevel level, BlockPos pos) {
+        // sync-load: every caller waited for the sample with whenSampleLoaded
+        return level.getChunk(pos).getBlockState(pos);
     }
 
     private static List<BlockPos> sample() {
