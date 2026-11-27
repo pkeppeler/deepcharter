@@ -3,7 +3,7 @@ or replaceElement and has no HudKeepClear.register call fails the build and name
 line or the contiguous `//` lines above it. A file that registers is left alone, and a mention in a comment neither makes a call nor registers one.
 
 Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
-on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build-checks CI job and the pre-push hook run it.
 Usage: tools/py tools/tests/gate_checks.py keep_clear
 """
 import unittest
