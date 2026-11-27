@@ -256,6 +256,8 @@ public record CatalogueLayout(
      * A recipe console as wide as the catalogue's widest, centred on a screen {@code width} by {@code height}, or null when the window
      * has no room for it.
      */
+    // const-param: callers pass font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font); the
+    // parameter keeps the layout tied to the font, and tests pass it too
     public static @Nullable Console centred(int width, int height, CatalogueLook look, CrtTuning crt, int lineHeight) {
         int consoleWidth = look.maxPanelWidth();
         if (width < consoleWidth + 2 * look.screenEdge() || height < look.consoleHeight() + 2 * look.screenEdge()) {

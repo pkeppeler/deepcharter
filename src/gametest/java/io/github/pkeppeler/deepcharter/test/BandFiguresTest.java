@@ -141,7 +141,8 @@ public class BandFiguresTest {
             expect(
                     helper,
                     passes(level, two) > 0,
-                    "no figure appears in layer 2's dark with a player in layer 2 (may appear %s, block light %d, ticking %s)",
+                    "no figure appears in layer 2's dark with a player in layer 2 (may appear %s, block light %d,"
+                            + " ticking %s)",
                     LamplessFigures.canAppearAt(level, two),
                     level.getBrightness(LightLayer.BLOCK, two),
                     level.isPositionEntityTicking(two));

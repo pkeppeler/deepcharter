@@ -156,7 +156,8 @@ public class EntityQueryAuditTest {
                             if (back != 0) {
                                 throw failure(
                                         helper,
-                                        "%d figures came back with their chunk: they are saved now, and the caps must count them from saved data",
+                                        "%d figures came back with their chunk: they are saved now, and the caps must"
+                                                + " count them from saved data",
                                         back);
                             }
                         }));
@@ -271,7 +272,8 @@ public class EntityQueryAuditTest {
                                 left.discard();
                                 throw failure(
                                         helper,
-                                        "a display of build 0 of the colony survived the load of its chunk, though the colony is of a later build");
+                                        "a display of build 0 of the colony survived the load of its chunk, though the"
+                                                + " colony is of a later build");
                             }
                             if (other == null) {
                                 throw failure(
@@ -320,7 +322,8 @@ public class EntityQueryAuditTest {
                             if (hands.size() != 1) {
                                 throw failure(
                                         helper,
-                                        "giving the Host at another statue his hands changed the pair here: %d pairs stand, not 1",
+                                        "giving the Host at another statue his hands changed the pair here: %d pairs"
+                                                + " stand, not 1",
                                         hands.size());
                             }
                         }));

@@ -64,10 +64,10 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         return slot;
     }
 
-    /** Adds the player's inventory with its top left at {@code x}, {@code y}: the rows, then the hotbar under them. */
-    protected final void addPlayerInventory(Inventory inventory, int x, int y) {
+    /** Adds the player's inventory with its top left {@link #FRAME} from the left and {@code y} down: the rows, then the hotbar under them. */
+    protected final void addPlayerInventory(Inventory inventory, int y) {
         inventoryStart = slots.size();
-        addStandardInventorySlots(inventory, x, y);
+        addStandardInventorySlots(inventory, FRAME, y);
     }
 
     /** The typed slots, in the order they were added. */
@@ -112,6 +112,8 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
             ItemStack incoming = switch (input) {
                 case PICKUP -> getCarried();
                 case SWAP -> player.getInventory().getItem(button);
+                // enum-default: only a pickup or a swap puts a stack into this slot;
+                // every other input moves nothing into it (a quick move is judged below)
                 default -> ItemStack.EMPTY;
             };
             return incoming.isEmpty() ? Optional.empty() : typed.rule().refusal(incoming);
