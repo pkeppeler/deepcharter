@@ -494,7 +494,7 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 
 **Trade-offs.** Impact-speed damage makes falls readable and gives the rotor a second job, but it softens the fall hazard in the layers below. Outposts give the charter something to build and defend, but need layer 2's terminals, so they cannot be the first fix.
 
-**Knobs.** `PodTuning.Movement` (`hardLandingSpeed` 0.7, `hullDamagePerSpeed` 70), `PodTuning.Fuel` (`tankLitres` 10, the burn rates), `UpgradeTuning` tank and hull values and prices, `pod_fuel/*.json`, the layer height (192).
+**Knobs.** `PodTuning.Movement` (`hardLandingSpeed` 0.7, `hullDamagePerSpeed` 50), `PodTuning.Fuel` (`tankLitres` 10, the burn rates), `UpgradeTuning` tank and hull values and prices, `pod_fuel/*.json`, the layer height (192).
 
 **Open questions.**
 - Is the first descent meant to be the one-way bore with a stack of coal? The handbook's chapter 8 ("Your first breach") should say so if it is.
@@ -631,14 +631,14 @@ Every band holds after the change. The matter transmitter is the one price that 
 
 **Problem.** Pod fall damage read the distance fallen (4 blocks free, 5 hull per block beyond), so a rotor-braked fall cost the hull of a free one and a stock hull survived 23 blocks. A pilot could never drive back down the charter's own 192-block shaft, which breaks Motherload's loop (bore once, then fly down it) and the economy's pace (#289). SPEC section 4 says "Hard landings cause damage", which the original game reads as impact speed.
 
-**Rule.** The hull takes `(sink speed at landing - hardLandingSpeed) * hullDamagePerSpeed` hull points, where the sink speed is the pod's downward speed in blocks per tick when it lands (`HardLanding`). At or under `hardLandingSpeed` (0.7, 14 blocks per second) a landing is free. Gravity 0.08 and drag 0.98 give a free fall a terminal sink speed of 3.92, which costs about 225 hull, so a free fall of a deep shaft always wrecks a stock pod. A pilot who taps the rotor to hold the sink under 0.7 lands unhurt from any height, and burns fuel for it: holding a speed takes the rotor about half the ticks (`gravity / thrustAcceleration`), about 2 L for the 192-block shaft (`EarlyRunModel.driveDownLitres`; about 2.5 L measured). A seated rider takes no vanilla fall damage, the hull takes it (as for lava, #288); a wreck's crew and players outside a pod follow vanilla. The HUD shows "HARD LANDING", in `podHardLandingColor` of `theme/hud.json`, while the pod sinks faster than the damage speed.
+**Rule.** The hull takes `(sink speed at landing - hardLandingSpeed) * hullDamagePerSpeed` hull points, where the sink speed is the pod's downward speed in blocks per tick when it lands (`HardLanding`). At or under `hardLandingSpeed` (0.7, 14 blocks per second) a landing is free. Gravity 0.08 and drag 0.98 give a free fall a terminal sink speed of 3.92, which costs about 161 hull at #1432's 50 hull per block per tick (225 at the first 70), so a free fall of a deep shaft always wrecks a stock pod. A pilot who taps the rotor to hold the sink under 0.7 lands unhurt from any height, and burns fuel for it: holding a speed takes the rotor about half the ticks (`gravity / thrustAcceleration`), about 2 L for the 192-block shaft (`EarlyRunModel.driveDownLitres`; about 2.5 L measured). A seated rider takes no vanilla fall damage, the hull takes it (as for lava, #288); a wreck's crew and players outside a pod follow vanilla. The HUD shows "HARD LANDING", in `podHardLandingColor` of `theme/hud.json`, while the pod sinks faster than the damage speed.
 
 **Calibration.** The old rule cost 10 hull for a 6-block fall and 30 for 10. The new one costs about 14 and 31 (free fall; 70 hull per block per tick). It is cheaper than the old rule from about 12 blocks on, because speed tops out and distance does not.
 
-**Knobs.** `PodTuning.Movement` `hardLandingSpeed` (0.7) and `hullDamagePerSpeed` (70), also `PodStats` (a part may change them), `theme/hud.json` `podHardLandingColor`, `lang pod.json` `hud.deepcharter.pod.hard_landing`, `EarlyRunModel.DRIVE_DOWN_SINK` (0.6, the model's assumed braked speed).
+**Knobs.** `PodTuning.Movement` `hardLandingSpeed` (0.7) and `hullDamagePerSpeed` (50 since [#1432](#soft-landings-1432-a), first 70), also `PodStats` (a part may change them), `theme/hud.json` `podHardLandingColor`, `lang pod.json` `hud.deepcharter.pod.hard_landing`, `EarlyRunModel.DRIVE_DOWN_SINK` (0.6, the model's assumed braked speed).
 
 **Trade-offs.**
-- It softens cavern falls: in the deeper layers a fall now hurts by speed, not depth. A pit of 20 blocks costs 56 hull, a fall of 40 or more wrecks a stock pod, and none of it grows with depth beyond that. The fall hazard is now "did you brake", so a hazard that wants depth to matter needs another source (a hull plating that cuts the speed damage, or a ceiling that drops).
+- It softens cavern falls: in the deeper layers a fall now hurts by speed, not depth. A pit of 20 blocks costs 40 hull, a fall of about 93 or more wrecks a stock pod (about 107 with a pilot, through the [cushion](#soft-landings-1432-a)), and none of it grows with depth beyond that. The fall hazard is now "did you brake", so a hazard that wants depth to matter needs another source (a hull plating that cuts the speed damage, or a ceiling that drops).
 - The rotor gets a second job on every descent, and the dive costs fuel and attention. A pod with no power (stranded, or a tow) cannot brake.
 - A crew whose pod is wrecked by a fall still dies by the wreck rule (#67), not by fall damage.
 - The drive down takes about 2 L of the tank before a layer 2 run starts. A run of a Mole with tier 2 parts nets $348, from about $375 or more. The Prospector restore money went from $1,500 to $1,390 to stay at 4 runs ($1,390 / $348 = 3.99). Three consumables were cut to stay in their bands at that income (`EconomyAffordabilityTest`): hull nanobots 350 to 345 (band 0.25 to 1.00 runs, now 0.99), quantum teleporter 750 to 690 (1.5 to 2.0, now 1.98), matter transmitter 1,500 to 1,390 (3.5 to 4.0, now 3.99). Both teleport items stay at the top of their bands.
@@ -647,6 +647,49 @@ Every band holds after the change. The matter transmitter is the one price that 
 - Should a part cut the speed damage (a landing-gear track), or lift `hardLandingSpeed`? It would be the hand-to-mastery step of the ladder: brake by hand, then buy a hull that lands hard.
 - Should a free fall with a pilot hurt the pilot before the wreck? Today the wreck kills the crew.
 - Should the HUD show the sink speed as a number as well as the warning?
+
+## Soft landings (#1432, A)
+
+**Problem.** Playtesters on the friends server found a soft landing nearly impossible and a hard one far too costly. Thrust at full lift is twice gravity, so the rotor is either climbing or the pod is falling, and a pilot who lets go of a hover more than 4 blocks up lands over the 14 blocks a second buffer. The touchdown speeds a careful pilot reaches, before and after this change, measured by `PodHardLandingTest` with the real keys (a pod whose hull reads its touchdown speed):
+
+| From rest (a hover), the pilot | Before: touchdown, blocks a second | Before: hull lost | Now: touchdown | Now: hull lost |
+|---|---|---|---|---|
+| lets go, 3 blocks up | 13.0 | 0 | 9.4 | 0 |
+| lets go, 6 blocks up | 18.1 | 14.4 | 9.4 | 0 |
+| lets go, 10 blocks up | 22.8 | 30.8 | 15.9 | 4.7 |
+| feathers jump (2 ticks in 5), 10 blocks up | 8.7 | 0 | 6.1 | 0 |
+
+**The buffer is a speed (user decision, 2026-11-25).** A landing is free at or under a sink of 14 blocks a second (`hardLandingSpeed` 0.7 a tick), as before. A speed and not a drop height, because a gauge can show it while the pod falls and the pilot can act on it; a drop height is known only once the pod has landed, and the same drop is soft or hard by how the pilot braked. The cockpit shows it: while the pod is airborne and sinking, a SINK plate hangs under the ribbon's middle, below the altimeter, once the sink reaches 0.6 of the buffer (`sinkShowShare`, 8.4 blocks a second: a block bored straight down drops the pod one block, which peaks near 0.43, so drilling down never blinks it), with a bar of the sink against the buffer and the buffer marked (the bar runs to 4/3 of it). It is green under three quarters of the buffer, amber (`ribbonWarn`) up to it and red (`lowColor`) past it, and stays up for a second after the sink falls under that, so a feathered hover does not blink it. It reads the depth gauge's signal, as the altimeter does, so the signal decay darkens it. The plain HUD keeps its "HARD LANDING" line.
+
+**The ground cushion (A).** In the last 3 blocks of air under the hull, a crewed pod with power has its sink braked by 0.12 blocks a tick each tick, down to 0.4 (8 blocks a second) and no slower. It is the rotor's downwash against the ground, and it puffs dust under the pod while it brakes. It is `HardLanding.cushion`, a `PodEvents.AFTER_TICK` listener, so the rotor's own physics (`PodMovement`) are unchanged.
+- It burns no fuel (A). It works only within 3 blocks of the ground, needs power and a pilot, and only brakes a sink down to 0.4, so it never holds the pod up or replaces the rotor; a burn would add a cost to every landing for a few ticks of brake. It also brakes an overloaded pod whose rotor has no lift left, so a pod too heavy to climb still lands soft from a short drop.
+- Letting go of a hover up to 8 blocks up now lands soft, and from 10 just over the buffer. Feathering the rotor lands soft from any height, as before.
+- A free fall is still deadly: at speed the pod crosses the 3 blocks in a tick or two. A crewed pod falling the layer 1 shaft lands at about 63 blocks a second and a stock pod is wrecked (see Hull tiers below); an uncrewed pod, or one out of fuel, gets no cushion.
+- Why not the others: a smoother lift ramp adds lag to a control that is already hard to time, and a slower sink while jump is feathered still needs the timing the playtesters lacked. Raising the buffer was not needed once the cushion holds a careful pilot under it.
+
+**Hull cost.** `hullDamagePerSpeed` goes from 70 to 50 hull per block per tick (2.5 hull for each block a second over the buffer), so a landing just over it stings:
+
+| Touchdown | Hull lost of 100, before (70) | Now (50) |
+|---|---|---|
+| buffer + 1 block a second (15) | 3.5 | 2.5 |
+| buffer + 5 blocks a second (19) | 17.5 | 12.5 |
+| free fall of 10 blocks, uncrewed (23) | 31 | 22 |
+| free fall of the layer 1 shaft, crewed (65 before, 63 through the cushion) | 180 (wreck) | 123 (wreck) |
+| free-fall terminal speed (78.4) | 225 (wreck) | 161 (wreck) |
+
+A crewed free fall wrecks a stock pod from about 107 blocks now, against about 47 before; a 40-block fall costs about 54 hull. These follow the model v ← (v + 0.08) · 0.98 a tick, which reproduces the measured free falls above, with the cushion's brake in the last 3 blocks.
+
+**Hull tiers (A).** The hull track multiplies `maxHull` by its tier's ratio to the stock part (`UpgradeTuning`: 100, then 170 at tier 1 and 300 at tier 2). A crewed fall of the layer 1 shaft (about 124 hull) and a landing at terminal speed (161) wreck a stock pod and leave a tier 1 hull standing, at 46 and 9 hull. On main, at 70 a speed, they cost 182 and 225, so only tier 2 survived them. Surviving the drop from tier 1 is the reward for the hull upgrade, kept on purpose: the free fall still costs most of the hull.
+
+**The ladder.** By hand: watch the sink gauge and feather the rotor. The cushion is the stock floor of that skill, not an upgrade. Later: a landing-skid part that deepens the cushion or lifts the buffer (the open question of [Hard landings](#hard-landings-319-a)), and a hull that shrugs off a hard landing.
+
+**Knobs.** `HardLandingTuning` `cushionHeight` (3), `cushionBrake` (0.12), `cushionSink` (0.4); `PodTuning.Movement` `hullDamagePerSpeed` (50); `theme/cockpit.json` `ribbonWarn`, `sinkShowShare` (0.6), `sinkWarnShare` (0.75), `sinkBarW`, `sinkBarH`, `sinkSegments` (4), `sinkLimit` (3), `sinkBarGap`, `sinkHoldTicks` (20).
+
+**Trade-offs.** It is easier than main: the default pod lands soft from twice the height, and a hard landing costs 29% less. A pod that is out of fuel or has no pilot falls as before.
+
+**Open questions.**
+- Should a loaded pod get less cushion? The rotor's lift falls with the cargo, and a cushion scaled by lift would give a full bay a cost at every landing. Left out until #1449's load against lift lands.
+- Should the SINK plate show the cushion working (the bar easing in the last 3 blocks), or is the dust enough?
 
 ## The void under a broken breach crust (#333, interim)
 
@@ -740,12 +783,12 @@ The no-brace columns were measured again on the merged code and give the sounder
 
 ## The void below (#1387, A)
 
-**Problem.** The brace patches the hull to the crust's price plus its reserve of 4, so a braced pod crosses the crust with 4 to 15 hull. A cave under the crust then lands it hard: a free fall of 4 blocks or more costs hull (4 blocks about 1), and a 9-block fall costs about 27, which wrecks it. The crust warning had said the pilot was covered (`HULL 32, IT TAKES 24`), so the death read as the HUD lying. The only cue was the amber HARD LANDING line, about 10 ticks into the fall. Natural caves in layer 1 (#1300) make open space under the drill common.
+**Problem.** The brace patches the hull to the crust's price plus its reserve of 4, so a braced pod crosses the crust with 4 to 15 hull. A cave under the crust then lands it hard: a free fall of 4 blocks or more costs hull (4 blocks about 1), and a 9-block fall costs about 19, which wrecks it. The crust warning had said the pilot was covered (`HULL 32, IT TAKES 24`), so the death read as the HUD lying. The only cue was the amber HARD LANDING line, about 10 ticks into the fall. Natural caves in layer 1 (#1300) make open space under the drill common.
 
 **The cue (by hand, every pod).** Counterplay, not a nerf: the hard landing stays ([Hard landings](#hard-landings-319-a)), and braking with the rotor becomes a choice the pilot makes before the breakthrough.
-- **The crust warning prices the drop.** The warning reads the open space under the crust, below the pod's footprint, and adds what a free fall into it would cost on landing: `CRUST 2 DOWN  HULL 28, IT TAKES 24 + DROP 27`, and `IN THE CRUST  HULL 28, IT TAKES 8 + DROP 27` in the crust. It shows when the hull is no more than the crust rows left plus the drop. Over solid rock, or over a drop that lands soft (3 blocks or less), the line is as before, with no drop part.
+- **The crust warning prices the drop.** The warning reads the open space under the crust, below the pod's footprint, and adds what a free fall into it would cost on landing: `CRUST 2 DOWN  HULL 26, IT TAKES 24 + DROP 19`, and `IN THE CRUST  HULL 26, IT TAKES 8 + DROP 19` in the crust. It shows when the hull is no more than the crust rows left plus the drop. Over solid rock, or over a drop that lands soft (3 blocks or less), the line is as before, with no drop part.
 - **The drill sounds hollow.** For the last 2 rows before the drill breaks through into a drop that lands hard, the drill-down loop plays at a higher pitch. That holds anywhere, not only at the crust. A pilot who listens can stop, and brake with the rotor in the fall.
-- **How the drop is priced.** `VoidBelow.dropCost` runs the pod's own fall: gravity 0.08 and drag 0.98 from `PodTuning.Movement`, from rest, over the blocks of the fall. It prices the sink speed at the end with `HardLanding.hullDamage`, so it reads the pod's own `hardLandingSpeed` and `hullDamagePerSpeed`. A fall of 3 blocks or less costs 0, 4 blocks about 1, 6 about 14, 9 about 27, and 20 about 56. The fall lands on the highest rock under any cell of the footprint. A fluid counts as a floor, and so does a block in an unloaded chunk or past the bottom of the level, so an unknown is never priced as open. The read stops at 64 blocks, so a deeper fall is priced as 64 (about 117 hull, more than a stock hull). The server and the client read the same blocks, so the HUD and the tests agree.
+- **How the drop is priced.** `VoidBelow.dropCost` runs the pod's own fall: gravity 0.08 and drag 0.98 from `PodTuning.Movement`, from rest, over the blocks of the fall. It prices the sink speed at the end with `HardLanding.hullDamage`, so it reads the pod's own `hardLandingSpeed` and `hullDamagePerSpeed`. A fall of 3 blocks or less costs 0, 4 blocks about 1, 6 about 10, 9 about 19, and 20 about 40. The fall lands on the highest rock under any cell of the footprint. A fluid counts as a floor, and so does a block in an unloaded chunk or past the bottom of the level, so an unknown is never priced as open. The read stops at 64 blocks, so a deeper fall is priced as 64 (about 84 hull, more than a stock hull). The server and the client read the same blocks, so the HUD and the tests agree.
 - **Not across a seam yet.** The probe reads one level. In the campaign world the layers are bands of one level (layer 1 at Y -256 to -65, layer 2 at -512 to -257), so the space under layer 1's crust is layer 2's rock and is read. Where the next layer lies in another level, past a seam ([ADR 0085](../adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md), [ADR 0089](../adr/0089-a-seam-is-crossed-by-a-swap-to-a-client-world-built-ahead-and-the-teleport-with-its-fade-is-the-fallback.md)), the bottom of the level ends the read as rock, so no drop is priced and the drill never sounds hollow there. Reading the level beyond the seam is #1459.
 
 **The ladder.**
