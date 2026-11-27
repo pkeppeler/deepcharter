@@ -106,7 +106,7 @@ public final class RepairMenu extends SlottedMenu {
                     .holdingOne();
             addRuleSlot(view, i, FRAME + i % PART_COLUMNS * PART_COLUMN, PARTS_Y + i / PART_COLUMNS * PART_ROW, rule);
         }
-        addPlayerInventory(inventory, FRAME, inventoryY(parts.size()));
+        addPlayerInventory(inventory, inventoryY(parts.size()));
         refresh();
     }
 
