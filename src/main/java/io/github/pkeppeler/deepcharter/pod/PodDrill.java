@@ -59,8 +59,8 @@ public final class PodDrill {
             return;
         }
         if (EngineSoot.launchRefused(pod)) {
-            // A pod in limp mode does not leave a colony whose repair station works: it is serviced there first
-            // (#1280).
+            // A pod in limp mode does not leave a colony whose repair station works: it is serviced there
+            // first (#1280).
             if (pod.getControllingPassenger() instanceof ServerPlayer pilot && pod.tickCount % 40 == 0) {
                 pilot.sendOverlayMessage(Component.translatable("deepcharter.fuel.launch_refused"));
             }
@@ -81,8 +81,8 @@ public final class PodDrill {
         // sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
         boolean centred = centre(pod, slab, stats);
         if (slab.acrossGrain()) {
-            // The grain does not bite across it (#746): the drill skates, with sparks, a squeal and heat, and makes no
-            // progress.
+            // The grain does not bite across it (#746): the drill skates, with sparks, a squeal and heat, and makes
+            // no progress.
             GrainedCrust.skate(pod, wanted);
             stop(pod);
             return;
@@ -100,6 +100,8 @@ public final class PodDrill {
             return;
         }
         pod.setDrilling(true);
+        // The drill sets the pace from its first tick: a sprint that drove the pod into the rock ends here.
+        PodSprint.stop(pod);
         pod.setDrillDirection(wanted);
         // The turn to the grid and the slide to the centre both finish before the first tick of the slab counts.
         boolean squared =
@@ -225,8 +227,7 @@ public final class PodDrill {
                         return false;
                     }
                 } else if (breakable(state)
-                        && (state.getDestroySpeed(level, pos) < 0
-                                || (state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn(pos)))) {
+                        && (state.getDestroySpeed(level, pos) < 0 || (isCrust(state) && !crustLeadsOn(pos)))) {
                     return false;
                 }
             }
@@ -290,13 +291,19 @@ public final class PodDrill {
             return new LoadedBlocks(level);
         }
 
+        /** The breach crust, or the grained crust that takes its place at a seam or a decoy: a floor either way. */
+        private static boolean isCrust(BlockState state) {
+            return state.is(LayerBlocks.BREACH_CRUST) || state.is(LayerBlocks.GRAINED_CRUST);
+        }
+
         private static boolean breakable(BlockState state) {
             return !state.isAir() && !(state.getBlock() instanceof LiquidBlock);
         }
 
         /**
-         * The last layer's crust has nothing under it: a hole would only drop the pod into the void. The layer is the band at the crust's Y,
-         * so layer 2's floor crust in the campaign world is refused too, with unbuilt depth below it.
+         * The last layer's crust, grained or not, has nothing under it: a hole would only drop the pod into the void,
+         * so the last floor's layer data never decides it. The layer is the band at the crust's Y, so the floor crust
+         * of the last built layer in the campaign world is refused, with unbuilt depth below it.
          */
         private boolean crustLeadsOn(BlockPos crust) {
             Optional<Band> band = LayerChain.layerAt(level, crust.getY());

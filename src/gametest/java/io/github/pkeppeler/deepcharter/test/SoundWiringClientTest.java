@@ -146,8 +146,8 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     "the pod in the client's level",
                     client -> ClientLight.clientLevel(client).getEntity(podId) != null);
 
-            // The client loads the pod a few times while the teleported player's chunks settle; count from the settled
-            // pod.
+            // The client loads the pod a few times while the teleported player's chunks settle; count from the
+            // settled pod.
             ClientWait.until(
                     context,
                     "the pod idling with its engine sound heard",
@@ -287,8 +287,8 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     .runOnServer(server ->
                             server.getPlayerList().getPlayers().getFirst().stopRiding());
 
-            // A terminal: music while it is open, letters while it types, and a sound for a sale, an error and a
-            // purchase.
+            // A terminal: music while it is open, letters while it types, and a sound for a sale, an error and
+            // a purchase.
             open(context, scene.processor());
             await(
                     context,

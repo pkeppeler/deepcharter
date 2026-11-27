@@ -103,8 +103,8 @@ public class TerminalShapeTest {
             if (!filled(shape, point(facing, 0, 8, 7.9))) {
                 throw helper.assertionException("%s: the casing should run the full width", state);
             }
-            // The glass rim stands out of the front by half a pixel (to z 1.5), its middle by a whole pixel more (to z
-            // 0.5).
+            // The glass rim stands out of the front by half a pixel (to z 1.5), its middle by a whole pixel more (to
+            // z 0.5).
             if (!filled(shape, point(facing, 6.25, 10)) || !filled(shape, point(facing, 7.25, 10))) {
                 throw helper.assertionException(
                         "%s: the glass should stand out of the front, facing %s", state, facing);

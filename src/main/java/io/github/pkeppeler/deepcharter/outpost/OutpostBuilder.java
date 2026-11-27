@@ -103,8 +103,8 @@ public final class OutpostBuilder {
             return refusal("no_room_above");
         }
         AABB shell = shellOf(clicked);
-        // entity-query: the hall is cut with whatever stands in it, so anything but a sweepable item or orb refuses the
-        // kit
+        // entity-query: the hall is cut with whatever stands in it, so anything but a sweepable item or orb refuses
+        // the kit
         List<Entity> inShell = level.getEntities(player, shell);
         for (Entity entity : inShell) {
             Optional<Component> blocked = blockedBy(server, charter.get(), entity);

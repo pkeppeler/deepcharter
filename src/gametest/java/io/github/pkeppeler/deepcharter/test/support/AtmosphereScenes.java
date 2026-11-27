@@ -359,8 +359,8 @@ public final class AtmosphereScenes {
                 client -> "no chunks at " + floor.toShortString());
         ClientChecks.requireNone(
                 "the light at " + shot, ClientLight.settledMismatch(context, server, dimension, around));
-        // tick-wait: the lightmap and the fog ease toward the new place over a few ticks, and nothing reports when they
-        // have
+        // tick-wait: the lightmap and the fog ease toward the new place over a few ticks, and nothing reports when
+        // they have
         context.waitTicks(SETTLE_TICKS);
         awaitSteadyPicture(context, shot);
     }

@@ -308,8 +308,8 @@ public class TerminalPartSlotsTest {
             click(menu, player, SlotClicks.inventorySlot(menu, MOTOR).index, ContainerInput.PICKUP);
             click(menu, player, menu.ruleSlots().get(0).index, ContainerInput.PICKUP);
             click(menu, player, SlotClicks.inventorySlot(menu, VALVE).index, ContainerInput.PICKUP);
-            // The spare motor on the cursor swapped places with the valve, which rides the cursor when the screen
-            // closes.
+            // The spare motor on the cursor swapped places with the valve, which rides the cursor when the
+            // screen closes.
             expect(helper, menu.getCarried().is(VALVE), "the valve rides the cursor, carried %s", menu.getCarried());
 
             player.closeContainer();

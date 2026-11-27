@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -74,17 +74,8 @@ public class TetherTest {
 
     private static final double EPSILON = 1e-6;
 
-    /** Every winch noise the hook reported: where and how far. The listener acts on every level, so a test reads only what is near its own pod. */
-    private static final List<Vec3> CLANKS = new CopyOnWriteArrayList<>();
-
-    private static final List<Double> CLANK_RADII = new CopyOnWriteArrayList<>();
-
-    static {
-        PodTether.NOISE.register((level, at, radius) -> {
-            CLANKS.add(at);
-            CLANK_RADII.add(radius);
-        });
-    }
+    /** Where a creature drawn to the drill would head if there were no noise: nowhere near any room. */
+    private static final Vec3 DRILL = Vec3.ZERO;
 
     @GameTest
     public void aPersonClipsToTheirOwnPodAndKeepsTheTether(GameTestHelper helper) {
@@ -670,29 +661,73 @@ public class TetherTest {
             ServerPlayer player = person.player();
             player.setNoGravity(true);
             clipAt(room, person, pod, TUNING.length() - 2, 0);
-            int before = clanksNear(room.pod().position());
+            Vec3 anchor = PodTether.anchor(pod);
+            Vec3 inside = anchor.add(TUNING.noiseRadius() - 1, 0, 0);
+            Vec3 outside = anchor.add(TUNING.noiseRadius() + 1, 0, 0);
             return () -> {
                 if (room.age == 20) {
-                    expect(helper, clanksNear(room.pod().position()) == before, "a line that is not hauling is quiet");
+                    expect(
+                            helper,
+                            !heard(room, anchor, inside),
+                            "a clipped line that is not hauling is quiet, the creature was sent to %s",
+                            DrawSources.noiseTarget(room.level, inside, DRILL));
                     PodTether.setWinching(player, true);
                 }
                 if (room.age > 20) {
                     clientStep(player);
                 }
                 if (room.age == 60) {
-                    int clanks = clanksNear(room.pod().position()) - before;
+                    expect(helper, heard(room, anchor, inside), "a hauling winch is a noise within its radius");
                     expect(
                             helper,
-                            clanks >= 2,
-                            "a hauling winch clanks every %s ticks, got %s clanks",
-                            TUNING.noiseInterval(),
-                            clanks);
+                            !heard(room, anchor, outside),
+                            "and carries no further than the tuned radius %s",
+                            TUNING.noiseRadius());
+                    PodTether.setWinching(player, false);
+                    expect(helper, !heard(room, anchor, inside), "a winch that stops is quiet at once");
+                    PodTether.setWinching(player, true);
+                }
+                if (room.age == 62) {
+                    expect(helper, heardNear(room, inside), "a winch started again is loud again");
+                    PodTether.unclip(player, PodTether.Unclipped.UNHOOKED);
+                    expect(helper, !heardNear(room, inside), "a line that is unhooked is quiet at once");
+                    room.finish(helper);
+                }
+            };
+        });
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+    public void twoPeopleOnOnePodKeepItLoudUntilTheLastWinchStops(GameTestHelper helper) {
+        Room room = room(helper, 14);
+        MockPlayer first = onFoot(helper);
+        MockPlayer second = onFoot(helper);
+        room.when(helper, () -> {
+            PodEntity pod = room.pod();
+            ServerPlayer one = first.player();
+            ServerPlayer two = second.player();
+            one.setNoGravity(true);
+            two.setNoGravity(true);
+            clipAt(room, first, pod, TUNING.length() - 2, 0);
+            clipAt(room, second, pod, TUNING.length() - 2, 2);
+            Vec3 inside = PodTether.anchor(pod).add(TUNING.noiseRadius() - 1, 0, 0);
+            PodTether.setWinching(one, true);
+            PodTether.setWinching(two, true);
+            return () -> {
+                clientStep(one);
+                clientStep(two);
+                if (room.age == 20) {
+                    expect(helper, heardNear(room, inside), "two winches on one pod are a noise");
+                    PodTether.unclip(one, PodTether.Unclipped.UNHOOKED);
                     expect(
                             helper,
-                            CLANK_RADII.stream().anyMatch(radius -> Math.abs(radius - TUNING.noiseRadius()) < EPSILON),
-                            "the clank carries the tuned radius %s, got %s",
-                            TUNING.noiseRadius(),
-                            CLANK_RADII);
+                            heardNear(room, inside),
+                            "the pod is still heard while the other person hauls on it");
+                }
+                if (room.age == 25) {
+                    expect(helper, heardNear(room, inside), "and the other winch keeps it loud");
+                    PodTether.setWinching(two, false);
+                    expect(helper, !heardNear(room, inside), "the pod is quiet once the last winch stops");
                     room.finish(helper);
                 }
             };
@@ -872,7 +907,6 @@ public class TetherTest {
     public void aWinchThatMakesNoProgressCountsAsSnaggedAndGoesQuiet(GameTestHelper helper) {
         Room room = room(helper, 9);
         MockPlayer person = onFoot(helper);
-        int[] quietFrom = {0};
         int[] snaggedAt = {0};
         room.when(helper, () -> {
             PodEntity pod = room.pod();
@@ -923,7 +957,10 @@ public class TetherTest {
                         && person.actionBarMessages()
                                 .contains(Component.translatable("message.deepcharter.tether.snagged"))) {
                     snaggedAt[0] = room.age;
-                    quietFrom[0] = clanksNear(room.pod().position());
+                    expect(
+                            helper,
+                            heardNear(room, PodTether.anchor(room.pod())),
+                            "the winch is heard when the snag is first seen, so the lapse below is a change");
                     expect(
                             helper,
                             Math.abs(room.age - TUNING.stallTicks()) <= 5,
@@ -939,9 +976,8 @@ public class TetherTest {
                     expect(helper, PodTether.isClipped(player), "the snag time is counted from the stall");
                     expect(
                             helper,
-                            clanksNear(room.pod().position()) == quietFrom[0],
-                            "a stalled winch reports no noise, it reported %s more",
-                            clanksNear(room.pod().position()) - quietFrom[0]);
+                            !heardNear(room, PodTether.anchor(room.pod())),
+                            "a stalled winch is quiet once its last noise runs out");
                 }
                 if (snagAge > TUNING.snagTicks() + 5) {
                     expect(helper, !PodTether.isClipped(player), "a haul that goes nowhere snaps");
@@ -1111,14 +1147,14 @@ public class TetherTest {
         person.teleportTo(room.level, pod.position().add(along, up, across), 0f, 0f);
     }
 
-    private static int clanksNear(Vec3 at) {
-        int near = 0;
-        for (Vec3 clank : CLANKS) {
-            if (clank.distanceToSqr(at) < 16 * 16) {
-                near++;
-            }
-        }
-        return near;
+    /** Whether a creature at {@code from}, drawn to the drill, is sent to the winch at {@code winch} instead. */
+    private static boolean heard(Room room, Vec3 winch, Vec3 from) {
+        return DrawSources.noiseTarget(room.level, from, DRILL).distanceToSqr(winch) < EPSILON;
+    }
+
+    /** {@link #heard} for a creature standing at {@code from}, with the winch at the pod's anchor. */
+    private static boolean heardNear(Room room, Vec3 from) {
+        return heard(room, PodTether.anchor(room.pod()), from);
     }
 
     /**

@@ -247,8 +247,8 @@ public class FirstTierPartsCostTest {
                 }
             }
         }
-        // The kit is what the stock Mole needs, and it must not ask for a unit: a unit's recipe and the kit's share no
-        // part.
+        // The kit is what the stock Mole needs, and it must not ask for a unit: a unit's recipe and the kit's share
+        // no part.
         for (Item part : BootstrapCost.kitParts()) {
             for (String cell : BootstrapCost.cells(BootstrapCost.recipe(BootstrapCost.path(part)))) {
                 if (cell.contains("_unit")) {
@@ -433,8 +433,8 @@ public class FirstTierPartsCostTest {
             }
         }
 
-        // After: the crates and the furnace and the bench for each unit, and the ore of a hazard answer at its run's
-        // pace.
+        // After: the crates and the furnace and the bench for each unit, and the ore of a hazard answer at its
+        // run's pace.
         Needs bag = BootstrapCost.kit();
         Spread before = BootstrapCost.crates(level, bag);
         double afterMinutes = 0;
