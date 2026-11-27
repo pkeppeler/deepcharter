@@ -325,11 +325,26 @@ def item_model(block: str, model: str) -> dict:
     return body
 
 
+def map_icons() -> dict[Path, bytes]:
+    """The feature map icons of layer 1's strata rock (#1551): the first texture of each rock times its home tint, since the rock's own textures
+    are neutral grey. One PNG each, under textures/map/."""
+    grids = rock_grids(1) | {name: grid for block in STRATA for name, grid in stratum_grids(block).items()}
+    out: dict[Path, bytes] = {}
+    for block, tint in HOME_TINT.items():
+        grey = image(grids[f"{block}_0"])
+        pixels = bytearray(grey.pixels)
+        for at in range(0, len(pixels), 4):
+            for channel in range(3):
+                pixels[at + channel] = round(pixels[at + channel] * ((tint >> (16 - 8 * channel)) & 0xFF) / 255)
+        out[MOD_ASSETS / f"deepcharter/textures/map/{block}_tinted.png"] = pngio.encode(pngio.Rgba(grey.width, grey.height, bytes(pixels)))
+    return out
+
+
 def shipped_files() -> dict[Path, bytes]:
     """The files of the mod's rock blocks of layers 1 to 3 under src/main: the recipes of their textures, and each block's blockstate (a plain cube,
     never turned or mirrored: see the model guard; layer 3's columns are hexagons, turned about the vertical as the Grain pack turns them), its
     models and its item."""
-    files = {SHIPPED_RECIPES: _json({"recipes": shipped_recipes()})}
+    files = {SHIPPED_RECIPES: _json({"recipes": shipped_recipes()}), **map_icons()}
     for layer in SHIPPED_LAYERS:
         models = shipped_models(layer)
         for name, body in models.items():

@@ -23,6 +23,9 @@ public class RockTintTest {
     /** The most a channel may move between two rows: its whole step over a gradient is under 130 over 64 rows. */
     private static final int MAX_STEP = 3;
 
+    /** The most rows the contour noise and the surface depth move a contact, with a margin. */
+    private static final int SHIFT = 14;
+
     private static int channel(int rgb, int shift) {
         return (rgb >> shift) & 0xFF;
     }
@@ -107,8 +110,8 @@ public class RockTintTest {
                 "black shale above layer 1 is not its own colour");
         expect(
                 helper,
-                RockTint.of(state(LayerBlocks.HARDPAN), LAYER.minY()) == RockTint.home(LayerBlocks.HARDPAN),
-                "hardpan on layer 1's floor is not its own colour");
+                RockTint.of(state(LayerBlocks.HARDPAN), LAYER.minY() - 1) == RockTint.home(LayerBlocks.HARDPAN),
+                "hardpan under layer 1 is not its own colour");
         expect(
                 helper,
                 RockTint.of(state(LayerBlocks.HARDPAN), CampaignBands.SURFACE.maxY())
@@ -119,6 +122,28 @@ public class RockTintTest {
                 RockTint.of(state(LayerBlocks.GREEN_SHALE), contact(0)) == RockTint.NEUTRAL,
                 "green shale is tinted");
         expect(helper, RockTint.of(state(LayerBlocks.BASALT_CORE), contact(1)) == RockTint.NEUTRAL, "basalt is tinted");
+        helper.succeed();
+    }
+
+    /** The column shift puts a rock up to a dozen rows outside its nominal gradient: it must still wear the drift colour. */
+    @GameTest
+    public void aRockPlacedByAShiftedColumnWearsTheDriftsColour(GameTestHelper helper) {
+        for (int shift = -SHIFT; shift <= SHIFT; shift++) {
+            for (int zone = 0; zone < 2; zone++) {
+                Block upper = zone == 0 ? LayerBlocks.HARDPAN : LayerBlocks.PACKED_SHALE;
+                Block lower = zone == 0 ? LayerBlocks.PACKED_SHALE : LayerBlocks.BLACK_SHALE;
+                for (int y : new int[] {contact(zone) + HALF + shift, contact(zone) - HALF + shift}) {
+                    expect(
+                            helper,
+                            RockTint.of(state(upper), y) == RockTint.drift(y)
+                                    && RockTint.of(state(lower), y) == RockTint.drift(y),
+                            "zone %s: a rock at y=%s, a shift of %s off its gradient, is not the drift colour",
+                            zone,
+                            y,
+                            shift);
+                }
+            }
+        }
         helper.succeed();
     }
 }

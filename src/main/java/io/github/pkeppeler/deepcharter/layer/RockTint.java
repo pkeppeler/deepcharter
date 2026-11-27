@@ -15,7 +15,7 @@ import net.minecraft.world.level.block.state.BlockState;
  *
  * <p>The drift is a function of height alone, at the contacts' rows before the contour noise and the surface depth move
  * them, so it is a nominal colour: a column whose contact is moved by a few rows is a few rows off it, which the eye
- * cannot tell on a drift this long. A rock outside its own range of rows (one a player placed) has its home colour.
+ * cannot tell on a drift this long. A rock outside layer 1's rows (one a player placed) has its home colour.
  * Ore takes the colour of its host rock, and so does the item of a tinted rock ({@code HOME_TINT} in
  * {@code tools/layer_concepts/make.py} holds the same numbers, and a test holds the two equal).
  */
@@ -56,7 +56,7 @@ public final class RockTint {
 
     /**
      * The tint of {@code state} at height {@code y}: for a tinted rock, or an ore in one, the drift's colour at {@code
-     * y} where the rock lies in its own range of rows and its home colour elsewhere; {@link #NEUTRAL} for any other
+     * y} in layer 1's rows, whichever of the rocks it is (a column's shift puts a rock outside its nominal rows), and its home colour elsewhere; {@link #NEUTRAL} for any other
      * block.
      */
     public static int of(BlockState state, int y) {
@@ -64,7 +64,7 @@ public final class RockTint {
         if (!tinted(rock)) {
             return NEUTRAL;
         }
-        return inRange(rock, y) ? drift(y) : home(rock);
+        return y >= LAYER.minY() && y <= LAYER.maxY() ? drift(y) : home(rock);
     }
 
     /** The home colour of {@code state}'s rock, for a place that has no height (the block as an item, a menu): see {@link #home}. */
@@ -77,20 +77,6 @@ public final class RockTint {
         return state.getBlock() instanceof OreBlock
                 ? state.getValue(OreBlock.HOST).rock()
                 : state.getBlock();
-    }
-
-    /** Whether height {@code y} is one where the strata rule can lay {@code rock}: layer 1's rows, and the rock's side of its contacts. */
-    private static boolean inRange(Block rock, int y) {
-        if (y < LAYER.minY() || y > LAYER.maxY()) {
-            return false;
-        }
-        if (rock == LayerBlocks.HARDPAN) {
-            return y >= FIRST_CONTACT - HALF;
-        }
-        if (rock == LayerBlocks.PACKED_SHALE) {
-            return y >= SECOND_CONTACT - HALF && y <= FIRST_CONTACT + HALF;
-        }
-        return y <= SECOND_CONTACT + HALF;
     }
 
     /**

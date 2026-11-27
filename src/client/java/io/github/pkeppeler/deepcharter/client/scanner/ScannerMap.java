@@ -335,6 +335,15 @@ final class ScannerMap {
         return Optional.of(tile);
     }
 
+    /** {@code rgb} with each channel rounded to a multiple of 4 (255 kept), so the tile cache holds a bounded number of tints. */
+    static int quantise(int rgb) {
+        int result = 0;
+        for (int shift = 0; shift <= 16; shift += 8) {
+            result |= Math.min(255, ((((rgb >> shift) & 0xFF) + 2) >> 2) << 2) << shift;
+        }
+        return result;
+    }
+
     /** {@code argb} with each colour channel multiplied by the same channel of {@code tint} over 255, its alpha kept. */
     static int multiply(int argb, int tint) {
         if (tint == RockTint.NEUTRAL) {
