@@ -17,8 +17,11 @@ status: accepted
 ## Consequences
 
 - A merge no longer leaves a `Regenerate roadmap` commit behind it, so `main` moves by one commit fewer per merge and the generated-only moves that remain do not stale anything.
-- A single PR costs one more CI run than a direct merge when its own CI was current. It saves the re-runs a stale base would have cost, and a PR whose CI went stale no longer waits on them.
+- A single PR always gets a fresh CI run on its merged tree; its own CI does not count, current or not. That run replaces the whole-run re-runs a stale base cost, and a PR whose CI went stale no longer waits on them. A flaky client check on a batch of one gets one whole-run re-run (`MERGE_BATCH_CLIENT_RETRIES`) and then the PR is refused: there is no half to split off.
 - A PR merged through the batch path shows as closed, not merged, as in ADR 0106. Use the queue when it must show merged.
+- The landing's roadmap commit is not CI-checked: it is pushed after the run that verified the batch, and `docs/ROADMAP.md` is a generated file no job reads. The docs tests skip it for that reason (`tools/tests/test_docs.py` reads the list from `generated-paths.sh`), so a roadmap change after CI cannot turn `main` red.
+- `tools/merge-pr.sh <n>` takes the merge lock the batch tool shares with the queue. It exits 3 when another batch or queue holds it: nothing was merged; retry later.
+- A PR whose head changes after its preflight is dropped when the batch is built or rebuilt, because its review pass covered the old head.
 - The roadmap in a landing reflects the batch's own issues but not GitHub state that changed between the render and the push.
 
 ## Considered options

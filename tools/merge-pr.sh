@@ -7,6 +7,8 @@
 #
 # Without a flag the PR merges as a batch of one (tools/merge-batch.sh, #1567): this script's --preflight, one CI run on
 # the merged tree, then a fast-forward push with the roadmap folded in; its own CI need only be green, not current.
+# That tool takes the merge lock: exit 3 means another batch or queue holds it, nothing merged, retry later.
+# The checks described below are shared by --preflight, --ci, --check and --direct.
 # --direct is the old merge (below): it squash-merges through GitHub's merge endpoint so the PR shows as merged, and
 # regenerates the roadmap in a commit after it. tools/merge-queue.sh uses it.
 #
