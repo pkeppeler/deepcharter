@@ -65,8 +65,8 @@ public class CatalogueFavouritesClientTest implements FabricClientGameTest {
             });
             UUID player = context.computeOnClient(
                     client -> ClientSession.player(client).getUUID());
-            // A star left in the shared file by an aborted run is not this test's: take every one off through the real
-            // API.
+            // A star left in the shared file by an aborted run is not this test's: take every one off through the
+            // real API.
             unstarAll(context, player);
             try {
                 CatalogueScene.openInventory(context);

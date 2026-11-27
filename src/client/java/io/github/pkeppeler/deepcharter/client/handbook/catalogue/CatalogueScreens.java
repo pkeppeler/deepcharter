@@ -126,8 +126,8 @@ public final class CatalogueScreens {
             return;
         }
         pending = item;
-        // A vanilla screen, so it is not one of the mod's screens the layout gate asks to be covered by
-        // ScreenLayoutClientTest.
+        // A vanilla screen, so it is not one of the mod's screens the layout gate asks to be covered
+        // by ScreenLayoutClientTest.
         InventoryScreen inventory = new InventoryScreen(player);
         if (open != null) {
             RETURN_TO.put(inventory, open);
@@ -164,8 +164,8 @@ public final class CatalogueScreens {
             pending = null;
             panel.lookUp(wanted, CatalogueState.Mode.RECIPES);
         }
-        // Fabric clears a screen's events when it is initialised again (a resize), so they are registered on every
-        // init.
+        // Fabric clears a screen's events when it is initialised again (a resize), so they are registered on
+        // every init.
         // After the screen's contents and before its carried item and tooltips, so a stack on the cursor is over the
         // panels and a tooltip set
         // here (the hovered item's) is shown by the screen's own deferred tooltip step; AFTER_EXTRACT comes after that

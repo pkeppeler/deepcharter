@@ -68,6 +68,8 @@ public final class TerminalTypes {
     }
 
     /** Registers a terminal that needs no repair: it is online from the start, with no offline screen. */
+    // const-param: access is a real per-terminal choice (Access also has CHARTER_ONLY); the contract terminal and the
+    // test terminals all pick ANYONE today
     public static TerminalType registerAlwaysOnline(Identifier id, Access access) {
         return create(id, access, Optional.empty());
     }

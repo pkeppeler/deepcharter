@@ -67,15 +67,18 @@ public class ShapedChargeTest {
     private static void scene(
             GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<PodEntity> afterSet, Verify verify) {
         ServerLevel level = TestLayers.level(helper, 1);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
-        build.accept(level);
         MockPlayer pilot = MockPlayers.join(helper, "shaped-" + x);
-        pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
-        pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Built once the chunk ticks, so its lava is poured into a ticking chunk (#1089) and RoomSeal's read of the
+            // shell loads nothing on the server thread.
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
+            build.accept(level);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, at, 0f, 0f);
+            pilot.player().setGameMode(GameType.SURVIVAL);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
@@ -368,13 +371,14 @@ public class ShapedChargeTest {
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         rock(level, x - 1, -1, 3); // a run that ends on stone
         rock(level, x, 0, 2); // the last column of the footprint: its run ends on lava
-        level.setBlock(cell(x, -3, 0), Blocks.LAVA.defaultBlockState(), 2);
         MockPlayer pilot = MockPlayers.join(helper, "shaped-far-lava");
         pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
         pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Poured once the chunk ticks (#1089).
+            level.setBlock(cell(x, -3, 0), Blocks.LAVA.defaultBlockState(), 2);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);

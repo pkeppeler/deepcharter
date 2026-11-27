@@ -69,8 +69,8 @@ public class ScannerTexturesClientTest implements FabricClientGameTest {
             ScannerHudTest.placeBesidePod(server, STONE_AHEAD, ROW, Blocks.STONE);
             context.waitTicks(2 * TUNING.rescanTicks() + 2);
 
-            // Each block is its own texture, and a texture keeps its grain: more than one colour in a cell, not their
-            // average.
+            // Each block is its own texture, and a texture keeps its grain: more than one colour in a cell, not
+            // their average.
             HudShot textured = shot(context, "scanner-textures");
             Set<List<Integer>> seen = new HashSet<>();
             for (int i = 0; i < BLOCKS.size(); i++) {

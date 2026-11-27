@@ -156,8 +156,8 @@ public class DrifterSpawnTest {
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void driftersKeyOnTheTagAndAreCountedByPodsAndCappedByZone(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        // Not layer 3: its zones are in the hollows tag already. Layer 2's top zone and layer 1's bottom zone are this
-        // test's.
+        // Not layer 3: its zones are in the hollows tag already. Layer 2's top zone and layer 1's bottom zone are
+        // this test's.
         CampaignBands.Band one = CampaignBands.LAYER_1;
         CampaignBands.Band two = CampaignBands.LAYER_2;
         int top = topY(two.minY(), two.height(), 0);

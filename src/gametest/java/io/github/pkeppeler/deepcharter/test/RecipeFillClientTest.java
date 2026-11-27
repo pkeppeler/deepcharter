@@ -422,8 +422,8 @@ public class RecipeFillClientTest implements FabricClientGameTest {
     }
 
     private static void aShiftPressFillsTheMost(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-        // Enough iron for two blocks: a plain press puts one in each slot, a shift-press as many as the iron goes
-        // round.
+        // Enough iron for two blocks: a plain press puts one in each slot, a shift-press as many as the iron
+        // goes round.
         CataloguePanel panel = FillScenes.tableHolding(context, singleplayer, 2 * GRID_SLOTS);
         FillScenes.showCrafting(context, panel, Items.IRON_BLOCK);
         FillScenes.pressFill(context, panel, InputConstants.MOD_SHIFT);
@@ -450,8 +450,8 @@ public class RecipeFillClientTest implements FabricClientGameTest {
     private static void aRefusedFillSaysSo(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runCommand("gamemode survival @p");
         CataloguePanel panel = FillScenes.inventoryHolding(context, singleplayer, 1);
-        // Every other slot of the inventory holds a full stack of stone, and the grid holds dirt that has nowhere to
-        // go.
+        // Every other slot of the inventory holds a full stack of stone, and the grid holds dirt that has nowhere
+        // to go.
         for (int slot = 1; slot < 36; slot++) {
             singleplayer
                     .getServer()

@@ -81,8 +81,8 @@ public final class CompanyRecovery {
 
     static void init() {
         PodEvents.AFTER_TICK.register(CompanyRecovery::afterTick);
-        // A wreck does not tick, so its clock would stay set: a restored pod stranded again would be hauled with no
-        // warning.
+        // A wreck does not tick, so its clock would stay set: a restored pod stranded again would be hauled with
+        // no warning.
         PodEvents.HULL_DEPLETED.register(pod -> {
             if (Versioned.readable(pod, STATE).map(State::waiting).orElse(false)) {
                 set(pod, State.NONE);
