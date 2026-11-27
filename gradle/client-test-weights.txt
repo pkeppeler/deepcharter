@@ -48,7 +48,6 @@ LayerConceptsClientTest 28
 NoVanillaAdvancementsClientTest 13
 NotesClientTest 14
 OldWorldRefusedClientTest 17
-OreCargoClientTest 12
 OreProcessorClientTest 23
 OutpostClientTest 28
 OverburdenedClientTest 13

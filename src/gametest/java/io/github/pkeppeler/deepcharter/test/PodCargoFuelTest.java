@@ -239,7 +239,9 @@ public class PodCargoFuelTest {
             }
             CompoundTag tag = savedPod(level, pod);
             ListTag list = tag.getListOrEmpty("cargo");
-            list.add(list.getFirst().copy());
+            CompoundTag extra = (CompoundTag) list.getFirst().copy();
+            extra.putInt("slot", CARGO.slots());
+            list.add(extra);
             // The bay's size is a stat that other features change (PodStats), so a load does not judge it.
             pod.cargo().load(inputOf(level, tag), pod);
             if (pod.cargoUsed() != CARGO.slots() + 1
