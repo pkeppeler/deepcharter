@@ -105,6 +105,7 @@ public class PodControlsScenario extends EvidenceScenario {
             // first frame.
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, ROOM_RADIUS + WALL_DEPTH);
+            ClientWait.arrived(context, singleplayer.getServer());
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
