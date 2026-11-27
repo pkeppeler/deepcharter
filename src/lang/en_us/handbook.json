@@ -332,6 +332,7 @@
   "deepcharter.spec.item.ore_feeder": "Spare feeder for the ore processor. Feeds ore in, politely.",
   "deepcharter.spec.item.ore_processor": "Refines ore into dollars. Sales are credited to your charter.",
   "deepcharter.spec.item.outpost_kit": "Founds an outpost at depth. Pump and sell terminal included.",
+  "deepcharter.spec.item.overgrowth": "Moss seals an unvisited bore; film on the rock warns. Visit or cut it.",
   "deepcharter.spec.item.packed_shale": "Packed shale, a layer 2 rock. Firm and unsentimental.",
   "deepcharter.spec.item.packed_shale_rubble": "Broken packed shale. Please do not leave it in the corridor.",
   "deepcharter.spec.item.part_brace": "A breach brace part. Patches the hull from ore, once the pod rests.",

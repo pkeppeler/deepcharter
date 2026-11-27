@@ -2226,6 +2226,56 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 **Pins.** `PodFuelTripTest` (the tank in the pilot's units, the beep, the ladder). `PodAttachmentTest` loads a pod saved with the old recovery clock and checks it is dropped.
 
+## Overgrowth (#974, A)
+
+**Problem.** The Fungal Hollows are the Sleeper's growth, and a bore is a hole in it ([CREATURES.md](../CREATURES.md#overgrowth)). A hazard that is not a mob and needs no new sensor: leave a bore alone and it heals over. It must read before it costs, never trap anyone, and never take a block a player built (SPEC section 10: hazards never delete player-built blocks).
+
+**What it does.** A bore that nobody visits grows over with the `overgrowth` block, from the walls inward, a few cells at a time. It is a soft full block with no drop.
+
+**The look (A).** Growth, not a cube set in a hole. The block is damp, dark moss in the layer palette: clumped greens (the `moss` ramp), dark pits, pale tufts and a ragged border so neighbouring cells merge into one mat. It is one id with a weighted blockstate over five textures chosen by position, three moss and two with a pale mould colony (a soft round bloom with a fuzzy halo, the `mold` ramp), so a bore's lining reads as patches. Round it goes a film, `overgrowth_veneer`, a vanilla multiface block (as glow lichen is): a thin cutout layer on the faces of the rock, so the growth seems to creep over a surface. The film glows faintly in the dark, as a warning: its models give the faces a `light_emission` of 6 (out of 15), so it is drawn that bright in the dark, but it gives no block light (the block's light level is 0), so it lights nothing, not the bore, the pod or a mob spawn. The full `overgrowth` block does not glow.
+
+| Where | What the film does |
+|---|---|
+| Ahead of the fill | A pending bore cell that a pass weighs but does not fill gets film on its rock faces, about a third of them bare. The growth front shows on the walls before the plug arrives, which is the warning |
+| Round a plug | When a cell grows, each air cell within 2 of it takes a film with a chance that falls with distance (`spillNearPercent` beside it, `spillFarPercent` further out), fixed by the cell: partial and ragged round a closed mouth, never a frame |
+| On a roof | A film on the face of a ceiling hangs 6/16 of a block of strands (crossed cutout planes inside the cell, so vanilla lights them as an air cell, not as a black quad of the opaque block) |
+| Variation | Each face picks moss or mould (4 to 1) by position through the blockstate |
+
+The film has no collision, breaks at once by hand or by the drill, drops nothing, blocks no light, has no rating, and has no item. It needs no state of its own: a check every `filmCheckTicks` removes it (leaving water if it was waterlogged) unless growth stands within `filmReach` of it, or it is a pending bore cell of a chunk unvisited for the delay. A film never retreats because of a chunk it cannot see: an unloaded cell in reach counts as held. It counts as air to a cave-in and to the roof-bolt driver (a thin film is no roof and does not fill the cell under one), and a block is placed into its cell like glow lichen. So a cut plug takes its film within 2 s, and a visit takes the film ahead of the fill (but not what standing growth still holds). The film is placed only where growth could be: inside the hollows biome tag, and never within `holdReach` of a lining block. The closing rules and timings of the growth are unchanged.
+
+| Situation | What happens | Counterplay |
+|---|---|---|
+| A bore goes unvisited for 5 minutes | The film starts: the cells that touch rock fill first, then the cells that touch the film | Come back before it closes, or line it |
+| A player stands within 32 blocks of the bore | Nothing grows, and the clock starts over | Visiting is the cheapest counterplay |
+| A pod or a player stands in a cell | That cell is skipped | None needed: it never walls anyone in |
+| A lining block (slag brick) is within 2 blocks of a cell | That cell never grows | Line the shaft |
+| A placed block (a liner, a slag brick, a torch, a floor) is in the way | It is never replaced: growth only fills air | None needed |
+| The cell is outside a `fungal_hollows` biome | Nothing grows | None needed |
+
+**The ladder.**
+1. By hand: cut it on foot. It has no tool requirement and a hardness of 1 (stone is 1.5): 1.5 s with an empty hand, a quarter of a second with an iron axe (it is in `mineable/axe`). It drops nothing.
+2. The drill: re-bore it. The drill goes through at the speed of the soft block and burns **3 times** its fuel while a slab with growth in it is under the bit, as the Company rock cutter does. A slab of growth costs about twice the fuel of a slab of stone (hardness 1.0 against 1.5 is 2/3 of the ticks, at 3 times the rate; the drill test pins the ratio). It stacks with the Company rock cutter's multiplier on a mixed slab (both burn their extra: 1 + 2 + 2 = 5 times). A pod with no power never reaches the extra burn: the drill returns before it. So a long unvisited shaft is a real bill, and a pod that comes back early pays nothing.
+3. Mastery: lining a shaft keeps it open for good. A lining block within 2 blocks of a cell holds that cell open, so a brick every 5 blocks of shaft is all it takes, and the brick never wears. It is a reason to carry bricks into a dig that has no lava: the lava ladder already makes slag brick the lining, and the Hollows give it a second use.
+
+**What a bore is (A).** An air cell that a pod drill or a hand cut out of natural rock (the tag `natural_rock`), the surface's waste rock (dirt), Company rock (the tag `undiggable`; it is not in `natural_rock`) or growth. Breach crust is cut through `BreachService`, not this path, and does not make a bore. A mark is pending until growth fills the cell (or a placed block does); cutting the growth marks it again. A chunk with no pending mark is not tracked. The drill and the hand-break event mark the cell in an attachment on its chunk, only when the cell is in a hollows biome, so a world with no hollows biome (the layers above, whose zones are not in the tag) never writes anything and pays nothing. The tag `deepcharter:fungal_hollows` lists the three zones of layer 3 (garden, spore fields and quiet). Why not "any air next to rock": it would close natural caves too, which are the layer's own space, and the Drifters live in them. Why not a scan of the drill's path: a cell mark is the same cost, survives a tow or a respawn, and says exactly what to regrow.
+
+**Visits (A).** A player who is not a spectator (creative players count as visitors) within `visitRadius` blocks (3D) of any bore cell of a chunk visits the chunk; a pod counts through its pilot. The chunk keeps one last-visit time, written at most every 30 s, so a chunk is saved when a visit is stamped and when growth fills a cell, not every tick. An empty parked pod does not hold the growth back: it would need an entity query on the tick path (m2-rules.md), and the pod itself is safe, since growth never fills a cell an entity is in. Growth only runs in a chunk that is loaded and ticking, as random ticks do.
+
+**Never traps (A).** The player who could be walled in is within the radius, so nothing grows near them; a player who is not in the level (logged out) is not: leaving counts as a visit, and joining clears the growth from the feet and head cells, which stay pending; an entity in a cell stops that cell; the drill bores growth; a hand cuts it. A parked pod can be boxed in by growth above it, and then the pilot cuts it from the seat's side on foot: that is rung 1.
+
+**Sensed (A).** The film is the warning: moss cells show on the walls long before a bore closes (the 3 x 3 bore below takes 2 minutes to close from the first cell), and a growth cell sheds a spore into an open side now and then. The film on the rock ahead of the plug means a bore is closing, and it clears once the bore is visited again (a visit takes the film ahead of the fill, not what standing growth still holds).
+
+**Knobs (`OvergrowthTuning`).** `delayTicks` (6000, 5 minutes), `visitRadius` (32), `passTicks` (100), `cellsPerPass` (3, for the whole chunk), `holdReach` (2), `visitStampTicks` (600), `maxLooks` (48, the cells one pass weighs: a chunk of thousands costs a scan of its keys and 48 block reads). Chunks pass on their own tick of the 100, by chunk hash, `drillFuelMultiplier` (3), `hardness` (1.0). The film: `filmReach` (2, how far it spills from a grown cell and how near growth must stand to hold it), `filmCheckTicks` (40), `spillNearPercent` (70), `spillFarPercent` (35), `filmBarePercent` (33, the share of rock faces a filmed cell leaves bare). Data: the biome tag `deepcharter:fungal_hollows` (the zones of layer 3), the block tag `deepcharter:lining` (slag brick), `minecraft:mineable/axe`.
+
+**Pacing: measured.** `OvergrowthTest.theBoreGrowsAtTheMeasuredPace`: a 3 x 3 bore 8 cells long (72 cells), cut in a stone box in a test biome of the tag, with no player near, left to the clock on the real tick path. The test passes only if the first cell grows 6000 to 6100 ticks after the cut and the bore closes within 8 passes of the fewest possible (23 passes). Its log line: `[overgrowth] pacing: first growth 6077 ticks (303.9 s) after the bore was cut; closed (72 cells) 2300 ticks (115.0 s) after the first`. The whole class runs in about 25 s of wall time, the pacing test taking a few seconds of it (the server ticks unthrottled).
+
+| What | Ticks | Time |
+|---|---|---|
+| Unvisited until the first cell grows | 6077 | 5:04 |
+| First cell to a closed bore (72 cells at 3 every 100 ticks) | 2300 | 1:55 |
+
+**Open questions.** Whether the scanner should mark growth (it reads as rock to sonar at present); whether the liner part should ring a shaft with a brick even without lava, so the part that "keeps it open for good" does so with no pilot; the lore name and the Sleeper's reason (the lore session, #12).
+
 ## Drifters and the alarm (#973, A)
 
 **Problem.** CREATURES.md gives the Sleeper's family its draw, the drill, and layer 3 its first creature: the Drifter, a spore bladder that drifts toward noise, and the alarm that a kill raises. This is the mechanics, built before layer 3 exists (#972 builds the worldgen). The biome tag `deepcharter:fungal_hollows` lists only layer 3's zones (#972), so **nothing changes in layers 1 and 2 and the default build is no harder**; the numbers below bite in layer 3.
