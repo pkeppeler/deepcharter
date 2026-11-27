@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -387,14 +388,15 @@ public class ContinuityEventTest {
      * Outside the campaign's bands the altimeter means nothing, so the line ends at the cause: a death in the Nether names no depth, and
      * a death on the surface does.
      */
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aDeathOutsideTheCampaignNamesNoDepth(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "continuity-nether");
         ServerPlayer player = mock.player();
         player.setGameMode(GameType.SURVIVAL);
         ServerLevel nether =
                 Objects.requireNonNull(helper.getLevel().getServer().getLevel(Level.NETHER), "no nether");
-        helper.startSequence()
+        // The mock ticks only in a loaded chunk, so the Nether chunk is awaited before the player is sent there.
+        FarChunks.whenBlocksLoaded(helper, List.of(new FarChunks.At(nether, 0, 0)), () -> helper.startSequence()
                 .thenExecute(() -> {
                     // fixed-pos: a place in the Nether's own rows, only somewhere that is not the campaign; nothing
                     // reads it
@@ -422,7 +424,7 @@ public class ContinuityEventTest {
                             lines.getFirst());
                     player.setGameMode(GameType.SPECTATOR);
                 })
-                .thenSucceed();
+                .thenSucceed());
     }
 
     /** With {@code showDeathMessages} off there is no line at all, and the death still counts. */

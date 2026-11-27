@@ -311,8 +311,7 @@ public class LayerStructuresTest {
             }
             if (!firstUnmet.isEmpty()) {
                 LOGGER.warn(
-                        "[structures] layer structures were not all in place on the first poll; they were on tick {}"
-                                + " after {} ms (#365). First polls: {}",
+                        "[structures] layer structures were not all in place on the first poll; they were on tick {} after {} ms (#365). First polls: {}",
                         helper.getTick(),
                         (System.nanoTime() - startNanos) / 1_000_000,
                         firstUnmet);
@@ -578,8 +577,7 @@ public class LayerStructuresTest {
             if (!level.getBlockState(control).is(Blocks.LAVA)) {
                 throw failure(
                         helper,
-                        "the lava planted at %s clear of the structure is %s: the plant did not survive the chunk"
-                                + " becoming full",
+                        "the lava planted at %s clear of the structure is %s: the plant did not survive the chunk becoming full",
                         control.toShortString(),
                         level.getBlockState(control));
             }
