@@ -9,7 +9,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityClient;
 import io.github.pkeppeler.deepcharter.client.continuity.ContinuityScreen;
 import io.github.pkeppeler.deepcharter.client.continuity.Silence;
-import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.continuity.ContinuityRecord;
 import io.github.pkeppeler.deepcharter.continuity.ContinuityRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PlayerDeaths;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import java.util.List;
 import java.util.Objects;
@@ -52,6 +53,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Util;
+import net.minecraft.world.damagesource.DamageSources;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -139,7 +141,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
             ClientWait.until(context, "the anvil heard", client -> heard.heard(ANVIL, beforeAnvil));
 
             OPENED.set(0);
-            burn(singleplayer);
+            burn(context, singleplayer);
             ClientWait.screen(context, ContinuityScreen.class);
             long opened = OPENED.get();
             require(opened != 0, "the screen's opening was seen");
@@ -157,9 +159,8 @@ public class ContinuityClientTest implements FabricClientGameTest {
             anvil(singleplayer);
 
             // Once the laugh plays, nothing that clears or covers the screen while the person is dead ends the
-            // sequence:
-            // vanilla would build its death screen again for a container the server closes and for a screen shut over
-            // it.
+            // sequence: vanilla would build its death screen again for a container the server closes and for a screen
+            // shut over it.
             ClientWait.until(context, "the laugh started", client -> heard.heard(LAUGH, opened));
             SoundInstance laugh = heard.since(opened).stream()
                     .filter(p -> p.id().equals(LAUGH))
@@ -230,8 +231,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
             ClientWait.until(context, "the world's sounds back", client -> heard.heard(ANVIL, back));
 
             // A terminal's music: a death with the terminal open cuts it (the silence's SoundManager.stop() drops it
-            // unstopped),
-            // and it plays again on the next terminal after the person is back.
+            // unstopped), and it plays again on the next terminal after the person is back.
             singleplayer
                     .getServer()
                     .runOnServer(server -> require(
@@ -251,7 +251,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
 
             // A second death in the same session, at the terminal, is a sequence of its own, No. 2, laugh and all.
             long second = context.computeOnClient(client -> Util.getMillis());
-            burn(singleplayer);
+            burn(context, singleplayer);
             ClientWait.until(
                     context,
                     "a second sequence",
@@ -288,7 +288,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
             context.runOnClient(client -> client.gui.setScreen(null));
 
             // A third death, left mid-sequence.
-            burn(singleplayer);
+            burn(context, singleplayer);
             ClientWait.until(
                     context,
                     "a third sequence",
@@ -373,19 +373,16 @@ public class ContinuityClientTest implements FabricClientGameTest {
     }
 
     /** A sound of the game's own, not the sequence's: one the silence refuses while it holds. */
-    private static SoundInstance click() {
+    static SoundInstance click() {
         return SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f);
     }
 
     /** The player dies in lava, on the server. */
-    private static void burn(TestSingleplayerContext singleplayer) {
-        singleplayer.getServer().runOnServer(server -> {
-            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.hurtServer(player.level(), player.level().damageSources().lava(), 1000f);
-        });
+    private static void burn(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        PlayerDeaths.strikeUntilDead(context, singleplayer, DamageSources::lava);
     }
 
-    /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would. */
+    /** Places an unrepaired fuel pump beside the player and opens it, as a click on it would: its repair screen. */
     private static void openTerminal(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         BlockPos pump = singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -395,11 +392,11 @@ public class ContinuityClientTest implements FabricClientGameTest {
             return at;
         });
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(pump)));
-        ClientWait.until(context, "the terminal open", client -> client.gui.screen() instanceof TerminalViewScreen);
+        ClientWait.until(context, "the terminal open", client -> TerminalScreens.isTerminalScreen(client.gui.screen()));
     }
 
     /** The labels of the widgets the open screen shows. */
-    private static List<String> labels(Minecraft client) {
+    static List<String> labels(Minecraft client) {
         return ClientChecks.visibleWidgets(shown(client)).stream()
                 .map(widget -> widget.getMessage().getString())
                 .toList();
@@ -414,7 +411,7 @@ public class ContinuityClientTest implements FabricClientGameTest {
     }
 
     /** The screen open now, which the step before waited for. */
-    private static Screen shown(Minecraft client) {
+    static Screen shown(Minecraft client) {
         return Objects.requireNonNull(client.gui.screen(), "<a screen is open>");
     }
 }

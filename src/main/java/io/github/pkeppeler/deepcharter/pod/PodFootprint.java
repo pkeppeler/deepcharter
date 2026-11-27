@@ -1,16 +1,17 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 
 /**
  * The block-aligned cells a pod's box fills: the low corner of its square, its width and height in blocks, and the Y of its feet.
  * The drill bores a slab of it, and the pilot lines the rock around it.
  */
-record PodFootprint(int lowX, int lowZ, int width, int height, int feetY) {
+public record PodFootprint(int lowX, int lowZ, int width, int height, int feetY) {
     /** Keeps a pod resting exactly on a block boundary on the block above it. */
     static final double EPSILON = 1e-3;
 
-    static PodFootprint of(PodEntity pod) {
+    public static PodFootprint of(PodEntity pod) {
         Chassis chassis = pod.chassis();
         int width = chassis.boreWidth();
         int height = chassis.boreHeight();
@@ -20,5 +21,13 @@ record PodFootprint(int lowX, int lowZ, int width, int height, int feetY) {
                 width,
                 height,
                 Mth.floor(pod.getY() + EPSILON));
+    }
+
+    /**
+     * The cell an explosive's cube is centred on: the footprint's middle cell on the row the feet are in. A pod 2 wide has no middle
+     * cell, so it is the one on the +x and +z side.
+     */
+    public BlockPos feetMiddle() {
+        return new BlockPos(lowX + width / 2, feetY, lowZ + width / 2);
     }
 }

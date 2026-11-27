@@ -382,6 +382,9 @@ public class ObtainableItemsTest {
             ClaimShaftFeature.VANILLA_PLACED,
             // Turns breach crust into grained crust, both ours.
             "deepcharter:grained_crust_pass",
+            List.of(),
+            // Grows giants of our own blocks only (parasols, spires, great stalks).
+            "deepcharter:giant_fungus",
             List.of());
 
     /**

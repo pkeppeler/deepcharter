@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -24,9 +26,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -68,6 +72,10 @@ public class SalvageBootstrapTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final String YARD = "deepcharter:salvage_yard";
     private static final int MAX_TICKS = 12_000;
+    /** Phrases that place a crate in the colony; the yard's inner radius keeps crates out of it (ADR 0047). */
+    private static final Pattern IN_TOWN = Pattern.compile("\\b(round|around|about|in|at) (the )?(town|colony)\\b");
+    /** The end of a sentence, so {@link #IN_TOWN} reads only the sentence that names the crate. */
+    private static final Pattern SENTENCE_END = Pattern.compile("(?<=[.!?])\\s+");
     /** The survey covers the chunks within this many of the origin, a little past the yard so that its edge shows. */
     private static final int SURVEY_CHUNKS = 12;
     /** A crate stands up to the 4 blocks of its patch's spread, and the biome that decides the yard is read in cells of 4, past the radius. */
@@ -165,8 +173,9 @@ public class SalvageBootstrapTest {
         return stalks.stream().filter(pos -> !all.contains(pos.below())).toList();
     }
 
-    /** The id of the biome at a position, generating its chunk. */
+    /** The id of the biome at a position, in a chunk that the caller waited for. */
     private static String biomeAt(ServerLevel level, BlockPos pos) {
+        // sync-load: every caller waited for the chunk with FarChunks.whenBlocksLoaded
         level.getChunkAt(pos);
         return level.getBiome(pos).unwrapKey().orElseThrow().identifier().toString();
     }
@@ -761,5 +770,25 @@ public class SalvageBootstrapTest {
         } finally {
             mock.leave();
         }
+    }
+
+    /**
+     * The crates lie in the yard, past the colony (#1415), so no sentence of the language file that names a crate puts
+     * it in town.
+     */
+    @GameTest
+    public void theLanguageFilePutsNoCrateInTheColony(GameTestHelper helper) {
+        JsonObject lang = HandbookChaptersOneToFiveTest.lang();
+        for (String key : lang.keySet()) {
+            SENTENCE_END
+                    .splitAsStream(lang.get(key).getAsString().toLowerCase(Locale.ROOT))
+                    .filter(sentence -> sentence.contains("crate")
+                            && IN_TOWN.matcher(sentence).find())
+                    .findFirst()
+                    .ifPresent(sentence -> {
+                        throw failure(helper, "%s puts a crate in the colony: %s", key, sentence);
+                    });
+        }
+        helper.succeed();
     }
 }

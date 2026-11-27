@@ -10,6 +10,8 @@
     "deepcharter:gas_pocket",
     "deepcharter:company_rock",
     "deepcharter:grained_crust",
+    "deepcharter:overgrowth",
+    "deepcharter:overgrowth_veneer",
     "deepcharter:fungal_stalk",
     "deepcharter:great_stalk",
     "deepcharter:great_stalk_cap",
@@ -34,6 +36,15 @@
     "deepcharter:company_horn",
     "deepcharter:wreck_phonograph",
     "deepcharter:company_clock",
-    "deepcharter:glowcap"
+    "deepcharter:glowcap",
+    "deepcharter:parasol_stem",
+    "deepcharter:parasol_ring",
+    "deepcharter:parasol_gills",
+    "deepcharter:parasol_cap",
+    "deepcharter:parasol_rim",
+    "deepcharter:fungal_flare",
+    "deepcharter:spire",
+    "deepcharter:spire_tip",
+    "deepcharter:spire_base"
   ]
 }

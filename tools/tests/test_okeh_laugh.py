@@ -48,6 +48,9 @@ class CommittedTest(unittest.TestCase):
         self.assertEqual("The Okeh Laughing Record", source["tags"]["title"])
         self.assertIn("George Blood", source["tags"]["comment"])
 
+    def test_the_manifest_states_no_licence_the_item_does_not(self):
+        self.assertEqual("none stated", self.manifest["source"]["license"])
+
     def test_the_credit_states_only_what_the_item_says(self):
         # A credit states only what the file's tag or page says: no licence, and no reading of the law of our own.
         credits = (ROOT / "CREDITS.md").read_text()
@@ -100,6 +103,12 @@ class GateTest(unittest.TestCase):
         manifest["files"][okeh_laugh.NAME]["treatment_sha256"] = "0" * 64
         self.manifest.write_text(json.dumps(manifest))
         self.assertTrue(any("treatment changed" in problem for problem in self.check()))
+
+    def test_a_manifest_with_a_stated_licence_fails(self):
+        manifest = json.loads(self.manifest.read_text())
+        manifest["source"]["license"] = "public domain"
+        self.manifest.write_text(json.dumps(manifest))
+        self.assertTrue(any("licence" in problem for problem in self.check()))
 
     def test_a_missing_ogg_fails(self):
         (self.out / "continuity" / "laugh.ogg").unlink()

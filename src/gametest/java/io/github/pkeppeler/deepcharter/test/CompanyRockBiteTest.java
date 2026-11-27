@@ -72,19 +72,21 @@ public class CompanyRockBiteTest {
     /** Builds the room and the plate, seats a pilot in a pod of {@code type} with a drill of {@code drillTier}, and holds sprint. */
     private static Bite rig(GameTestHelper helper, int x, EntityType<PodEntity> type, int drillTier, int radiatorTier) {
         ServerLevel level = TestLayers.level(helper.getLevel().getServer(), 1);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                level.setBlock(
-                        new BlockPos(x + dx, FLOOR - 1, Z + dz), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
-            }
-        }
         MockPlayer pilot = MockPlayers.join(helper, "bite-" + x);
         Vec3 at = new Vec3(x + 0.5, FLOOR, Z + 0.5);
-        pilot.teleportTo(level, at, 0f, 0f);
         Bite bite = new Bite(pilot, level);
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    level.setBlock(
+                            new BlockPos(x + dx, FLOOR - 1, Z + dz), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
+                }
+            }
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, at, 0f, 0f);
             PodEntity pod = TestEntities.create(type, level);
             pod.setPos(at);
             level.addFreshEntity(pod);
