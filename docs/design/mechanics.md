@@ -310,7 +310,7 @@ Read from the code, not invented. The pilot's whole counterplay to seeing a pock
 | Radiator | `PodComponents.java:177`, `UpgradeTuning.java:91` | Gas and lava both read it. A Mole's best is tier 2: gas costs 0.75 of the hull ($500 for 0.9, $1,250 for 0.75). |
 | Hull part | `PodComponents.java:133`, `UpgradeTuning.java:88` | More hull to spend; a soak, not an answer. |
 | Hull nanobots | `Consumable.java:22`, `RepairTuning.java:18` | +30 hull for $345, from the seat, once per use. A soak. |
-| Dynamite, plastic explosives | `Consumables.java:38,71` | Clear natural rock, gas pockets included, within 1 (dynamite, $100) or 2 (plastic, $300) of the pod's middle, with no blast, because they remove the block instead of mining it. A Mole reaches the slab under its feet. It works blind: a Mole sees no pocket to aim at. |
+| Dynamite, plastic explosives | `Consumables.pilot`, `Consumables.blast` | Clear natural rock, gas pockets included, within 1 (dynamite, $100) or 2 (plastic, $300) of the row the pod's feet are in, with no blast, because they remove the block instead of mining it. So dynamite clears the slab under the pod and plastic the two slabs under it, for every chassis, and both leave the roof over a 3-row cab standing. Before [#1478](https://github.com/pkeppeler/deepcharter/issues/1478) the cube sat round the middle of the pod's box, which is a row above the feet of a 2.9-tall pod, so dynamite cleared no row under it. It works blind without a sounder: a Mole sees no pocket to aim at. |
 | Handbook | `handbook.json:133,138` | "Hazards that can't be seen with the eye will show on higher-tier scanners"; "gas pockets you can't [see]". It names the danger and points at the scanner; it names no other counterplay. |
 
 There is no gas line on the status HUD, no sound, no vent block and no consumable that finds a pocket. So for a Mole the bot's counterplay is none, and for a Prospector it is to see a pocket in the slice and step aside.
@@ -370,7 +370,7 @@ Even a pilot who steers round every pocket the scanner shows reaches layer 2 in 
 
 **The seep sounder.** A new Mole-fittable part (a new component track, tiers 1 and 2), the gas ladder's rung 2. The ladder:
 1. **By hand (exists).** Steer round a pocket the Prospector's scanner shows, or throw dynamite blind. It teaches the danger and costs a lot.
-2. **The part.** The sounder tells the pilot where a pocket is. Tier 1, $400: every pocket in the 2 x 2 footprint, in the 2 slabs below, shows as a HUD line "SEEPAGE <slabs>" (a gas-coloured line like "HULL BURNING") and a hiss that quickens as the drill nears. The pilot steps aside by hand, or spends dynamite on it, which finally has an aim. It costs 5% of the drill's speed. Tier 2, $1,000: reaches 4 slabs below and 2 blocks to each side, so a sidestep is checked too, and the drill bleeds a marked pocket before it bores it (a 3 second pause; the blast then costs a quarter of the hull). It costs 10% of the drill's speed. Dread comes from the hiss, not the number.
+2. **The part.** The sounder tells the pilot where a pocket is. Tier 1, $400: every pocket in the 2 x 2 footprint, in the 2 slabs below, shows as a HUD line "SEEPAGE <slabs>" (a gas-coloured line like "HULL BURNING") and a hiss that quickens as the drill nears. The pilot steps aside by hand, or spends dynamite on it, which finally has an aim (dynamite clears the slab under the pod, plastic two slabs). It costs 5% of the drill's speed. Tier 2, $1,000: reaches 4 slabs below and 2 blocks to each side, so a sidestep is checked too, and the drill bleeds a marked pocket before it bores it (a 3 second pause; the blast then costs a quarter of the hull). It costs 10% of the drill's speed. Dread comes from the hiss, not the number.
 3. **Mastery.** A Prospector's tier 3 scanner draws pockets on the map and makes the sounder unneeded; the sounder stays the cheap Mole part.
 
 **Trade-offs.** Drill speed (5% and 10%, like the liner's 10% and 15%), one part slot, and a pause at tier 2.
@@ -399,7 +399,7 @@ Even a pilot who steers round every pocket the scanner shows reaches layer 2 in 
 **Problem.** Gas caps the dive to layer 2 even for a pilot who steers round every pocket the game shows, and a Mole cannot be shown any ([Gas and the bore](#gas-and-the-bore-368-a)). The sounder is the gas ladder's rung 2: a Mole part that tells the pilot where a pocket is before the drill opens it.
 
 **The part.** A new component track, `sounder`, tiers 1 and 2 (a Mole takes both). No stock part: tier 0 is none. The numbers are `PodSounderTuning`; the prices are `UpgradeTuning`.
-- **Tier 1, $400.** Marks the nearest gas pocket in the pod's 2 x 2 footprint in the 2 slabs under its feet. The HUD shows "SEEPAGE <slabs>" (the slabs down to it), and the pod hisses, every 12 ticks for each slab away, so the hiss quickens as the drill nears. No reach to the side. The pilot steps aside by hand, or spends dynamite on the slab, which now has an aim. Costs 5% of drill speed.
+- **Tier 1, $400.** Marks the nearest gas pocket in the pod's 2 x 2 footprint in the 2 slabs under its feet. The HUD shows "SEEPAGE <slabs>" (the slabs down to it), and the pod hisses, every 12 ticks for each slab away, so the hiss quickens as the drill nears. No reach to the side. The pilot steps aside by hand, or spends dynamite on the slab, which now has an aim: dynamite clears SEEPAGE 1, plastic explosives SEEPAGE 2. Costs 5% of drill speed.
 - **Tier 2, $1,000.** Marks the footprint 4 slabs down, and the 2 blocks beyond each edge of the footprint (north, south, east, west) from the top of the pod's box to the slab under its feet, which is what a sidestep of 2 blocks bores and lands on. The HUD adds "SEEPAGE BESIDE E S" for the sides that have a pocket in them. It also bleeds: when the drill is about to bore a slab with a pocket in it, it waits 3 seconds (60 ticks, the HUD shows "BLEEDING SEEPAGE"), then bores it, and the blast costs the pod the larger of 45% of its most hull and half the blast, and never more than the blast (a stock Mole: 45 of 100 hull, or half of a blast of more than 90). Costs 10% of drill speed.
 - **Mastery.** A Prospector's tier 3 scanner draws the pockets in its slice, so the sounder stays the cheap Mole part.
 - **A pocket the sounder shows looks like stone.** The part is the only tell: a pocket has no texture of its own. The marks are read by the server each tick (`PodSounder`, from the loaded blocks only) and synced to the pilot as a versioned attachment (`pod_sounder`). A pod with no power marks nothing.
@@ -737,6 +737,37 @@ The no-brace columns were measured again on the merged code and give the sounder
 **Open questions.**
 - Should the brace burn spoil from the hopper before ore? Cargo holds only ore, spoil sits in the hopper, and bricks now cost spoil (#394).
 - Should the surface station sell a cheap layer 1 hull patch, so the warning has a by-hand answer short of Hull Nanobots?
+
+## The void below (#1387, A)
+
+**Problem.** The brace patches the hull to the crust's price plus its reserve of 4, so a braced pod crosses the crust with 4 to 15 hull. A cave under the crust then lands it hard: a free fall of 4 blocks or more costs hull (4 blocks about 1), and a 9-block fall costs about 27, which wrecks it. The crust warning had said the pilot was covered (`HULL 32, IT TAKES 24`), so the death read as the HUD lying. The only cue was the amber HARD LANDING line, about 10 ticks into the fall. Natural caves in layer 1 (#1300) make open space under the drill common.
+
+**The cue (by hand, every pod).** Counterplay, not a nerf: the hard landing stays ([Hard landings](#hard-landings-319-a)), and braking with the rotor becomes a choice the pilot makes before the breakthrough.
+- **The crust warning prices the drop.** The warning reads the open space under the crust, below the pod's footprint, and adds what a free fall into it would cost on landing: `CRUST 2 DOWN  HULL 28, IT TAKES 24 + DROP 27`, and `IN THE CRUST  HULL 28, IT TAKES 8 + DROP 27` in the crust. It shows when the hull is no more than the crust rows left plus the drop. Over solid rock, or over a drop that lands soft (3 blocks or less), the line is as before, with no drop part.
+- **The drill sounds hollow.** For the last 2 rows before the drill breaks through into a drop that lands hard, the drill-down loop plays at a higher pitch. That holds anywhere, not only at the crust. A pilot who listens can stop, and brake with the rotor in the fall.
+- **How the drop is priced.** `VoidBelow.dropCost` runs the pod's own fall: gravity 0.08 and drag 0.98 from `PodTuning.Movement`, from rest, over the blocks of the fall. It prices the sink speed at the end with `HardLanding.hullDamage`, so it reads the pod's own `hardLandingSpeed` and `hullDamagePerSpeed`. A fall of 3 blocks or less costs 0, 4 blocks about 1, 6 about 14, 9 about 27, and 20 about 56. The fall lands on the highest rock under any cell of the footprint. A fluid counts as a floor, and so does a block in an unloaded chunk or past the bottom of the level, so an unknown is never priced as open. The read stops at 64 blocks, so a deeper fall is priced as 64 (about 117 hull, more than a stock hull). The server and the client read the same blocks, so the HUD and the tests agree.
+- **Not across a seam yet.** The probe reads one level. In the campaign world the layers are bands of one level (layer 1 at Y -256 to -65, layer 2 at -512 to -257), so the space under layer 1's crust is layer 2's rock and is read. Where the next layer lies in another level, past a seam ([ADR 0085](../adr/0085-depth-is-one-axis-over-a-stack-of-tall-dimensions-and-the-dimension-machinery-stays.md), [ADR 0089](../adr/0089-a-seam-is-crossed-by-a-swap-to-a-client-world-built-ahead-and-the-teleport-with-its-fade-is-the-fallback.md)), the bottom of the level ends the read as rock, so no drop is priced and the drill never sounds hollow there. Reading the level beyond the seam is #1459.
+
+**The ladder.**
+1. By hand: this section. The warning prices the drop, and the drill sounds hollow before it.
+2. A sensor: the scanner shows cavities with their depth, and a `VOID BELOW` line shows when the drop would land hard at the current hull (#1392).
+3. Mastery: brace tier 2 patches to the crust plus the drop, or a breakout arrest part fires the rotor after the last crust row. The hull track covers both (#1393).
+
+**Trade-offs.**
+- The pilot who heeds the warning still pays: the rotor burns fuel in the fall, and a pod with no power cannot brake.
+- The brace still patches only to the crust's price plus its reserve. Covering the drop is rung 3.
+- The hollow pitch gives away a cave under the drill anywhere in a layer. That is the by-hand stage the ladder wants, and the scanner rung adds the depth and the reach.
+
+**Knobs.** `VoidBelowTuning`: `hollowRows` (2), `scanBlocks` (64), `hollowPitch` (1.4). `lang pod.json` `hud.deepcharter.pod.crust_ahead_drop` and `crust_in_drop`.
+
+**Decisions (A).**
+- **The drop goes on the crust warning, not on a line of its own.** It is the cost the warning left out. A second line would make the plate taller where it already carries the brace's line.
+- **Only a drop that lands hard is priced or heard.** A soft drop costs nothing, so a cue for it would teach the pilot to ignore the cue.
+- **2 rows of hollow pitch.** The drill takes over a second a row in layer 1, so the pilot hears it for at least one whole row before the breakthrough.
+- **A pitch, not a new sound.** The hollow drill is the drill-down recipe's own loop at pitch 1.4 ([ADR 0057](../adr/0057-every-shipped-sound-is-built-from-a-committed-recipe-and-a-layers-drone-lives-in-its-biome-data.md)), so no new OGG and no new recipe. A skin that replaces the drill sound keeps the cue.
+- **Unknown blocks are rock.** An unloaded chunk or the bottom of a level ends the read, so the cue never invents a drop.
+
+**Open question.** The issue asked whether the brace's warning should reference the void cue. It now carries the drop's price; the brace's own lines are unchanged.
 
 ## Bore size and the economy (#399)
 
@@ -1313,10 +1344,10 @@ The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no
 **What it does.**
 
 1. **Where.** In layers 1 and 2, within 48 blocks (square) of the Conduit's axis. The casing is solid rock, so a Tally appears in dark open air near a pod or a person that holds ore, 10 to 20 blocks off, and flies down the bore. It never breaks a block and never touches the casing.
-2. **What draws it.** A pod with a pilot, power, no lights and ore in the bay; or a person on foot in the dark (block light under 3) who carries ore. A pod or person with no ore draws nothing: there is nothing to sample.
+2. **What draws it.** A pod with a pilot, power, no lights and ore in the bay; or a person on foot in the dark (block light under 3) who carries ore and holds no light in either hand (the `deepcharter:hand_lights` rule the Retained keep to). A pod or person with no ore draws nothing: there is nothing to sample.
 3. **Sensed.** A click every couple of seconds, an amber eye the size of a pin, and a scanner that reads it as ore: a block of ore that moves. The pilot gets one line when one finds the pod.
 4. **The skim.** A Tally that trails its mark for 30 seconds clamps to the cargo hatch (a person's pack on foot), holds it for 3 seconds (2 on foot), takes the **cheapest** ore held as a "quality sample" and flies off. One sample per Tally.
-5. **Counters.** The cutter bites it on the hatch while the pod drills and breaks it in 1 second, so a pilot who reads the clamp line and drills into rock loses nothing. On foot one blow breaks it, however light. A lit pod draws none. It drops nothing.
+5. **Counters.** The cutter bites it on the hatch while the pod drills and breaks it in 1 second, so a pilot who reads the clamp line and drills into rock loses nothing. On foot one blow breaks it, however light. A lit pod draws none, and neither does a person with a light in hand. It drops nothing.
 
 **The ladder.** By hand: the cutter and a blow teach it. Automated: a lights part keeps it off a pod. Mastery: none needed; it stays a tax. Outrunning it works too: a pod that leaves its sense for 5 seconds drops it.
 
@@ -1344,7 +1375,7 @@ The modelled rows rest on three guesses, none measured: a 4-minute run, half of 
 **Rules worth stating.**
 
 - A Tally latches only from beside its mark (within `trailGapBlocks + 1`). One that cannot get there, walled off in a pocket, keeps trailing and never clamps, and it never passes through rock.
-- Once clamped it takes its sample even if the pilot leaves, a parked pod included; it lets go only when its pod or person is removed (a log-off) or it is broken. A light does not free it.
+- Once clamped it takes its sample even if the pilot leaves, a parked pod included; it lets go only when its pod or person is removed (a log-off) or it is broken. A light does not free it, and that holds on foot too: a torch taken up after the clamp keeps further Tallies off but does not free the person.
 - Layers 1 and 2 only. The Conduit beyond the Ramp is act 3.
 - Not in Peaceful: a Tally neither comes nor skims there.
 - A pod flown by a creative player draws none.
@@ -1417,7 +1448,7 @@ The first tuning went in as measured. A grip is a real cost: a slow crawl and a 
 - The mod's own ore outcrops on the surface: they make the pod the second thing a player meets, and ore is a heavy item for a pod to haul (ADR 0008).
 - Raw iron and copper in the crates: it skips the furnace, which is the first thing the bootstrap teaches.
 
-**Knobs.** The yard's radii (`density_function/surface/yard.json`, `min_inclusive` 100 and `max_exclusive` 160); the crates' rarity and spread (`placed_feature/salvage_litter.json`: one patch to 2 chunks, 8 tries within 4 blocks); the loot (`loot_table/blocks/salvage_crate.json`: planks 1 to 3, sticks 0 to 2, cloth 0 or 1, scrap iron 0 to 2, scrap copper 0 to 2, redstone 0 or 1); how many stalks and where (`placed_feature/fungal_stalks.json`: heights 36 to 58, 3 tries and 6 scatters to a chunk; `fungal_stalks_cave.json` for layer 1); a stalk's height (`feature/fungal_stalk_column.json`, 2 to 6).
+**Knobs.** The yard's radii (`density_function/surface/yard.json`, `min_inclusive` 100 and `max_exclusive` 160); the crates' rarity and spread (`placed_feature/salvage_litter.json`: one patch to 2 chunks, 8 tries within 4 blocks); the loot (`loot_table/blocks/salvage_crate.json`: planks 1 to 3, sticks 0 to 2, cloth 0 or 1, scrap iron 0 to 2, scrap copper 0 to 2, redstone 0 or 1); how many stalks and where (`placed_feature/fungal_stalks.json`: heights 36 to 58, 3 tries and 6 scatters to a chunk; `fungal_stalks_cave.json` for layer 1); a stalk's height (`feature/fungal_stalk_column.json`, 2 to 6; layer 1's `feature/fungal_stalk_cave.json` grows the same stalk kept in its chunk).
 
 **Measured.** From the data the game runs on, by `SalvageBootstrapTest` with its fixed seeds: 12 crates carry the first goals (tools, a torch and a lantern, the fuel pump's two parts); 60 crates carry all four terminals (63 scrap iron, 63 scrap copper, 28 redstone against 23, 21 and 13 needed). A 12-chunk survey of a fresh world finds 160 crates, none nearer than 100 blocks, the farthest at 162.8 blocks, and 47 stalk columns on crater floors, none with its base above y 60.
 
@@ -1971,29 +2002,29 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **The draw.** Each layer's floor is a boundary. One hash of the world seed and the boundary's own Y (the lowest row of its crust) decides it, and about a third come out grained (`grainDecoyChance`). The Y is the identity, not the band's place in the list: the bands are fixed in Y, so a band added anywhere redraws no other boundary, and no chunk is asked: every chunk reaches the same answer. A chunk pass (`GrainedCrustPass`, a placed feature of the unbuilt-depth biome, which every column of the campaign world holds) swaps the breach crust that the material rule lays for the grained crust where the draw says so. The grained crust takes the breach crust's place in the floor rows, so it carries the same hardening (#1110 below): bedrock's blast resistance, immovable, and wither- and dragon-immune.
 
-**Layer data.** A `deepcharter:bands` layer takes `floor_crust`: `draw` (the default), `normal` or `grained`. A seam's layer sets `grained`; the first breach (layer 1 to 2) sets `normal`, because handbook chapter 8 teaches it. Layer 2's floor is `normal` until layer 3's band gives it a boundary to draw for (#1022, waits on #972), so nothing in the live game is a decoy yet.
+**Layer data.** A `deepcharter:bands` layer takes `floor_crust`: `draw` (the default), `normal` or `grained`. A seam's layer sets `grained`; the first breach (layer 1 to 2) sets `normal`, because handbook chapter 8 teaches it. Layers 2 and 3 say nothing of their floors, so both are drawn, and only layer 1's floor is `normal`. No seam's layer data exists yet (seams are #217), so nothing sets `grained` in the shipped data.
+
+**The rules a grained floor keeps.** A grained floor is as hard to get through as a breach crust, or a player could skip the breach by picking through it. A hand tool treats it as a pod-only block at the same cost (`HandBreak`, ADR 0069), a charge does not open it (it is not Company rock or natural rock, and it has bedrock's blast resistance), and the drill refuses the last layer's floor whichever crust it is (`PodDrill`), so the protection never depends on the last floor's layer data. A drill bores a grained floor above the last layer as any rock, with none of the breach crust's hull damage.
 
 **Ladder.** None: a decoy is the same block with the same rules as a seam, so no counterplay tells them apart. A decoy that squeezes less would give the seam away.
 
 **Trade-offs.** A decoy costs the player nothing they would not pay at a seam, but it is a crust that the drill must bore straight down through, and one a pod cannot park on. The drill takes no crust hull damage through a grained crust (that is the breach crust's), only the squeeze if the pod stops. A generated grained crust next to fluid already in the world is not flagged changed (worldgen sends no neighbour update), so it absorbs only once that fluid flows; crust rows are rock-sealed in practice.
 
-**Knobs.** `grainDecoyChance` (1/3). **Open questions.** Whether the crust of the last layer (nothing below it) should be refused to the drill as the breach crust is: a grained one is not, today.
+**Knobs.** `grainDecoyChance` (1/3). **Open questions.** None.
 
 
 ## Company rations (#838, A)
 
 **Problem.** A new player's first playtest found no food anywhere and starved before reaching the first crop. The surface has no animals or plants, and the first terminal repair takes real time.
 
-**The answer.** The Company feeds its hands, in four sources and one renewable one. All of it is free: no money, no charter state.
+**The answer.** The Company feeds its hands, in five sources, two of them endless (the canteen and stalk mash). All of it is free: no money, no charter state.
 - **Starting tins.** Every player is given 3 Company rations once, with the handbook on first join. A ledger on the player (`ColonyRations.LEDGER`, kept on death) records it, so a later join, a death or a respawn gives none.
 - **Ore cars.** Each ore car on the colony's track holds 2 tins, a one-time find for whoever opens it first. The car's block state `looted` stores it (the world holds only the block), and a looted car is drawn without its heaped ore. A later use says it is empty. Per car, not per charter or per player: it is a find, the cars are few, and the crew shares it.
-- **The canteen.** A dispenser in the Lamp and Pick gives each player 1 ration per in-game day (the overworld clock over 24,000 ticks), tracked per player in the ledger, so it holds across restarts. A second use the same day is refused. It gives no light, so the bar stays a dark room.
+- **The canteen.** A dispenser in the Lamp and Pick gives a ration on every use, with no limit and no record (#1439: one a day was too little for a hungry player, and the limit stopped no problem). It gives no light, so the bar stays a dark room.
 - **Crates.** A salvage crate holds one ration one time in four.
 - **Stalk mash.** A fungal stalk cooks into stalk mash on a campfire (30 s) or in a smoker (5 s). It fills little (3 hunger, little saturation), so a ration is better, but it never runs out. The furnace still turns a stalk into charcoal (the campfire's fuel), so the recipes do not clash.
 
-**Daylight cycle off.** With the daylight cycle off the overworld clock stands still, so the canteen serves each player once until the clock moves.
-
-**Trade-offs.** The ration fills as much as bread (5 hunger, 4 saturation) and a stack of them keeps, so a dig is feedable. A crew cannot pool the canteen: it is one ration per player a day. Starvation is slow, so no one is forced to the canteen at once.
+**Trade-offs.** The ration fills as much as bread (5 hunger, 4 saturation) and a stack of them keeps, so a dig is feedable. Food is free at the colony, so hunger costs a trip back to the Lamp and Pick, not money: the pressure is how far a dig runs from the canteen and how many tins it carries.
 
 **Knobs.** `ColonyRations.STARTING_RATIONS` (3), `OreCarBlock.TINS` (2), the crate's `p` (0.25) in `salvage_crate.json`, the food values in `ColonyRations`, the cooking times in `stalk_meal_*.json`.
 
@@ -2169,6 +2200,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 - **Popping it.** A drifter has 4 health: an arrow pops it, a fist takes four blows. A blow, a projectile or an explosion pops it where it floats; the fall, fire and the void's friends do not. **A pop at range is safe:** the gas is 4.5 blocks round, so a pilot or a person 6 or more blocks off loses nothing. A pop **raises the alarm**; a burst on touch does not (it was not killed).
 - **The alarm.** Killing a drifter rings the alarm of its **zone** (a third of a layer by height, the cut the layer's biomes use; no zone names needed) for **3 minutes** from the last kill (a second kill starts it again, it never stacks). While it rings: a source draws drifters **three times as often**, may have **one more alive**, and the zone's drifters hear **half again as far**. It shows plainly: a deep drone beats every 5 seconds for every person in the zone, a person on foot is told once when it rises (*"The hollows are awake. More will come to the sound of you."*), and the pilot's readout carries *"ALARM: THE HOLLOWS ARE AWAKE 143 S"*.
 - **Cadence and caps.** A *source* is a drilling pod with a person aboard, **once however many sit in it**, plus one for the people on foot who make a noise, together, however many they are. Each source looks every 5 seconds and places a drifter at the chance of its zone: top 0.25 a minute, middle 0.33, bottom 0.5. One source may have 1 alive in its zone (2 under the alarm), so two pods hold two; the zone holds at most **2, 3 and 4** (top, middle, bottom), whatever the sources. No packs, no farming (a kill pays nothing and raises the alarm), no experience, no loot.
+- **Forms (#1204).** Each placement draws one of three forms, a jellyfish, a spore sac or a chain, by weight (equal thirds, `DrifterTuning.Spawn.variantWeights`) from the same seeded source of chance as the place, rolled after it, so the weights never move where a drifter appears (the roll takes one draw, so later rolls in the same tick do shift). The form is synced and changes only the look; the hitbox, the gas and every number above are the same for all three until the sizes follow the drawn bodies (#1203).
 - **The game's switches.** The mod places drifters itself, so it honours `spawn_mobs` and Peaceful: nothing is placed while the rule is off or on Peaceful, and a drifter on Peaceful removes itself. A place is in the source's own zone and in the world's bounds.
 - **Sonar.** Sonar does not exist yet. The entity type tag `deepcharter:sonar_echo/empty_cave` names the drifter as the thing sonar reads as empty cave; the sonar work (#924) reads the tag.
 
@@ -2302,7 +2334,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 **Towing.** With the line clipped, using the tether on a second pod hooks that pod to the first with the tow cable's own cable and rules (`PodTowing`, ADR 0022 and 0049): the charter must be allowed at it, it must be in the tow line's reach, and a pod tows one pod. A wreck is towable. Using it on a towed pod frees it. The person need not ride the tower, so a crew can hook a wreck from the ground and then drive off with it.
 
-**Noise.** A hauling winch reports to `PodTether.NOISE` (position and `noiseRadius` 40) every 10 ticks, and plays a clank. Nothing listens yet: `creature/DrawSources` (#990) is not on main, and #1027 moves the winch's noise there and deletes the event.
+**Noise.** A hauling winch plays a clank and sounds a decoy in `creature/DrawSources` (ADR 0078, #1027) at the pod: `noiseRadius` (40) of pull, renewed every `noiseInterval` (10) ticks and lasting two ticks past the next renewal, so it has no gap. A creature drawn to the drill that asks `DrawSources.noiseTarget` while within that radius is sent to the winch instead, the same way as to a thrown decoy. Stopping the winch or unhooking removes its decoy at once, and a snagged or stalled winch (no clank) lapses within the interval. One entry per winch: a renewal replaces the last, since the pod may have moved.
 
 **Ends.** A clip is a session's: it is not saved, and holds only the pod's UUID. It ends on the next tick when the person dies, boards a pod, changes level, or their pod is removed, unloads or is wrecked; a person who reconnects starts free.
 
@@ -2392,7 +2424,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 | Grating | 2 | 0 | 0 | 2 |
 | Vanilla blocks, regolith, stalks, glowcaps, ore, rubble | 0 | 0 | 0 | 0 |
 
-**The readout and the sheet.** Where a depth asks something, holding a block and aiming at a block puts a word two lines under the crosshair (`PlacementReadoutHud`, fading as the block readout does): HOLDS HERE or WILL NOT HOLD UNATTENDED, and for the last "Short on: heat, quake". A block's tooltip, its spec sheet, states "Rated: heat 2, pressure 2, flooding 2, quake 2"; a block rated nothing has no such line. Where a block holds comes with the first layer that asks.
+**The readout and the sheet.** Where a depth asks something, holding a block and aiming at a block puts a word above the hotbar, two lines under the top of the block readout (`PlacementReadoutHud`, fading as the block readout does): HOLDS HERE or WILL NOT HOLD UNATTENDED, and for the last "Short on: heat, quake". A block's tooltip, its spec sheet, states "Rated: heat 2, pressure 2, flooding 2, quake 2"; a block rated nothing has no such line. Where a block holds comes with the first layer that asks.
 
 **Left to others.** SHELTERED and its shelter hook are #926's: they need the shell's exposure, so that issue adds them with its rule. Whether an outpost's shell holds its layer comes with its first caller, the suit timer and uninhabitable outposts ([#993](https://github.com/pkeppeler/deepcharter/issues/993)).
 
@@ -2463,7 +2495,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 **Outposts.** `OutpostHabitability.of(level, outpost)` reads the hall's shell, its 442 cells less the 405 inside, against the row at the hall's middle: habitable when a row exists and every block of the shell meets it on the suit's axes, heat, pressure and flooding. Quake is not judged: a shortfall there does not leak air, it is a structural risk. A gap (air or a fluid) is not judged; it is the creature rule's exposure ([#926](https://github.com/pkeppeler/deepcharter/issues/926)), which later replaces the box with its flood fill. Inside a hall that holds, the suit refills. Inside one that does not it runs at `leakShare` (0.5), half the outside rate however many blocks fall short, so an unrated hall doubles a person's time, and dripping water shows the seep. No fluid is placed and nothing is destroyed. The kit's hall leaves its crust pit and rock hatch open, so against a row of heat 2 it holds only once they are patched with slag brick.
 
-**The risk line.** One line under the header of the outpost's fuel pump and sell terminal: "SHELL HOLDS: SUIT REFILLS HERE" in phosphor, "SHELL LEAKS: heat, pressure (14 blocks): SUIT RUNS AT 50%" in amber (the share is `leakShare`, so it follows the tuning, and the axes are never quake), or "NOTHING IS RATED AT THIS DEPTH". Hidden where the depth asks nothing, so today it shows only in the unbuilt depth. A guest sees the line the owner does.
+**The risk line.** One line under the header of the outpost's fuel pump and sell terminal: "SHELL HOLDS: SUIT REFILLS HERE" in phosphor, "SHELL LEAKS: heat, pressure (14 blocks): SUIT RUNS AT 50%" in amber (the share is `leakShare`, so it follows the tuning, and the axes are never quake), or "NOTHING IS RATED AT THIS DEPTH". Hidden where the depth asks nothing, so today it shows only in layer 3 and the unbuilt depth. A guest sees the line the owner does.
 
 **Pacing in player units (`SuitPacingTest` prints `[suit-pacing]` lines; whole seconds until the reserve is spent).**
 
@@ -2479,20 +2511,20 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 | A row (2,3,3), submerged | 30 s | modelled |
 | A row (5,3,0), dry | 40 s | modelled |
 
-The test fails if a built row that asks something (from layer 3 on) leaves a stock suit under 60 s dry, and it shows the check refusing a row that does (the unbuilt depth's).
+The test fails if a built row that asks something (from layer 3 on) leaves a stock suit under 60 s dry, and it shows the check refusing a row that does (the unbuilt depth's). [Layer 3's row](#environment-ratings-989-a) gives a stock suit 90 s dry.
 
 **Decisions (A).**
 - The environment is the depth's row, and the suit is rated like a block: one table for what a block and a person must hold.
 - Costs are summed, not maxed; a hall leaks at half, whatever the number of bad blocks; the capacity is 180 s.
 - A hall is judged for the suit on heat, pressure and flooding only. A hall short on quake alone shelters the suit and its risk line says it holds: quake is a structural risk, not a leak, and is left to a later change.
-- The suit is inert in layers 1 and 2 and on the surface, and its breach is harmless where the depth asks nothing. The only place this is harder than before is the unbuilt depth below layer 2, which no early run reaches: the unpacked and the early-game columns are unchanged.
+- The suit is inert in layers 1 and 2 and on the surface, and its breach is harmless where the depth asks nothing. The places this is harder than before are layer 3 and the unbuilt depth below it, which no early run reaches: the unpacked and the early-game columns are unchanged.
 - "Water seeps in" is particles and the drain, with no real water: placing fluid would delete a player's blocks.
 - Flooding is answered by the air track (#1064, "oxygen and toxins"), so the SPEC's four suit tracks stay four.
 - The air holds only where the suit is active, so a swim at the surface is as it was.
 
 **Knobs.** `SuitTuning.DEFAULT` (capacity, base and per-level costs, the stock suit's ratings, the uncharted row, `leakShare`, refill, warning times, breach damage and cadence), `RatingTuning.DEFAULT` (the rows), `theme/suit.json` (the gauge).
 
-**Open questions.** What layer 3 asks (its worldgen's to say, and this test holds it to a minute); whether a hall's leak should grow with its worst axis rather than stay a flat share.
+**Open questions.** Whether a hall's leak should grow with its worst axis rather than stay a flat share.
 
 ## Suit tracks (#1064, A)
 
@@ -2551,7 +2583,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Problem.** The playtest: "in the initial part of digging down, it seems there are no caves. When it's all solid block on the scanner, it looks like the pod isn't moving." The dig from the colony crossed about 120 rows of solid regolith rock under the surface, and layer 1 was one rock from top to floor, so neither the wall nor the scanner showed progress.
 
-**Caves.** One density term, `density_function/claim_caves.json`, added to the campaign's final density outside its interpolation, so a narrow cave stays narrow: pockets (the cave cheese noise over a threshold), tall fissures (a vertically stretched noise near zero) and narrow passages (two ridge noises near zero, as vanilla's noodles). A mask noise sets each narrow term's width, so a fissure or a passage pinches out rather than ending square. Each threshold is a gradient over depth, so the caves open up on the way down. The surface band's underground gets sparse pockets alone, from y -60 (4 rows over the band's floor) to y 20, well under the deepest ground (the pit's floor, about y 42), so nothing opens to the sky and the colony's pad is never undercut. 26.3 samples both branches of a `range_choice` over the whole volume, so the term costs the same at every row of every band, whether it carves there or not; it keeps the per-block part to the narrow terms, and the pockets are one interpolator for both bands. That costs the surface about 1.25x main's cost a row; a density function that skips the rows outside its band is [#1367](https://github.com/pkeppeler/deepcharter/issues/1367). Layer 3's halls stay the showpiece.
+**Caves.** One density term, `density_function/claim_caves.json`, added to the campaign's final density outside its interpolation, so a narrow cave stays narrow: pockets (the cave cheese noise over a threshold), tall fissures (a vertically stretched noise near zero) and narrow passages (two ridge noises near zero, as vanilla's noodles). A mask noise sets each narrow term's width, so a fissure or a passage pinches out rather than ending square. Each threshold is a gradient over depth, so the caves open up on the way down. The surface band's underground gets sparse pockets alone, from y -60 (4 rows over the band's floor) to y 20, well under the deepest ground (the pit's floor, about y 42), so nothing opens to the sky and the colony's pad is never undercut. 26.3 samples both branches of a `range_choice` over the whole volume, so the term's corner noise costs the same at every row of every band, whether it carves there or not (#1300 measured the surface at about 1.25x main's cost a row); a density function that skips the rows outside its band is [#1367](https://github.com/pkeppeler/deepcharter/issues/1367). The per-block part is the narrow terms, and the pockets are one interpolator for both bands. Each narrow term is one `deepcharter:narrow_cave` function (#1472), float for float the vanilla expression it replaced, which leaves an interpolation cell shut without working out its blocks when the cell's corners prove it shut. Layer 1's noise fill writes the strata's rock in advance ([ADR 0108](../adr/0108-the-campaigns-noise-fill-writes-layer-1s-strata-rock-in-advance.md)), so the material rule's rewrite of every row is mostly a block over itself, which is skipped. With both, ADR 0086's gate reads the surface at 0.74x and layer 1 at 1.07x of a reference layer's cost a row (numbers in PR #1490). Layer 3's halls stay the showpiece.
 
 **Strata.** Each zone of layer 1 has its own rock, laid by the campaign's material rule: Topsoil Claims' hardpan (olive: green enough to stand apart from the packed shale on the scanner, dark enough that Ironium's and Goldium's flecks stand out of it), Stone Benches' packed shale (as before) and Deep Claim's black shale (cold blue-grey, the step to layer 2's grey-green). The contact lies 6 rows under the zone's edge, moved up to 6 rows either way by a contour noise (`noise/claim_contact.json`, read once a column, in steps of one row) and raised by the column's surface depth (0 to about 5 rows, a slow wave across the claim), and a thin bed of the lower rock lies 2 to 4 rows above it and follows it, so the transition reads as bedding, not a ruled line. One material rule of our own, `deepcharter:strata` (`StrataRule`, `material_rule/claim_strata.json`), lays all of it: it works out a column's contacts once and then compares rows, because each vanilla condition a rule tests costs about the same at every block, and a contour made of noise bins doubled layer 1's cost per row. The textures are layer 1's Grain in each rock's own ramp. On the scanner the three are at least 20 apart in RGB at the cells' size, and each is at least 25 from open space, so a cave in the black shale still reads (`ClaimStrataScannerClientTest`). An ore and Company rock take the stratum as their host (ADR 0055's `Host`, two values added).
 
@@ -2559,7 +2591,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Hooks (A).** Abandoned, not deadly: no new hazard. Seams of ore (3 to 8 blocks) on the faces of caves and shafts (`CaveOreFeature`), six tries a chunk, by the zone fill's tables with Silverium twice, Goldium four times and Platinium three times as likely: a cave is worth a look on the scanner. A few salvage crates on a cave floor: two tries a chunk, each finding a floor only where a cave is under it, so a cache is an odd find, wood and scrap a long way from the yard.
 
-**In-chunk.** Every new feature writes only its own chunk ([ADR 0088](../adr/0088-layer-features-never-write-outside-their-own-chunk.md)); `TheClaimTest` checks every placement step and every shaft's bounds. The shafts seal their shell before they carve (the M2 rules). They stand in decoration step 10, which no other band uses, so no feature reseeds.
+**In-chunk.** Every new feature writes only its own chunk ([ADR 0088](../adr/0088-layer-features-never-write-outside-their-own-chunk.md)); `TheClaimTest` checks every placement step and every shaft's bounds. Topsoil Claims' older cave stalks (`fungal_stalks_cave`) keep to their chunk too (#1348), and `ClaimCaveStalksTest` checks every block they write. The shafts seal their shell before they carve (the M2 rules). They stand in decoration step 10, which no other band uses, so no feature reseeds.
 
 **The cost references.** `tall_baseline`, `tall_surface`, `tall_layer` and `tall_layer_floor` read layer 1's biomes for their zones. They now read frozen copies (`reference_<zone>`, test pack only) with main's features, so the per-band reference stays what it was and a layer's new content is charged to its band, not to the bar.
 
@@ -2657,3 +2689,13 @@ The air rows are the same numbers: the rotor does not change the drive speed. Be
 **Tuning knobs.** The fuel slot's stack (the item's own stack size, `FuelTuning.solidStack` for solid fuel); the page size (36) is layout, not tuning.
 
 **Open questions.** Whether a seated pilot should be able to open the screen while flying (today yes, from any seat, with the key); whether spare units in the hold should be allowed to sit there unfitted (today yes, by drag).
+
+## Pack ore and load (#1446)
+
+**Problem.** The pilot's pack weighed on the pod's lift only for what was not ore (`OreEncumbrance`: "ore rides in the bay, and the pack rides in the seat"), so ore in a seated pilot's pack weighed nothing: free cargo slots. `PodLoadTest.aSeatedPilotsPackOreWeighsOnThePodAndKeepsAHeavyPodDown` showed it: three ironium in the pack added 0 to the pod's extra mass.
+
+**Pick (A): the pack's ore counts.** Everything a seated rider carries, ore included, weighs on the pod through `PodEvents.EXTRA_MASS`, the same weight it has on foot: the pilot's pack, a passenger's in a second seat, and, through the cable, the packs of whoever sits in a towed pod. Boarding with ore is not refused: a pod that cannot lift its riders' packs says so on the load gauge (#1449), and they drop the ore or fly light. The bay holds only loose ore, never a pack's items, so nothing is counted twice. Ore does not stack, one piece to a slot, and every slot is heavy: ironium is 5 a piece, so about 10 slots of it in the pack alone reach a stock Mole's climb limit of 50. Carry ore in the bay.
+
+**The climb limit is what OVERLOADED means (#1449).** The rotor's thrust scales with the lift left (`PodMovement`: `thrustAcceleration * lift / enginePower`), and gravity takes 0.08 a tick, so the held rotor climbs only while the lift share is over `gravity / thrustAcceleration`: half the engine's power for every Mole (thrust 0.16, twice gravity; an engine part raises the power and the limit with it). From that load up the pod cannot climb, though it still drives, and the rotor only slows a fall. Before #1449 nothing said so until the load reached the whole engine power, so a pod at 60 sat on the floor with a silent HUD. `PodLoad.climbLimit()` is `limit * (1 - gravity / thrust)`; the cockpit's LOAD gauge marks it after 10 of its 13 segments (a segment a tenth of the limit, and three past it to show how far over), and at and over it the bar turns `lowColor`, the fifth lamp lights, the plate says OVERLOADED and a held jump gets the overlay line. A pod with no gravity climbs at any load short of the engine; a lining pod's rotor is stopped by the lining, not the weight, so it never reads OVERLOADED for that.
+
+**Load-scaled burn: declined.** A playtester asked whether a heavier pod should burn more fuel per second. It does not, and will not for now: the user's call (2026-11-26) is that fuel is right as it is, after [#1437](https://github.com/pkeppeler/deepcharter/issues/1437) (fuel too dear) closed. Mass already costs fuel: it cuts lift, so a heavy pod climbs slower and holds the rotor longer for the same climb, and the burn is per second of rotor. A second, per-second charge for the same mass would make a full bay dearer twice. Reopen it only with a fuel table that makes the light case cheaper, not the full case dearer.

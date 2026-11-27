@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
@@ -64,10 +65,11 @@ import org.slf4j.LoggerFactory;
  *
  * <p>{@code everyCostWorldGeneratesColumns} generates a few columns of each world and checks they exist. With the number of rounds in
  * the environment, for example {@code DEEPCHARTER_CAMPAIGN_COST=6 tools/gametest.sh 'campaign_cost_test_each_band*'}, the measured run
- * takes that many readings of each world, alternating which is first, and prints them as {@code [campaign-cost]} lines; a run needs at
- * least {@value #MIN_ROUNDS} rounds. {@value #POOL_ENV}=<absolute file> pools runs: each run appends its readings to the file and reads
- * every run's back, and the gate judges the pool once it is full ({@link BandCost.Pool#judged}). A pool short of that prints the ratios
- * and asserts nothing. {@value #ONLY_ENV}=<world> (or a comma-separated list) measures only those worlds.
+ * takes that many readings of each world, alternating which is first, and prints them (CPU, heap, wall, and garbage
+ * collection time and count, per round) as {@code [campaign-cost]} lines; a run needs at least {@value #MIN_ROUNDS}
+ * rounds. {@value #POOL_ENV}=<absolute file> pools runs: each run appends its readings to the file and reads every
+ * run's back, and the gate judges the pool once it is full ({@link BandCost.Pool#judged}). A pool short of that prints
+ * the ratios and asserts nothing. {@value #ONLY_ENV}=<world> (or a comma-separated list) measures only those worlds.
  */
 public class CampaignCostTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(CampaignCostTest.class);
@@ -188,7 +190,8 @@ public class CampaignCostTest {
             for (int x = 0; x < 16; x++) {
                 for (int z = 0; z < 16; z++) {
                     pos.set(whole.getPos().getBlockX(x), y, whole.getPos().getBlockZ(z));
-                    if (!whole.getBlockState(pos).equals(cut.getBlockState(pos))) {
+                    if (!whole.getBlockState(pos).equals(cut.getBlockState(pos))
+                            && !grainedByThePassOnly(whole, cut, pos)) {
                         blocks++;
                     }
                     if ((x & 3) == 0 && (y & 3) == 0 && (z & 3) == 0) {
@@ -213,6 +216,17 @@ public class CampaignCostTest {
                 world,
                 CAMPAIGN,
                 whole.getPos());
+    }
+
+    /**
+     * A row of the campaign world's grained crust where the window holds the breach crust. The crust pass (#216) is a
+     * feature of the unbuilt-depth biome, which a window cut to a band's rows does not hold, so a floor that the seed
+     * draws grained is the breach crust there, and the pass's few hundred block writes are not in the window's cost
+     * (#1022).
+     */
+    private static boolean grainedByThePassOnly(LevelChunk whole, LevelChunk cut, BlockPos pos) {
+        return whole.getBlockState(pos).is(LayerBlocks.GRAINED_CRUST)
+                && cut.getBlockState(pos).is(LayerBlocks.BREACH_CRUST);
     }
 
     /** A chunk near {@link #SAME_ROWS_CHUNKS}' first that a site of {@code band}'s layer reaches into, by the sites the draw uses. */
@@ -411,14 +425,16 @@ public class CampaignCostTest {
         List<Reading> readings = new ArrayList<>();
         results.forEach((world, all) -> {
             LOGGER.info(
-                    "[campaign-cost] {}: CPU ms per column, in round order: {}; heap MB: {}; wall ms per column: {}; medians {} CPU,"
-                            + " {} MB",
+                    "[campaign-cost] {}: CPU ms per column, in round order: {}; heap MB: {}; wall ms per column: {}; GC ms per"
+                            + " column: {}; GC count: {}; medians {} CPU, {} MB",
                     world,
                     all.stream().map(m -> ColumnCost.format(m.cpuMsPerColumn())).toList(),
                     all.stream().map(m -> Math.round(m.heapMb())).toList(),
                     all.stream()
                             .map(m -> ColumnCost.format(m.wallMsPerColumn()))
                             .toList(),
+                    all.stream().map(m -> ColumnCost.format(m.gcMsPerColumn())).toList(),
+                    all.stream().map(Measurement::gcCount).toList(),
                     ColumnCost.format(ColumnCost.median(all).cpuMsPerColumn()),
                     Math.round(ColumnCost.median(all).heapMb()));
             all.forEach(m -> readings.add(
