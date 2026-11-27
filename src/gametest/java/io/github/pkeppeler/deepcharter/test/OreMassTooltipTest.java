@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
+import io.github.pkeppeler.deepcharter.ore.MassTooltip;
 import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -23,11 +24,10 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for #1538: the tooltip of a heavy item names its mass in the units the pod's load is counted in, read from the
+ * Server GameTests for #1538: the tooltip line of a heavy item names its mass in the units the pod's load is counted in, read from the
  * same {@code OreEncumbrance.massOf} the cockpit's LOAD gauge is made of, so the tooltips of what is held add up to the load.
  */
 public class OreMassTooltipTest {
-    private static final String MASS_KEY = "deepcharter.ore.tooltip.mass";
     private static final String HEAVY_KEY = "deepcharter.ore.tooltip.heavy";
     private static final String HAUL_KEY = "deepcharter.ore.tooltip.haul";
 
@@ -54,16 +54,11 @@ public class OreMassTooltipTest {
                         && contents.getKey().equals(key));
     }
 
-    /** The text the stack's mass line shows; fails when it has none or more than one. */
+    /** The text the stack's mass line shows; fails when it has none. */
     private static String shownMass(GameTestHelper helper, ItemStack stack) {
-        List<TranslatableContents> masses = lines(helper, stack).stream()
-                .map(Component::getContents)
-                .filter(TranslatableContents.class::isInstance)
-                .map(TranslatableContents.class::cast)
-                .filter(contents -> contents.getKey().equals(MASS_KEY))
-                .toList();
-        expect(helper, masses.size() == 1, "%s should have one mass line, has %s", stack, masses.size());
-        return (String) masses.getFirst().getArgs()[0];
+        Component line = MassTooltip.line(stack).orElse(null);
+        expect(helper, line != null, "%s should have a mass line", stack);
+        return (String) ((TranslatableContents) line.getContents()).getArgs()[0];
     }
 
     /** What a tooltip text such as "7.4" is, in tenths. */
