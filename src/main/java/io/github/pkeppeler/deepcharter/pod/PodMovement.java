@@ -7,7 +7,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Server-authoritative pod movement: treads on the ground, a rotor to climb. The server reads the pilot's vanilla
- * input, so there is no packet of our own; clients only see the pod move. W, S, A and D steer it as a boat is steered
+ * input, so there is no packet of our own; clients only see the pod move. W, S, A and D steer it with tank controls
  * ({@link PodSteering}).
  */
 public final class PodMovement {

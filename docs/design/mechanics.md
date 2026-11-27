@@ -2714,27 +2714,28 @@ It plays to the pilot only, as the rumble did, from `BreachEffects.begin`: a cro
 
 **Problem.** The pod read WASD relative to the pilot's view, snapped to four directions, and turned to face where it drove. With a camera behind the pod, pressing back made it turn round and drive at the camera. That is a top-down scheme, and Minecraft players already know the vehicle one ([ADR 0095](../adr/0095-pods-steer-like-a-boat-and-the-pilots-camera-chases-them.md)).
 
-**Rule.** Copy the vanilla boat (`AbstractBoat`) and deviate only where a drilling pod needs it.
+**Rule.** Tank controls, the ground-vehicle convention: a tracked vehicle's skid steer, as tank games and the "tank controls" of third-person games drive. The first version copied the vanilla boat (`AbstractBoat`); the user's friends-server playtest (2026-11-26, [#1442](https://github.com/pkeppeler/deepcharter/issues/1442)) found its carried turn wrong for a vehicle on treads, so the steering half is now tank-style and the camera half stays.
 
-| Key | Pod | Copied from the boat | Deviation and why |
+| Key | Pod | Convention | Note |
 |---|---|---|---|
-| W | drives forward along the pod's facing | `controlBoat` throttle along the yaw | **Instant speed.** The drive speed is the stock `horizontalSpeed` stat, reached at once, not the boat's ramp: the measured fuel, trip and bore tables and the client smoothing price that speed. The ramp can be added in one function if wanted |
-| S | backs up without turning | reverse is slower, and does not turn; A or D with S turns while reversing, as in the boat | **0.4 reverse.** The issue says reverse slower, and the boat's 1/8 cannot back out of a bore. It never drills. **W with S cancels** (the boat nets forward 0.035) |
-| A, D | turn the yaw (A left, D right) | `deltaRotation`: 1 degree a tick added per tick held, 0.9 of it kept, so it settles at 10 degrees a tick and coasts on after the key is let go | none out of a bore. In a bore as wide as the pod, one press turns a quarter to the next compass direction (below) |
-| bare A or D | creeps forward at 1/8 of the drive speed | the boat's paddle creep | none |
+| W | drives forward along the pod's facing | throttle along the yaw | **Instant speed.** The drive speed is the stock `horizontalSpeed` stat, reached at once: the measured fuel, trip and bore tables and the client smoothing price that speed |
+| S | backs up without turning, at 0.4 of the drive speed | reverse is slower, and does not turn | It never drills. **W with S cancels** |
+| A, D | turn the yaw (A left, D right) at a steady 6 degrees a tick while held, and stop the tick after release | skid steer: a constant yaw rate while held, zero on release, no carried momentum | In a bore as wide as the pod, one press turns a quarter to the next compass direction (below) |
+| bare A or D | turns in place, no creep forward | a tracked vehicle pivots on the spot | Lets a pod line up in a shaft or a tight cave without moving |
+| S with A or D | backs up while turning, A still swinging the nose left and D right | tank controls: the turn key names the way the nose turns, whatever the throttle | Not a car's mirrored reverse steer. It is also what the boat did, so nothing a player learned changes |
 | Space | rotor up | unchanged | |
 | sneak | dismount | vanilla | |
 | sprint | drills down when no direction key is held; with W, a 40% boost ([Pod sprint](#pod-sprint-and-the-outrun-rule-1276-a)) | the boat has none | the boost never reaches the drill |
 
 **Camera.** Taking the pilot seat switches to third person (`THIRD_PERSON_BACK`) and leaving restores the view the player had. There is no option to turn it off. The view yaw takes the pod's turn every tick, as `AbstractBoat.positionRider` adds `deltaRotation` to its rider, so the angle to the pod stays in first and third person. **Unclamped view (a deviation):** the boat clamps the rider's view to 105 degrees from the nose; the pod does not, because #1268 and #1281 ask for free mouse look. In third person the view also eases back behind a driving pod (4 degrees a tick) once the mouse has been still for a second, so the camera chases; first person never settles.
 
-**The one deviation: the grid.** When the drill engages, the pod turns square to the compass at 15 degrees a tick, and the slab's first tick waits until it is square and centred. A sideways bore takes the compass direction nearest the nose, and only while W presses the pod against rock ahead of it. A bore down takes the nearest one too. In a bore as wide as the pod (rock beside it on both sides, on the ground) the pod squares itself and A and D do not steer it, so tunnels stay straight. One press of A or D there, while the pod is roughly square (within 15 degrees), turns it a quarter to the next compass direction (D clockwise), eased at the align rate; a held key is one press. W then drills the branch. A towed pod turns toward the way the line drags it, at 10 degrees a tick. Everything is the server's: the client sends only its keys, as before.
+**The grid overrides the steering.** When the drill engages, the pod turns square to the compass at 15 degrees a tick, and the slab's first tick waits until it is square and centred. A sideways bore takes the compass direction nearest the nose, and only while W presses the pod against rock ahead of it. A bore down takes the nearest one too. In a bore as wide as the pod (rock beside it on both sides, on the ground) the pod squares itself and A and D do not steer it, so tunnels stay straight. One press of A or D there, while the pod is roughly square (within 15 degrees), turns it a quarter to the next compass direction (D clockwise), eased at the align rate; a held key is one press. W then drills the branch. A towed pod turns toward the way the line drags it, at 10 degrees a tick. Everything is the server's: the client sends only its keys, as before.
 
-**Knobs.** `PodSteeringTuning`: `turnAcceleration` (1), `turnDamping` (0.9), `reverseShare` (0.4), `creepShare` (0.125), `alignDegrees` (15), `alignTolerance` (0.5). `PodChase`: `LOOK_HOLD_TICKS` (20), `SETTLE_DEGREES` (4).
+**Knobs.** `PodSteeringTuning`: `turnSpeed` (6 degrees a tick: a quarter turn in 15 ticks, and 120 degrees in a one-second hold, close to the boat steering's 121 in its first second, which players already had in their hands), `reverseShare` (0.4), `alignDegrees` (15), `alignTolerance` (0.5). `PodChase`: `LOOK_HOLD_TICKS` (20), `SETTLE_DEGREES` (4). The chase camera needed no change: it adds the pod's turn to the view each tick, so a turn that stops at once stops the view with it, and the third-person ease-back (4 a tick, under the 6 of the turn) only runs once the mouse is still.
 
 **Open questions.**
-- Whether the pod should accelerate to its speed as a boat does. It does not yet: the speed is a stat the client smoothing and the fuel numbers assume.
-- The turn rate is a boat's, 200 degrees a second; a heavy pod might want less. It is one number.
+- Whether the pod should accelerate to its speed. It does not yet: the speed is a stat the client smoothing and the fuel numbers assume.
+- A heavy pod or a chassis might turn slower; the turn speed is one number, ready to become a stat.
 
 ## Pod sprint and the outrun rule (#1276, A)
 
@@ -2753,7 +2754,7 @@ It plays to the pilot only, as the rumble did, from `BreachEffects.begin`: a cro
 **Where it does not boost.**
 - **The drill.** Sprint with no direction key still drills down, and sprint with W into rock bores sideways at the drill's own rate. The boost is off while the drill bores and in a bore as wide as the pod (rock beside it on both sides), so it does not even shorten the drive from one slab to the next: without the bore check a sprinting pod bored 13 columns in 600 ticks to a cruising one's 12. The drill stays its own track (issue item A).
 - **S.** Reverse is never boosted: backing out is the slow, careful move, and the reverse share stays the one number for it. Sprint with S neither boosts nor drills.
-- **A bare A or D.** The creep stays a creep.
+- **A bare A or D.** It turns the pod in place and drives nothing ([Pod controls](#pod-controls-and-the-chase-camera-1281-1268-a)), so there is no creep to boost.
 - **A passenger.** Only the pilot's keys drive the pod, so a navigator's sprint does nothing.
 
 **Measured** (`PodSprintTest`, pump fuel; litres a block from the tank's fall over 39 ticks of driving):
