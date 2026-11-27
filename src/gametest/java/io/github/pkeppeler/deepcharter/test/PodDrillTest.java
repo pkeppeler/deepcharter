@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_LEFT;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_RIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.RIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
@@ -175,7 +176,11 @@ public class PodDrillTest {
         });
     }
 
-    /** The pod faces 35 degrees off east at the wall: it turns to the grid before the bore, then bores straight. */
+    /**
+     * The pod faces 35 degrees off east at the wall: it turns to the grid before the bore, then bores straight. W
+     * alone up to the wall, so it meets the wall still 35 off; once the drill engages, D is held too, turning away from
+     * east, and the drill must override it.
+     */
     @GameTest(maxTicks = MAX_TICKS)
     public void aSidewaysBoreTurnsThePodToTheGridFirst(GameTestHelper helper) {
         int x = ALIGN_X;
@@ -184,14 +189,19 @@ public class PodDrillTest {
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         wall(level, x + 2, x + 5, Z, floor, floor + 10);
-        Rig rig = Rig.await(
-                helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST + 35f, "drill-turns-to-grid", FORWARD_LEFT);
+        Rig rig =
+                Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST + 35f, "drill-turns-to-grid", FORWARD);
         boolean[] turning = {false};
+        boolean[] turnKeyHeld = {false};
         TestTicks.each(helper, () -> {
             if (!rig.pod.isPresent()) {
                 return;
             }
             PodEntity pod = rig.pod.get();
+            if (pod.drilling() && !turnKeyHeld[0]) {
+                rig.pilot.setInput(FORWARD_RIGHT);
+                turnKeyHeld[0] = true;
+            }
             // The pod slides along the wall while it turns, so the slab is wherever it ends: any two columns of the
             // wall's face.
             boolean bored =

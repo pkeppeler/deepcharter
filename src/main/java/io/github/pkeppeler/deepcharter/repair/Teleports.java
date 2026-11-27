@@ -32,6 +32,13 @@ final class Teleports {
     /** Chunks out from the landing chunk that its arrival ticket loads: 2 makes the landing chunk tick entities. */
     private static final int ARRIVAL_RADIUS = 2;
 
+    /**
+     * The most wall-clock time a teleport spends running the landing level's queued chunk tasks before the pod moves:
+     * 2 ms at most was measured (#1364), so 20 ms leaves room on a loaded server and still under half a tick. Past it
+     * the pod moves anyway, and its rider's client loses it for a tick, as before #1364.
+     */
+    private static final long SETTLE_BUDGET_NANOS = 20_000_000L;
+
     private Teleports() {}
 
     /**
@@ -67,6 +74,7 @@ final class Teleports {
         }
         Vec3 landing = spot.get();
         Vec3 departure = pod.position();
+        settle(to);
         Entity arrived = pod.teleport(new TeleportTransition(
                 to, landing, Vec3.ZERO, pod.getYRot(), pod.getXRot(), TeleportTransition.DO_NOTHING));
         if (arrived == null) {
@@ -89,6 +97,26 @@ final class Teleports {
                 null, departure.x, departure.y, departure.z, DeepSound.TERMINAL_TELEPORT.event(), SoundSource.PLAYERS);
         to.playSound(null, landing.x, landing.y, landing.z, DeepSound.TERMINAL_TELEPORT.event(), SoundSource.PLAYERS);
         return Optional.empty();
+    }
+
+    /**
+     * Runs {@code level}'s queued chunk tasks, as a blocking chunk load on the server thread does, until none is left or
+     * {@link #SETTLE_BUDGET_NANOS} has passed (#1364). The landing look-up loads a cold chunk to full, but the task that
+     * tells the entity manager so is still queued, so the chunk's entity sections are hidden. A pod moved into a hidden
+     * section stops being tracked: every client, its own pilot's included, is sent a remove-entity, and the pod comes back
+     * with a fresh add on the next tick. Once that task has run, the section is tracked and the pod stays tracked across
+     * the move.
+     *
+     * <p>The drain runs whatever the level's chunk executor holds, not only the landing chunk's task: other chunks'
+     * status promotions, with their {@code CHUNK_LOAD}, {@code BLOCK_ENTITY_LOAD} and {@code ENTITY_LOAD} listeners. A
+     * blocking chunk load on the server thread runs the same tasks, so call this only where such a load would be safe
+     * too, never from inside one of those listeners.
+     */
+    private static void settle(ServerLevel level) {
+        long deadline = System.nanoTime() + SETTLE_BUDGET_NANOS;
+        while (System.nanoTime() - deadline < 0 && level.getChunkSource().pollTask()) {
+            // pollTask ran one task.
+        }
     }
 
     /**

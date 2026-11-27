@@ -20,6 +20,7 @@ public final class LayerInit {
         LayerStructures.init();
         LavaHazard.init();
         GrainedCrust.init();
+        Overgrowth.init();
         CaveIns.init();
         LightSync.init();
     }
