@@ -39,6 +39,7 @@ class FakeSystem:
         self.on_new_session = None
         self.on_keys = None
         self.sent: list[str] = []
+        self.on_gh = None
 
     def runner(self, argv, **_kwargs):
         self.calls.append(list(argv))
@@ -57,6 +58,8 @@ class FakeSystem:
                     self.on_keys(argv[-1])
             elif sub == "kill-session":
                 self.alive = False
+        elif argv[0] == "gh":
+            out, rc = self.on_gh(argv)
         elif argv[0].endswith("tailscale"):
             if self.tailscale_ip is None:
                 raise FileNotFoundError(argv[0])
@@ -740,6 +743,131 @@ class Runtime(PlaytestTestCase):
         exact = self.ack_text("x" * p.ACK_TITLE_MAX)
         self.assertTrue(exact.endswith("x."))
         self.assertNotIn("\u2026", exact)
+
+
+class FileIssue(PlaytestTestCase):
+    """`file-issue` (#1558): gh is stubbed; the labels are the point."""
+
+    URL = "https://github.com/pkeppeler/deepcharter/issues/77"
+
+    def setUp(self):
+        super().setUp()
+        self.body = self.root / "body.md"
+        self.body.write_text("A playtester said, in paraphrase, that the pod feels slow.\n")
+        self.gh_calls: list[list[str]] = []
+        self.applied = {"labels": True}
+        self.existing = {"html_url": self.URL, "title": "Pod is slow", "number": 77}
+        self.sys.on_gh = self.gh
+
+    def gh(self, argv):
+        self.gh_calls.append(list(argv))
+        endpoint = argv[argv.index("api") + 3]
+        labels = [argv[i + 1].removeprefix("labels[]=") for i, a in enumerate(argv) if a == "-f" and argv[i + 1].startswith("labels[]=")]
+        shown = [{"name": name} for name in labels] if self.applied["labels"] else []
+        if endpoint.endswith("/labels"):
+            return json.dumps([{"name": name} for name in labels] if self.applied["labels"] else []), 0
+        if endpoint.endswith("/comments"):
+            return json.dumps({"html_url": self.URL + "#issuecomment-1"}), 0
+        if endpoint.endswith("/issues") and "POST" in argv:
+            return json.dumps({"html_url": self.URL, "number": 99, "labels": [] if self.applied.get("create_bare") else shown}), 0
+        return json.dumps(self.existing), 0
+
+    def file(self, title="Pod feels slow", **kw):
+        return p.file_issue(self.env, title, self.body, bug=kw.pop("bug", False), duplicate_of=kw.pop("duplicate_of", None))
+
+    def posted_labels(self, call):
+        return [call[i + 1] for i, a in enumerate(call) if a == "-f" and call[i + 1].startswith("labels[]=")]
+
+    def test_new_issue_always_carries_playtest_feedback_and_prints_url_and_title(self):
+        self.assertEqual(self.file(), (self.URL, "Pod feels slow"))
+        [call] = self.gh_calls
+        self.assertEqual(call[:5], ["gh", "api", "--method", "POST", "repos/pkeppeler/deepcharter/issues"])
+        self.assertEqual(self.posted_labels(call), ["labels[]=playtest-feedback"])
+        self.assertIn("title=Pod feels slow", call)
+        self.assertIn("body=A playtester said, in paraphrase, that the pod feels slow.\n", call)
+
+    def test_bug_flag_adds_the_bug_label(self):
+        self.file(bug=True)
+        self.assertEqual(self.posted_labels(self.gh_calls[0]), ["labels[]=playtest-feedback", "labels[]=bug"])
+
+    def test_refuses_when_github_did_not_apply_the_label(self):
+        self.applied["labels"] = False
+        with self.assertRaisesRegex(p.Fail, "playtest-feedback"):
+            self.file()
+
+    def test_duplicate_labels_the_existing_issue_then_comments_without_filing_a_new_one(self):
+        self.assertEqual(self.file(duplicate_of="77", bug=True), (self.URL, "Pod is slow"))
+        endpoints = [c[c.index("api") + 3] for c in self.gh_calls]
+        self.assertEqual(endpoints, ["repos/pkeppeler/deepcharter/issues/77", "repos/pkeppeler/deepcharter/issues/77/labels",
+                                     "repos/pkeppeler/deepcharter/issues/77/comments"])
+        self.assertEqual(self.posted_labels(self.gh_calls[1]), ["labels[]=playtest-feedback", "labels[]=bug"])
+        self.assertTrue(any(a.startswith("body=A playtester") for a in self.gh_calls[2]))
+
+    def test_duplicate_refuses_before_commenting_when_the_label_is_not_applied(self):
+        self.applied["labels"] = False
+        with self.assertRaises(p.Fail):
+            self.file(duplicate_of="77")
+        self.assertFalse(any(c[c.index("api") + 3].endswith("/comments") for c in self.gh_calls))
+
+    def test_duplicate_refuses_a_pull_request_and_a_bad_number(self):
+        self.existing["pull_request"] = {}
+        with self.assertRaises(p.Fail):
+            self.file(duplicate_of="77")
+        for number in ("0", "x", "7 8", "-1"):
+            with self.subTest(number=number), self.assertRaises(p.Fail):
+                self.file(duplicate_of=number)
+
+    def test_closed_duplicate_gets_a_new_labelled_issue_linking_it(self):
+        self.existing["state"] = "closed"
+        self.assertEqual(self.file(duplicate_of="77"), (self.URL, "Pod feels slow"))
+        [call] = self.gh_calls[1:]
+        self.assertEqual(call[call.index("api") + 3], "repos/pkeppeler/deepcharter/issues")
+        self.assertEqual(self.posted_labels(call), ["labels[]=playtest-feedback"])
+        self.assertTrue(any(a.startswith("body=") and a.endswith("Seen again after #77 was closed.") for a in call))
+
+    def test_an_issue_created_without_the_label_is_repaired_not_left_for_a_retry(self):
+        self.applied["create_bare"] = True
+        self.assertEqual(self.file(), (self.URL, "Pod feels slow"))
+        self.assertEqual(self.gh_calls[1][self.gh_calls[1].index("api") + 3], "repos/pkeppeler/deepcharter/issues/99/labels")
+        self.applied["labels"] = False
+        with self.assertRaises(p.Fail):
+            self.file()
+
+    def test_mentions_are_neutralised_and_issue_links_kept(self):
+        self.body.write_text("ping @someone and @org/team, see #12\n")
+        self.file("Hey @someone")
+        call = self.gh_calls[0]
+        self.assertIn("title=Hey @\u200dsomeone", call)
+        self.assertIn("body=ping @\u200dsomeone and @\u200dorg/team, see #12\n", call)
+
+    def test_bad_title_or_body_is_refused_before_gh_runs(self):
+        for title in ("", "  ", "two\nlines", "bell\x07", "x" * (p.ISSUE_TITLE_MAX + 1)):
+            with self.subTest(title=title), self.assertRaises(p.Fail):
+                self.file(title)
+        for body in ("", " \n", "esc\x1b[31m", "x" * (p.ISSUE_BODY_MAX + 1)):
+            with self.subTest(body=body), self.assertRaises(p.Fail):
+                self.body.write_text(body)
+                self.file()
+        with self.assertRaises(p.Fail):
+            p.file_issue(self.env, "t", self.root / "missing.md", bug=False, duplicate_of=None)
+        self.assertEqual(self.gh_calls, [])
+
+    def test_a_title_that_looks_like_an_option_stays_one_argv_item(self):
+        self.file("--label=evil")
+        self.assertIn("title=--label=evil", self.gh_calls[0])
+
+    def test_duplicate_title_from_github_is_cleaned(self):
+        self.existing["title"] = "Pod\x1b[31m slow"
+        self.assertEqual(self.file(duplicate_of="77")[1], "Pod [31m slow")
+
+    def test_main_prints_url_and_title(self):
+        with mock.patch("sys.stdout") as out:
+            code = p.main(["file-issue", "Pod feels slow", str(self.body), "--bug"], self.env)
+        self.assertEqual(code, 0)
+        self.assertEqual("".join(c.args[0] for c in out.write.call_args_list), f"{self.URL}\nPod feels slow\n")
+        self.applied["labels"] = False
+        with mock.patch("sys.stderr"):
+            self.assertEqual(p.main(["file-issue", "Pod feels slow", str(self.body)], self.env), p.EXIT_FAIL)
 
 
 def chat(text, player="MeatCups"):

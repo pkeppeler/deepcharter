@@ -66,6 +66,9 @@ object GametestScan {
 	// or the comment line above it.
 	private const val FORCE_MARKER = "// force-ok:"
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
+	// A pin made by a test class exists only in the shard that holds it (#1482, #1586); outside support/ it is flagged or marked.
+	private val worldPin = Regex("""\bFarChunks\s*\.\s*pin\s*\(|\bColonyChunks\s*\.\s*force\s*\(|\bimport\s+static\s+[\w.]*\b(?:FarChunks\s*\.\s*(?:pin|\*)|ColonyChunks\s*\.\s*(?:force|\*))\s*;""")
+	private val inSupport = Regex("""(?:^|\.)support\.""")
 	// A synchronous chunk load on the server thread (getChunk or getChunkAt, which load or generate the chunk and wait
 	// for it) stalls the one thread that every server GameTest in the batch shares, so a test beside it makes no
 	// progress; the suite spent most of its time there (#1016, #1020). A server test or its support waits with
@@ -415,6 +418,9 @@ object GametestScan {
 	/** A class with no entry in client-test-weights.txt counts as this many seconds, so a new class lands in a shard without anyone editing the file. */
 	const val DEFAULT_CLIENT_WEIGHT = 10
 
+	/** An evidence scenario (a name ending in Scenario) does nothing outside tools/record-evidence.sh, so it counts as this many seconds unless the file lists it. */
+	const val SCENARIO_CLIENT_WEIGHT = 1
+
 	/** The same for server-test-weights.txt: about the mean of the listed classes. */
 	const val DEFAULT_SERVER_WEIGHT = 6
 
@@ -433,7 +439,8 @@ object GametestScan {
 		if (index < 1 || index > count) {
 			throw GradleException("$property is '$shard', expected i/n with 1 <= i <= n, like 2/3")
 		}
-		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)] ?: defaultWeight
+		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)]
+			?: if (name.endsWith("Scenario")) SCENARIO_CLIENT_WEIGHT else defaultWeight
 		fun weight(unit: List<String>) = unit.sumOf { weight(it) }
 		val loads = IntArray(count)
 		val mine = mutableListOf<String>()
@@ -574,6 +581,14 @@ object GametestScan {
 					val line = lineOf(text, force.range.first)
 					if (!marked(markedNear, rawLines, line, FORCE_MARKER)) {
 						problems.add("$className:${line + 1} sets a chunk's force directly, which FarChunks cannot count or release when the test ends; use FarChunks.force(helper, level, x, z) and FarChunks.release(helper, level, x, z), or mark a deliberate use with '$FORCE_MARKER <reason>'")
+					}
+				}
+			}
+			if (!inSupport.containsMatchIn(className)) {
+				for (pin in worldPin.findAll(text)) {
+					val line = lineOf(text, pin.range.first)
+					if (!marked(markedNear, rawLines, line, FORCE_MARKER)) {
+						problems.add("$className:${line + 1} pins chunks for the world's life from a test class, and a server shard loads only the test classes it holds, so the pin is missing in every shard that does not hold this class (#1586: the colony pad was unpinned in three of four shards); register it from a test-mod entrypoint in test/support (like ColonyPadPin), which every shard loads, or mark a pin that only this class needs with '$FORCE_MARKER <reason>'")
 					}
 				}
 			}
