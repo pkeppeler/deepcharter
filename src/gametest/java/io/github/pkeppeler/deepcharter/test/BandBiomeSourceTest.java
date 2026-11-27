@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.mojang.datafixers.util.Pair;
 import io.github.pkeppeler.deepcharter.layer.FloorCrust;
 import io.github.pkeppeler.deepcharter.layer.Zones;
@@ -12,7 +14,6 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.biome.Biomes;
@@ -96,11 +97,17 @@ public class BandBiomeSourceTest {
                 Holder<Biome> expected = direct(c, surfaceResolver, unbuilt, quartY);
                 Holder<Biome> actual = table.getNoiseBiome(3, quartY, -5);
                 if (expected != actual) {
-                    throw helper.assertionException(Component.literal("surface_min_y " + c.surfaceMinY() + ", layers "
-                            + c.layers().stream()
+                    throw failure(
+                            helper,
+                            "surface_min_y %s, layers %s: cell %s (block %s) reads %s, the height rule gives %s",
+                            c.surfaceMinY(),
+                            c.layers().stream()
                                     .map(l -> l.minY() + "+" + l.height())
-                                    .toList() + ": cell " + quartY + " (block " + QuartPos.toBlock(quartY)
-                            + ") reads " + name(actual) + ", the height rule gives " + name(expected)));
+                                    .toList(),
+                            quartY,
+                            QuartPos.toBlock(quartY),
+                            name(actual),
+                            name(expected));
                 }
             }
         }

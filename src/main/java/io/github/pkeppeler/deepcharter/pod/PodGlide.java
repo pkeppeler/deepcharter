@@ -203,12 +203,12 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     /**
      * Draws a pod that is {@code distance} ahead of its target on by a tick of the reported speed, or by what is left of the furthest the
-     * coast reaches past the server's position ({@code coastTicks - 1 + coastTailShare} ticks of speed) when that is less, so it ends
+     * coast reaches past the server's position ({@link PodGlideTuning#coastReach()} ticks of speed) when that is less, so it ends
      * exactly there and stands, never further (ADR 0082).
      */
     private void goOn(PodGlideTuning tuning, Vec3 reported, double distance) {
         double speed = reported.length();
-        double reach = (tuning.coastTicks() - 1 + tuning.coastTailShare()) * speed - distance;
+        double reach = tuning.coastReach() * speed - distance;
         if (reach > ARRIVED) {
             coast(reported.scale(Math.min(1, reach / speed)));
         }

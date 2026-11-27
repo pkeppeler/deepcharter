@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.texture.CasingConnections;
 import io.github.pkeppeler.deepcharter.texture.CasingConnections.FaceTiles;
@@ -37,7 +39,7 @@ public class ConnectedCasingTest {
 
     private static void expect(GameTestHelper helper, String what, FaceTiles expected, FaceTiles actual) {
         if (!expected.equals(actual)) {
-            throw helper.assertionException("%s: expected %s, got %s", what, expected, actual);
+            throw failure(helper, "%s: expected %s, got %s", what, expected, actual);
         }
     }
 
@@ -60,7 +62,7 @@ public class ConnectedCasingTest {
             actual.put(face, List.of(CasingConnections.right(face), CasingConnections.up(face)));
         }
         if (!expected.equals(actual)) {
-            throw helper.assertionException("face frames (right, up): expected %s, got %s", expected, actual);
+            throw failure(helper, "face frames (right, up): expected %s, got %s", expected, actual);
         }
         helper.succeed();
     }
