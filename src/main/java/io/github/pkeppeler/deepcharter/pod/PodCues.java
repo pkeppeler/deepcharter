@@ -71,10 +71,10 @@ public final class PodCues {
             return;
         }
         LAST_CUE.put(pod, now);
-        // Dumping cargo only helps when the pod could climb without it: towing alone can take all the climb.
-        boolean dumpHelps = pod.cargoMass() > 0f && load.load() - pod.cargoMass() < load.climbLimit();
         pilot.sendOverlayMessage(
-                Component.translatable(dumpHelps ? "deepcharter.pod.overloaded" : "deepcharter.pod.overloaded_load"));
+                PodDump.overloadedByCargo(pod)
+                        ? Component.translatable("deepcharter.pod.overloaded", Component.keybind(PodDump.KEY))
+                        : Component.translatable("deepcharter.pod.overloaded_load"));
         ((ServerLevel) pod.level()).playSound(null, pod, DeepSound.CARGO_FULL.event(), SoundSource.NEUTRAL, 1f, 1f);
     }
 }

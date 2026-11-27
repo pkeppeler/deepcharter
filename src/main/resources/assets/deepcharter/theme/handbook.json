@@ -116,5 +116,7 @@
   "pencilLineGap": 1,
   "pencilTipGap": 4,
   "pencilStartGap": 1,
-  "pencilMarkGap": 2
+  "pencilMarkGap": 2,
+  "clickCueSize": 3,
+  "clickCueInset": 3
 }

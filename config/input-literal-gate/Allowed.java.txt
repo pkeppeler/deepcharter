@@ -12,6 +12,7 @@ class Allowed {
 	boolean i = list.size() == 0;
 	boolean j = event.modifiers() == 1;
 	Object k = new MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0);
+	Object q = new KeyEvent(InputConstants.KEY_R, 0, 0);
 	// input-literal: a pre-SDL replay file stores button 0
 	boolean l = event.button() == 0;
 	boolean m = ready

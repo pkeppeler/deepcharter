@@ -341,8 +341,8 @@ public class FuelTripEconomyTest {
                     smoker,
                     campfire);
             expect(helper, perBlock > 0, "a coal block should craft into coal");
-            // Hands-on: the felling and the mining. Waiting: add each cook in turn (the fastest, the smoker, for the
-            // mash).
+            // Hands-on: the felling and the mining. Waiting: add each cook in turn (the fastest, the smoker, for
+            // the mash).
             Prep charcoal = new Prep(fell, fell + furnace / 20.0);
             Prep coal = new Prep(mine / perBlock, mine / perBlock);
             Prep biofuel = new Prep(mash * fell, mash * (fell + smoker / 20.0));

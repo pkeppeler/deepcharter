@@ -31,11 +31,11 @@ public class PodEntity extends Entity {
     private final PodCargo cargo = new PodCargo();
     // Neither saved nor synced: a loaded pod starts its slab over. Server only.
     private PodDrill.@Nullable Progress drillProgress;
-    // Neither saved nor synced: the burning fuse of a blasting charge (PodCharge); a pod that unloads loses it. Server
-    // only.
+    // Neither saved nor synced: the burning fuse of a blasting charge (PodCharge); a pod that unloads loses it.
+    // Server only.
     private PodCharge.@Nullable Fuse fuse;
-    // Neither saved nor synced: the degrees a tick the pod is turning by, which A and D build up (PodSteering). Server
-    // only.
+    // Neither saved nor synced: the degrees a tick the pod is turning by, which A and D build up (PodSteering).
+    // Server only.
     private float turnRate;
     // Neither saved nor synced: the compass direction a quarter turn in a bore is turning the pod to, and whether A or
     // D was held last tick, so that one press starts one quarter turn (PodSteering). Server only.
@@ -139,6 +139,15 @@ public class PodEntity extends Entity {
 
     public void setBraceOre(boolean braceOre) {
         entityData.set(PodData.BRACE_ORE, braceOre);
+    }
+
+    /** Whether the bay holds any ore; kept by the brace on the server beside {@link #braceOre}, synced for the HUD. */
+    public boolean holdsOre() {
+        return entityData.get(PodData.HOLDS_ORE);
+    }
+
+    public void setHoldsOre(boolean holdsOre) {
+        entityData.set(PodData.HOLDS_ORE, holdsOre);
     }
 
     /** Slag brick the heat shield can still burn; kept by the shield on the server, synced for the HUD. */

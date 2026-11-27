@@ -47,9 +47,8 @@ import net.minecraft.world.phys.Vec3;
  * across the breach into layer 2, in place in the campaign level. The evidence scenario "m1-two-pods" replays the same flow with a recording.
  */
 public class TwoPlayerClientTest implements FabricClientGameTest {
-    // Layer 1 is crust at local y 0-2, then stone; the pods stand a row above the crust, so the stone row is their
-    // first
-    // bore.
+    // Layer 1 is crust at local y 0-2, then stone; the pods stand a row above the crust, so the stone row
+    // is their first bore.
     private static final int X = 4000;
     private static final int Z = 4000;
     private static final int FLOOR_Y = TestLayers.worldY(1, 4);
@@ -122,7 +121,10 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
     private static void drive(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
         UUID mockId = two.mock().player().getUUID();
-        Rig rig = two.server().computeOnServer(server -> setUp(server, two));
+        two.server().runOnServer(TwoPlayerClientTest::buildRoom);
+        ClientWait.lightSettled(
+                context, two.server(), 1, X + (ROOM_EAST - ROOM_WEST) / 2, Z, (ROOM_EAST + ROOM_WEST) / 2);
+        Rig rig = two.server().computeOnServer(server -> seat(server, two));
         ClientWait.until(
                 context,
                 "the real client riding a pod in layer 1 with the mock's pod in view",
@@ -141,7 +143,10 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         // The pods stand on the floor of layer 1, inside the signal decay, where the stock console loses the scanner
         // first. This test is about two pods
         // crossing, not about the decay, so the scanner is read with the real pod lifted to clear air.
-        Vec3 floorPosition = two.server().computeOnServer(server -> liftOutOfDecay(server, rig.realPod()));
+        Vec3 floorPosition = two.server().computeOnServer(server -> cutShaft(server, rig.realPod()));
+        ClientWait.lightSettled(
+                context, two.server(), 1, Mth.floor(floorPosition.x), Mth.floor(floorPosition.z), SHAFT_RADIUS + 1);
+        two.server().runOnServer(server -> lift(server, rig.realPod(), floorPosition));
         Vec3 liftedPosition =
                 two.server().computeOnServer(server -> rig.realPod().position());
         awaitScannerAt(context, rig.realPod().getId(), liftedPosition, true);
@@ -231,8 +236,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         expectScannerShowsPod(context, "m1-two-pods-layer-2");
     }
 
-    /** Builds a room in layer 1, then seats the real player and the mock each in a Mole, a few rows above the crust. */
-    private static Rig setUp(MinecraftServer server, TwoPlayerServer two) {
+    /** Cuts the room both pods stand in. Wait for its light to settle before {@link #seat} (#1303). */
+    private static void buildRoom(MinecraftServer server) {
         ServerLevel one = TestLayers.level(server, 1);
         box(one, TestLayers.worldY(1, 0), TestLayers.worldY(1, 2), LayerBlocks.BREACH_CRUST);
         RoomCarver.carvePocketBelow(one, 1, X - ROOM_WEST, X + ROOM_EAST, Z - ROOM_RADIUS_Z, Z + ROOM_RADIUS_Z);
@@ -245,6 +250,11 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
         lamps(one);
+    }
+
+    /** Seats the real player and the mock each in a Mole in the room, a few rows above the crust. */
+    private static Rig seat(MinecraftServer server, TwoPlayerServer two) {
+        ServerLevel one = TestLayers.level(server, 1);
         ServerPlayer real = realPlayer(server, two.mock().player());
         real.teleportTo(one, X, FLOOR_Y, Z, Set.of(), EAST, LOOK_DOWN, true);
         int mockPodId = PodMovementClientTest.mountBoth(two);
@@ -257,17 +267,21 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         return new Rig(realPod, mockPod, columns(realPod), columns(mockPod));
     }
 
-    /**
-     * Cuts a shaft above {@code pod} up to one slab past the layer 1 onset of the decay, with a stone shell like the room's, and
-     * holds the pod at the top of it with no gravity. Returns where it stood, for putting it back. The height is
-     * {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
-     */
-    private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
-        ServerLevel one = TestLayers.level(server, 1);
-        Vec3 floorPosition = pod.position();
-        int clearY = TestLayers.band(one, 1).minY()
+    /** The Y the pod is lifted to: a slab past the layer 1 decay onset, so a retuned curve moves the test with it. */
+    private static int clearY(ServerLevel one) {
+        return TestLayers.band(one, 1).minY()
                 + SignalDecayTuning.DEFAULT.band(1).onset()
                 + 1;
+    }
+
+    /**
+     * Cuts a shaft above {@code pod} up to {@link #clearY}, with a stone shell like the room's. Returns where the pod
+     * stands, for putting it back. Wait for the shaft's light to settle before {@link #lift} (#1303).
+     */
+    private static Vec3 cutShaft(MinecraftServer server, PodEntity pod) {
+        ServerLevel one = TestLayers.level(server, 1);
+        Vec3 floorPosition = pod.position();
+        int clearY = clearY(one);
         int centerX = Mth.floor(floorPosition.x);
         int centerZ = Mth.floor(floorPosition.z);
         int roofY = FLOOR_Y + 10;
@@ -285,11 +299,14 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 new BlockPos(centerX + SHAFT_RADIUS, topY, centerZ + SHAFT_RADIUS),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
-        Vec3 clearPosition = new Vec3(floorPosition.x, clearY, floorPosition.z);
-        pod.setNoGravity(true);
-        pod.setPos(clearPosition);
-        pod.setDeltaMovement(Vec3.ZERO);
         return floorPosition;
+    }
+
+    /** Holds the pod at the top of the shaft {@link #cutShaft} cut over {@code floorPosition}, with no gravity. */
+    private static void lift(MinecraftServer server, PodEntity pod, Vec3 floorPosition) {
+        pod.setNoGravity(true);
+        pod.setPos(floorPosition.x, clearY(TestLayers.level(server, 1)), floorPosition.z);
+        pod.setDeltaMovement(Vec3.ZERO);
     }
 
     /** The layer 1 columns a pod bores: its footprint on the block grid, as the drill picks it. */
@@ -416,8 +433,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
     /** The scanner is drawn while riding: its pod marker is in the middle of the pod's cells, whatever else is on screen. */
     private static void expectScannerShowsPod(ClientGameTestContext context, String screenshotName) {
-        // A vanilla toast and a transmission are drawn over the top right of the screen, where the Ribbon hangs its
-        // scanner.
+        // A vanilla toast and a transmission are drawn over the top right of the screen, where the Ribbon hangs
+        // its scanner.
         context.runOnClient(client -> {
             client.gui.toastManager().clear();
             TransmissionOverlay.reset();

@@ -7,6 +7,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.pod.PodCues;
+import io.github.pkeppeler.deepcharter.pod.PodDump;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLoad;
@@ -20,6 +21,7 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,6 +41,9 @@ import net.minecraft.world.phys.Vec3;
 /** Server GameTests for #854: each pod hazard names its cause on the pilot's action bar and plays a sound; no hurt, no cue. */
 public class PodHazardCuesTest {
     private static final String GAS_KEY = "deepcharter.ore.gas_blast";
+    /** A rig pod thrown down this fast lands hard through the ground cushion (#1432), which brakes a crewed sink. */
+    private static final double HARD_SINK = 1.5;
+
     private static final String LANDING_KEY = "deepcharter.pod.hard_landing";
     private static final String OVERLOAD_KEY = "deepcharter.pod.overloaded";
     private static final String OVERLOAD_LOAD_KEY = "deepcharter.pod.overloaded_load";
@@ -269,6 +274,7 @@ public class PodHazardCuesTest {
     @GameTest(maxTicks = 100)
     public void aHardLandingTellsThePilotAndSoundsAtThePod(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 12);
+        rig.pod.setDeltaMovement(0, -HARD_SINK, 0);
         helper.runAfterDelay(60, () -> {
             try {
                 if (rig.pod.hull() >= rig.pod.maxHull()) {
@@ -298,8 +304,9 @@ public class PodHazardCuesTest {
         });
     }
 
+    /** Loads the pod to the load at which a held jump stops climbing. */
     private static void overload(Rig rig) {
-        rig.pod.setCargoMass(PodTuning.DEFAULT.movement().enginePower());
+        rig.pod.setCargoMass(PodLoad.of(rig.pod).climbLimit());
     }
 
     @GameTest(maxTicks = 60)
@@ -317,6 +324,18 @@ public class PodHazardCuesTest {
                         OVERLOAD_SOUND,
                         1,
                         "after one press held for 20 ticks");
+                Object[] args = rig.pilot.actionBarMessages().stream()
+                        .map(Component::getContents)
+                        .filter(contents -> contents instanceof TranslatableContents translatable
+                                && translatable.getKey().equals(OVERLOAD_KEY))
+                        .map(contents -> ((TranslatableContents) contents).getArgs())
+                        .findFirst()
+                        .orElseThrow();
+                expect(
+                        helper,
+                        args.length == 1 && args[0].equals(Component.keybind(PodDump.KEY)),
+                        "the overload line names the dump key as the pilot binds it, args %s",
+                        List.of(args));
                 helper.succeed();
             } finally {
                 rig.finish();
@@ -422,6 +441,7 @@ public class PodHazardCuesTest {
     public void aLandingThatEmptiesTheHullStillTellsTheEjectedPilot(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 12);
         rig.pod.setHull(1f);
+        rig.pod.setDeltaMovement(0, -HARD_SINK, 0);
         helper.runAfterDelay(60, () -> {
             try {
                 if (rig.pod.hull() != 0f) {
@@ -518,7 +538,8 @@ public class PodHazardCuesTest {
                         || PodLoad.of(rig.pod).cannotClimb() == climbs) {
                     throw failure(
                             helper,
-                            "with a load of %s (%s short of the climb limit) the pod should %s and the cue should %s, rose %s and %s cues",
+                            "with a load of %s (%s short of the climb limit) the pod should %s and the cue should %s,"
+                                    + " rose %s and %s cues",
                             load,
                             under,
                             climbs ? "climb" : "not climb",

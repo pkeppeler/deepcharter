@@ -223,8 +223,8 @@ public class DrifterTest {
             made[0].pilot().setInput(SPRINT);
             drifter[0] = made[0].drifter(made[0].at(-5, 2, 0));
             Vec3 centre = drifter[0].position().add(0, drifter[0].getBbHeight() / 2, 0);
-            // Beyond its pull the decoy is due west, away from the pod and from every other room, which differ only in
-            // z.
+            // Beyond its pull the decoy is due west, away from the pod and from every other room, which differ only
+            // in z.
             decoy[0] =
                     what == Decoys.BEYOND_PULL ? centre.add(-(tuning.pullBlocks() + 10), 0, 0) : centre.add(0, 0, -5);
             DrawSources.addDecoy(level, decoy[0], tuning.pullBlocks(), level.getGameTime() + tuning.noiseTicks());
@@ -702,8 +702,8 @@ public class DrifterTest {
             long podSources = here.stream()
                     .filter(source -> source.pos().distanceTo(arena.pod().position()) < 3)
                     .count();
-            // The crew on foot is one source, wherever the level's first footstep was: the rest of the sources are the
-            // pod's.
+            // The crew on foot is one source, wherever the level's first footstep was: the rest of the sources are
+            // the pod's.
             long onFoot = here.stream().filter(source -> !source.pod()).count();
             most[0] = Math.max(most[0], (int) onFoot);
             both[0] |= podSources == 1 && onFoot == 1;

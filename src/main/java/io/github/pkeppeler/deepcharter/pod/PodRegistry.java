@@ -34,7 +34,7 @@ public final class PodRegistry {
             register(id("prospector"), Chassis.PROSPECTOR, PROSPECTOR_SEATS);
 
     /** Used on a pod, it fits a tow cable from the pod the player rides, or takes one off (see {@link PodTowing}). */
-    public static final Item TOW_CABLE = item("tow_cable");
+    public static final Item TOW_CABLE = towCable();
 
     private PodRegistry() {}
 
@@ -94,9 +94,9 @@ public final class PodRegistry {
         return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
     }
 
-    private static Item item(String path) {
+    private static Item towCable() {
         ResourceKey<Item> key =
-                ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
+                ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tow_cable"));
         return Registry.register(
                 BuiltInRegistries.ITEM,
                 key,

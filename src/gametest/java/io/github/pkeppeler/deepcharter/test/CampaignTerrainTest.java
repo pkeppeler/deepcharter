@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -60,7 +61,10 @@ public class CampaignTerrainTest {
     /** Every column of the sample in a grid this many blocks apart. */
     private static final int SAMPLE_STEP = 3;
 
-    private static final String CRUST = "deepcharter:breach_crust";
+    private static final String BREACH_CRUST = "deepcharter:breach_crust";
+    /** A floor the seed draws grained holds this where it would hold the breach crust (#216, #1022). */
+    private static final String GRAINED_CRUST = "deepcharter:grained_crust";
+
     private static final String PACKED_SHALE = "deepcharter:packed_shale";
     private static final String GREEN_SHALE = "deepcharter:green_shale";
     private static final String BASALT_CORE = "deepcharter:basalt_core";
@@ -90,8 +94,8 @@ public class CampaignTerrainTest {
             "minecraft:ladder",
             "minecraft:candle");
     /**
-     * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the glowcaps and the surface's own
-     * stalks and great stalks.
+     * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the
+     * glowcaps, the surface's own stalks and great stalks, and the giant fungi's parasols and spires (#1202).
      */
     private static final Set<String> LAYER_3_BLOCKS = Set.of(
             BASALT_CORE,
@@ -99,7 +103,16 @@ public class CampaignTerrainTest {
             "deepcharter:glowcap",
             STALK,
             "deepcharter:great_stalk",
-            "deepcharter:great_stalk_cap");
+            "deepcharter:great_stalk_cap",
+            "deepcharter:parasol_stem",
+            "deepcharter:parasol_ring",
+            "deepcharter:parasol_gills",
+            "deepcharter:parasol_cap",
+            "deepcharter:parasol_rim",
+            "deepcharter:fungal_flare",
+            "deepcharter:spire",
+            "deepcharter:spire_tip",
+            "deepcharter:spire_base");
 
     /** Air, and the lava the zone fill leaves in a layer (#743). */
     private static final Set<String> FLUIDS_AND_AIR = Set.of("minecraft:air", "minecraft:cave_air", "minecraft:lava");
@@ -136,8 +149,20 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
+    private static boolean isCrust(String block) {
+        return block.equals(BREACH_CRUST) || block.equals(GRAINED_CRUST);
+    }
+
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void theFloorOfEachLayerHoldsThreeRowsOfCrust(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper, sampleChunks(helper), () -> theFloorOfEachLayerHoldsThreeRowsOfCrustLoaded(helper));
+    }
+
+    private static void theFloorOfEachLayerHoldsThreeRowsOfCrustLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int rows = CampaignBands.crustRows();
         for (Band layer : CampaignBands.LAYERS) {
@@ -146,7 +171,7 @@ public class CampaignTerrainTest {
                     String block = idAt(level, column.atY(y));
                     expect(
                             helper,
-                            block.equals(CRUST),
+                            isCrust(block),
                             "%s: expected crust at %d %d %d, found %s",
                             layer.name(),
                             column.getX(),
@@ -157,7 +182,7 @@ public class CampaignTerrainTest {
                 String above = idAt(level, column.atY(layer.minY() + rows));
                 expect(
                         helper,
-                        !above.equals(CRUST),
+                        !isCrust(above),
                         "%s: more than %d rows of crust at %d %d",
                         layer.name(),
                         rows,
@@ -168,8 +193,16 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void crustIsOnlyAtTheFloorsSoNoneLiesUnderTheSurface(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper, sampleChunks(helper), () -> crustIsOnlyAtTheFloorsSoNoneLiesUnderTheSurfaceLoaded(helper));
+    }
+
+    private static void crustIsOnlyAtTheFloorsSoNoneLiesUnderTheSurfaceLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<Integer> expected = new TreeSet<>();
         for (Band layer : CampaignBands.LAYERS) {
@@ -180,7 +213,7 @@ public class CampaignTerrainTest {
         Set<Integer> found = new TreeSet<>();
         for (BlockPos column : sampledColumns()) {
             for (int y = worldMinY(); y < worldTopExclusive(); y++) {
-                if (idAt(level, column.atY(y)).equals(CRUST)) {
+                if (isCrust(idAt(level, column.atY(y)))) {
                     found.add(y);
                 }
             }
@@ -190,7 +223,7 @@ public class CampaignTerrainTest {
                     y++) {
                 expect(
                         helper,
-                        !idAt(level, column.atY(y)).equals(CRUST),
+                        !isCrust(idAt(level, column.atY(y))),
                         "crust under the surface at %d %d %d",
                         column.getX(),
                         y,
@@ -201,8 +234,15 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void eachBandHoldsItsOwnRock(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(helper, sampleChunks(helper), () -> eachBandHoldsItsOwnRockLoaded(helper));
+    }
+
+    private static void eachBandHoldsItsOwnRockLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Map<String, Set<String>> found = new TreeMap<>();
         for (BlockPos column : sampledColumns()) {
@@ -247,8 +287,21 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
-    public void eachBandHasItsZoneBiome(GameTestHelper helper) throws IOException {
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
+    public void eachBandHasItsZoneBiome(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(helper, sampleChunks(helper), () -> {
+            try {
+                eachBandHasItsZoneBiomeLoaded(helper);
+            } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        });
+    }
+
+    private static void eachBandHasItsZoneBiomeLoaded(GameTestHelper helper) throws IOException {
         ServerLevel level = helper.getLevel();
         BlockPos column = sampledColumns().getFirst();
         Set<String> surfaceBiomes = new TreeSet<>();
@@ -273,8 +326,8 @@ public class CampaignTerrainTest {
             Band layer = CampaignBands.layer(number);
             for (int zone = 0; zone < Zones.COUNT; zone++) {
                 Zones.Span span = Zones.span(layer.minY(), layer.height(), zone);
-                // A cell is 4 blocks, judged by its middle, so a zone edge inside a cell is off by up to 2 blocks
-                // (ZoneBiomeSource).
+                // A cell is 4 blocks, judged by its middle, so a zone edge inside a cell is off by up to 2
+                // blocks (ZoneBiomeSource).
                 for (int y : new int[] {span.low() + 2, (span.low() + span.high()) / 2, span.high() - 2}) {
                     String expected = Zones.of(number, layer.minY(), layer.height(), y)
                             .orElseThrow()
@@ -303,12 +356,20 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void noVanillaBlockIsGenerated(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(helper, sampleChunks(helper), () -> noVanillaBlockIsGeneratedLoaded(helper));
+    }
+
+    private static void noVanillaBlockIsGeneratedLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<String> vanilla = new TreeSet<>();
         for (int chunkX = SAMPLE_CHUNK_X; chunkX < SAMPLE_CHUNK_X + SAMPLE_CHUNKS; chunkX++) {
             for (int chunkZ = SAMPLE_CHUNK_Z; chunkZ < SAMPLE_CHUNK_Z + SAMPLE_CHUNKS; chunkZ++) {
+                // sync-load: whenBlocksLoaded loaded the sample's chunks
                 ChunkAccess chunk = level.getChunk(chunkX, chunkZ);
                 for (int index = 0; index < chunk.getSectionsCount(); index++) {
                     var section = chunk.getSection(index);
@@ -623,7 +684,17 @@ public class CampaignTerrainTest {
         expect(helper, blocks.isEmpty(), "%s holds blocks it should not: %s", band.name(), blocks);
     }
 
-    /** Every column of the sample on a grid: ground level, generating the chunks. */
+    /** The chunks {@link #sampledColumns} reads. */
+    private static List<FarChunks.At> sampleChunks(GameTestHelper helper) {
+        return FarChunks.rect(
+                helper.getLevel(),
+                SAMPLE_CHUNK_X,
+                SAMPLE_CHUNK_Z,
+                SAMPLE_CHUNK_X + SAMPLE_CHUNKS - 1,
+                SAMPLE_CHUNK_Z + SAMPLE_CHUNKS - 1);
+    }
+
+    /** Every column of the sample on a grid: ground level, from the chunks that {@link #sampleChunks} loads. */
     private static List<BlockPos> sampledColumns() {
         List<BlockPos> columns = new ArrayList<>();
         int span = SAMPLE_CHUNKS * 16;
@@ -636,6 +707,7 @@ public class CampaignTerrainTest {
     }
 
     private static String idAt(ServerLevel level, BlockPos pos) {
+        // sync-load: every caller waited for the sample's chunks with FarChunks.whenBlocksLoaded
         BlockState state = level.getChunk(pos).getBlockState(pos);
         return state.is(Blocks.AIR)
                 ? "minecraft:air"
@@ -643,8 +715,9 @@ public class CampaignTerrainTest {
     }
 
     private static String biomeAt(ServerLevel level, BlockPos pos) {
-        // The cell the generator stored, not level.getBiome(pos): that one blurs a band's edge with the cell next to
-        // it.
+        // The cell the generator stored, not level.getBiome(pos): that one blurs a band's edge with the cell next
+        // to it.
+        // sync-load: every caller waited for the sample's chunks with FarChunks.whenBlocksLoaded
         Optional<String> key = level.getChunk(pos)
                 .getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2)
                 .unwrapKey()

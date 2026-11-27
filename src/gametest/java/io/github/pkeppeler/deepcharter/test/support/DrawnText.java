@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import com.mojang.blaze3d.platform.cursor.CursorType;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -30,6 +31,9 @@ import org.jspecify.annotations.Nullable;
  * of {@code CrtDraw.glowText} (four copies one pixel out, then the text) counts as one string, the last copy. Text drawn through a
  * scissor is cut to it, and a string wholly outside the scissor is dropped. {@code textWithWordWrap} and {@code textWithBackdrop} are
  * not recorded; the mod draws no text with either.
+ *
+ * <p>{@link #frame} also keeps the plain {@code fill} rectangles drawn outside a widget and the cursor the frame asked
+ * for, for what only shows as ink or a hand: a hovered row's highlight, a click cue.
  */
 public final class DrawnText {
     private DrawnText() {}
@@ -41,6 +45,19 @@ public final class DrawnText {
             return text.length() <= 30 ? text : text.substring(0, 30) + "...";
         }
     }
+
+    /**
+     * A rectangle the screen filled outside any widget: the box it covers on the screen in GUI pixels, cut to the
+     * scissor, and its colour (ARGB).
+     */
+    public record Fill(Box box, int color) {}
+
+    /**
+     * One frame drawn outside any widget: its strings, its fills in the order drawn, and the cursor it asked for, or
+     * null.
+     */
+    public record Frame(
+            List<Drawn> text, List<Fill> fills, @Nullable CursorType cursor) {}
 
     /** The characters of {@code text}, without its styles. */
     public static String plain(FormattedCharSequence text) {
@@ -59,7 +76,7 @@ public final class DrawnText {
 
     /** Like {@link #of(Screen)} with the mouse at ({@code mouseX}, {@code mouseY}), for what only a hovered thing draws. */
     public static List<Drawn> of(Screen screen, int mouseX, int mouseY) {
-        return of(recorder -> screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f));
+        return frame(screen, mouseX, mouseY).text();
     }
 
     /** Like {@link #of(Screen)} with the mouse where the cursor is now. Client thread. */
@@ -68,6 +85,16 @@ public final class DrawnText {
         var window = client.getWindow();
         return of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
                 client.mouseHandler.getScaledYPos(window));
+    }
+
+    /**
+     * Renders {@code screen} once with the mouse at ({@code mouseX}, {@code mouseY}) and returns all it recorded.
+     * Client thread.
+     */
+    public static Frame frame(Screen screen, int mouseX, int mouseY) {
+        Recorder recorder = new Recorder(Minecraft.getInstance());
+        screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f);
+        return new Frame(List.copyOf(recorder.drawn), List.copyOf(recorder.fills), recorder.cursor);
     }
 
     /** Runs {@code draw} on a recorder and returns the strings it drew, for something that is not a screen, such as a toast. Client thread. */
@@ -107,6 +134,8 @@ public final class DrawnText {
         private static final StackWalker STACK = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
 
         private final List<Drawn> drawn = new ArrayList<>();
+        private final List<Fill> fills = new ArrayList<>();
+        private @Nullable CursorType cursor;
         private final Deque<Box> scissors = new ArrayDeque<>();
         private final Vector2f corner = new Vector2f();
 
@@ -121,6 +150,27 @@ public final class DrawnText {
             // text boxes and the scissor are in the same space.
             Box now = transformed(x0, y0, x1 - x0, y1 - y0);
             scissors.push(scissors.isEmpty() ? now : intersection(scissors.peek(), now));
+        }
+
+        @Override
+        public void fill(int x0, int y0, int x1, int y1, int color) {
+            super.fill(x0, y0, x1, y1, color);
+            if (insideWidget()) {
+                return;
+            }
+            Box box = transformed(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+            if (!scissors.isEmpty()) {
+                box = intersection(scissors.peek(), box);
+            }
+            if (box.width() > 0 && box.height() > 0) {
+                fills.add(new Fill(box, color));
+            }
+        }
+
+        @Override
+        public void requestCursor(CursorType type) {
+            super.requestCursor(type);
+            cursor = type;
         }
 
         @Override

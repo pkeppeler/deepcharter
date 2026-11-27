@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterCommands;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
@@ -52,14 +54,14 @@ public class CharterCoreTest {
 
     private static void expectDone(GameTestHelper helper, Optional<CharterRefusal> refusal, String what) {
         if (refusal.isPresent()) {
-            throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
+            throw failure(helper, "%s should succeed, was refused: %s", what, refusal.get());
         }
     }
 
     private static void expectRefused(
             GameTestHelper helper, CharterRefusal expected, Optional<CharterRefusal> actual, String what) {
         if (!actual.equals(Optional.of(expected))) {
-            throw helper.assertionException("%s should be refused with %s, got %s", what, expected, actual);
+            throw failure(helper, "%s should be refused with %s, got %s", what, expected, actual);
         }
     }
 
@@ -87,8 +89,8 @@ public class CharterCoreTest {
         if (!founded.director().equals(Optional.of(directorId))
                 || !founded.crew().isEmpty()
                 || founded.account() != 0) {
-            throw helper.assertionException(
-                    "a new charter has its founder as Director, no crew and an empty account: %s", founded);
+            throw failure(
+                    helper, "a new charter has its founder as Director, no crew and an empty account: %s", founded);
         }
 
         expectDone(helper, Charters.apply(server, crewId, founded.id()), "applying");
@@ -97,14 +99,14 @@ public class CharterCoreTest {
                         .orElseThrow()
                         .applications()
                         .equals(List.of(crewId))) {
-            throw helper.assertionException("an application is pending, not a membership");
+            throw failure(helper, "an application is pending, not a membership");
         }
         expectDone(helper, Charters.approve(server, directorId, crewId), "approving");
         Charter joined = Charters.charterOfOrThrow(server, crewId).orElseThrow();
         if (!joined.id().equals(founded.id())
                 || !joined.crew().equals(List.of(crewId))
                 || !joined.applications().isEmpty()) {
-            throw helper.assertionException("the applicant should now be crew: %s", joined);
+            throw failure(helper, "the applicant should now be crew: %s", joined);
         }
 
         expectDone(helper, Charters.leave(server, crewId), "the crew leaving");
@@ -113,7 +115,7 @@ public class CharterCoreTest {
                         .orElseThrow()
                         .crew()
                         .isEmpty()) {
-            throw helper.assertionException("the crew member should be gone");
+            throw failure(helper, "the crew member should be gone");
         }
         helper.succeed();
     }
@@ -136,12 +138,12 @@ public class CharterCoreTest {
             try (SavedDataStorage second = storage(server, dir)) {
                 Charter loaded = second.computeIfAbsent(CharterData.TYPE)
                         .find(id)
-                        .orElseThrow(() -> helper.assertionException("the charter should have been saved"));
+                        .orElseThrow(() -> failure(helper, "the charter should have been saved"));
                 if (!loaded.director().equals(Optional.of(director))
                         || !loaded.crew().equals(List.of(crew))
                         || loaded.account() != 750
                         || loaded.deepestPoint() != 312) {
-                    throw helper.assertionException("the charter should load as it was saved: %s", loaded);
+                    throw failure(helper, "the charter should load as it was saved: %s", loaded);
                 }
             }
         } finally {
@@ -170,9 +172,11 @@ public class CharterCoreTest {
             Path file = savedFile(dir);
             CompoundTag stamped = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
             if (NbtUtils.getDataVersion(stamped) <= olderDataVersion) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the test needs a saved DataVersion above %s, got %s",
-                        olderDataVersion, NbtUtils.getDataVersion(stamped));
+                        olderDataVersion,
+                        NbtUtils.getDataVersion(stamped));
             }
             Tag savedBody = Objects.requireNonNull(stamped.get("data"), "the stamped save has no data tag");
             NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
@@ -182,8 +186,8 @@ public class CharterCoreTest {
                 Tag reloaded =
                         CharterData.CODEC.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow();
                 if (!reloaded.equals(savedBody) || loaded.find(id).isEmpty()) {
-                    throw helper.assertionException(
-                            "the fixer changed the charter data: saved %s, loaded %s", savedBody, reloaded);
+                    throw failure(
+                            helper, "the fixer changed the charter data: saved %s, loaded %s", savedBody, reloaded);
                 }
             }
         } catch (IOException e) {
@@ -232,7 +236,7 @@ public class CharterCoreTest {
 
         expectRefused(helper, CharterRefusal.INSUFFICIENT_FUNDS, data.spend(id, 101), "spending more than the balance");
         if (data.find(id).orElseThrow().account() != 100) {
-            throw helper.assertionException("a refused overdraft must not change the balance");
+            throw failure(helper, "a refused overdraft must not change the balance");
         }
         expectDone(helper, data.spend(id, 100), "spending the whole balance");
         expectRefused(helper, CharterRefusal.INSUFFICIENT_FUNDS, data.spend(id, 1), "spending from an empty account");
@@ -240,7 +244,7 @@ public class CharterCoreTest {
         expectRefused(helper, CharterRefusal.INVALID_AMOUNT, data.spend(id, -5), "spending a negative amount");
         expectRefused(helper, CharterRefusal.INVALID_AMOUNT, data.deposit(id, -5), "depositing a negative amount");
         if (data.find(id).orElseThrow().account() != 0) {
-            throw helper.assertionException("the account should be empty, not negative");
+            throw failure(helper, "the account should be empty, not negative");
         }
         helper.succeed();
     }
@@ -253,7 +257,7 @@ public class CharterCoreTest {
 
         expectRefused(helper, CharterRefusal.ACCOUNT_FULL, data.deposit(id, 1), "depositing into a full account");
         if (data.find(id).orElseThrow().account() != Long.MAX_VALUE) {
-            throw helper.assertionException("a refused deposit must not change the balance");
+            throw failure(helper, "a refused deposit must not change the balance");
         }
         helper.succeed();
     }
@@ -269,10 +273,10 @@ public class CharterCoreTest {
         expectDone(helper, data.leave(director), "the Director leaving");
         Charter after = data.find(id).orElseThrow();
         if (!after.director().equals(Optional.of(first)) || !after.crew().equals(List.of(second)) || after.dormant()) {
-            throw helper.assertionException("the longest-serving crew member should be Director: %s", after);
+            throw failure(helper, "the longest-serving crew member should be Director: %s", after);
         }
         if (data.charterOf(director).isPresent()) {
-            throw helper.assertionException("the old Director should be off the charter");
+            throw failure(helper, "the old Director should be off the charter");
         }
         helper.succeed();
     }
@@ -291,8 +295,8 @@ public class CharterCoreTest {
         if (!dormant.dormant()
                 || dormant.account() != 40
                 || !dormant.applications().isEmpty()) {
-            throw helper.assertionException(
-                    "an empty charter is dormant, keeps its account and drops its applications: %s", dormant);
+            throw failure(
+                    helper, "an empty charter is dormant, keeps its account and drops its applications: %s", dormant);
         }
         expectRefused(
                 helper, CharterRefusal.CHARTER_DORMANT, data.apply(applicant, id), "applying to a dormant charter");
@@ -344,15 +348,19 @@ public class CharterCoreTest {
                 || !revived.name().equals(name)
                 || revived.account() != 40
                 || revived.deepestPoint() != 120) {
-            throw helper.assertionException(
-                    "the reviver should be Director of the same charter with its account and depth: %s", revived);
+            throw failure(
+                    helper,
+                    "the reviver should be Director of the same charter with its account and depth: %s",
+                    revived);
         }
         if (revived.formerMember(crew) || !revived.formerMember(director)) {
-            throw helper.assertionException(
-                    "the reviver stops being former and the other former member stays: %s", revived.formerMembers());
+            throw failure(
+                    helper,
+                    "the reviver stops being former and the other former member stays: %s",
+                    revived.formerMembers());
         }
         if (!data.find(other).orElseThrow().dormant()) {
-            throw helper.assertionException("the other charter is untouched");
+            throw failure(helper, "the other charter is untouched");
         }
         expectDone(helper, data.apply(applicant, id), "applying to the revived charter");
         expectDone(helper, data.approve(crew, applicant), "the new Director approving");
@@ -380,11 +388,11 @@ public class CharterCoreTest {
                 data.revive(withdrawn, id),
                 "a withdrawn applicant reviving");
         if (!data.find(id).orElseThrow().equals(before)) {
-            throw helper.assertionException("a refused revival changes nothing, got %s", data.find(id));
+            throw failure(helper, "a refused revival changes nothing, got %s", data.find(id));
         }
         expectDone(helper, data.reviveAsOperator(stranger, id), "an operator reviving for a stranger");
         if (!data.find(id).orElseThrow().isDirector(stranger)) {
-            throw helper.assertionException("the operator's revival makes the player Director");
+            throw failure(helper, "the operator's revival makes the player Director");
         }
         helper.succeed();
     }
@@ -399,14 +407,16 @@ public class CharterCoreTest {
         expectDone(helper, data.leave(first), "crew leaving");
         expectDone(helper, data.leave(director), "the Director leaving");
         if (!data.find(id).orElseThrow().formerMembers().equals(List.of(first, director))) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "former members in the order they left, got %s",
                     data.find(id).orElseThrow().formerMembers());
         }
         expectDone(helper, data.apply(first, id), "a former member applying");
         expectDone(helper, data.approve(second, first), "the Director approving");
         if (!data.find(id).orElseThrow().formerMembers().equals(List.of(director))) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "a player who rejoins is no longer former, got %s",
                     data.find(id).orElseThrow().formerMembers());
         }
@@ -432,7 +442,7 @@ public class CharterCoreTest {
             threw = String.valueOf(e.getMessage()).contains("former member");
         }
         if (!threw) {
-            throw helper.assertionException("a former member on the roster should be rejected");
+            throw failure(helper, "a former member on the roster should be rejected");
         }
         helper.succeed();
     }
@@ -469,12 +479,11 @@ public class CharterCoreTest {
                 .parse(NbtOps.INSTANCE, versionOne(id, oldDirector, true))
                 .getOrThrow();
         if (!data.isReadable()) {
-            throw helper.assertionException("version 1 is still read");
+            throw failure(helper, "version 1 is still read");
         }
         Charter old = data.find(id).orElseThrow();
         if (!old.dormant() || !old.formerMembers().isEmpty() || old.account() != 300 || old.deepestPoint() != 50) {
-            throw helper.assertionException(
-                    "a version 1 charter keeps everything and starts with no former members: %s", old);
+            throw failure(helper, "a version 1 charter keeps everything and starts with no former members: %s", old);
         }
         expectRefused(
                 helper,
@@ -483,8 +492,7 @@ public class CharterCoreTest {
                 "the old Director, who is not known to be one");
         Tag written = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
         if (!(written instanceof CompoundTag compound) || compound.getIntOr("version", 0) != CharterData.VERSION) {
-            throw helper.assertionException(
-                    "the data is written back as version %s, got %s", CharterData.VERSION, written);
+            throw failure(helper, "the data is written back as version %s, got %s", CharterData.VERSION, written);
         }
         expectDone(helper, data.reviveAsOperator(stranger, id), "the operator reviving an old dormant charter");
         helper.succeed();
@@ -498,16 +506,16 @@ public class CharterCoreTest {
         two.putInt("version", 2);
         CharterData data = CharterData.CODEC.parse(NbtOps.INSTANCE, two).getOrThrow();
         if (!data.isReadable() || data.find(id).orElseThrow().outpostsShared()) {
-            throw helper.assertionException("version 2 is still read, with the outposts closed");
+            throw failure(helper, "version 2 is still read, with the outposts closed");
         }
         expectDone(helper, data.setOutpostsShared(director, true), "the Director opening the outposts");
         Tag written = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
         if (!(written instanceof CompoundTag compound) || compound.getIntOr("version", 0) != 3) {
-            throw helper.assertionException("the data is written back as version 3, got %s", written);
+            throw failure(helper, "the data is written back as version 3, got %s", written);
         }
         CharterData loaded = CharterData.CODEC.parse(NbtOps.INSTANCE, written).getOrThrow();
         if (!loaded.find(id).orElseThrow().outpostsShared()) {
-            throw helper.assertionException("the open setting should survive a save and a load");
+            throw failure(helper, "the open setting should survive a save and a load");
         }
         UUID crew = UUID.randomUUID();
         expectDone(helper, loaded.apply(crew, id), "applying");
@@ -523,7 +531,7 @@ public class CharterCoreTest {
                 loaded.setOutpostsShared(UUID.randomUUID(), false),
                 "a stranger closing the outposts");
         if (!loaded.find(id).orElseThrow().outpostsShared()) {
-            throw helper.assertionException("a refused change leaves the setting as it was");
+            throw failure(helper, "a refused change leaves the setting as it was");
         }
         helper.succeed();
     }
@@ -549,7 +557,8 @@ public class CharterCoreTest {
         Tag written = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
         CharterData loaded = CharterData.CODEC.parse(NbtOps.INSTANCE, written).getOrThrow();
         if (!loaded.find(id).orElseThrow().formerMembers().equals(List.of(director, crew))) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "former members survive a save and load, got %s",
                     loaded.find(id).orElseThrow().formerMembers());
         }
@@ -587,17 +596,17 @@ public class CharterCoreTest {
                     Charters.revive(server, second.player().getUUID(), mine[0]),
                     "a stranger reviving");
             if (!seen.isEmpty()) {
-                throw helper.assertionException("a refused revival fires no event: %s", seen);
+                throw failure(helper, "a refused revival fires no event: %s", seen);
             }
             expectDone(helper, Charters.revive(server, first.player().getUUID(), mine[0]), "revive");
             if (!seen.equals(List.of("revived true true"))) {
-                throw helper.assertionException("exactly one revived event, after the change: %s", seen);
+                throw failure(helper, "exactly one revived event, after the change: %s", seen);
             }
             if (!Charters.charterOfOrThrow(server, first.player().getUUID())
                     .orElseThrow()
                     .id()
                     .equals(mine[0])) {
-                throw helper.assertionException("the reviver should be on the charter");
+                throw failure(helper, "the reviver should be on the charter");
             }
             helper.succeed();
         } finally {
@@ -617,14 +626,14 @@ public class CharterCoreTest {
             run(server, director, "found \"" + name + "\"");
             List<Component> live = run(server, reviver, LevelBasedPermissionSet.GAMEMASTER, "revive \"" + name + "\"");
             if (live.stream().noneMatch(message -> message.contains(CharterRefusal.NOT_DORMANT.message()))) {
-                throw helper.assertionException(
-                        "reviving a live charter should say %s, got %s", CharterRefusal.NOT_DORMANT, live);
+                throw failure(
+                        helper, "reviving a live charter should say %s, got %s", CharterRefusal.NOT_DORMANT, live);
             }
             List<Component> missing =
                     run(server, reviver, LevelBasedPermissionSet.GAMEMASTER, "revive \"" + name + " nowhere\"");
             if (missing.stream().noneMatch(message -> message.contains(CharterRefusal.NO_SUCH_CHARTER.message()))) {
-                throw helper.assertionException(
-                        "reviving nothing should say %s, got %s", CharterRefusal.NO_SUCH_CHARTER, missing);
+                throw failure(
+                        helper, "reviving nothing should say %s, got %s", CharterRefusal.NO_SUCH_CHARTER, missing);
             }
             run(server, director, "leave");
             List<Component> done = run(
@@ -635,13 +644,13 @@ public class CharterCoreTest {
             if (done.stream()
                     .noneMatch(message ->
                             message.contains(Component.translatable("deepcharter.charter.revive.success", name)))) {
-                throw helper.assertionException("the success reply should name the charter, got %s", done);
+                throw failure(helper, "the success reply should name the charter, got %s", done);
             }
             Charter revived = Charters.charterOfOrThrow(server, reviver.player().getUUID())
                     .orElseThrow();
             if (!revived.name().equals(name)
                     || !revived.isDirector(reviver.player().getUUID())) {
-                throw helper.assertionException("the command should make the player Director of %s: %s", name, revived);
+                throw failure(helper, "the command should make the player Director of %s: %s", name, revived);
             }
             helper.succeed();
         } finally {
@@ -695,7 +704,7 @@ public class CharterCoreTest {
         expectDone(helper, data.apply(crew, id), "applying again");
         expectDone(helper, data.leave(crew), "withdrawing an application");
         if (!data.find(id).orElseThrow().applications().isEmpty()) {
-            throw helper.assertionException("a withdrawn application should be gone");
+            throw failure(helper, "a withdrawn application should be gone");
         }
         expectRefused(helper, CharterRefusal.NOT_ON_A_CHARTER, data.leave(stranger), "leaving without a charter");
         helper.succeed();
@@ -713,10 +722,10 @@ public class CharterCoreTest {
             threw = String.valueOf(e.getMessage()).contains("already exists");
         }
         if (!threw) {
-            throw helper.assertionException("founding with an id that exists should throw and say so");
+            throw failure(helper, "founding with an id that exists should throw and say so");
         }
         if (data.all().size() != 1) {
-            throw helper.assertionException("the refused founding must change nothing, got %s", data.all());
+            throw failure(helper, "the refused founding must change nothing, got %s", data.all());
         }
         helper.succeed();
     }
@@ -735,11 +744,11 @@ public class CharterCoreTest {
             threw = String.valueOf(e.getMessage()).contains(Integer.toString(CharterData.VERSION + 1));
         }
         if (!threw) {
-            throw helper.assertionException("using unreadable charter data should throw and name its version");
+            throw failure(helper, "using unreadable charter data should throw and name its version");
         }
         Tag written = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
         if (!future.equals(written)) {
-            throw helper.assertionException("unreadable data must be written back unchanged, got %s", written);
+            throw failure(helper, "unreadable data must be written back unchanged, got %s", written);
         }
         helper.succeed();
     }
@@ -777,7 +786,7 @@ public class CharterCoreTest {
         List<String> expected = List.of(
                 "founded", "applied", "joined", "account 25", "account -5", "left", "director", "left", "dormant");
         if (!seen.equals(expected)) {
-            throw helper.assertionException("events: expected %s, got %s", expected, seen);
+            throw failure(helper, "events: expected %s, got %s", expected, seen);
         }
         helper.succeed();
     }
@@ -802,13 +811,13 @@ public class CharterCoreTest {
         run(server, director, "account spend \"" + name + "\" 200");
 
         Charter charter = Charters.charterOfOrThrow(server, crew.player().getUUID())
-                .orElseThrow(() -> helper.assertionException("the commands should have made the crew member join"));
+                .orElseThrow(() -> failure(helper, "the commands should have made the crew member join"));
         if (!charter.name().equals(name) || charter.account() != 90) {
-            throw helper.assertionException("the deposit works and the overdraft is refused: %s", charter);
+            throw failure(helper, "the deposit works and the overdraft is refused: %s", charter);
         }
         run(server, crew, "leave");
         if (Charters.charterOfOrThrow(server, crew.player().getUUID()).isPresent()) {
-            throw helper.assertionException("/leave should remove the crew member");
+            throw failure(helper, "/leave should remove the crew member");
         }
         helper.succeed();
     }
@@ -857,7 +866,7 @@ public class CharterCoreTest {
             for (int amount : new int[] {1, 2}) {
                 String text = CharterCommands.count(noun, amount).getString();
                 if (text.contains("deepcharter.") || !text.startsWith(amount + " ")) {
-                    throw helper.assertionException("%s x%d has no lang text, got \"%s\"", noun, amount, text);
+                    throw failure(helper, "%s x%d has no lang text, got \"%s\"", noun, amount, text);
                 }
             }
         }
@@ -866,7 +875,7 @@ public class CharterCoreTest {
 
     private static void expectText(GameTestHelper helper, String expected, Component actual) {
         if (!actual.getString().equals(expected)) {
-            throw helper.assertionException("expected \"%s\", got \"%s\"", expected, actual.getString());
+            throw failure(helper, "expected \"%s\", got \"%s\"", expected, actual.getString());
         }
     }
 
@@ -875,9 +884,11 @@ public class CharterCoreTest {
                 .map(Component::getString)
                 .anyMatch(line -> prefix ? line.startsWith(expected) : line.equals(expected));
         if (!found) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "expected a line \"%s\", got %s",
-                    expected, messages.stream().map(Component::getString).toList());
+                    expected,
+                    messages.stream().map(Component::getString).toList());
         }
     }
 
@@ -888,7 +899,7 @@ public class CharterCoreTest {
 
         run(server, player, LevelBasedPermissionSet.forLevel(PermissionLevel.ALL), "found \"" + uniqueName() + "\"");
         if (Charters.charterOfOrThrow(server, player.player().getUUID()).isPresent()) {
-            throw helper.assertionException("a player without permission must not found a charter");
+            throw failure(helper, "a player without permission must not found a charter");
         }
         helper.succeed();
     }
@@ -911,11 +922,10 @@ public class CharterCoreTest {
 
         List<Component> messages = run(server, crew, LevelBasedPermissionSet.GAMEMASTER, "approve CmdHopeful");
         if (messages.stream().noneMatch(message -> message.contains(CharterRefusal.NOT_THE_DIRECTOR.message()))) {
-            throw helper.assertionException(
-                    "the command should report %s, got %s", CharterRefusal.NOT_THE_DIRECTOR, messages);
+            throw failure(helper, "the command should report %s, got %s", CharterRefusal.NOT_THE_DIRECTOR, messages);
         }
         if (Charters.charterOfOrThrow(server, applicantId).isPresent()) {
-            throw helper.assertionException("the applicant must not join on a crew member's say");
+            throw failure(helper, "the applicant must not join on a crew member's say");
         }
         helper.succeed();
     }

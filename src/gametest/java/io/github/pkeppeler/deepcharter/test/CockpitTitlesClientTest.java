@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.pod.SeatedHotbar;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -44,6 +45,9 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
     /** High in layer 1, far above the signal decay near its floor. */
     private static final int FEET_Y = TestLayers.worldY(1, 150);
 
+    /** The carved room's half-width, whose chunks' light settles before the pilot is seated. */
+    private static final int ROOM_RADIUS = 4;
+
     private static final int[] GUI_SCALES = {2, 1};
     /** A title in the game's font is some 40 GUI pixels of ink; half of that is the least a drawn title has. */
     private static final int TITLE_INK = 20;
@@ -59,7 +63,13 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                RoomCarver.carve(one, -4, 4, FEET_Y, FEET_Y + 8, -4, 4, Blocks.AIR);
+                RoomCarver.carve(
+                        one, -ROOM_RADIUS, ROOM_RADIUS, FEET_Y, FEET_Y + 8, -ROOM_RADIUS, ROOM_RADIUS, Blocks.AIR);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(0.5, FEET_Y, 0.5);
@@ -142,15 +152,21 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
         List<String> problems = new ArrayList<>();
         CockpitLook look = CockpitLook.current();
         CockpitLook.Layout layout = look.ribbon();
+        int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
         PodEntity pod = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
-        List<CockpitHud.Row> rows = CockpitHud.fitting(
+        List<CockpitHud.Row> rows = CockpitHud.plateRows(
+                client.font,
+                layout,
+                look,
                 CockpitHud.rows(
                         pod,
                         CockpitReading.of(pod, CockpitHud.heat()),
                         look,
                         PodStatusHud.readout(ClientSession.player(client), pod)),
-                CockpitHud.roomForRows(client.font, layout, look, height));
+                SeatedHotbar.slots(client, width, height),
+                width,
+                height);
         CockpitHud.Row tally = rows.getFirst();
         List<Optional<CockpitHud.Icon>> icons = tally.cells().stream()
                 .map(cell -> Optional.ofNullable(cell.icon()))
@@ -169,8 +185,7 @@ public class CockpitTitlesClientTest implements FabricClientGameTest {
         if (Arrays.stream(CockpitHud.Meter.values()).anyMatch(gauge -> gauge.icon() == CockpitHud.Icon.CART)) {
             problems.add("the cart marks the bay's ore count and no gauge");
         }
-        CockpitHud.Box plate = CockpitHud.plateBox(
-                client.font, layout, look, rows, client.getWindow().getGuiScaledWidth(), height);
+        CockpitHud.Box plate = CockpitHud.plateBox(client.font, layout, look, rows, width, height);
         GuiSpriteScaling.NineSlice.Border inset = CockpitHud.plateInset(layout, look);
         int x = plate.left() + inset.left();
         int y = plate.top() + inset.top();

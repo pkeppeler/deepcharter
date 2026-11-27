@@ -8,7 +8,7 @@ resource pack restyles the Ribbon key by key, or turns it off with `enabled` 0 (
     tools/py tools/cockpit_ribbon.py              write the sprites and the theme file
     tools/py tools/cockpit_ribbon.py --check      list the files that differ from what the generator makes (what the test runs)
     tools/py tools/cockpit_ribbon.py --preview D  write a mock of the Ribbon in each state on a 427 x 240 screen into directory D
-    tools/py tools/cockpit_ribbon.py --coverage   print the share of a 427 x 240 screen the Ribbon covers
+    tools/py tools/cockpit_ribbon.py --coverage   print the share of a 427 x 240 screen the Ribbon covers, and vanilla's hotbar beside it
 
 Standard library only. A sprite is the same bytes on every run: the only randomness is `random.Random` with a fixed seed, and every coordinate is a whole number, never
 `round`, which breaks a tie to the even number on one machine and the other way on another.
@@ -86,7 +86,13 @@ SHARED = {
     "decayCellTicks": 3, "decayDeadColor": "#0A0E0D", "decayBaseNoise": 0.7, "decayStaticDots": 400, "decayDotSize": 1, "decayDotAlphaMin": 70, "decayStaticColor": "#B8C4C0",
     "decayTearBands": 3, "decayTearAlpha": 70, "decayTagColor": "#9FB0AB", "decayLostColor": "#FF3A2A",
     "decayCueSlowTicks": 70, "decayCueFastTicks": 12, "decayAlarmTicks": 20,
+    # The SINK readout (#1432): the sink against the hard-landing buffer, the title and a bar on a plate hung under the band's middle while the pod sinks past
+    # sinkShowShare of the buffer. The bar's limit mark is after sinkLimit of its segments; it turns ribbonWarn from sinkWarnShare of the buffer and lowColor past
+    # it, and stays sinkHoldTicks after the sink.
+    "ribbonWarn": "#FFB02E", "sinkShowShare": 0.6, "sinkWarnShare": 0.75, "sinkBarW": 12, "sinkBarH": 5, "sinkSegments": 4, "sinkLimit": 3, "sinkBarGap": 1, "sinkHoldTicks": 20,
 }
+# The width of the SINK readout's title, "SINK", as the game's font measures it: its I is narrower than FONT_W.
+SINK_TITLE_W = 22
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -417,6 +423,16 @@ def plate_size(look, state):
     return max(row_width(row) for row in rows) + left + right, len(rows) * 11 - 2 + top + bottom
 
 
+def sink_box(look):
+    """The SINK readout's tab on the 427 x 240 screen, (left, top, width, height), as the client puts it: centred under the band (under the altimeter's recess) and
+    hung from its lower edge. The coverage counts it although it shows only while the pod sinks."""
+    inset = look.sprites["tab"].border[0] + SHARED["titleGap"]
+    width = SINK_TITLE_W + SHARED["sinkBarGap"] + SHARED["sinkBarW"] + 2 * inset
+    height = max(SHARED["titleTextHeight"], SHARED["sinkBarH"]) + 2 * inset
+    band = look.parts["part_a"]
+    return band.left(SCREEN_W) + (band.w - width) // 2, band.top(SCREEN_H) + band.h, width, height
+
+
 def title_box(look, gauge, screen=(SCREEN_W, SCREEN_H)):
     """`gauge`'s title tab on `screen`, (left, top, right, bottom): centred under the bar, its top `ribbonTitleY` under the band's, as the client puts it."""
     t = look.keys
@@ -449,11 +465,23 @@ def coverage(look):
     for gauge in GAUGES:
         left, top, right, bottom = title_box(look, gauge)
         status |= {(x, y) for y in range(top, bottom) for x in range(left, right)}
+    left, top, width, height = sink_box(look)
+    status |= {(left + i, top + j) for j in range(height) for i in range(width)}
     mark(scanner, look.sprites["cap"].img, look.parts["cap"])
     window = Placed(t[STYLE + "ScannerW"], t[STYLE + "ScannerH"], t[STYLE + "ScannerAnchorX"], t[STYLE + "ScannerAnchorY"], t[STYLE + "ScannerX"], t[STYLE + "ScannerY"])
     scanner |= {(window.left(SCREEN_W) + i, window.top(SCREEN_H) + j) for j in range(window.h) for i in range(window.w)}
     status -= scanner
     return len(status), len(scanner)
+
+
+# Vanilla's hotbar, which a seated pilot keeps (#1457): its 182 x 22 sprite, every pixel of it drawn (the slots are glass, not holes), at the bottom centre,
+# and the top row of the 24 x 23 selection frame, which stands a pixel over the bar. It is not a status panel: it shows what the pilot carries, not the pod.
+HOTBAR_W, HOTBAR_H, FRAME_W = 182, 22, 24
+
+
+def hotbar_coverage():
+    """The pixels of a 427 x 240 screen vanilla's hotbar covers, the selection frame's row over it included. The held item's name over it comes and goes and is not counted."""
+    return HOTBAR_W * HOTBAR_H + FRAME_W
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -566,7 +594,10 @@ def main(argv: list[str]) -> int:
         return 0
     if args.coverage:
         status, scanner = coverage(ribbon())
-        print(f"{STYLE}: status {status / (SCREEN_W * SCREEN_H):.1%}, scanner {scanner / (SCREEN_W * SCREEN_H):.1%}, total {(status + scanner) / (SCREEN_W * SCREEN_H):.1%}")
+        hotbar = hotbar_coverage()
+        screen = SCREEN_W * SCREEN_H
+        print(f"{STYLE}: status {status / screen:.1%}, scanner {scanner / screen:.1%}, total {(status + scanner) / screen:.1%}")
+        print(f"seated with vanilla's hotbar: hotbar {hotbar / screen:.1%}, total {(status + scanner + hotbar) / screen:.1%}")
         return 0
     if args.check:
         stale = check()

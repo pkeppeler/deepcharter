@@ -1,0 +1,276 @@
+package io.github.pkeppeler.deepcharter.menu;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+
+/**
+ * A container menu of typed slots ({@link SlotRule}) above the player's inventory (ADR 0099). The server's menu is the
+ * authority: vanilla runs every click on the client first to predict it, then on the server, which corrects the client.
+ *
+ * <p>A click that drops or swaps a stack into a typed slot, or shift-clicks one out of the inventory, is checked
+ * against the slot's rule first. A refused click moves nothing, and the menu keeps the reason ({@link #refusal()},
+ * which the screen draws). The server's menu sends its reason to the client's ({@link MenuRefusalPayload}), so a
+ * refusal the client did not predict shows too. Shift-click routes an inventory stack to the first typed slot
+ * it fits that takes it, and a typed slot's stack back to the inventory. A locked slot that holds something gives
+ * nothing back by any click.
+ *
+ * <p>A subclass adds its typed slots with {@link #addRuleSlot}, then the inventory with {@link #addPlayerInventory},
+ * and reacts to a stack put into a typed slot in {@link #placed}. A slot that shows saved state sits over a {@link
+ * MirrorContainer} and must lock.
+ */
+public abstract class SlottedMenu extends AbstractContainerMenu {
+    /** The player's inventory: three rows and the hotbar. */
+    public static final int INVENTORY_WIDTH = 9 * SLOT_SIZE;
+
+    public static final int INVENTORY_HEIGHT = 4 * SLOT_SIZE + 4;
+    /** Pixels the frame round a slot reaches past it: a menu puts its slots at least this far into its image. */
+    protected static final int FRAME = 1;
+
+    private final List<RuleSlot> ruleSlots = new ArrayList<>();
+    private int inventoryStart = -1;
+    private Optional<Component> refusal = Optional.empty();
+
+    protected SlottedMenu(MenuType<?> type, int containerId) {
+        super(type, containerId);
+    }
+
+    /**
+     * Adds a typed slot over {@code index} of {@code container}, at {@code x}, {@code y} in the screen's image. A slot
+     * over a {@link MirrorContainer} must lock.
+     */
+    protected final RuleSlot addRuleSlot(Container container, int index, int x, int y, SlotRule rule) {
+        if (inventoryStart >= 0) {
+            throw new IllegalStateException("typed slots go before the player's inventory");
+        }
+        if (container instanceof MirrorContainer && !rule.locks()) {
+            throw new IllegalArgumentException("a slot that mirrors saved state must lock, or a stack taken out dupes");
+        }
+        RuleSlot slot = new RuleSlot(container, index, x, y, rule);
+        addSlot(slot);
+        ruleSlots.add(slot);
+        return slot;
+    }
+
+    /** Adds the player's inventory with its top left {@link #FRAME} from the left and {@code y} down: the rows, then the hotbar under them. */
+    protected final void addPlayerInventory(Inventory inventory, int y) {
+        inventoryStart = slots.size();
+        addStandardInventorySlots(inventory, FRAME, y);
+    }
+
+    /** The typed slots, in the order they were added. */
+    public final List<RuleSlot> ruleSlots() {
+        return Collections.unmodifiableList(ruleSlots);
+    }
+
+    /** Why the last click was refused, by this side or, on the client, by the server; empty when it was not. */
+    public final Optional<Component> refusal() {
+        return refusal;
+    }
+
+    /** Client only: the server refused a click for {@code reason} ({@link MenuRefusalPayload}). */
+    public final void refusedByServer(Component reason) {
+        refusal = Optional.of(reason);
+    }
+
+    /** Called on both sides once {@code stack} is in {@code slot}. The server's menu commits it here. */
+    protected void placed(RuleSlot slot, ItemStack stack) {}
+
+    /**
+     * Whether a shift-click from the inventory tries {@code slot} for {@code stack}: by default, every slot the stack
+     * {@link SlotRule#fits fits}. A menu whose plain slots take anything narrows this, so a stack meant for a typed
+     * slot is refused with that slot's reason instead of landing in a plain one.
+     */
+    protected boolean routes(RuleSlot slot, ItemStack stack) {
+        return slot.rule().fits().test(stack);
+    }
+
+    /**
+     * Why {@code slot} gives back nothing of what it holds now, or empty when it gives it back: a menu keeps some
+     * stacks in an unlocked slot this way. A slot whose rule locks keeps what it holds whatever this says.
+     */
+    protected Optional<Component> keeps(RuleSlot slot) {
+        return Optional.empty();
+    }
+
+    /**
+     * Whether {@code slot} is there now: an inactive slot is not drawn and takes no click. Every slot is, by default.
+     */
+    protected boolean active(RuleSlot slot) {
+        return true;
+    }
+
+    @Override
+    public void clicked(int index, int button, ContainerInput input, Player player) {
+        refusal = Optional.empty();
+        Optional<Component> why = refusalOf(index, button, input, player);
+        if (why.isPresent()) {
+            refusal = why;
+            if (player instanceof ServerPlayer server
+                    && ServerPlayNetworking.canSend(server, MenuRefusalPayload.TYPE)) {
+                ServerPlayNetworking.send(server, new MenuRefusalPayload(containerId, why.get()));
+            }
+            return;
+        }
+        super.clicked(index, button, input, player);
+    }
+
+    private Optional<Component> refusalOf(int index, int button, ContainerInput input, Player player) {
+        if (index < 0 || index >= slots.size()) {
+            return Optional.empty();
+        }
+        Slot slot = slots.get(index);
+        if (slot instanceof RuleSlot typed) {
+            if (typed.hasItem() && takes(input)) {
+                Optional<Component> kept = keeps(typed);
+                if (kept.isPresent()) {
+                    return kept;
+                }
+            }
+            ItemStack incoming = switch (input) {
+                case PICKUP -> getCarried();
+                case SWAP -> player.getInventory().getItem(button);
+                // enum-default: only a pickup or a swap puts a stack into this slot;
+                // every other input moves nothing into it (a quick move is judged below)
+                default -> ItemStack.EMPTY;
+            };
+            return incoming.isEmpty() ? Optional.empty() : typed.rule().refusal(incoming);
+        }
+        if (input == ContainerInput.QUICK_MOVE && isInventory(index) && slot.hasItem()) {
+            return quickMoveRefusal(slot.getItem());
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Whether a click of {@code input} on a filled slot would take from it, so a slot that keeps its stack refuses it.
+     */
+    private boolean takes(ContainerInput input) {
+        return switch (input) {
+            case PICKUP -> getCarried().isEmpty();
+            case QUICK_MOVE, THROW, SWAP -> true;
+            // enum-default: every other input takes nothing from a filled slot
+            default -> false;
+        };
+    }
+
+    /**
+     * Why no typed slot takes {@code stack} by shift-click: the refusal of the first slot it fits, or the first slot's
+     * reason it fits none. Empty when a slot takes it, or when every slot it fits is merely full.
+     */
+    private Optional<Component> quickMoveRefusal(ItemStack stack) {
+        Optional<Component> fitting = Optional.empty();
+        for (RuleSlot slot : ruleSlots) {
+            if (!routes(slot, stack)) {
+                continue;
+            }
+            Optional<Component> why = slot.rule().check().apply(stack);
+            if (why.isEmpty()) {
+                return Optional.empty();
+            }
+            if (fitting.isEmpty()) {
+                fitting = why;
+            }
+        }
+        if (fitting.isPresent() || ruleSlots.isEmpty()) {
+            return fitting;
+        }
+        return Optional.of(ruleSlots.getFirst().rule().unfit().apply(stack));
+    }
+
+    private boolean isInventory(int index) {
+        return inventoryStart >= 0 && index >= inventoryStart;
+    }
+
+    @Override
+    public ItemStack quickMoveStack(Player player, int index) {
+        Slot slot = slots.get(index);
+        if (!slot.hasItem() || !slot.mayPickup(player)) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack stack = slot.getItem();
+        ItemStack before = stack.copy();
+        if (slot instanceof RuleSlot) {
+            if (inventoryStart < 0 || !moveItemStackTo(stack, inventoryStart, slots.size(), true)) {
+                return ItemStack.EMPTY;
+            }
+        } else if (!toRuleSlots(stack)) {
+            return ItemStack.EMPTY;
+        }
+        if (stack.isEmpty()) {
+            slot.setByPlayer(ItemStack.EMPTY);
+        } else {
+            slot.setChanged();
+        }
+        slot.onTake(player, stack);
+        return before;
+    }
+
+    /** Moves what it can of {@code stack} into the typed slots it fits, in order. True when anything moved. */
+    private boolean toRuleSlots(ItemStack stack) {
+        boolean moved = false;
+        for (RuleSlot slot : ruleSlots) {
+            if (stack.isEmpty()) {
+                break;
+            }
+            if (routes(slot, stack)) {
+                moved |= moveItemStackTo(stack, slot.index, slot.index + 1, false);
+            }
+        }
+        return moved;
+    }
+
+    /** A slot that takes what its {@link SlotRule} allows, and, if the rule locks, gives back nothing once filled. */
+    public final class RuleSlot extends Slot {
+        private final SlotRule rule;
+
+        private RuleSlot(Container container, int index, int x, int y, SlotRule rule) {
+            super(container, index, x, y);
+            this.rule = rule;
+        }
+
+        public SlotRule rule() {
+            return rule;
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return rule.refusal(stack).isEmpty();
+        }
+
+        @Override
+        public boolean isActive() {
+            return active(this);
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return !(hasItem() && (rule.locks() || keeps(this).isPresent()));
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return Math.min(rule.maxStack(), super.getMaxStackSize());
+        }
+
+        @Override
+        public void setByPlayer(ItemStack stack, ItemStack previous) {
+            super.setByPlayer(stack, previous);
+            if (!stack.isEmpty()) {
+                placed(this, stack);
+            }
+        }
+    }
+}

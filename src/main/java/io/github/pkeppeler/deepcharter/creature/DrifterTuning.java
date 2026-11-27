@@ -107,6 +107,8 @@ public record DrifterTuning(
      * @param minBlocks      the nearest a drifter is placed to a source
      * @param maxBlocks      and the farthest
      * @param tries          places tried for each placement
+     * @param variantWeights the weight of each {@link DrifterVariant}, in its order, that a placement draws its form
+     *                       by: equal thirds
      */
     public record Spawn(
             int checkTicks,
@@ -115,13 +117,15 @@ public record DrifterTuning(
             int perSource,
             double minBlocks,
             double maxBlocks,
-            int tries) {
+            int tries,
+            List<Double> variantWeights) {
         public static final Spawn DEFAULT =
-                new Spawn(100, List.of(0.25, 1.0 / 3.0, 0.5), List.of(2, 3, 4), 1, 18, 36, 24);
+                new Spawn(100, List.of(0.25, 1.0 / 3.0, 0.5), List.of(2, 3, 4), 1, 18, 36, 24, List.of(1.0, 1.0, 1.0));
 
         public Spawn {
             perMinute = List.copyOf(perMinute);
             zoneCap = List.copyOf(zoneCap);
+            variantWeights = List.copyOf(variantWeights);
             if (checkTicks < 1
                     || perMinute.size() != Zones.COUNT
                     || zoneCap.size() != Zones.COUNT
@@ -130,7 +134,10 @@ public record DrifterTuning(
                     || perSource < 1
                     || minBlocks <= 0
                     || maxBlocks <= minBlocks
-                    || tries < 1) {
+                    || tries < 1
+                    || variantWeights.size() != DrifterVariant.values().length
+                    || variantWeights.stream().anyMatch(weight -> !(weight >= 0 && Double.isFinite(weight)))
+                    || variantWeights.stream().noneMatch(weight -> weight > 0)) {
                 throw new IllegalArgumentException("drifter spawn tuning out of range: " + this);
             }
         }

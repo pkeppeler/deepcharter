@@ -1,0 +1,155 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "stem": "deepcharter:block/parasol_stem",
+    "particle": "deepcharter:block/parasol_stem"
+  },
+  "elements": [
+    {
+      "from": [
+        2.0,
+        -0.4,
+        4.0
+      ],
+      "to": [
+        14.0,
+        16.4,
+        16.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2.0,
+            0.0,
+            14.0,
+            16.0
+          ],
+          "texture": "#stem"
+        },
+        "south": {
+          "uv": [
+            2.0,
+            0.0,
+            14.0,
+            16.0
+          ],
+          "texture": "#stem"
+        },
+        "east": {
+          "uv": [
+            2.0,
+            0.0,
+            14.0,
+            16.0
+          ],
+          "texture": "#stem"
+        },
+        "west": {
+          "uv": [
+            2.0,
+            0.0,
+            14.0,
+            16.0
+          ],
+          "texture": "#stem"
+        },
+        "up": {
+          "uv": [
+            2.0,
+            2.0,
+            14.0,
+            14.0
+          ],
+          "texture": "#stem"
+        },
+        "down": {
+          "uv": [
+            2.0,
+            2.0,
+            14.0,
+            14.0
+          ],
+          "texture": "#stem"
+        }
+      }
+    },
+    {
+      "from": [
+        2.0,
+        -0.4,
+        4.0
+      ],
+      "to": [
+        14.0,
+        16.4,
+        16.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2.0,
+            0.0,
+            14.0,
+            16.0
+          ],
+          "texture": "#stem"
+        },
+        "south": {
+          "uv": [
+            2.0,
+            0.0,
+            14.0,
+            16.0
+          ],
+          "texture": "#stem"
+        },
+        "east": {
+          "uv": [
+            2.0,
+            0.0,
+            14.0,
+            16.0
+          ],
+          "texture": "#stem"
+        },
+        "west": {
+          "uv": [
+            2.0,
+            0.0,
+            14.0,
+            16.0
+          ],
+          "texture": "#stem"
+        },
+        "up": {
+          "uv": [
+            2.0,
+            2.0,
+            14.0,
+            14.0
+          ],
+          "texture": "#stem"
+        },
+        "down": {
+          "uv": [
+            2.0,
+            2.0,
+            14.0,
+            14.0
+          ],
+          "texture": "#stem"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8.0,
+          8.0,
+          10
+        ],
+        "axis": "y",
+        "angle": 45
+      }
+    }
+  ],
+  "ambientocclusion": false
+}

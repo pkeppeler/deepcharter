@@ -401,7 +401,7 @@ def lamp_and_pick(doors: list[Door]) -> Piece:
         p.set(x, 1, 19, state("pipe", axis="y"))
     for x in (-1, 1, 3, 5, 7):
         p.set(x, 1, 23, state("minecraft:barrel", facing="up", open="false"))
-    # The canteen dispenser: one ration per player per in-game day (CanteenBlock). It gives no light, so the room stays dark.
+    # The canteen dispenser: a ration on every use (CanteenBlock). It gives no light, so the room stays dark.
     p.set(8, 1, 20, state("canteen", facing=walls["east"].inward))
     parts.wall_sign(p, north, "bar", 3, 5)
     return p
