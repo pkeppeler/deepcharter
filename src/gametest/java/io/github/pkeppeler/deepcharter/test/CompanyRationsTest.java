@@ -286,8 +286,7 @@ public class CompanyRationsTest {
             Versioned<RationLedger> loaded =
                     RationLedger.CODEC.parse(NbtOps.INSTANCE, old).getOrThrow();
             if (!loaded.equals(Versioned.of(new RationLedger(starterGiven)))) {
-                throw failure(
-                        helper, "a version 1 ledger with starterGiven %s loaded as %s", starterGiven, loaded);
+                throw failure(helper, "a version 1 ledger with starterGiven %s loaded as %s", starterGiven, loaded);
             }
             CompoundTag expected = new CompoundTag();
             expected.putBoolean("starterGiven", starterGiven);
