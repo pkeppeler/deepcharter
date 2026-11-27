@@ -14,6 +14,20 @@ Issue #1592, part 2 of #1574. [ADR 0115](0115-no-ci-job-runs-longer-than-five-mi
 - **Each aggregate says which tier ran.** `build` and `client-gametest` record a `ci-tier` notice, `full` or `pr` (none, from before the tiers, counts as `full`). `tools/lib/ci-gate.sh` reads it, accepts a head with no shard only when the notice says `pr`, and, when landing, refuses a PR-tier head with `[pr-tier]`.
 - **The merge tools.** `tools/merge-pr.sh --check <n>` takes either tier and prints which, so review and the stage labels run on PR-tier green. Landing needs the full tier: `merge-pr.sh <n>` and `--ci <batch pr>` refuse a PR-tier head. `tools/merge-batch.sh <n>...` lands it, as a batch of one when it is alone: a single PR that is refused with `[pr-tier]` is squashed onto a `batch/*` branch and lands on that run's green. A batch of one that is red is refused, not split. A PR can land by itself when its own CI was full, either because the change reaches every test or because it carried `full-ci`.
 
+## Time to green
+
+The user's reading of the rule (#1574): a PR push's CI is green within 5 minutes of the push, end to end; the full suites at merge may take longer. So this tier is the core of the rule, and [ADR 0115](0115-no-ci-job-runs-longer-than-five-minutes.md)'s shards are for the merge.
+
+The critical path of a push, from jobs measured on part 1's runs (a runner that is free; the account's queue added 4 to 30 minutes when other runs held it):
+
+| Push | Path | Seconds |
+| --- | --- | --- |
+| docs or tools only | `setup` (about 10) then the tool-test parts, the longest 125; `build-checks` after `compile` | 10 + 168 + 182 = 360 |
+| one server class | `setup` 10, `compile` 168 (the plan, about 40, runs beside it), then one shard of about 150 with no queue | 10 + 168 + 150 = about 330 |
+| a change to a build file or workflow | the full tiers | the merge's: `compile` 168, then the shards in waves |
+
+That is not yet 300: `compile` (140 s of Gradle on a cold runner) sits in front of everything that builds. What would bring it under, in order of effect, none done here: skip `compile`, `build-checks` and the shards when no path the Gradle build reads changed (the fingerprint of ADR 0115 says which, and the aggregates already pass a skipped shard job); let `build-checks` compile beside `compile` instead of after it (about 270 s alone, so only if it stays under 300 at 1.3x); and a Gradle build cache the PR runs share. A pushed `full-ci` label or a change to a build file runs the merge's tier and so takes the merge's time. The measurement the rule asks for, push time to the last required check, needs this PR on `main` (a PR that changes `.github/` always runs the full tier), and is the first thing to take after it lands.
+
 ## Concurrent jobs
 
 GitHub's usage-limits table allows 20 concurrent jobs on the Free plan, 40 on Pro, 60 on Team, per account. The records of 6,936 jobs over the last five days show 40 running for 10,550 s on 2026-11-27, so the account is on Pro with 40. Measured: when other sessions' runs fill it, a PR's jobs wait 4 to 6 minutes for a runner.
