@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.client.market.OrderRowButton;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
+import io.github.pkeppeler.deepcharter.client.terminal.RepairScreen;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
@@ -14,6 +15,7 @@ import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.HangarDrawn;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene;
@@ -28,14 +30,17 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Style;
+import net.minecraft.world.inventory.Slot;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for the terminal panel (#246). With no pack the panel is on and the terminal font is Unscii. Every one of the seven terminal
- * screens at the default window (427 x 240) keeps each button and each line of text inside the panel's content rectangle, no button overlaps
- * another, and no label is wider than its button in the font that is drawn.
+ * screens at the default window (427 x 240) keeps each button, each line of text and each slot (the repair screen's,
+ * #1265) inside the panel's content rectangle, no button overlaps another, and no label is wider than its button in
+ * the font that is drawn.
  */
 public class TerminalPanelClientTest implements FabricClientGameTest {
     /** The smallest GUI the game allows: too small for the panel, so the screens are the plain CRT. */
@@ -193,8 +198,8 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
             }
             // A button's face is 4 pixels shorter than the button and a line of capitals is 6 high, so a one line label
             // needs a 12 pixel button for a clear row
-            // above and below it, and a two line label (the work orders, which sit 2 and 10 pixels down) a 20 pixel
-            // one.
+            // above and below it, and a two line label (the work orders, which sit 2 and 10 pixels down) a 20
+            // pixel one.
             int needed = button instanceof OrderRowButton ? MIN_TWO_LINE_BUTTON : MIN_BUTTON_HEIGHT;
             if (panel && button.getHeight() < needed) {
                 problems.add(when + ": " + ClientChecks.labelOf(button) + " is " + button.getHeight()
@@ -215,6 +220,20 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
             }
             ClientChecks.textUnderButton("line", x, y, line[0], buttons)
                     .ifPresent(message -> problems.add(when + ": " + message));
+        }
+        if (screen instanceof AbstractContainerScreen<?> container) {
+            int left = ContainerScreenFields.intField(container, "leftPos");
+            int top = ContainerScreenFields.intField(container, "topPos");
+            for (Slot slot : container.getMenu().slots) {
+                // The slot's frame: a pixel round its 16 x 16 face.
+                Box box = new Box(left + slot.x - 1, top + slot.y - 1, 18, 18);
+                if (box.x() < rect.x()
+                        || box.y() < rect.y()
+                        || box.right() > rect.right()
+                        || box.bottom() > rect.bottom()) {
+                    problems.add(when + ": slot " + slot.index + " at " + box + " leaves the content " + rect);
+                }
+            }
         }
         return null;
     }
@@ -243,6 +262,14 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
             }
             for (RepairStationScreen.TextLine line : repair.introLines()) {
                 lines.add(new String[] {line.text(), String.valueOf(line.x()), String.valueOf(line.y())});
+            }
+        } else if (screen instanceof RepairScreen) {
+            for (DrawnText.Drawn line : DrawnText.of(screen)) {
+                lines.add(new String[] {
+                    line.text(),
+                    String.valueOf(line.box().x()),
+                    String.valueOf(line.box().y())
+                });
             }
         }
         return lines;

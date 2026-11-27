@@ -293,7 +293,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         if (hiddenInThirdPerson) {
             throw new AssertionError(
-                    "In third person the pod is outside the view and is drawn: the camera hides the cab only from the seat in first person");
+                    "In third person the pod is outside the view and is drawn: the camera hides the cab only from the"
+                            + " seat in first person");
         }
         int[] otherId = {0};
         singleplayer.getServer().runOnServer(server -> {

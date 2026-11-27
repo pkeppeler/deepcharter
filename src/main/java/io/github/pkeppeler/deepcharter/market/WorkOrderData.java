@@ -90,8 +90,8 @@ public final class WorkOrderData extends SavedData {
 
     /** The codec of the saved data, which never fails to decode. */
     public static final Codec<WorkOrderData> CODEC = VERSIONED_CODEC.xmap(WorkOrderData::new, WorkOrderData::versioned);
-    // Datafixer type: as for ColonySite, vanilla's fixers find nothing of theirs in a file that carries our own
-    // version.
+    // Datafixer type: as for ColonySite, vanilla's fixers find nothing of theirs in a file that carries our
+    // own version.
     public static final SavedDataType<WorkOrderData> TYPE =
             new SavedDataType<>(ID, WorkOrderData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 

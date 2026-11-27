@@ -1,0 +1,634 @@
+{
+  "variants": {
+    "corner=false,facing=east,level=2,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_2_down"
+    },
+    "corner=false,facing=east,level=2,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_2_deep"
+    },
+    "corner=false,facing=east,level=2,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_2_up"
+    },
+    "corner=false,facing=east,level=3,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_3_down"
+    },
+    "corner=false,facing=east,level=3,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_3_deep"
+    },
+    "corner=false,facing=east,level=3,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_3_up"
+    },
+    "corner=false,facing=east,level=4,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_4_down"
+    },
+    "corner=false,facing=east,level=4,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_4_deep"
+    },
+    "corner=false,facing=east,level=4,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_4_up"
+    },
+    "corner=false,facing=east,level=5,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_5_down"
+    },
+    "corner=false,facing=east,level=5,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_5_deep"
+    },
+    "corner=false,facing=east,level=5,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_5_up"
+    },
+    "corner=false,facing=east,level=6,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_6_down"
+    },
+    "corner=false,facing=east,level=6,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_6_deep"
+    },
+    "corner=false,facing=east,level=6,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_6_up"
+    },
+    "corner=false,facing=east,level=7,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_7_down"
+    },
+    "corner=false,facing=east,level=7,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_7_deep"
+    },
+    "corner=false,facing=east,level=7,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_7_up"
+    },
+    "corner=false,facing=east,level=8,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_8_down"
+    },
+    "corner=false,facing=east,level=8,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_8_deep"
+    },
+    "corner=false,facing=east,level=8,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_8_up"
+    },
+    "corner=false,facing=south,level=2,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_2_down",
+      "y": 90
+    },
+    "corner=false,facing=south,level=2,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_2_deep",
+      "y": 90
+    },
+    "corner=false,facing=south,level=2,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_2_up",
+      "y": 90
+    },
+    "corner=false,facing=south,level=3,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_3_down",
+      "y": 90
+    },
+    "corner=false,facing=south,level=3,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_3_deep",
+      "y": 90
+    },
+    "corner=false,facing=south,level=3,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_3_up",
+      "y": 90
+    },
+    "corner=false,facing=south,level=4,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_4_down",
+      "y": 90
+    },
+    "corner=false,facing=south,level=4,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_4_deep",
+      "y": 90
+    },
+    "corner=false,facing=south,level=4,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_4_up",
+      "y": 90
+    },
+    "corner=false,facing=south,level=5,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_5_down",
+      "y": 90
+    },
+    "corner=false,facing=south,level=5,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_5_deep",
+      "y": 90
+    },
+    "corner=false,facing=south,level=5,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_5_up",
+      "y": 90
+    },
+    "corner=false,facing=south,level=6,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_6_down",
+      "y": 90
+    },
+    "corner=false,facing=south,level=6,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_6_deep",
+      "y": 90
+    },
+    "corner=false,facing=south,level=6,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_6_up",
+      "y": 90
+    },
+    "corner=false,facing=south,level=7,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_7_down",
+      "y": 90
+    },
+    "corner=false,facing=south,level=7,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_7_deep",
+      "y": 90
+    },
+    "corner=false,facing=south,level=7,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_7_up",
+      "y": 90
+    },
+    "corner=false,facing=south,level=8,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_8_down",
+      "y": 90
+    },
+    "corner=false,facing=south,level=8,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_8_deep",
+      "y": 90
+    },
+    "corner=false,facing=south,level=8,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_8_up",
+      "y": 90
+    },
+    "corner=false,facing=west,level=2,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_2_down",
+      "y": 180
+    },
+    "corner=false,facing=west,level=2,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_2_deep",
+      "y": 180
+    },
+    "corner=false,facing=west,level=2,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_2_up",
+      "y": 180
+    },
+    "corner=false,facing=west,level=3,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_3_down",
+      "y": 180
+    },
+    "corner=false,facing=west,level=3,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_3_deep",
+      "y": 180
+    },
+    "corner=false,facing=west,level=3,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_3_up",
+      "y": 180
+    },
+    "corner=false,facing=west,level=4,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_4_down",
+      "y": 180
+    },
+    "corner=false,facing=west,level=4,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_4_deep",
+      "y": 180
+    },
+    "corner=false,facing=west,level=4,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_4_up",
+      "y": 180
+    },
+    "corner=false,facing=west,level=5,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_5_down",
+      "y": 180
+    },
+    "corner=false,facing=west,level=5,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_5_deep",
+      "y": 180
+    },
+    "corner=false,facing=west,level=5,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_5_up",
+      "y": 180
+    },
+    "corner=false,facing=west,level=6,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_6_down",
+      "y": 180
+    },
+    "corner=false,facing=west,level=6,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_6_deep",
+      "y": 180
+    },
+    "corner=false,facing=west,level=6,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_6_up",
+      "y": 180
+    },
+    "corner=false,facing=west,level=7,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_7_down",
+      "y": 180
+    },
+    "corner=false,facing=west,level=7,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_7_deep",
+      "y": 180
+    },
+    "corner=false,facing=west,level=7,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_7_up",
+      "y": 180
+    },
+    "corner=false,facing=west,level=8,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_8_down",
+      "y": 180
+    },
+    "corner=false,facing=west,level=8,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_8_deep",
+      "y": 180
+    },
+    "corner=false,facing=west,level=8,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_8_up",
+      "y": 180
+    },
+    "corner=false,facing=north,level=2,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_2_down",
+      "y": 270
+    },
+    "corner=false,facing=north,level=2,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_2_deep",
+      "y": 270
+    },
+    "corner=false,facing=north,level=2,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_2_up",
+      "y": 270
+    },
+    "corner=false,facing=north,level=3,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_3_down",
+      "y": 270
+    },
+    "corner=false,facing=north,level=3,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_3_deep",
+      "y": 270
+    },
+    "corner=false,facing=north,level=3,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_3_up",
+      "y": 270
+    },
+    "corner=false,facing=north,level=4,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_4_down",
+      "y": 270
+    },
+    "corner=false,facing=north,level=4,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_4_deep",
+      "y": 270
+    },
+    "corner=false,facing=north,level=4,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_4_up",
+      "y": 270
+    },
+    "corner=false,facing=north,level=5,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_5_down",
+      "y": 270
+    },
+    "corner=false,facing=north,level=5,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_5_deep",
+      "y": 270
+    },
+    "corner=false,facing=north,level=5,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_5_up",
+      "y": 270
+    },
+    "corner=false,facing=north,level=6,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_6_down",
+      "y": 270
+    },
+    "corner=false,facing=north,level=6,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_6_deep",
+      "y": 270
+    },
+    "corner=false,facing=north,level=6,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_6_up",
+      "y": 270
+    },
+    "corner=false,facing=north,level=7,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_7_down",
+      "y": 270
+    },
+    "corner=false,facing=north,level=7,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_7_deep",
+      "y": 270
+    },
+    "corner=false,facing=north,level=7,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_7_up",
+      "y": 270
+    },
+    "corner=false,facing=north,level=8,lip=down": {
+      "model": "deepcharter:block/giant/rim_edge_8_down",
+      "y": 270
+    },
+    "corner=false,facing=north,level=8,lip=deep": {
+      "model": "deepcharter:block/giant/rim_edge_8_deep",
+      "y": 270
+    },
+    "corner=false,facing=north,level=8,lip=up": {
+      "model": "deepcharter:block/giant/rim_edge_8_up",
+      "y": 270
+    },
+    "corner=true,facing=east,level=2,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_2_down"
+    },
+    "corner=true,facing=east,level=2,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_2_deep"
+    },
+    "corner=true,facing=east,level=2,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_2_up"
+    },
+    "corner=true,facing=east,level=3,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_3_down"
+    },
+    "corner=true,facing=east,level=3,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_3_deep"
+    },
+    "corner=true,facing=east,level=3,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_3_up"
+    },
+    "corner=true,facing=east,level=4,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_4_down"
+    },
+    "corner=true,facing=east,level=4,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_4_deep"
+    },
+    "corner=true,facing=east,level=4,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_4_up"
+    },
+    "corner=true,facing=east,level=5,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_5_down"
+    },
+    "corner=true,facing=east,level=5,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_5_deep"
+    },
+    "corner=true,facing=east,level=5,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_5_up"
+    },
+    "corner=true,facing=east,level=6,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_6_down"
+    },
+    "corner=true,facing=east,level=6,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_6_deep"
+    },
+    "corner=true,facing=east,level=6,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_6_up"
+    },
+    "corner=true,facing=east,level=7,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_7_down"
+    },
+    "corner=true,facing=east,level=7,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_7_deep"
+    },
+    "corner=true,facing=east,level=7,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_7_up"
+    },
+    "corner=true,facing=east,level=8,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_8_down"
+    },
+    "corner=true,facing=east,level=8,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_8_deep"
+    },
+    "corner=true,facing=east,level=8,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_8_up"
+    },
+    "corner=true,facing=south,level=2,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_2_down",
+      "y": 90
+    },
+    "corner=true,facing=south,level=2,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_2_deep",
+      "y": 90
+    },
+    "corner=true,facing=south,level=2,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_2_up",
+      "y": 90
+    },
+    "corner=true,facing=south,level=3,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_3_down",
+      "y": 90
+    },
+    "corner=true,facing=south,level=3,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_3_deep",
+      "y": 90
+    },
+    "corner=true,facing=south,level=3,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_3_up",
+      "y": 90
+    },
+    "corner=true,facing=south,level=4,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_4_down",
+      "y": 90
+    },
+    "corner=true,facing=south,level=4,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_4_deep",
+      "y": 90
+    },
+    "corner=true,facing=south,level=4,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_4_up",
+      "y": 90
+    },
+    "corner=true,facing=south,level=5,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_5_down",
+      "y": 90
+    },
+    "corner=true,facing=south,level=5,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_5_deep",
+      "y": 90
+    },
+    "corner=true,facing=south,level=5,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_5_up",
+      "y": 90
+    },
+    "corner=true,facing=south,level=6,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_6_down",
+      "y": 90
+    },
+    "corner=true,facing=south,level=6,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_6_deep",
+      "y": 90
+    },
+    "corner=true,facing=south,level=6,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_6_up",
+      "y": 90
+    },
+    "corner=true,facing=south,level=7,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_7_down",
+      "y": 90
+    },
+    "corner=true,facing=south,level=7,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_7_deep",
+      "y": 90
+    },
+    "corner=true,facing=south,level=7,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_7_up",
+      "y": 90
+    },
+    "corner=true,facing=south,level=8,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_8_down",
+      "y": 90
+    },
+    "corner=true,facing=south,level=8,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_8_deep",
+      "y": 90
+    },
+    "corner=true,facing=south,level=8,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_8_up",
+      "y": 90
+    },
+    "corner=true,facing=west,level=2,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_2_down",
+      "y": 180
+    },
+    "corner=true,facing=west,level=2,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_2_deep",
+      "y": 180
+    },
+    "corner=true,facing=west,level=2,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_2_up",
+      "y": 180
+    },
+    "corner=true,facing=west,level=3,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_3_down",
+      "y": 180
+    },
+    "corner=true,facing=west,level=3,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_3_deep",
+      "y": 180
+    },
+    "corner=true,facing=west,level=3,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_3_up",
+      "y": 180
+    },
+    "corner=true,facing=west,level=4,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_4_down",
+      "y": 180
+    },
+    "corner=true,facing=west,level=4,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_4_deep",
+      "y": 180
+    },
+    "corner=true,facing=west,level=4,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_4_up",
+      "y": 180
+    },
+    "corner=true,facing=west,level=5,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_5_down",
+      "y": 180
+    },
+    "corner=true,facing=west,level=5,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_5_deep",
+      "y": 180
+    },
+    "corner=true,facing=west,level=5,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_5_up",
+      "y": 180
+    },
+    "corner=true,facing=west,level=6,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_6_down",
+      "y": 180
+    },
+    "corner=true,facing=west,level=6,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_6_deep",
+      "y": 180
+    },
+    "corner=true,facing=west,level=6,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_6_up",
+      "y": 180
+    },
+    "corner=true,facing=west,level=7,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_7_down",
+      "y": 180
+    },
+    "corner=true,facing=west,level=7,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_7_deep",
+      "y": 180
+    },
+    "corner=true,facing=west,level=7,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_7_up",
+      "y": 180
+    },
+    "corner=true,facing=west,level=8,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_8_down",
+      "y": 180
+    },
+    "corner=true,facing=west,level=8,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_8_deep",
+      "y": 180
+    },
+    "corner=true,facing=west,level=8,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_8_up",
+      "y": 180
+    },
+    "corner=true,facing=north,level=2,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_2_down",
+      "y": 270
+    },
+    "corner=true,facing=north,level=2,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_2_deep",
+      "y": 270
+    },
+    "corner=true,facing=north,level=2,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_2_up",
+      "y": 270
+    },
+    "corner=true,facing=north,level=3,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_3_down",
+      "y": 270
+    },
+    "corner=true,facing=north,level=3,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_3_deep",
+      "y": 270
+    },
+    "corner=true,facing=north,level=3,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_3_up",
+      "y": 270
+    },
+    "corner=true,facing=north,level=4,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_4_down",
+      "y": 270
+    },
+    "corner=true,facing=north,level=4,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_4_deep",
+      "y": 270
+    },
+    "corner=true,facing=north,level=4,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_4_up",
+      "y": 270
+    },
+    "corner=true,facing=north,level=5,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_5_down",
+      "y": 270
+    },
+    "corner=true,facing=north,level=5,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_5_deep",
+      "y": 270
+    },
+    "corner=true,facing=north,level=5,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_5_up",
+      "y": 270
+    },
+    "corner=true,facing=north,level=6,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_6_down",
+      "y": 270
+    },
+    "corner=true,facing=north,level=6,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_6_deep",
+      "y": 270
+    },
+    "corner=true,facing=north,level=6,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_6_up",
+      "y": 270
+    },
+    "corner=true,facing=north,level=7,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_7_down",
+      "y": 270
+    },
+    "corner=true,facing=north,level=7,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_7_deep",
+      "y": 270
+    },
+    "corner=true,facing=north,level=7,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_7_up",
+      "y": 270
+    },
+    "corner=true,facing=north,level=8,lip=down": {
+      "model": "deepcharter:block/giant/rim_corner_8_down",
+      "y": 270
+    },
+    "corner=true,facing=north,level=8,lip=deep": {
+      "model": "deepcharter:block/giant/rim_corner_8_deep",
+      "y": 270
+    },
+    "corner=true,facing=north,level=8,lip=up": {
+      "model": "deepcharter:block/giant/rim_corner_8_up",
+      "y": 270
+    }
+  }
+}

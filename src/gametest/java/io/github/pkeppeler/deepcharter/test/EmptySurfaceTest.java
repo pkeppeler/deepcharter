@@ -46,7 +46,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Server GameTests for the empty surface (#915, ADR 0036, docs/CREATURES.md#surface): no vanilla monster spawns on the surface or in any
  * band of the campaign world, and the Retained keep their own spawns in layers 1 and 2. They run in {@code deepcharter:campaign_sample}.
- * Columns 25000 to 25999 are this class's. The spawners no biome list reaches (patrols, phantoms, wardens, the trader) are pinned in
+ * The spawners no biome list reaches (patrols, phantoms, wardens, the trader) are pinned in
  * {@code SurfaceTerrainTest}.
  */
 public class EmptySurfaceTest {
@@ -69,6 +69,13 @@ public class EmptySurfaceTest {
     /** The layers whose zones list the Retained: the Claim and the Old Workings (CREATURES section 5). */
     private static final int RETAINED_LAYERS = 2;
 
+    /**
+     * Loads the chunk of the column the test reads the mob lists at, in the test's own level, before {@code body} runs.
+     */
+    private static void whenColumnLoaded(GameTestHelper helper, Runnable body) {
+        FarChunks.whenBlocksLoaded(helper, List.of(new FarChunks.At(helper.getLevel(), X >> 4, Z >> 4)), body);
+    }
+
     /** The middle of a zone of a layer: a Y in that zone's biome. */
     private static int zoneMiddle(Band layer, int zone) {
         Zones.Span span = Zones.span(layer.minY(), layer.height(), zone);
@@ -82,41 +89,44 @@ public class EmptySurfaceTest {
      */
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.B, maxTicks = MAX_TICKS)
     public void noBandListsAVanillaMonsterAndTheLayersKeepTheRetained(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        ChunkGenerator generator = level.getChunkSource().getGenerator();
-        BlockPos column = new BlockPos(X, 0, Z);
-        level.getChunkAt(column);
-        Map<String, Integer> spots = new LinkedHashMap<>();
-        spots.put("surface", 64);
-        // 8 up from the floor: a cell on the band edge blurs into the layer below.
-        spots.put("surface floor", CampaignBands.SURFACE.minY() + 8);
-        spots.put("unbuilt depth", -1000);
-        for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
-            for (int zone = 0; zone < Zones.COUNT; zone++) {
-                String place = number <= RETAINED_LAYERS ? "retained layer" : "layer";
-                spots.put(
-                        "%s %d zone %d".formatted(place, number, zone), zoneMiddle(CampaignBands.layer(number), zone));
-            }
-        }
-        for (Map.Entry<String, Integer> spot : spots.entrySet()) {
-            boolean retained = spot.getKey().startsWith("retained layer");
-            for (MobCategory category : MobCategory.values()) {
-                var mobs = generator
-                        .getMobsAt(level, level.structureManager(), category, column.atY(spot.getValue()))
-                        .unwrap();
-                boolean retainedOnly = retained
-                        && category == MobCategory.MONSTER
-                        && !mobs.isEmpty()
-                        && mobs.stream().allMatch(entry -> entry.value().type() == CreatureRegistry.LAMPLESS_FIGURE);
-                if (!mobs.isEmpty() && !retainedOnly) {
-                    throw failure(helper, "%s lists %s creatures: %s", spot.getKey(), category, mobs);
-                }
-                if (retained && category == MobCategory.MONSTER && !retainedOnly) {
-                    throw failure(helper, "%s does not list the Retained as a monster", spot.getKey());
+        whenColumnLoaded(helper, () -> {
+            ServerLevel level = helper.getLevel();
+            ChunkGenerator generator = level.getChunkSource().getGenerator();
+            BlockPos column = new BlockPos(X, 0, Z);
+            Map<String, Integer> spots = new LinkedHashMap<>();
+            spots.put("surface", 64);
+            // 8 up from the floor: a cell on the band edge blurs into the layer below.
+            spots.put("surface floor", CampaignBands.SURFACE.minY() + 8);
+            spots.put("unbuilt depth", -1000);
+            for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
+                for (int zone = 0; zone < Zones.COUNT; zone++) {
+                    String place = number <= RETAINED_LAYERS ? "retained layer" : "layer";
+                    spots.put(
+                            "%s %d zone %d".formatted(place, number, zone),
+                            zoneMiddle(CampaignBands.layer(number), zone));
                 }
             }
-        }
-        helper.succeed();
+            for (Map.Entry<String, Integer> spot : spots.entrySet()) {
+                boolean retained = spot.getKey().startsWith("retained layer");
+                for (MobCategory category : MobCategory.values()) {
+                    var mobs = generator
+                            .getMobsAt(level, level.structureManager(), category, column.atY(spot.getValue()))
+                            .unwrap();
+                    boolean retainedOnly = retained
+                            && category == MobCategory.MONSTER
+                            && !mobs.isEmpty()
+                            && mobs.stream()
+                                    .allMatch(entry -> entry.value().type() == CreatureRegistry.LAMPLESS_FIGURE);
+                    if (!mobs.isEmpty() && !retainedOnly) {
+                        throw failure(helper, "%s lists %s creatures: %s", spot.getKey(), category, mobs);
+                    }
+                    if (retained && category == MobCategory.MONSTER && !retainedOnly) {
+                        throw failure(helper, "%s does not list the Retained as a monster", spot.getKey());
+                    }
+                }
+            }
+            helper.succeed();
+        });
     }
 
     /** Every biome the mod ships is closed to vanilla monsters, so a later biome cannot slip through: no siege, no patrol, no monster listed. */
@@ -210,6 +220,7 @@ public class EmptySurfaceTest {
                 NaturalSpawner.spawnCategoryForPosition(
                         category,
                         level,
+                        // sync-load: inDarkRooms waited until the room was entity ticking
                         level.getChunkAt(room),
                         room,
                         (type, spawnLevel, pos, chunk) -> true,

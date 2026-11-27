@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.layer.gen.ClaimShaftFeature;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -95,6 +96,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -371,6 +373,21 @@ public class ObtainableItemsTest {
     }
 
     /**
+     * The blocks a feature type of ours places that its config does not name, by type: a Java feature hardcodes them,
+     * so encoding its config shows nothing. A type of ours whose config names no block must be here, or the derivation
+     * fails; one that places only our own blocks lists none, since every block of ours counts anyway.
+     */
+    private static final Map<String, List<Block>> UNNAMED_BLOCKS = Map.of(
+            "deepcharter:claim_shaft",
+            ClaimShaftFeature.VANILLA_PLACED,
+            // Turns breach crust into grained crust, both ours.
+            "deepcharter:grained_crust_pass",
+            List.of(),
+            // Grows giants of our own blocks only (parasols, spires, great stalks).
+            "deepcharter:giant_fungus",
+            List.of());
+
+    /**
      * The blocks the campaign world's data names: its noise settings and the features and carvers of every biome of
      * ours, encoded as data and read for every string that names a block. The creatures our biomes spawn go into
      * {@code creatures}. Fails when a vanilla structure may generate in one of our biomes, since its pieces are not
@@ -381,6 +398,8 @@ public class ObtainableItemsTest {
         HolderLookup.Provider registries = server.registryAccess();
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, registries);
         List<JsonElement> encoded = new ArrayList<>();
+        Set<Block> placedUnnamed = new LinkedHashSet<>();
+        Set<String> unknown = new TreeSet<>();
         NoiseGeneratorSettings campaign = registries
                 .lookupOrThrow(Registries.NOISE_SETTINGS)
                 .getOrThrow(ResourceKey.create(
@@ -398,7 +417,20 @@ public class ObtainableItemsTest {
                     biome.value().getGenerationSettings().features()) {
                 for (Holder<PlacedFeature> placed : step) {
                     Feature feature = placed.value().feature().value();
-                    encoded.add(Feature.DIRECT_CODEC.encodeStart(ops, feature).getOrThrow());
+                    JsonElement json =
+                            Feature.DIRECT_CODEC.encodeStart(ops, feature).getOrThrow();
+                    encoded.add(json);
+                    String type = json.getAsJsonObject().get("type").getAsString();
+                    @Nullable List<Block> unnamed = UNNAMED_BLOCKS.get(type);
+                    if (unnamed != null) {
+                        placedUnnamed.addAll(unnamed);
+                    } else if (Identifier.parse(type).getNamespace().equals(DeepCharter.MOD_ID)) {
+                        Set<Block> named = new LinkedHashSet<>();
+                        collectBlocks(json, named);
+                        if (named.isEmpty()) {
+                            unknown.add(type);
+                        }
+                    }
                 }
             }
             biome.value()
@@ -431,8 +463,15 @@ public class ObtainableItemsTest {
                         biome.key().identifier());
             }
         });
+        expect(
+                helper,
+                unknown.isEmpty(),
+                "the feature types %s name no block in their config and are not in UNNAMED_BLOCKS, so this derivation "
+                        + "cannot see what they place: list the vanilla blocks each places (none if only ours)",
+                unknown);
         Set<Block> blocks = new LinkedHashSet<>();
         encoded.forEach(json -> collectBlocks(json, blocks));
+        blocks.addAll(placedUnnamed);
         return blocks;
     }
 

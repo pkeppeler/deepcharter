@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographBlock;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographBlockEntity;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 import io.github.pkeppeler.deepcharter.sound.phonograph.Recording;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import java.util.ArrayList;
@@ -293,42 +294,46 @@ public class PhonographTest {
         });
     }
 
-    @GameTest(maxTicks = 100)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void stoppingOnePhonographLeavesAnotherPlayingTheSameRecordingAlone(GameTestHelper helper) {
         // A stop names no place, so the recording must be one no neighbour plays (see the far-player test).
         PhonographBlockEntity mine = place(helper);
         ServerLevel level = helper.getLevel();
         BlockPos otherPos = helper.absolutePos(PLACE).offset(60, 0, 0);
-        level.getChunk(otherPos.getX() >> 4, otherPos.getZ() >> 4);
-        level.setBlock(otherPos, PhonographRegistry.PHONOGRAPH.defaultBlockState(), 3);
-        MockPlayer nearMine = join(helper, "near-mine");
-        MockPlayer nearOther = join(helper, "near-other");
-        nearOther.teleportTo(level, Vec3.atBottomCenterOf(otherPos).add(2, 0, 0), 0f, 0f);
-        if (!(level.getBlockEntity(otherPos) instanceof PhonographBlockEntity other)) {
-            throw failure(helper, "the second phonograph has no block entity");
-        }
-        use(helper, nearMine, cylinder(Recording.VOLTA_HAMLET), false);
-        nearOther.player().setItemInHand(InteractionHand.MAIN_HAND, cylinder(Recording.VOLTA_HAMLET));
-        other.insert(nearOther.player(), InteractionHand.MAIN_HAND);
-        helper.runAfterDelay(DRAIN_TICKS, () -> {
-            expect(helper, other.isPlaying() && mine.isPlaying(), "both play the same recording");
-            mine.stop();
-        });
-        helper.runAfterDelay(DRAIN_TICKS * 2 + 2, () -> {
-            expect(
-                    helper,
-                    nearMine.soundsStopped().contains(id(DeepSound.PHONOGRAPH_VOLTA_HAMLET)),
-                    "the stopped phonograph's listener was not told to stop");
-            expect(
-                    helper,
-                    !nearOther.soundsStopped().contains(id(DeepSound.PHONOGRAPH_VOLTA_HAMLET)),
-                    "the other phonograph's listener was told to stop it: %s",
-                    nearOther.soundsStopped());
-            expect(helper, other.isPlaying(), "the other phonograph stopped");
-            other.stop();
-            level.setBlock(otherPos, Blocks.AIR.defaultBlockState(), 3);
-            helper.succeed();
-        });
+        FarChunks.whenBlocksLoaded(
+                helper,
+                FarChunks.overBlocks(level, otherPos.getX(), otherPos.getZ(), otherPos.getX(), otherPos.getZ()),
+                () -> {
+                    level.setBlock(otherPos, PhonographRegistry.PHONOGRAPH.defaultBlockState(), 3);
+                    MockPlayer nearMine = join(helper, "near-mine");
+                    MockPlayer nearOther = join(helper, "near-other");
+                    nearOther.teleportTo(level, Vec3.atBottomCenterOf(otherPos).add(2, 0, 0), 0f, 0f);
+                    if (!(level.getBlockEntity(otherPos) instanceof PhonographBlockEntity other)) {
+                        throw failure(helper, "the second phonograph has no block entity");
+                    }
+                    use(helper, nearMine, cylinder(Recording.VOLTA_HAMLET), false);
+                    nearOther.player().setItemInHand(InteractionHand.MAIN_HAND, cylinder(Recording.VOLTA_HAMLET));
+                    other.insert(nearOther.player(), InteractionHand.MAIN_HAND);
+                    helper.runAfterDelay(DRAIN_TICKS, () -> {
+                        expect(helper, other.isPlaying() && mine.isPlaying(), "both play the same recording");
+                        mine.stop();
+                    });
+                    helper.runAfterDelay(DRAIN_TICKS * 2 + 2, () -> {
+                        expect(
+                                helper,
+                                nearMine.soundsStopped().contains(id(DeepSound.PHONOGRAPH_VOLTA_HAMLET)),
+                                "the stopped phonograph's listener was not told to stop");
+                        expect(
+                                helper,
+                                !nearOther.soundsStopped().contains(id(DeepSound.PHONOGRAPH_VOLTA_HAMLET)),
+                                "the other phonograph's listener was told to stop it: %s",
+                                nearOther.soundsStopped());
+                        expect(helper, other.isPlaying(), "the other phonograph stopped");
+                        other.stop();
+                        level.setBlock(otherPos, Blocks.AIR.defaultBlockState(), 3);
+                        helper.succeed();
+                    });
+                });
     }
 
     /** The saved names of the recordings are permanent: a cylinder in a world and a loot table name them. */

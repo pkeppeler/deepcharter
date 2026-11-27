@@ -40,6 +40,6 @@ A bad datapack never stops the server:
 - Stats are a snapshot: `PodEntity.tick` takes one for the whole tick, and code that keeps a `PodStats` across ticks reads old numbers.
 - The gravity and drag of the rotor, and the fuel beep thresholds, are not stats. They are physics and interface values, still read from `PodTuning`.
 - Fuel is stored as a percent of the tank. When `tankLitres` changes (#69), the feature must rescale the stored percent to keep the litres constant.
-- `OreCargoMenu` is fixed at 7 slots. #65 must size it from the stats.
+- `OreCargoMenu` is fixed at 7 slots. #65 must size it from the stats. (Amended: the pod screen, #1270 and [ADR 0102](0102-the-pod-screen-holds-any-item-keeps-ore-until-a-terminal-and-feeds-the-tank-from-a-fuel-slot.md), replaces it.)
 - The HUD prints the hull as a percent, and `maxHull` is not synced. #65 or #70 must fix both.
 - A bad fuel datapack is logged and skipped, as above, and does not stop the server.

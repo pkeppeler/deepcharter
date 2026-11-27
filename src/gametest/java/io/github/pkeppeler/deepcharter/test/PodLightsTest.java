@@ -106,8 +106,9 @@ public class PodLightsTest {
     }
 
     /**
-     * Runs in a far column of its own that no other test uses, so no pod of another test stands near the path. Waits for the settled
-     * state, because a release that cannot change its block yet (an unloaded neighbour chunk) leaves the old light for the next sweep.
+     * Runs in a far column ({@code TestSiteTable} claims it), so no pod of another test stands near the path. Waits for
+     * the settled state, because a release that cannot change its block yet (an unloaded neighbour chunk) leaves the
+     * old light for the next sweep.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theLightFollowsThePodAndLeavesNoTrail(GameTestHelper helper) {

@@ -12,8 +12,8 @@ import org.spongepowered.asm.mixin.gen.Invoker;
  */
 @Mixin(EnvironmentAttributeSystem.class)
 public interface EnvironmentAttributeSystemInvoker {
-    // Java requires a body on a static interface method; Mixin replaces it, and the replacement is the only caller that
-    // matters.
+    // Java requires a body on a static interface method; Mixin replaces it, and the replacement is the only caller
+    // that matters.
     @SuppressWarnings("DoNotCallSuggester")
     @Invoker("addBiomeLayerForAttribute")
     static <Value> void addBiomeLayerForAttribute(

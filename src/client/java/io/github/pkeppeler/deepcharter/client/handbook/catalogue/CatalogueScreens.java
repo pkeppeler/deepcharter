@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -57,8 +58,15 @@ public final class CatalogueScreens {
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof AbstractRecipeBookScreen<?> book) {
                 attach(book, width, height);
+            } else if (screen instanceof AbstractContainerScreen<?> container) {
+                SlotLookup.attach(container);
             }
         });
+    }
+
+    /** What every panel and the recipe console's own screen are set to. */
+    static CatalogueState state() {
+        return state;
     }
 
     /** Puts the catalogue back as a new client has it: the next panel opens on an empty search, the switch off and nothing looked up. */
@@ -118,8 +126,8 @@ public final class CatalogueScreens {
             return;
         }
         pending = item;
-        // A vanilla screen, so it is not one of the mod's screens the layout gate asks to be covered by
-        // ScreenLayoutClientTest.
+        // A vanilla screen, so it is not one of the mod's screens the layout gate asks to be covered
+        // by ScreenLayoutClientTest.
         InventoryScreen inventory = new InventoryScreen(player);
         if (open != null) {
             RETURN_TO.put(inventory, open);
@@ -156,8 +164,8 @@ public final class CatalogueScreens {
             pending = null;
             panel.lookUp(wanted, CatalogueState.Mode.RECIPES);
         }
-        // Fabric clears a screen's events when it is initialised again (a resize), so they are registered on every
-        // init.
+        // Fabric clears a screen's events when it is initialised again (a resize), so they are registered on
+        // every init.
         // After the screen's contents and before its carried item and tooltips, so a stack on the cursor is over the
         // panels and a tooltip set
         // here (the hovered item's) is shown by the screen's own deferred tooltip step; AFTER_EXTRACT comes after that

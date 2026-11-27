@@ -57,8 +57,8 @@ public class NavigatorSonarScenario extends EvidenceScenario {
     private static final int ZOOM_MARGIN = 12;
     private static final int TOAST_SETTLE_TICKS = 30;
     private static final String LONG_STEP =
-            "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
-                    + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
+            "Carry the whole of a very long instruction through the hatch, past the second sump pump and the old tally"
+                    + " board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
 
     @Override
     protected String name() {
@@ -213,8 +213,8 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         }
         put(level, new BlockPos(X + 8, FLOOR_Y + 1, Z - 9), HazardBlocks.GAS_POCKET);
         put(level, new BlockPos(X - 18, FLOOR_Y + 1, Z + 6), HazardBlocks.GAS_POCKET);
-        // A body standing in a hollow of its own, east: it is in the echo tag the test mod adds, so it returns an ore
-        // echo.
+        // A body standing in a hollow of its own, east: it is in the echo tag the test mod adds, so it returns an
+        // ore echo.
         room(level, X + 4 * CELL, FLOOR_Y, Z - 2 * CELL, 1, 1);
         ArmorStand body = TestEntities.create(EntityTypes.ARMOR_STAND, level);
         body.setNoGravity(true);

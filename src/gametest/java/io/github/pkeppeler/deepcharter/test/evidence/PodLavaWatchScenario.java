@@ -105,6 +105,7 @@ public class PodLavaWatchScenario extends EvidenceScenario {
                     false,
                     false,
                     false,
+                    false,
                     PodStatusHud.readout(
                             ClientSession.player(client),
                             TestEntities.vehicle(ClientSession.player(client), PodEntity.class)))[3]);

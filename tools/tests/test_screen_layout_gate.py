@@ -27,6 +27,12 @@ ALLOWED = {
     "TerminalScreen": "the generic screen TerminalScreens.create builds; the offline case of every terminal type covers it",
 }
 
+# Vanilla's screens that a screen of ours opens with `setScreen(new X`: not ours to lay out, and not in client sources, so the allow-list
+# check above cannot hold them.
+VANILLA = {
+    "TitleScreen": "the Continuity Event's DISCONNECT goes back to it, as vanilla's death screen does",
+}
+
 # Factories whose result a layout case builds the same way: (class that calls setScreen, the factory it calls). Any other
 # `setScreen(make())` hides which screen it opens, so it fails.
 FACTORIES = {
@@ -121,7 +127,7 @@ def uncovered(sources: list[str], test_text: str) -> list[str]:
     body = standalone_body(test_text)
     return sorted(
         name for name in screen_classes(sources) | opened_classes(sources)
-        if name not in registered and name not in ALLOWED and not re.search(rf"\b{name}\b", body)
+        if name not in registered and name not in ALLOWED and name not in VANILLA and not re.search(rf"\b{name}\b", body)
     )
 
 
@@ -161,7 +167,7 @@ class ScreenLayoutGateTest(unittest.TestCase):
 
     def test_finds_the_screens_of_the_repo(self):
         found = screen_classes(client_sources())
-        self.assertTrue({"HangarScreen", "UpgradeScreen", "HandbookScreen", "OreCargoScreen", "TerminalScreen"} <= found, found)
+        self.assertTrue({"HangarScreen", "UpgradeScreen", "HandbookScreen", "PodScreen", "TerminalScreen"} <= found, found)
 
     def test_the_allow_list_holds_only_screens_that_exist(self):
         self.assertTrue(set(ALLOWED) <= screen_classes(client_sources()), ALLOWED)

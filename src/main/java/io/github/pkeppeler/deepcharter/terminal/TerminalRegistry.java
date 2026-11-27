@@ -1,14 +1,22 @@
 package io.github.pkeppeler.deepcharter.terminal;
 
-/** Registers the terminal parts and types (with their blocks, items and block entity) and the three payloads. */
+import io.github.pkeppeler.deepcharter.menu.MenuRefusalPayload;
+
+/**
+ * Registers the terminal parts and types (with their blocks, items and block entity), the repair menu with the slotted
+ * menus' refusal payload, and the terminal's payloads.
+ */
 public final class TerminalRegistry {
     private TerminalRegistry() {}
 
     public static void register() {
         TerminalParts.register();
         TerminalTypes.register();
+        RepairMenu.register();
+        MenuRefusalPayload.register();
         TerminalViewPayload.register();
         TerminalOpenPayload.register();
+        SeatedTerminalPayload.register();
         TerminalActionPayload.register();
     }
 }

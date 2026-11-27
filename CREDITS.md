@@ -33,6 +33,12 @@ The punch clock in Shift Change calls out an hour now and then in the voice of a
 
 The file's own notice, quoted verbatim from its copyright tag: "(C)(P) Glenn Sage (Tinfoil.com).  Do not copy, modify or distribute without permission." Published in the public repo at the user's direction, despite the transfer's do-not-distribute note.
 
+## The Continuity Event's laugh: the Okeh Laughing Record
+
+When a person dies, the Company laughs: two laughers from a 1922 record, slowed, through a brass horn and into a cavern. [tools/sounds/okeh_laugh.py](tools/sounds/okeh_laugh.py) cuts and treats them from a local copy of the transfer (which is not in the repository), and [tools/sounds/okeh_laugh.json](tools/sounds/okeh_laugh.json) records the source's URL, its md5 and sha256, and its tags verbatim.
+
+- **The Okeh Laughing Record.** Okeh 4678-A (1922), matrix 4678A. Transfer by the Great 78 Project, digitized at George Blood, L.P. (the file's tags). Licence: none stated. Source: https://archive.org/download/78_the-okeh-laughing-record_gbia0046783a/The%20Okeh%20Laughing%20Record.flac (page: https://archive.org/details/78_the-okeh-laughing-record_gbia0046783a)
+
 ## More early recordings
 
 Later and rarer recordings than the phonautograms. [tools/sounds/first_sounds.py](tools/sounds/first_sounds.py) and [tools/sounds/ambience.py](tools/sounds/ambience.py) make the files, and their manifests ([first_sounds.json](tools/sounds/first_sounds.json), [ambience.json](tools/sounds/ambience.json)) record each source's canonical URL and hash. Where a file states no licence, its credit says so: it is credited and linked, and no licence is claimed. The note above about derivative works and firstsounds.org covers the First Sounds playbacks here too.
