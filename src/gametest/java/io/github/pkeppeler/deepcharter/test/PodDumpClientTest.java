@@ -92,8 +92,8 @@ public class PodDumpClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the cockpit readout saying LOOSE",
-                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
-                            && PodStatusHud.looseLine(pod).isPresent());
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity ridden
+                            && PodStatusHud.looseLine(ridden).isPresent());
             // And back: the same click on the pack's ore puts it in the hold.
             SlotClicks.shiftClick(
                     context, screen, SlotClicks.inventorySlot(context, screen, OreRegistry.item(OreType.GOLDIUM)));
