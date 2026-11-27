@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.AirFaceLiningFeature;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.surface.GiantFungusFeature;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -27,8 +28,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -50,6 +53,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
 import net.minecraft.world.level.levelgen.placement.PlacementModifier;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -337,6 +341,143 @@ public class FungalHollowsTest {
             expect(helper, positions > 0, "no feature of layer 3 picked a position");
             helper.succeed();
         });
+    }
+
+    /**
+     * Each zone grows the giant fungi its mix names (#1202), over {@link #GLOWCAP_CHUNKS} chunks a side: the Garden all
+     * three forms, the Spore Fields spires, and the Quiet parasols and never a great stalk. A form is told by the
+     * blocks it is made of.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void eachZoneGrowsTheGiantsOfItsMix(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        LayerChain.Band band = TestLayers.band(level, LAYER);
+        List<Map<String, Integer>> found = new ArrayList<>();
+        for (int zone = 0; zone < Zones.COUNT; zone++) {
+            found.add(new TreeMap<>());
+        }
+        for (BlockPos column : grid(GLOWCAP_CHUNKS, 1)) {
+            for (int y = band.minY(); y < band.minY() + band.height(); y++) {
+                BlockPos pos = column.atY(y);
+                String form = giantForm(state(level, pos));
+                if (form != null) {
+                    found.get(Zones.index(band.minY(), band.height(), y)).merge(form, 1, Integer::sum);
+                }
+            }
+        }
+        LOGGER.info("[fungal-hollows] giant blocks by zone, top first: {}", found);
+        expect(
+                helper,
+                found.get(0).keySet().equals(Set.of("great_stalk", "parasol", "spires")),
+                "the Garden grows %s",
+                found.get(0));
+        expect(helper, found.get(1).containsKey("spires"), "the Spore Fields grow %s", found.get(1));
+        expect(helper, found.get(2).containsKey("parasol"), "the Quiet grows %s", found.get(2));
+        expect(helper, !found.get(2).containsKey("great_stalk"), "the Quiet grows %s", found.get(2));
+        helper.succeed();
+    }
+
+    /** The form a giant fungus block belongs to, or null for any other block. */
+    private static @Nullable String giantForm(BlockState state) {
+        String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+        if (path.startsWith("great_stalk")) {
+            return "great_stalk";
+        }
+        if (path.startsWith("parasol_")) {
+            return "parasol";
+        }
+        if (path.startsWith("spire")) {
+            return "spires";
+        }
+        return null;
+    }
+
+    /**
+     * The giant fungus features are placed in the zones of the Fungal Hollows and in no other biome: one for each zone,
+     * every one listed last in step 8 of every zone, so none moves a feature already there (#1202).
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void giantFungiGrowOnlyInTheFungalHollows(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        Set<String> placed = new TreeSet<>();
+        for (var biome : level.registryAccess()
+                .lookupOrThrow(Registries.BIOME)
+                .listElements()
+                .toList()) {
+            for (var step : biome.value().getGenerationSettings().features()) {
+                for (Holder<PlacedFeature> feature : step) {
+                    if (feature.value().feature().value() instanceof GiantFungusFeature) {
+                        placed.add(feature.getRegisteredName());
+                        expect(
+                                helper,
+                                biome.is(FUNGAL_HOLLOWS),
+                                "%s grows %s outside the Fungal Hollows",
+                                biome.getRegisteredName(),
+                                feature.getRegisteredName());
+                    }
+                }
+            }
+        }
+        expect(helper, placed.size() == Zones.COUNT, "the giant fungus features are %s, not one a zone", placed);
+        helper.succeed();
+    }
+
+    /**
+     * A giant fungus writes only inside the chunk it grows for (ADR 0088), whatever form it takes and wherever in the
+     * chunk its site is: each zone's feature runs on each chunk of the sample through a level that records every block
+     * it sets and keeps none, with ten seeds of its random, so the site moves about the chunk.
+     */
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void everyGiantFungusWritesInsideItsOwnChunk(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, LAYER);
+        List<BlockPos> written = new ArrayList<>();
+        WorldGenLevel recording = (WorldGenLevel) Proxy.newProxyInstance(
+                WorldGenLevel.class.getClassLoader(), new Class<?>[] {WorldGenLevel.class}, (proxy, method, args) -> {
+                    if (method.getName().equals("setBlock")) {
+                        written.add(((BlockPos) args[0]).immutable());
+                        return true;
+                    }
+                    try {
+                        return method.invoke(level, args);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
+        int grown = 0;
+        Map<Integer, Integer> byZone = new TreeMap<>();
+        for (var feature : level.registryAccess().lookupOrThrow(Registries.FEATURE)) {
+            if (!(feature instanceof GiantFungusFeature giant)) {
+                continue;
+            }
+            for (int dx = 0; dx < GLOWCAP_CHUNKS; dx++) {
+                for (int dz = 0; dz < GLOWCAP_CHUNKS; dz++) {
+                    ChunkPos chunk = new ChunkPos(SAMPLE_CHUNK + dx, SAMPLE_CHUNK + dz);
+                    for (long seed = 0; seed < 10; seed++) {
+                        written.clear();
+                        if (giant.place(
+                                recording,
+                                level.getChunkSource().getGenerator(),
+                                RandomSource.create(seed),
+                                chunk.getWorldPosition())) {
+                            grown++;
+                            byZone.merge(giant.zone(), 1, Integer::sum);
+                        }
+                        for (BlockPos pos : written) {
+                            expect(
+                                    helper,
+                                    ChunkPos.containing(pos).equals(chunk),
+                                    "a giant fungus grown for chunk %s set %s, in chunk %s",
+                                    chunk,
+                                    pos.toShortString(),
+                                    ChunkPos.containing(pos));
+                        }
+                    }
+                }
+            }
+        }
+        LOGGER.info("[fungal-hollows] {} giant fungi grown through the recording level, by zone {}", grown, byZone);
+        expect(helper, grown > 0, "no giant fungus grew");
+        helper.succeed();
     }
 
     /**

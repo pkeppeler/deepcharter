@@ -94,8 +94,8 @@ public class CampaignTerrainTest {
             "minecraft:ladder",
             "minecraft:candle");
     /**
-     * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the glowcaps and the surface's own
-     * stalks and great stalks.
+     * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the
+     * glowcaps, the surface's own stalks and great stalks, and the giant fungi's parasols and spires (#1202).
      */
     private static final Set<String> LAYER_3_BLOCKS = Set.of(
             BASALT_CORE,
@@ -103,7 +103,16 @@ public class CampaignTerrainTest {
             "deepcharter:glowcap",
             STALK,
             "deepcharter:great_stalk",
-            "deepcharter:great_stalk_cap");
+            "deepcharter:great_stalk_cap",
+            "deepcharter:parasol_stem",
+            "deepcharter:parasol_ring",
+            "deepcharter:parasol_gills",
+            "deepcharter:parasol_cap",
+            "deepcharter:parasol_rim",
+            "deepcharter:fungal_flare",
+            "deepcharter:spire",
+            "deepcharter:spire_tip",
+            "deepcharter:spire_base");
 
     /** Air, and the lava the zone fill leaves in a layer (#743). */
     private static final Set<String> FLUIDS_AND_AIR = Set.of("minecraft:air", "minecraft:cave_air", "minecraft:lava");

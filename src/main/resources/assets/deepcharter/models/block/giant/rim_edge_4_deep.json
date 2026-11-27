@@ -1,0 +1,166 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "top": "deepcharter:block/parasol_cap_top",
+    "side": "deepcharter:block/parasol_cap_side",
+    "skirt": "deepcharter:block/parasol_rim",
+    "gills": "deepcharter:block/parasol_gills",
+    "particle": "deepcharter:block/parasol_cap_top"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        13,
+        -0.01
+      ],
+      "to": [
+        21.4709,
+        16,
+        16.01
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#top"
+        },
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            3
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            3
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            3
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            3
+          ],
+          "texture": "#side"
+        }
+      },
+      "rotation": {
+        "origin": [
+          0,
+          16,
+          8.0
+        ],
+        "axis": "z",
+        "angle": -27.7585
+      }
+    },
+    {
+      "from": [
+        0,
+        13,
+        0
+      ],
+      "to": [
+        21.4709,
+        13,
+        16
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#gills",
+          "shade": false
+        }
+      },
+      "rotation": {
+        "origin": [
+          0,
+          13,
+          8.0
+        ],
+        "axis": "z",
+        "angle": -27.7585
+      },
+      "light_emission": 15
+    },
+    {
+      "from": [
+        17.5,
+        -2,
+        0
+      ],
+      "to": [
+        19,
+        6,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            8,
+            16,
+            16
+          ],
+          "texture": "#skirt"
+        },
+        "south": {
+          "uv": [
+            0,
+            8,
+            16,
+            16
+          ],
+          "texture": "#skirt"
+        },
+        "east": {
+          "uv": [
+            0,
+            8,
+            16,
+            16
+          ],
+          "texture": "#skirt"
+        },
+        "west": {
+          "uv": [
+            0,
+            8,
+            16,
+            16
+          ],
+          "texture": "#skirt"
+        }
+      },
+      "light_emission": 12
+    }
+  ],
+  "ambientocclusion": false
+}

@@ -23,6 +23,16 @@ public final class EvidencePins {
     public static volatile boolean cardinalLightNether;
     /** No lampless figures spawn on the rails: one that spawned between the last wait and the shot would be in the still. */
     public static volatile boolean figureSpawningOff;
+    /**
+     * The sky is not drawn (no stars, sun, moon, sunrise or sunset), so where a view runs past what the client has
+     * drawn it shows the fog colour the frame is cleared to; and {@link #SKY_HIDDEN_CAPTION} is written in a corner of
+     * the frame, so no still passes the hidden sky off as the game's look. For a cavern that the overworld sky shows
+     * behind (#1161).
+     */
+    public static volatile boolean skyHidden;
+
+    /** The corner caption of a still taken with {@link #skyHidden} on. */
+    public static final String SKY_HIDDEN_CAPTION = "sky hidden for review (#1161)";
 
     /**
      * The age in ticks that GeckoLib reads as the clock of a lampless figure's animation (0 or more); negative keeps the figure's own.
@@ -55,6 +65,7 @@ public final class EvidencePins {
         entitiesPosed = false;
         figureSpawningOff = false;
         cardinalLightNether = false;
+        skyHidden = false;
         figureAnimationAge = -1f;
         drifterAnimationAge = -1f;
         attackHeld = false;

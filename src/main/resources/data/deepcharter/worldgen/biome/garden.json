@@ -71,7 +71,10 @@
     ],
     [
       "deepcharter:fungal_stalks_hollows",
-      "deepcharter:glowcaps_garden"
+      "deepcharter:glowcaps_garden",
+      "deepcharter:giant_fungi_quiet",
+      "deepcharter:giant_fungi_spore_fields",
+      "deepcharter:giant_fungi_garden"
     ],
     [],
     []

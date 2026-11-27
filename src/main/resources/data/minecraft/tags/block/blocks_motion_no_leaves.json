@@ -64,6 +64,13 @@
     "deepcharter:green_shale",
     "deepcharter:green_shale_rubble",
     "deepcharter:basalt_core",
-    "deepcharter:columnar_basalt"
+    "deepcharter:columnar_basalt",
+    "deepcharter:parasol_stem",
+    "deepcharter:parasol_ring",
+    "deepcharter:parasol_gills",
+    "deepcharter:parasol_cap",
+    "deepcharter:fungal_flare",
+    "deepcharter:spire",
+    "deepcharter:spire_base"
   ]
 }

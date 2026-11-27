@@ -2512,7 +2512,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 **Tuning knobs.** The noise in `campaign.json` (column threshold 0.40, 0.62 in the Quiet; shelf thickness and holes), `line_hollows.json` (`depth`), the glowcap counts in `glowcaps_<zone>.json`, the fills in `fill_<zone>.json`, `LayerTuning.glowcapLight`.
 
-**Look calls.** The user picked from the concept stills (#1147): the shipped fog, glow, ambient light, bare Quiet and cold basalt with lava kept in the rock stay; the spore gas is the denser haze. The giant fungi are to mix stalks, parasols and spires ([#1202](https://github.com/pkeppeler/deepcharter/issues/1202)); until then only the stalks grow. Drifters and Overgrowth are #975 and #976.
+**Look calls.** The user picked from the concept stills (#1147): the shipped fog, glow, ambient light, bare Quiet and cold basalt with lava kept in the rock stay; the spore gas is the denser haze. The giant fungi grow mixed ([#1202](https://github.com/pkeppeler/deepcharter/issues/1202)): great stalks, parasols and spire clusters, weighted per zone. The Garden grows all three forms, the Spore Fields mostly spires, and the Quiet lone parasols, with some spires and no great stalks. Each giant stays inside its own chunk, at most 15 blocks across, and glows: a parasol's rim and gills, a spire cluster's tips. Drifters and Overgrowth are #975 and #976.
 
 **Open questions.** The Garden and the Spore Fields borrow layer 2's drone and music until layer 3 has its own; the Quiet is silent on purpose.
 
@@ -2564,7 +2564,7 @@ The test fails if a built row that asks something (from layer 3 on) leaves a sto
 
 **Knobs.** `SuitTuning.DEFAULT` (capacity, base and per-level costs, the stock suit's ratings, the uncharted row, `leakShare`, refill, warning times, breach damage and cadence), `RatingTuning.DEFAULT` (the rows), `theme/suit.json` (the gauge).
 
-**Open questions.** Whether a hall's leak should grow with its worst axis rather than stay a flat share.
+**Open questions.** Whether a hall's leak should grow with its worst axis rather than stay a flat share. (Layer 3 now asks heat 1, pressure 2, flooding 1 and quake 2, `RatingTuning`: a stock suit lasts 90 s there dry, modelled, over this test's minute.)
 
 ## Suit tracks (#1064, A)
 

@@ -76,7 +76,10 @@
       "deepcharter:line_hollows"
     ],
     [
-      "deepcharter:glowcaps_spore_fields"
+      "deepcharter:glowcaps_spore_fields",
+      "deepcharter:giant_fungi_quiet",
+      "deepcharter:giant_fungi_spore_fields",
+      "deepcharter:giant_fungi_garden"
     ],
     [],
     []

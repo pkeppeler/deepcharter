@@ -36,6 +36,7 @@
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
     "MinecraftAttackMixin",
+    "SkyRendererMixin",
     "SoundManagerStopProbeMixin",
     "SpriteAnimationStateMixin"
   ],
