@@ -53,6 +53,10 @@ public class VoidBelowClientTest implements FabricClientGameTest {
                 RoomCarver.carvePocketBelow(one, 1, -RADIUS, RADIUS, -RADIUS, RADIUS);
                 RoomCarver.carve(one, -RADIUS, RADIUS, floor + CRUST_ROWS, FEET_Y - 1, -RADIUS, RADIUS, Blocks.STONE);
                 RoomCarver.carve(one, -RADIUS, RADIUS, FEET_Y, FEET_Y + 6, -RADIUS, RADIUS, Blocks.AIR);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, RADIUS);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, 0, FEET_Y, 0, Set.of(), 0f, 0f, true);

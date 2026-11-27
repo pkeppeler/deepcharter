@@ -165,10 +165,12 @@ public class ReacherFigureScenario extends EvidenceScenario {
                     client -> client.level != null
                             && TestLayers.clientIsIn(client, LAYER)
                             && client.gui.screen() == null);
+            serverDo(server -> buildChamber(layer(server)));
+            ClientWait.lightSettled(
+                    ctx, world.getServer(), LAYER, FLOOR.getX() + LENGTH / 2, FLOOR.getZ(), LENGTH / 2 + 1);
             serverDo(server -> {
                 ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
                 ServerLevel level = layer(server);
-                buildChamber(level);
                 PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.PROSPECTOR), level);
                 pod.setPos(at(POD));
                 pod.setYRot(POD_YAW);
