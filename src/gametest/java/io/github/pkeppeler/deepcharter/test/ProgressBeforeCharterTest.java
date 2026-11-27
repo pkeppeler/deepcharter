@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
@@ -263,6 +264,39 @@ public class ProgressBeforeCharterTest {
         if (!loaded.directives(player).equals(Set.of(CUSTOM_DIRECTIVE))
                 || !loaded.notes(player).equals(Set.of(FIRST))) {
             throw failure(helper, "the saved progress should load as it was saved");
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A version 1 personal store, saved before #1423, holds a player who finished chapter 1 on no charter: they have
+     * done the charcoal step too, so founding a charter does not carry a reopened chapter 1 into it. A store of this
+     * version that lacks the step still lacks it after a reload.
+     */
+    @GameTest
+    public void aVersionOnePersonalStoreThatFinishedChapterOneHasDoneTheCharcoalStepOnce(GameTestHelper helper) {
+        Identifier charcoal = Identifier.parse(HandbookChaptersOneToFiveTest.directive("welcome", "smelt_charcoal"));
+        UUID player = UUID.randomUUID();
+        PersonalHandbookData data = new PersonalHandbookData();
+        HandbookChaptersOneToFiveTest.chapterOneBeforeCharcoal()
+                .forEach(directive -> data.completeDirective(player, directive));
+        CompoundTag saved = (CompoundTag)
+                PersonalHandbookData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
+
+        PersonalHandbookData current =
+                PersonalHandbookData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+        if (current.directives(player).contains(charcoal)) {
+            throw failure(helper, "a reload of this version should not give %s", charcoal);
+        }
+        saved.putInt(Versioned.VERSION_KEY, 1);
+        PersonalHandbookData older =
+                PersonalHandbookData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+        if (!older.directives(player).contains(charcoal)) {
+            throw failure(
+                    helper,
+                    "a version 1 player who finished chapter 1 should have done %s, got %s",
+                    charcoal,
+                    older.directives(player));
         }
         helper.succeed();
     }

@@ -41,6 +41,15 @@
       ]
     },
     {
+      "id": "deepcharter:handbook/welcome/smelt_charcoal",
+      "text": {
+        "translate": "deepcharter.handbook.directive.welcome.smelt_charcoal"
+      },
+      "targets": [
+        { "item": "minecraft:charcoal", "count": 1 }
+      ]
+    },
+    {
       "id": "deepcharter:handbook/welcome/smelt_iron",
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.smelt_iron"
