@@ -4,6 +4,8 @@ status: accepted
 
 # The surface has no ore: the bootstrap's metal is salvage, and the yard is a biome
 
+*2026-11-26: extended by [ADR 0107](0107-a-step-added-to-a-shipped-chapter-reaches-old-saves-once-through-a-version-bump.md) for steps added to a shipped chapter.*
+
 Builds on [ADR 0030](0030-art-direction-decisions.md) (the art direction), [ADR 0036](0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md) (the surface, from data) and [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md) (the 1.15x cost bar). Issue #245. The user decided the bootstrap, in [art-direction.md](../design/art-direction.md) section 11 (issue #225, PR #234, 2026-10-08): colony salvage and fungal "wood" replace "start like normal Minecraft". The calls below are the implementer's, under the creative liberty of `designing-mechanics`, and the milestone demo can veto them: early ore access, the shape of the yard, and the ids.
 
 ## Decision

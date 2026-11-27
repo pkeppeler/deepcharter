@@ -3,7 +3,7 @@ all final, uninitialised, and assigned one each from a distinct parameter of its
 build and says to make it a record, unless `// class-ok: <reason>` sits on the class line or the contiguous `//` lines above it.
 
 Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
-on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build-checks CI job and the pre-push hook run it.
 Usage: tools/py tools/tests/gate_checks.py record_holder
 """
 import unittest
