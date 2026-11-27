@@ -203,3 +203,4 @@ if [[ -n $stopped ]]; then
   exit 1
 fi
 echo "  stopped: none"
+# timing probe
