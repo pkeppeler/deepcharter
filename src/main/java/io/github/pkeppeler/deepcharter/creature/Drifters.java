@@ -74,8 +74,8 @@ public final class Drifters {
      * Makes the tick roll and place for sources in {@code zone} with {@code random} in place of the level's, so a test's counts do not
      * depend on chance; null restores the level's. Other zones, and other levels, keep the level's.
      */
-    // test-seam: a test seeds the chance of a zone it alone uses so that its drifter counts are exact, not a
-    // probability
+    // test-seam: a test seeds the chance of a zone it alone uses so that its drifter counts are exact, not
+    // a probability
     public static void seed(DrifterAlarm.Zone zone, @Nullable RandomSource random) {
         if (random == null) {
             SEEDED.remove(zone);
@@ -248,7 +248,15 @@ public final class Drifters {
      * distance. It comes already drawn to the source. Empty when it did not.
      */
     public static Optional<Drifter> spawnFor(ServerLevel level, Source source, int sourcesInZone, RandomSource random) {
-        DrifterTuning.Spawn tuning = DrifterTuning.DEFAULT.spawn();
+        return spawnFor(level, source, sourcesInZone, random, DrifterTuning.DEFAULT.spawn());
+    }
+
+    /**
+     * {@link #spawnFor(ServerLevel, Source, int, RandomSource)} with the spawn tuning given, so a test can skew the
+     * form weights.
+     */
+    public static Optional<Drifter> spawnFor(
+            ServerLevel level, Source source, int sourcesInZone, RandomSource random, DrifterTuning.Spawn tuning) {
         BlockPos from = BlockPos.containing(source.pos());
         Optional<DrifterAlarm.Zone> zone = zoneOf(level, source);
         if (zone.isEmpty() || !level.getBiome(from).is(FUNGAL_HOLLOWS)) {
@@ -276,6 +284,9 @@ public final class Drifters {
                     "The drifter could not be created in " + level.dimension().identifier());
         }
         drifter.setPos(place.get());
+        // After the place, so the form's roll never moves where this drifter appears; later rolls of the tick
+        // still shift.
+        drifter.setVariant(DrifterVariant.pick(random, tuning.variantWeights()));
         drifter.hunt(source.pos());
         level.addFreshEntity(drifter);
         return Optional.of(drifter);

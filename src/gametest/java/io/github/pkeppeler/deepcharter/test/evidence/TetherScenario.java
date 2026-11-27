@@ -65,6 +65,7 @@ public class TetherScenario extends EvidenceScenario {
             UUID[] pods = new UUID[2];
             singleplayer.getServer().runOnServer(TetherScenario::build);
             ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + 3, Z, 38);
+            ClientWait.arrived(context, singleplayer.getServer());
             singleplayer.getServer().runOnServer(server -> place(server, pods));
             ClientWait.until(
                     context,
@@ -155,6 +156,7 @@ public class TetherScenario extends EvidenceScenario {
                 PodEntity pod = pod(server, pods[0]);
                 pod.setFuel(100f);
                 // A pod heads where its pilot looks: south, down the length of the shelf.
+                // arrived-ok: turns the player where it stands, so no chunk changes
                 player.teleportTo(level(server), player.getX(), player.getY(), player.getZ(), Set.of(), 0f, 10f, true);
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the person could not climb into the pod");

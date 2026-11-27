@@ -50,6 +50,11 @@ public class PodBraceClientTest implements FabricClientGameTest {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, 0, FEET_Y, 0, Set.of(), 0f, 0f, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(0, FEET_Y, 0);
                 pod.setHull(HULL);
@@ -99,8 +104,8 @@ public class PodBraceClientTest implements FabricClientGameTest {
                     pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
                 }
             });
-            // One ore of 12 hull takes 20 to 32, over the crust's 24 and the reserve of 4: the brace burns one and
-            // stops.
+            // One ore of 12 hull takes 20 to 32, over the crust's 24 and the reserve of 4: the brace burns one
+            // and stops.
             ClientWait.until(
                     context,
                     "the brace burning one ore",

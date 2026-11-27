@@ -28,7 +28,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * A second tank on a pod (SPEC: stranded pods wait for "rescue or a reserve tank"). It is a separate attachment, not a part on the
+ * A second tank on a pod, one of the ways a stranded pod gets home (SPEC section 7). It is a separate attachment, not a part on the
  * fuel tank track: a part replaces the one on its track, and a reserve is fitted besides the tank part and is not charter-stamped
  * (ADR 0019).
  *

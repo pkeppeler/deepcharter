@@ -13,6 +13,7 @@ import static io.github.pkeppeler.deepcharter.test.support.PodDrives.standsAt;
 
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodGlideTuning;
+import io.github.pkeppeler.deepcharter.pod.PodSteeringTuning;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -40,8 +41,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The real client pilots one pod and watches a mock
- * player's pod beside it, over flat ground, climbing on the rotor, and drilling into a wall, judged by {@link PodDrives}.
+ * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The real client pilots one pod and
+ * watches a mock player's pod beside it, over flat ground at the cruise and at the sprint's boost (#1276), climbing on
+ * the rotor, and drilling into a wall, judged by {@link PodDrives}.
  *
  * <p>The harness ticks the server and client in lockstep, so the network is as regular as it never is in play. {@link PacketJitter}
  * makes it irregular the way a real connection is: every third client tick the client handles no pod move and the next tick
@@ -60,8 +62,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /** Long enough for three slabs of wall and the approach to it. */
     private static final int DRILL_TICKS = 190;
 
-    /** A stall across the pod's arrival at the wall, which it reaches about 38 ticks into the drive. */
-    private static final int WALL_STALL_AT_TICK = 34;
+    /** A stall across the pod's arrival at the wall, which it reaches about 20 ticks into the drive. */
+    private static final int WALL_STALL_AT_TICK = 16;
 
     private static final int WALL_STALL_TICKS = 6;
 
@@ -134,6 +136,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
             PodTuning.Movement movement = PodTuning.DEFAULT.movement();
             double flatSpeed = movement.horizontalSpeed();
+            double sprintSpeed = flatSpeed * PodSteeringTuning.DEFAULT.sprintBoost();
             // Forward and up together: the pod's speed is the two at once.
             double climbSpeed = Math.hypot(flatSpeed, movement.maxClimbSpeed());
             PodEvents.AFTER_TICK.register(pod -> {
@@ -150,6 +153,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             PacketJitter.start();
             try {
                 PodDrives.drive(context, rig, Drive.forward("flat drive", FLAT_TICKS, flatSpeed, true, false, null));
+                PodDrives.drive(context, rig, Drive.sprint("sprint drive", FLAT_TICKS, sprintSpeed, true, null));
                 PodDrives.drive(
                         context,
                         rig,
@@ -478,7 +482,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /**
      * Ticks a pod pinned {@code past} blocks behind where it is drawn is watched: the settle delay, then the ticks that giving back
      * {@code settleShare} of the gap a tick takes to bring it within {@link PodDrives#SETTLE_TOLERANCE}, and {@link #PIN_SLACK_TICKS}. A faster
-     * pod coasts further past the pin, so it is watched longer (40 ticks at the stock speed).
+     * pod coasts further past the pin, so it is watched longer (46 ticks at the 0.4 cruise).
      */
     private static int pinnedTicks(double past) {
         PodGlideTuning tuning = PodGlideTuning.DEFAULT;

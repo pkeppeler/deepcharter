@@ -10,6 +10,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 
@@ -21,12 +23,30 @@ public final class ShippedHandbook {
     private ShippedHandbook() {}
 
     public static List<HandbookPage> pages(Minecraft client) {
+        return HandbookPages.withPencil(
+                HandbookPages.of(chapters(client), ClientHandbook.completed()), ClientPencil.entries());
+    }
+
+    /**
+     * The pages with every shipped directive done, so that every chapter is full and binds all of its text pages. No
+     * pencil sheet is bound: those come from the Notes a charter has found, not from the chapters.
+     */
+    public static List<HandbookPage> everyChapterFull(Minecraft client) {
+        Map<Identifier, HandbookChapter> chapters = chapters(client);
+        Set<Identifier> done = chapters.values().stream()
+                .flatMap(chapter -> chapter.directives().stream())
+                .map(HandbookChapter.Entry::id)
+                .collect(Collectors.toSet());
+        return HandbookPages.of(chapters, done);
+    }
+
+    private static Map<Identifier, HandbookChapter> chapters(Minecraft client) {
         Map<Identifier, HandbookChapter> shipped = new LinkedHashMap<>();
         HandbookChapters.all(Objects.requireNonNull(client.getConnection(), "the client is not connected")
                         .registryAccess())
                 .stream()
                 .filter(entry -> !entry.key().identifier().getPath().equals("sample"))
                 .forEach(entry -> shipped.put(entry.key().identifier(), entry.value()));
-        return HandbookPages.withPencil(HandbookPages.of(shipped, ClientHandbook.completed()), ClientPencil.entries());
+        return shipped;
     }
 }

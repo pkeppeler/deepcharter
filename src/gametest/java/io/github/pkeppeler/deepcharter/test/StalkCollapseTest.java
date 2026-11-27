@@ -13,7 +13,6 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.ItemSpawns;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
-import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -34,6 +33,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
@@ -42,7 +42,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.phys.AABB;
@@ -66,9 +65,6 @@ public class StalkCollapseTest {
     private static final int AREA_MAX = 10;
     /** How many rows above {@link #BASE_ROW} the area counts: more than the tallest great stalk and its cap reach. */
     private static final int AREA_TOP = 30;
-    /** Longer than a collapse takes: the sag delay plus one step for each layer of the tallest great stalk and its cap. */
-    private static final int COLLAPSE_WAIT = 200;
-
     /**
      * Where the far player stands, at x = 0: off the stalk (the braid's cells reach z = 17 and the single column stands at z = 2), so
      * that it takes no part in the collapse.
@@ -81,7 +77,7 @@ public class StalkCollapseTest {
 
     private static final int COLUMN_HEIGHT = 6;
     private static final int BROKEN_SEGMENT = 2;
-    private static final int TEST_MAX_TICKS = COLLAPSE_WAIT + 100;
+    private static final int TEST_MAX_TICKS = 300;
     private static final int COUNT_MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + TEST_MAX_TICKS;
     private static final int RATE_ATTEMPTS = 600;
     private static final long RATE_SEED = 855;
@@ -196,7 +192,10 @@ public class StalkCollapseTest {
         }
     }
 
-    /** Breaking a segment drops everything above it after a sag; the segments below stay, and the drops are the by-hand drops. */
+    /**
+     * Breaking a segment drops everything above it in the tick of the break; the segments below stay, and the drops are
+     * the by-hand drops.
+     */
     @GameTest(maxTicks = COUNT_MAX_TICKS, environment = SINGLE_ALONE)
     public void breakingASegmentCollapsesEverythingAboveIt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -208,8 +207,8 @@ public class StalkCollapseTest {
                 .thenWaitUntil(countable)
                 .thenExecute(() -> {
                     clearArea(helper, COLUMN_HEIGHT);
-                    // The reference: every block from the break up, broken by hand from the top down, so nothing
-                    // collapses.
+                    // The reference: every block from the break up, broken by hand from the top down, so
+                    // nothing collapses.
                     column(helper, 2, 2, COLUMN_HEIGHT);
                     ItemSpawns reference = ItemSpawns.start(helper, stalkRegion(helper));
                     for (int index = COLUMN_HEIGHT - 1; index >= BROKEN_SEGMENT; index--) {
@@ -229,7 +228,6 @@ public class StalkCollapseTest {
                     collapse.set(ItemSpawns.start(helper, stalkRegion(helper)));
                     breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
                 })
-                .thenIdle(COLLAPSE_WAIT)
                 .thenExecute(() -> {
                     for (int index = 0; index < COLUMN_HEIGHT; index++) {
                         boolean stands = isStalkBlock(
@@ -254,24 +252,22 @@ public class StalkCollapseTest {
                 .thenSucceed();
     }
 
-    /** The top of the column is the whole of what falls when the break is the second block from the top, and the sag is not instant. */
+    /**
+     * Breaking a segment takes the whole column above it in the same tick, as sugar cane goes: nothing sags or waits.
+     */
     @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void theColumnSagsBeforeItBursts(GameTestHelper helper) {
+    public void theColumnCollapsesInTheTickOfTheBreak(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         clearArea(helper, COLUMN_HEIGHT);
-        MockPlayer player = farPlayer(helper, "stalk-sag");
+        MockPlayer player = farPlayer(helper, "stalk-instant");
         column(helper, 2, 2, COLUMN_HEIGHT);
         breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
-        BlockPos top = helper.absolutePos(new BlockPos(2, BASE_ROW + COLUMN_HEIGHT - 1, 2));
-        if (!isStalkBlock(level.getBlockState(top))) {
-            throw failure(helper, "the top of the column fell in the tick of the break, with no sag");
-        }
-        helper.runAfterDelay(COLLAPSE_WAIT, () -> {
-            if (isStalkBlock(level.getBlockState(top))) {
-                throw failure(helper, "the top of the column still stands after the collapse");
+        for (int index = BROKEN_SEGMENT; index < COLUMN_HEIGHT; index++) {
+            if (isStalkBlock(level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_ROW + index, 2))))) {
+                throw failure(helper, "segment %s still stands in the tick of the break", index);
             }
-            helper.succeed();
-        });
+        }
+        helper.succeed();
     }
 
     /** SPEC: the rules are never a mystery. The puff is atmosphere, so a player beside the stalk takes no damage and no status effect. */
@@ -285,25 +281,49 @@ public class StalkCollapseTest {
         column(helper, 2, 2, COLUMN_HEIGHT);
         float health = player.player().getHealth();
         breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
-        helper.runAfterDelay(COLLAPSE_WAIT, () -> {
-            if (isStalkBlock(
-                    level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_ROW + COLUMN_HEIGHT - 1, 2))))) {
-                throw failure(helper, "the column did not collapse");
-            }
-            if (player.player().getHealth() != health || !player.player().isAlive()) {
-                throw failure(
-                        helper,
-                        "the collapse hurt the player: health %s of %s",
-                        player.player().getHealth(),
-                        health);
-            }
-            if (!player.player().getActiveEffects().isEmpty()) {
-                throw failure(
-                        helper,
-                        "the collapse gave the player %s",
-                        player.player().getActiveEffects());
-            }
-            helper.succeed();
+        if (isStalkBlock(level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_ROW + COLUMN_HEIGHT - 1, 2))))) {
+            throw failure(helper, "the column did not collapse");
+        }
+        if (player.player().getHealth() != health || !player.player().isAlive()) {
+            throw failure(
+                    helper,
+                    "the collapse hurt the player: health %s of %s",
+                    player.player().getHealth(),
+                    health);
+        }
+        if (!player.player().getActiveEffects().isEmpty()) {
+            throw failure(
+                    helper, "the collapse gave the player %s", player.player().getActiveEffects());
+        }
+        helper.succeed();
+    }
+
+    /**
+     * One collapse coughs once. Each burst block is removed too, and announces its removal to the block: the collapse
+     * must not take that for a break of its own and cough again for what is left of the column.
+     */
+    @GameTest(maxTicks = TEST_MAX_TICKS)
+    public void aCollapseCoughsOnce(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        clearArea(helper, COLUMN_HEIGHT);
+        MockPlayer player = MockPlayers.join(helper, "stalk-cough");
+        player.player().setGameMode(GameType.SURVIVAL);
+        player.teleportTo(level, Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(3, BASE_ROW, 2))), 0, 0);
+        column(helper, 2, 2, COLUMN_HEIGHT);
+        helper.runAfterDelay(1, () -> {
+            Identifier cough = SoundEvents.PUFFER_FISH_BLOW_OUT.location();
+            long before =
+                    player.soundsInTheWorld().stream().filter(cough::equals).count();
+            breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
+            // The mock reads what the server sent on its own tick, one later.
+            helper.runAfterDelay(2, () -> {
+                long coughs =
+                        player.soundsInTheWorld().stream().filter(cough::equals).count() - before;
+                if (coughs != 1) {
+                    throw failure(helper, "one collapse coughed %s times, not once", coughs);
+                }
+                helper.succeed();
+            });
         });
     }
 
@@ -315,14 +335,12 @@ public class StalkCollapseTest {
         MockPlayer player = farPlayer(helper, "stalk-top");
         column(helper, 2, 2, COLUMN_HEIGHT);
         breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + COLUMN_HEIGHT - 1, 2)));
-        helper.runAfterDelay(COLLAPSE_WAIT, () -> {
-            for (int index = 0; index < COLUMN_HEIGHT - 1; index++) {
-                if (!isStalkBlock(level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_ROW + index, 2))))) {
-                    throw failure(helper, "segment %s fell when only the top was broken", index);
-                }
+        for (int index = 0; index < COLUMN_HEIGHT - 1; index++) {
+            if (!isStalkBlock(level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_ROW + index, 2))))) {
+                throw failure(helper, "segment %s fell when only the top was broken", index);
             }
-            helper.succeed();
-        });
+        }
+        helper.succeed();
     }
 
     /** The chunk-local x or z of the middle of a chunk, give or take the 3 x 3 footprint. */
@@ -844,7 +862,6 @@ public class StalkCollapseTest {
                     }
                     breakByHand(helper, player, at(braidOrigin(helper), broken));
                 })
-                .thenIdle(COLLAPSE_WAIT)
                 .thenExecute(() -> {
                     Set<Cell> expected = new HashSet<>(layout.parts().keySet());
                     expected.removeAll(everything);
@@ -935,90 +952,8 @@ public class StalkCollapseTest {
     }
 
     /**
-     * A player in the shade of a shelf or a cap, at the foot of the trunk it hangs from, takes nothing when that trunk comes down: a
-     * block that would land in the player's cells bursts instead.
-     */
-    private void braidNeverLandsOnAPlayer(GameTestHelper helper, long seed) {
-        ServerLevel level = helper.getLevel();
-        GreatStalkLayout layout = layoutOf(seed);
-        // The cap block that hangs lowest over free ground, and the trunk base it hangs from.
-        Cell shade = layout.parts().keySet().stream()
-                .filter(cell -> layout.parts().get(cell) == Part.CAP
-                        && cell.y() >= 2
-                        && !layout.parts().containsKey(new Cell(cell.x(), 0, cell.z()))
-                        && !layout.parts().containsKey(new Cell(cell.x(), 1, cell.z())))
-                .min(Comparator.comparingInt(Cell::y).thenComparingInt(Cell::x).thenComparingInt(Cell::z))
-                .orElseThrow();
-        int owner = ownerOf(layout, shade);
-        Cell base = layout.parts().keySet().stream()
-                .filter(cell -> cell.y() == 0 && !layout.optional().contains(cell) && ownerOf(layout, cell) == owner)
-                .min(Comparator.comparingInt(Cell::x).thenComparingInt(Cell::z))
-                .orElseThrow();
-        holdBraidArea(helper);
-        if (!growBraid(helper, seed)) {
-            throw failure(helper, "the braid would not grow on a flat stone floor");
-        }
-        BlockPos origin = braidOrigin(helper);
-        MockPlayer player = MockPlayers.join(helper, "braid-foot");
-        player.player().setGameMode(GameType.SURVIVAL);
-        player.teleportTo(level, Vec3.atBottomCenterOf(origin.offset(shade.x(), 0, shade.z())), 0, 0);
-        BlockPos feet = player.player().blockPosition();
-        float health = player.player().getHealth();
-        TestTicks.each(helper, () -> {
-            for (BlockPos cell : List.of(feet, feet.above())) {
-                if (!level.getBlockState(cell).isAir()) {
-                    throw failure(
-                            helper,
-                            "a block %s landed in the player's cell %s",
-                            level.getBlockState(cell),
-                            cell.toShortString());
-                }
-            }
-        });
-        breakByHand(helper, player, at(origin, base));
-        helper.runAfterDelay(COLLAPSE_WAIT, () -> {
-            Set<Cell> expected = new HashSet<>(layout.parts().keySet());
-            expected.removeAll(fallenBy(layout, base));
-            expected.remove(base);
-            Set<Cell> after = standing(helper).keySet();
-            if (!after.equals(expected)) {
-                Set<Cell> extra = new HashSet<>(after);
-                extra.removeAll(expected);
-                Set<Cell> missing = new HashSet<>(expected);
-                missing.removeAll(after);
-                throw failure(
-                        helper,
-                        "the braid did not collapse as it should after breaking %s: %s stand that should not, %s are gone that should stand",
-                        base,
-                        extra,
-                        missing);
-            }
-            if (player.player().getHealth() != health) {
-                throw failure(
-                        helper,
-                        "the player lost health: %s of %s",
-                        player.player().getHealth(),
-                        health);
-            }
-            helper.succeed();
-        });
-    }
-
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aSagBraidNeverLandsOnAPlayerAtItsFoot(GameTestHelper helper) {
-        braidNeverLandsOnAPlayer(helper, BRAID_SEED);
-    }
-
-    /** The great block's {@code falling} state, found by name: the property is the collapse's own. */
-    private static BlockState falling(Block block) {
-        BooleanProperty property = (BooleanProperty) block.getStateDefinition().getProperty("falling");
-        return block.defaultBlockState()
-                .setValue(Objects.requireNonNull(property, "great blocks have a falling state"), true);
-    }
-
-    /**
      * #876: a collapse never loads a chunk beside the one it is in. A great stalk on the east edge of a chunk whose east neighbour is not
-     * loaded is broken (and a falling block of it broken by hand); the neighbour is still not loaded after.
+     * loaded is broken; the neighbour is still not loaded after.
      */
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aCollapseAtAChunkEdgeNeverLoadsTheChunkBeside(GameTestHelper helper) {
@@ -1026,6 +961,8 @@ public class StalkCollapseTest {
         BlockPos here = helper.absolutePos(new BlockPos(0, BASE_ROW, 0));
         int chunkX = (here.getX() >> 4) + UNLOADED_CHUNKS_AWAY;
         int chunkZ = here.getZ() >> 4;
+        // sync-load: the case needs this one chunk loaded alone, its east neighbour not; a forced chunk loads
+        // its neighbours
         LevelChunk chunk = level.getChunk(chunkX, chunkZ);
         if (level.getChunkSource().hasChunk(chunkX + 1, chunkZ)) {
             throw failure(helper, "the chunk beside the test chunk is loaded before the test starts");
@@ -1035,33 +972,12 @@ public class StalkCollapseTest {
         // and neighbour
         // updates across the edge load the chunk beside it, and are not the collapse's.
         for (Block block : List.of(ours("great_stalk"), ours("great_stalk_cap"))) {
-            for (boolean fallingState : new boolean[] {false, true}) {
-                chunk.setBlockState(edge, Blocks.AIR.defaultBlockState(), 0);
-                BlockState removed = fallingState ? falling(block) : block.defaultBlockState();
-                removed.affectNeighborsAfterRemoval(level, edge, false);
-                if (level.getChunkSource().hasChunk(chunkX + 1, chunkZ)) {
-                    throw failure(
-                            helper,
-                            "breaking %s (falling %s) at a chunk's edge loaded the chunk beside it",
-                            block,
-                            fallingState);
-                }
+            chunk.setBlockState(edge, Blocks.AIR.defaultBlockState(), 0);
+            block.defaultBlockState().affectNeighborsAfterRemoval(level, edge, false);
+            if (level.getChunkSource().hasChunk(chunkX + 1, chunkZ)) {
+                throw failure(helper, "breaking %s at a chunk's edge loaded the chunk beside it", block);
             }
         }
         helper.succeed();
-    }
-
-    /** A falling great block that nothing is collapsing (a command placed it) comes down on its own, and does not stay in the air. */
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aStrayFallingBlockComesDown(GameTestHelper helper) {
-        clearBraidArea(helper);
-        BlockPos pos = braidOrigin(helper).above(3);
-        helper.getLevel().setBlock(pos, falling(ours("great_stalk")), Block.UPDATE_ALL);
-        helper.runAfterDelay(COLLAPSE_WAIT, () -> {
-            if (!helper.getLevel().getBlockState(pos).isAir()) {
-                throw failure(helper, "a stray falling block still hangs in the air");
-            }
-            helper.succeed();
-        });
     }
 }

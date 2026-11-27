@@ -1,0 +1,64 @@
+{
+  "variants": {
+    "diagonal=false,facing=east,lit=false": {
+      "model": "deepcharter:block/giant/gills"
+    },
+    "diagonal=false,facing=east,lit=true": {
+      "model": "deepcharter:block/giant/gills_lamp"
+    },
+    "diagonal=false,facing=south,lit=false": {
+      "model": "deepcharter:block/giant/gills",
+      "y": 90
+    },
+    "diagonal=false,facing=south,lit=true": {
+      "model": "deepcharter:block/giant/gills_lamp",
+      "y": 90
+    },
+    "diagonal=false,facing=west,lit=false": {
+      "model": "deepcharter:block/giant/gills",
+      "y": 180
+    },
+    "diagonal=false,facing=west,lit=true": {
+      "model": "deepcharter:block/giant/gills_lamp",
+      "y": 180
+    },
+    "diagonal=false,facing=north,lit=false": {
+      "model": "deepcharter:block/giant/gills",
+      "y": 270
+    },
+    "diagonal=false,facing=north,lit=true": {
+      "model": "deepcharter:block/giant/gills_lamp",
+      "y": 270
+    },
+    "diagonal=true,facing=east,lit=false": {
+      "model": "deepcharter:block/giant/gills_diagonal"
+    },
+    "diagonal=true,facing=east,lit=true": {
+      "model": "deepcharter:block/giant/gills_lamp_diagonal"
+    },
+    "diagonal=true,facing=south,lit=false": {
+      "model": "deepcharter:block/giant/gills_diagonal",
+      "y": 90
+    },
+    "diagonal=true,facing=south,lit=true": {
+      "model": "deepcharter:block/giant/gills_lamp_diagonal",
+      "y": 90
+    },
+    "diagonal=true,facing=west,lit=false": {
+      "model": "deepcharter:block/giant/gills_diagonal",
+      "y": 180
+    },
+    "diagonal=true,facing=west,lit=true": {
+      "model": "deepcharter:block/giant/gills_lamp_diagonal",
+      "y": 180
+    },
+    "diagonal=true,facing=north,lit=false": {
+      "model": "deepcharter:block/giant/gills_diagonal",
+      "y": 270
+    },
+    "diagonal=true,facing=north,lit=true": {
+      "model": "deepcharter:block/giant/gills_lamp_diagonal",
+      "y": 270
+    }
+  }
+}

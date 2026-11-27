@@ -120,8 +120,8 @@ public final class SeamPodScene {
             mock.player().stopRiding();
             mock.teleportTo(site.one(), hold, 0, 0);
             real.teleportTo(site.one(), hold.x, hold.y, hold.z, Set.of(), 0, 0, true);
-            // Held in the air until the pod is there: nothing else would stop a fall through the floor, which is a
-            // crossing.
+            // Held in the air until the pod is there: nothing else would stop a fall through the floor, which is
+            // a crossing.
             mock.player().setNoGravity(true);
             real.setNoGravity(true);
             mock.announceChannel(SeamPreparePayload.TYPE);

@@ -94,9 +94,22 @@ final class SignalDecayDescent {
                             one.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);
                         }
                     }
+                });
+                ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, ROOM_RADIUS + 1);
+                singleplayer.getServer().runOnServer(server -> {
+                    ServerLevel one = TestLayers.level(server, 1);
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                    player.setGameMode(GameType.SURVIVAL);
+                    // Creative until the seat: the player waits for the arrival high in the shaft, and a fall
+                    // there kills a survival player before the chunk is ready.
+                    player.setGameMode(GameType.CREATIVE);
                     player.teleportTo(one, X + 0.5, START_Y, Z + 0.5, Set.of(), 0f, 25f, true);
+                });
+                ClientWait.arrived(context, singleplayer.getServer());
+                singleplayer.getServer().runOnServer(server -> {
+                    ServerLevel one = TestLayers.level(server, 1);
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                    player.resetFallDistance();
+                    player.setGameMode(GameType.SURVIVAL);
                     PodEntity pod = TestEntities.create(PodRegistry.typeOf(chassis), one);
                     pod.setPos(X + 0.5, START_Y, Z + 0.5);
                     pod.setNoGravity(true);

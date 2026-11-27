@@ -817,7 +817,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
         }
     }
 
-    private static int handbookSlot(Inventory inventory) {
+    /** The hotbar slot of the handbook, or -1. Shared with SeatedTerminalsClientTest. */
+    static int handbookSlot(Inventory inventory) {
         for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) {
             if (HandbookItems.isHandbook(inventory.getItem(slot))) {
                 return slot;

@@ -64,7 +64,16 @@ public class LootTableDropsTest {
             Map.entry("green_shale_rubble", "green_shale_rubble"),
             Map.entry("basalt_core", "basalt_core"),
             Map.entry("columnar_basalt", "columnar_basalt"),
-            Map.entry("glowcap", "glowcap"));
+            Map.entry("glowcap", "glowcap"),
+            Map.entry("parasol_stem", "fungal_stalk"),
+            Map.entry("parasol_ring", "fungal_stalk"),
+            Map.entry("parasol_gills", "fungal_stalk"),
+            Map.entry("parasol_cap", "fungal_stalk"),
+            Map.entry("parasol_rim", "fungal_stalk"),
+            Map.entry("fungal_flare", "fungal_stalk"),
+            Map.entry("spire", "fungal_stalk"),
+            Map.entry("spire_tip", "fungal_stalk"),
+            Map.entry("spire_base", "fungal_stalk"));
 
     /** The salvage crate's pools: item to its fewest and most per roll. */
     private record Range(String item, int min, int max) {}
@@ -312,9 +321,8 @@ public class LootTableDropsTest {
                     "%s drops the recordings %s, expected every one but the colony's own: %s", table, found, FOUND);
         }
         // Each recording is as likely as the next: one in however many there are, give or take 40 per cent. A doubled
-        // weight is 78 per
-        // cent over and a halved one 47 per cent under, so either fails, and so does a table that drops only the first
-        // few.
+        // weight is 78 per cent over and a halved one 47 per cent under, so either fails, and so does a table that
+        // drops only the first few.
         double each = 1.0 / FOUND.size();
         for (Map.Entry<Recording, Integer> entry : found.entrySet()) {
             double of = (double) entry.getValue() / cylinders;
