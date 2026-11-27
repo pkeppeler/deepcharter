@@ -13,8 +13,8 @@ public final class CrtTextField extends EditBox {
     /** Pixels the frame sits outside the widget rectangle, so the borderless text does not touch it. Leave this much room around the field. */
     public static final int FRAME = 3;
 
-    // const-param: a kit widget takes its whole rectangle like EditBox; the demo screens in src/gametest size their own
-    // fields
+    // const-param: a kit widget takes its whole rectangle like EditBox; the demo screens in src/gametest size
+    // their own fields
     public CrtTextField(Font font, int x, int y, int width, int height, Component hint) {
         super(font, x, y, width, height, hint);
         setBordered(false);
