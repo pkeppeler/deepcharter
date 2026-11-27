@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
@@ -68,7 +70,7 @@ public class NotesTest {
 
     private static void expectDone(GameTestHelper helper, Optional<CharterRefusal> refusal, String what) {
         if (refusal.isPresent()) {
-            throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
+            throw failure(helper, "%s should succeed, was refused: %s", what, refusal.get());
         }
     }
 
@@ -106,17 +108,23 @@ public class NotesTest {
             GameTestHelper helper, MinecraftServer server, ServerPlayer player, List<Identifier> expected) {
         List<Identifier> actual = notesOf(server, player);
         if (!actual.equals(expected)) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s should have the notes %s, has %s",
-                    player.getGameProfile().name(), expected, actual);
+                    player.getGameProfile().name(),
+                    expected,
+                    actual);
         }
     }
 
     private static void expectRead(GameTestHelper helper, ServerPlayer player, Identifier note, boolean expected) {
         if (ReadMarks.isRead(player, note) != expected) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s should be %s for %s",
-                    note, expected ? "read" : "unread", player.getGameProfile().name());
+                    note,
+                    expected ? "read" : "unread",
+                    player.getGameProfile().name());
         }
     }
 
@@ -148,7 +156,7 @@ public class NotesTest {
         use(helper, director, 1);
 
         if (!HandbookReadPayload.handle(server, crew, FIRST)) {
-            throw helper.assertionException("a member may read a Note their charter has found");
+            throw failure(helper, "a member may read a Note their charter has found");
         }
 
         expectRead(helper, crew, FIRST, true);
@@ -172,7 +180,7 @@ public class NotesTest {
         expectNotes(helper, server, director, List.of(FIRST));
         expectNotes(helper, server, crew, List.of(FIRST));
         if (again != FindResult.ALREADY_FOUND) {
-            throw helper.assertionException("finding a found Note again is ALREADY_FOUND, was %s", again);
+            throw failure(helper, "finding a found Note again is ALREADY_FOUND, was %s", again);
         }
         expectRead(helper, crew, FIRST, true);
         expectRead(helper, director, FIRST, false);
@@ -184,7 +192,7 @@ public class NotesTest {
         Identifier note = Notes.id(Notes.MAX_NUMBER);
         for (FindResult result : List.of(FindResult.UNKNOWN, FindResult.UNREADABLE)) {
             if (OpenNotePayload.after(result, note).isPresent()) {
-                throw helper.assertionException("%s should open nothing", result);
+                throw failure(helper, "%s should open nothing", result);
             }
         }
         helper.succeed();
@@ -197,7 +205,7 @@ public class NotesTest {
         OpenNotePayload.CODEC.encode(buf, new OpenNotePayload(SECOND));
         OpenNotePayload decoded = OpenNotePayload.CODEC.decode(buf);
         if (!decoded.note().equals(SECOND) || buf.isReadable()) {
-            throw helper.assertionException("the payload should round-trip to %s, was %s", SECOND, decoded);
+            throw failure(helper, "the payload should round-trip to %s, was %s", SECOND, decoded);
         }
         helper.succeed();
     }
@@ -207,7 +215,7 @@ public class NotesTest {
         for (FindResult result : FindResult.values()) {
             String key = "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT);
             if (!Language.getInstance().has(key)) {
-                throw helper.assertionException("%s has no line %s", result, key);
+                throw failure(helper, "%s has no line %s", result, key);
             }
         }
         helper.succeed();
@@ -225,15 +233,14 @@ public class NotesTest {
         FindResult again = NoteBlock.use(director, FIRST, payload -> opened.add(payload.note()));
         FindResult noCharter = NoteBlock.use(loner, SECOND, payload -> opened.add(payload.note()));
         if (first != FindResult.FOUND || again != FindResult.ALREADY_FOUND || noCharter != FindResult.NO_CHARTER) {
-            throw helper.assertionException("results were %s, %s, %s", first, again, noCharter);
+            throw failure(helper, "results were %s, %s, %s", first, again, noCharter);
         }
         if (!opened.equals(List.of(FIRST, FIRST, SECOND))) {
-            throw helper.assertionException(
-                    "the block should open FOUND, ALREADY_FOUND and NO_CHARTER, opened %s", opened);
+            throw failure(helper, "the block should open FOUND, ALREADY_FOUND and NO_CHARTER, opened %s", opened);
         }
         FindResult blank = NoteBlock.use(director, Notes.id(Notes.MAX_NUMBER), payload -> opened.add(payload.note()));
         if (blank != FindResult.UNKNOWN || opened.size() != 3) {
-            throw helper.assertionException("a blank page opens nothing: %s, opened %s", blank, opened);
+            throw failure(helper, "a blank page opens nothing: %s, opened %s", blank, opened);
         }
         helper.succeed();
     }
@@ -283,7 +290,7 @@ public class NotesTest {
         expectDone(helper, Charters.leave(server, director.getUUID()), "the last person leaving");
 
         if (!NotesData.get(server).found(id).equals(Set.of(FIRST))) {
-            throw helper.assertionException("a dormant charter keeps its Notes");
+            throw failure(helper, "a dormant charter keeps its Notes");
         }
         helper.succeed();
     }
@@ -303,9 +310,12 @@ public class NotesTest {
         boolean noCharter = HandbookReadPayload.handle(server, loner, FIRST);
 
         if (notFound || noSuchNote || noCharter) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "only a Note one's own charter found may be marked: notFound=%s noSuchNote=%s noCharter=%s",
-                    notFound, noSuchNote, noCharter);
+                    notFound,
+                    noSuchNote,
+                    noCharter);
         }
         expectRead(helper, director, FIRST, false);
         expectRead(helper, other, Notes.id(Notes.MAX_NUMBER), false);
@@ -323,7 +333,7 @@ public class NotesTest {
         FindResult result = Notes.find(director, Identifier.fromNamespaceAndPath("deepcharter", "note/n99"));
 
         if (result != FindResult.UNKNOWN) {
-            throw helper.assertionException("a Note that does not exist is UNKNOWN, was %s", result);
+            throw failure(helper, "a Note that does not exist is UNKNOWN, was %s", result);
         }
         expectNotes(helper, server, director, List.of());
         helper.succeed();
@@ -345,23 +355,22 @@ public class NotesTest {
                 "deepcharter:note/n11");
         if (!Notes.id(1).toString().equals("deepcharter:note/n01")
                 || !Notes.id(11).toString().equals("deepcharter:note/n11")) {
-            throw helper.assertionException("Notes.id(1) and Notes.id(11) changed: %s, %s", Notes.id(1), Notes.id(11));
+            throw failure(helper, "Notes.id(1) and Notes.id(11) changed: %s, %s", Notes.id(1), Notes.id(11));
         }
         if (!ShippedNotes.ids().stream().map(Identifier::toString).toList().equals(expectedIds)) {
-            throw helper.assertionException("ShippedNotes.ids() changed: %s", ShippedNotes.ids());
+            throw failure(helper, "ShippedNotes.ids() changed: %s", ShippedNotes.ids());
         }
         Collection<Integer> numbers = NoteBlock.NOTE.getPossibleValues();
         if (Collections.min(numbers) != 1
                 || Collections.max(numbers) != 29
                 || numbers.size() != 29
                 || Notes.MAX_NUMBER != 29) {
-            throw helper.assertionException(
-                    "the Note block range changed: %s, MAX_NUMBER %s", numbers, Notes.MAX_NUMBER);
+            throw failure(helper, "the Note block range changed: %s, MAX_NUMBER %s", numbers, Notes.MAX_NUMBER);
         }
         String prayerCard = Language.getInstance().getOrDefault(Notes.titleKey(Notes.id(7)));
         String log = Language.getInstance().getOrDefault(Notes.titleKey(Notes.id(10)));
         if (!prayerCard.equals("Prayer card") || !log.equals("Ines's log")) {
-            throw helper.assertionException("N07 and N10 titles changed: %s, %s", prayerCard, log);
+            throw failure(helper, "N07 and N10 titles changed: %s, %s", prayerCard, log);
         }
         helper.succeed();
     }
@@ -370,13 +379,13 @@ public class NotesTest {
     public void everyShippedNoteHasATitleAndATextInTheLanguageFile(GameTestHelper helper) {
         List<Identifier> all = ShippedNotes.ids();
         if (all.size() != 11) {
-            throw helper.assertionException("N01 to N11 ship in M2, found %s notes", all.size());
+            throw failure(helper, "N01 to N11 ship in M2, found %s notes", all.size());
         }
         for (Identifier note : all) {
             String title = Notes.titleKey(note);
             String text = Notes.textKey(note);
             if (!Language.getInstance().has(title) || !Language.getInstance().has(text)) {
-                throw helper.assertionException("%s needs the lang keys %s and %s", note, title, text);
+                throw failure(helper, "%s needs the lang keys %s and %s", note, title, text);
             }
         }
         helper.succeed();
@@ -392,10 +401,10 @@ public class NotesTest {
         use(helper, director, 1);
 
         if (!NotesSyncPayload.of(server, director.getUUID()).found().equals(List.of(FIRST, SECOND))) {
-            throw helper.assertionException("the charter's Notes go to a member in Note order");
+            throw failure(helper, "the charter's Notes go to a member in Note order");
         }
         if (!NotesSyncPayload.of(server, outsider.getUUID()).found().isEmpty()) {
-            throw helper.assertionException("a player on no charter is sent no Notes");
+            throw failure(helper, "a player on no charter is sent no Notes");
         }
         helper.succeed();
     }
@@ -409,13 +418,13 @@ public class NotesTest {
         paths.put("use", () -> {
             FindResult result = Notes.find(player, FIRST);
             if (result != FindResult.UNREADABLE) {
-                throw helper.assertionException("finding with unreadable notes is UNREADABLE, was %s", result);
+                throw failure(helper, "finding with unreadable notes is UNREADABLE, was %s", result);
             }
         });
         paths.put("sync", () -> NotesSyncPayload.send(server, player));
         paths.put("read request", () -> {
             if (!notesOf(server, player).isEmpty() || HandbookReadPayload.handle(server, player, FIRST)) {
-                throw helper.assertionException("unreadable notes read as empty and mark nothing");
+                throw failure(helper, "unreadable notes read as empty and mark nothing");
             }
         });
         UnreadableChecks.assertSavedDataNoThrow(helper, "notes", server, NotesData.TYPE, paths);
@@ -440,9 +449,11 @@ public class NotesTest {
             Path file = savedFile(dir);
             CompoundTag stamped = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
             if (NbtUtils.getDataVersion(stamped) <= olderDataVersion) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the test needs a saved DataVersion above %s, got %s",
-                        olderDataVersion, NbtUtils.getDataVersion(stamped));
+                        olderDataVersion,
+                        NbtUtils.getDataVersion(stamped));
             }
             Tag savedBody = Objects.requireNonNull(stamped.get("data"), "the stamped save has no data tag");
             NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
@@ -452,8 +463,7 @@ public class NotesTest {
                 Tag reloaded =
                         NotesData.CODEC.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow();
                 if (!reloaded.equals(savedBody) || !loaded.found(id).equals(Set.of(FIRST))) {
-                    throw helper.assertionException(
-                            "the fixer changed the notes data: saved %s, loaded %s", savedBody, reloaded);
+                    throw failure(helper, "the fixer changed the notes data: saved %s, loaded %s", savedBody, reloaded);
                 }
             }
         } catch (IOException e) {

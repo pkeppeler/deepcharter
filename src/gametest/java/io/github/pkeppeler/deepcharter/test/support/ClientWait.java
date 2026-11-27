@@ -11,10 +11,13 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Waits in a client GameTest for a value the server syncs, or for any other state the test awaits. The wait is on the wall clock, not on ticks: the client and
@@ -58,11 +61,24 @@ public final class ClientWait {
      */
     public static void until(
             ClientGameTestContext context, String what, BooleanSupplier condition, Supplier<String> actual) {
-        FarChunks.Deadline deadline = FarChunks.deadline();
+        until(context, what, FarChunks.WAIT_SECONDS, condition, actual);
+    }
+
+    /**
+     * As {@link #until(ClientGameTestContext, String, BooleanSupplier, Supplier)}, for up to {@code seconds}: for a wait late in a class
+     * that must fail, named, before the class's own limit ({@link ClientTestWatchdog}) halts the run.
+     */
+    public static void until(
+            ClientGameTestContext context,
+            String what,
+            int seconds,
+            BooleanSupplier condition,
+            Supplier<String> actual) {
+        FarChunks.Deadline deadline = FarChunks.deadline(seconds);
         while (!condition.getAsBoolean()) {
             if (deadline.expired()) {
-                throw new AssertionError("Timed out after " + FarChunks.WAIT_SECONDS + " s waiting for " + what
-                        + "; it had " + actual.get() + "; LightSync holds: " + LightSync.heldChunks());
+                throw new AssertionError("Timed out after " + seconds + " s waiting for " + what + "; it had "
+                        + actual.get() + "; LightSync holds: " + LightSync.heldChunks());
             }
             try {
                 Thread.sleep(FarChunks.POLL_MILLIS);
@@ -94,7 +110,7 @@ public final class ClientWait {
     /**
      * Waits until the server has settled the light of the chunks round the square of {@code radius} at ({@code x},
      * {@code z}) in {@code layer}. Call it after a carve, before a pod with a pilot moves in: a pod dropped while a
-     * chunk send is queued stays off its pilot's client until the send lands (#1249, ADR 0092).
+     * chunk send is queued stays off its pilot's client until the send lands (#1249, #1303, ADR 0092).
      */
     public static void lightSettled(
             ClientGameTestContext context, TestServerContext server, int layer, int x, int z, int radius) {
@@ -112,6 +128,36 @@ public final class ClientWait {
                 () -> "unsettled chunks "
                         + server.computeOnServer(
                                 srv -> unsettledChunks(TestLayers.level(srv, layer), minX, maxX, minZ, maxZ)));
+    }
+
+    /**
+     * Call between a far teleport and seating a pod (#1345): the chunk must hold the player's own ticket, and the
+     * client must have it, first.
+     */
+    public static void arrived(ClientGameTestContext context, TestServerContext server) {
+        until(
+                context,
+                "the player's chunk to tick entities on the server",
+                () -> server.computeOnServer(srv -> arrivalIn(firstPlayer(srv)) == null),
+                () -> server.computeOnServer(srv -> String.valueOf(arrivalIn(firstPlayer(srv)))));
+        BlockPos at = server.computeOnServer(srv -> firstPlayer(srv).blockPosition());
+        chunksAround(context, at.getX(), at.getZ(), 0);
+    }
+
+    private static ServerPlayer firstPlayer(MinecraftServer server) {
+        return server.getPlayerList().getPlayers().getFirst();
+    }
+
+    /** What the server still owes the player's arrival, or null once the chunk ticks entities and is not queued. */
+    private static @Nullable String arrivalIn(ServerPlayer player) {
+        ChunkPos chunk = player.chunkPosition();
+        if (!player.level().isPositionEntityTicking(player.blockPosition())) {
+            return "chunk " + chunk + " does not tick entities yet";
+        }
+        if (player.connection.chunkSender.isPending(chunk.pack())) {
+            return "chunk " + chunk + " is still queued to send";
+        }
+        return null;
     }
 
     private static List<ChunkPos> unsettledChunks(ServerLevel level, int minX, int maxX, int minZ, int maxZ) {

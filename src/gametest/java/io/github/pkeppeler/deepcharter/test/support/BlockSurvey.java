@@ -49,6 +49,7 @@ public final class BlockSurvey {
      * client run), never for a server GameTest, whose tests share the server thread.
      */
     public static List<BlockPos> generateAndFind(ServerLevel level, int chunks, Block wanted) {
+        // sync-load: for the evidence world's own client run, where no other test shares the server thread
         return find(chunks, wanted, level::getChunk);
     }
 

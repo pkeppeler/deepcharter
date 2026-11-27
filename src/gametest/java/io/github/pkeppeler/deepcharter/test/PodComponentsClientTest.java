@@ -4,21 +4,21 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
+import io.github.pkeppeler.deepcharter.client.pod.PodScreen;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
+import java.util.stream.IntStream;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -27,7 +27,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Client GameTest for #65: the parts of a pod reach the client, so the HUD shows the hull as points out of the pod's real
- * maximum, and the cargo screen has one slot for each slot of the bay.
+ * maximum, and the pod screen's hold is as big as the bay.
  */
 public class PodComponentsClientTest implements FabricClientGameTest {
     private static final float HULL_NOW = 150f;
@@ -48,6 +48,13 @@ public class PodComponentsClientTest implements FabricClientGameTest {
         OreType.BRONZIUM,
         OreType.GOLDIUM
     };
+
+    /** How many slots of the hold's first page hold something. */
+    private static long holdShown(PodMenu menu) {
+        return IntStream.range(0, PodMenu.HOLD_WINDOW)
+                .filter(i -> !menu.holdSlot(i).getItem().isEmpty())
+                .count();
+    }
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -74,8 +81,8 @@ public class PodComponentsClientTest implements FabricClientGameTest {
                 }
                 require(player.startRiding(pod), "the charter's founder could not mount the pod");
             });
-            // The registration, the parts and the hull reach the client in separate packets: wait for each value read
-            // below.
+            // The registration, the parts and the hull reach the client in separate packets: wait for each value
+            // read below.
             ClientWait.until(
                     context,
                     "the pod with its registration, parts and hull of " + HULL_NOW + "/" + HULL_MAX,
@@ -107,28 +114,18 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                OreCargoMenu.open(player, TestEntities.vehicle(player, PodEntity.class));
+                PodMenu.open(player, TestEntities.vehicle(player, PodEntity.class));
             });
-            ClientWait.screen(context, OreCargoScreen.class);
+            ClientWait.screen(context, PodScreen.class);
             ClientWait.until(
                     context,
-                    "the cargo menu with its " + LOAD.length + " ore",
-                    client -> ClientSession.player(client).containerMenu instanceof OreCargoMenu menu
-                            && OreCargoSlots.shown(menu).size() == LOAD.length,
-                    client -> ClientSession.player(client).containerMenu instanceof OreCargoMenu menu
-                            ? OreCargoSlots.shown(menu).size() + " ore"
-                            : "no cargo menu");
-            int slots = context.computeOnClient(
-                    client -> ((OreCargoMenu) ClientSession.player(client).containerMenu).cargoSlots());
-            int menuSlots = context.computeOnClient(
-                    client -> ClientSession.player(client).containerMenu.slots.size());
-            int shown = context.computeOnClient(
-                    client -> OreCargoSlots.shown((OreCargoMenu) ClientSession.player(client).containerMenu)
-                            .size());
-            require(
-                    slots == BAY_SLOTS && menuSlots == BAY_SLOTS && shown == LOAD.length,
-                    "The cargo screen should have " + BAY_SLOTS + " slots and show " + LOAD.length + " ore, has "
-                            + slots + " slots (" + menuSlots + " in the menu) and shows " + shown);
+                    "the pod screen with its " + LOAD.length + " ore in a hold of " + BAY_SLOTS,
+                    client -> ClientSession.player(client).containerMenu instanceof PodMenu menu
+                            && menu.capacity() == BAY_SLOTS
+                            && holdShown(menu) == LOAD.length,
+                    client -> ClientSession.player(client).containerMenu instanceof PodMenu menu
+                            ? holdShown(menu) + " ore in a hold of " + menu.capacity()
+                            : "no pod screen");
             context.waitTicks(10);
             context.takeScreenshot("m2-pod-components-cargo");
         }

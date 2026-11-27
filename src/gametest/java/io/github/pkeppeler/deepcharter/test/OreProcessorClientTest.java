@@ -108,8 +108,8 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             });
             require(ore == 0, "the sold ore left the inventory, " + ore + " remain");
 
-            // #313, #363: four spoil in the parked pod's bay become two slag brick in its rack, and the account is not
-            // charged.
+            // #313, #363: four spoil in the parked pod's bay become two slag brick in its rack, and the account is
+            // not charged.
             singleplayer
                     .getServer()
                     .runOnServer(server -> PodLining.modify(parkedPod(server), state -> state.withSpoil(4)));
@@ -331,10 +331,8 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             TerminalView manyView = new TerminalView(
                     processor,
                     TerminalTypes.ORE_PROCESSOR.id(),
-                    true,
-                    true,
-                    List.of(),
-                    Optional.of(new ProcessorView(many, List.of())));
+                    Optional.of(new ProcessorView(many, List.of())),
+                    List.of());
             for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                 context.setScreen(() -> new OreProcessorScreen(manyView));
                 OreProcessorScreen crowded =

@@ -78,6 +78,11 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X - 4, FLOOR_Y, Z + 0.5, Set.of(), EAST, LOOK_DOWN, true);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + 1, Z, 8);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X - 4, FLOOR_Y, Z + 0.5);
                 pod.setYRot(EAST);
@@ -293,8 +298,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
                     "a stopped pod should lose " + 2 * squeezeHull + " in two pulses, it lost " + lostStopped);
         }
 
-        // Driven west across the pad (forward, turned to face west) from 20 ticks before a pulse, the same pod takes
-        // nothing.
+        // Driven west across the pad (forward, turned to face west) from 20 ticks before a pulse, the same pod
+        // takes nothing.
         singleplayer.getServer().runOnServer(server -> pod(server).setPos(WALL_X - 3, FLOOR_Y, Z + 0.5));
         int waited = 0;
         while (singleplayer.getServer().computeOnServer(server -> PulseClock.ticksToPulse(level(server))) != 20) {

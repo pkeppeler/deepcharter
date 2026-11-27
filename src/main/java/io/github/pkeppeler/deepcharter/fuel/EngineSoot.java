@@ -38,7 +38,7 @@ import net.minecraft.server.level.ServerPlayer;
  *
  * <p>Refuelling with a solid fuel puts its litres, and the soot those litres will leave, in the tank's account; the
  * burn takes litres off that account in proportion. Each write clamps the account to the litres really in the tank, so
- * fuel that came from elsewhere (a pump, a reserve tank, a recovery) is never counted as solid. The burn is taken off
+ * fuel that came from elsewhere (a pump or a reserve tank) is never counted as solid. The burn is taken off
  * the solid fuel first, which counts a mixed tank pessimistically.
  *
  * <p>The tick path writes nothing until {@link #QUANTUM} litres have burned: the burn is held in a transient map (lost
@@ -235,7 +235,7 @@ public final class EngineSoot {
             return;
         }
         // The litres in the tank before this burn: those left, and those burned since the last write. The account of
-        // solid fuel can be no more, whatever a pump, a reserve tank or a recovery did to the tank meanwhile.
+        // solid fuel can be no more, whatever a pump or a reserve tank did to the tank meanwhile.
         float inTank = pod.fuel()
                         / PodTuning.DEFAULT.shell().fullFuel()
                         * PodStats.of(pod).tankLitres()

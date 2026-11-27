@@ -54,8 +54,8 @@ public class SurfaceBreachScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setPermanentlyInvulnerable(true);
-                // A transmission goes to a charter: the climb out into the surface brings the surface-arrival
-                // transmission.
+                // A transmission goes to a charter: the climb out into the surface brings the
+                // surface-arrival transmission.
                 if (Charters.found(server, player.getUUID(), "Surface Crew").isPresent()) {
                     throw new AssertionError("founding the charter should succeed");
                 }

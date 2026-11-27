@@ -117,8 +117,8 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
      */
     private static void aLongCharterNameIsCutAndTheLineKeepsItsEnd(ClientGameTestContext context) {
         context.runOnClient(client -> {
-            TerminalView view = new TerminalView(
-                    BlockPos.ZERO, ContractTerminal.TYPE.id(), true, true, List.of(), Optional.empty());
+            TerminalView view =
+                    new TerminalView(BlockPos.ZERO, ContractTerminal.TYPE.id(), Optional.empty(), List.of());
             ContractScreen screen = (ContractScreen) TerminalScreens.create(view);
             screen.init(GUI_WIDTH, GUI_HEIGHT);
             String name = "W".repeat(LONG_NAME);

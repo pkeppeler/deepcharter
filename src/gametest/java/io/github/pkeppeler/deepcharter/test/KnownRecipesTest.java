@@ -405,8 +405,8 @@ public class KnownRecipesTest {
         player.awardRecipes(List.of(stonePickaxe));
 
         expectInBook(helper, player, STONE_PICKAXE, false);
-        // A recipe saved in the player's own data is not sent either: the book matches what is known when it is first
-        // sent.
+        // A recipe saved in the player's own data is not sent either: the book matches what is known when it is
+        // first sent.
         player.getRecipeBook().add(key(STONE_PICKAXE));
         player.getRecipeBook().sendInitialRecipeBook(player);
         expectInBook(helper, player, STONE_PICKAXE, false);

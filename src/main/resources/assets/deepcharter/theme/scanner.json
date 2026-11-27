@@ -3,6 +3,8 @@
   "margin": 4,
   "titleColor": "#FFFFFF",
   "airColor": "#101820",
+  "outOfRangeColor": "#0A0F14",
+  "outOfRangeLineColor": "#1A2631",
   "rockColor": "#5C5248",
   "oreColor": "#E8E8F0",
   "goldOreColor": "#FFD21E",
@@ -28,5 +30,16 @@
   "goldiumOreMarkColor": "#FFF070",
   "platiniumOreMarkColor": "#C8FFE8",
   "einsteiniumOreMarkColor": "#DCCCFF",
-  "cicatriumOreMarkColor": "#FFC8E4"
+  "cicatriumOreMarkColor": "#FFC8E4",
+  "rulerTickBlocks": 5,
+  "rulerLabelBlocks": 10,
+  "rulerLabelGapPixels": 20,
+  "rulerTickPixels": 2,
+  "rulerLabelTickPixels": 4,
+  "rulerPodMarkPixels": 5,
+  "rulerTickColor": "#C0C8D4E0",
+  "rulerLabelColor": "#E0E8F0",
+  "rulerLabelBackColor": "#C0101820",
+  "rulerPodMarkColor": "#38F06E",
+  "rockGrainLevels": 6
 }
