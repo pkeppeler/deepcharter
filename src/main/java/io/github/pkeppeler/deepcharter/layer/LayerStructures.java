@@ -85,8 +85,7 @@ public final class LayerStructures {
                     .ifPresent(pending -> pending.add(level.dimension(), chunk.getPos()));
         } else if (LOGGED_UNREADABLE_COLONY.compareAndSet(false, true)) {
             DeepCharter.LOGGER.warn(
-                    "A chunk of layer {} generated while the colony's saved data is unreadable, so it gets no"
-                            + " structures",
+                    "A chunk of layer {} generated while the colony's saved data is unreadable, so it gets no structures",
                     bands.getFirst().layer());
         }
     }
@@ -185,8 +184,7 @@ public final class LayerStructures {
                 } catch (RuntimeException e) {
                     if (LOGGED_FAILURE.compareAndSet(false, true)) {
                         DeepCharter.LOGGER.error(
-                                "Layer structures failed in chunk {} of layer {}; this and later chunks may lack"
-                                        + " theirs",
+                                "Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs",
                                 chunk.getPos(),
                                 band.layer(),
                                 e);

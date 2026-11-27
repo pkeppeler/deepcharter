@@ -458,8 +458,7 @@ public class OutpostSettlingTest {
                     expect(
                             helper,
                             SettlingRooms.count(storage, ironium) == 5 && SettlingRooms.count(storage, goldium) == 1,
-                            "the shipped tuning has no Recovery rate: the ore stays, the barrel holds %s ironium and"
-                                    + " %s goldium (%s)",
+                            "the shipped tuning has no Recovery rate: the ore stays, the barrel holds %s ironium and %s goldium (%s)",
                             SettlingRooms.count(storage, ironium),
                             SettlingRooms.count(storage, goldium),
                             ironium);

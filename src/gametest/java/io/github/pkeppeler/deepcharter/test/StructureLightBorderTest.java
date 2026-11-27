@@ -469,9 +469,7 @@ public class StructureLightBorderTest {
             if (!unsent.isEmpty()) {
                 throw failure(
                         helper,
-                        "%s: the stored light changed in %d cells, a player who had the chunk was not sent the"
-                            + " sections %s (counted from the lowest light section) by the hold, so the client keeps"
-                            + " the old light",
+                        "%s: the stored light changed in %d cells, a player who had the chunk was not sent the sections %s (counted from the lowest light section) by the hold, so the client keeps the old light",
                         where,
                         changed,
                         unsent);
