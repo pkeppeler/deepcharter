@@ -4,7 +4,7 @@ status: accepted
 
 # No CI job runs longer than five minutes
 
-Issue #1574, a hard rule from the user. Over four days of runs, a client shard took about 17.5 minutes (14 of tests, 3 of setup), a server shard about 10, `build-checks` 6.6 and `tool-tests` 7.8; before the shards, `build` took 29.5. A PR waited on the slowest of them, a flake re-ran the slowest again, and the merge queue drains one PR per run.
+Issue #1574, a hard rule from the user. The user's reading of it: a PR push's CI is green within 5 minutes of the push, end to end (runner start, compile and every required check), while the full suites at merge, in the batch, may take longer. Every job also stops at 5 minutes, which is what this ADR enforces and sizes; the time to green of a push is the other half, which ADR 0116 (the chained PR) takes up, with its measurements. This change alone makes the full suites the PR tier, so it does not meet the time-to-green rule; the two PRs merge together. Over four days of runs, a client shard took about 17.5 minutes (14 of tests, 3 of setup), a server shard about 10, `build-checks` 6.6 and `tool-tests` 7.8; before the shards, `build` took 29.5. A PR waited on the slowest of them, a flake re-ran the slowest again, and the merge queue drains one PR per run.
 
 ## Decision
 
