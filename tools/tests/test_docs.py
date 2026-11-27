@@ -12,6 +12,17 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def generated_docs():
+    """The markdown files the merge tools generate (tools/lib/generated-paths.sh), by repo-relative path. The landing
+    regenerates them after CI has run, so no check here may fail on their content (#1567)."""
+    text = (ROOT / "tools" / "lib" / "generated-paths.sh").read_text(encoding="utf-8")
+    listed = re.search(r"^GENERATED_PATHS=\((.*)\)$", text, re.MULTILINE)
+    assert listed, "tools/lib/generated-paths.sh has no GENERATED_PATHS list"
+    return {name for name in listed.group(1).split() if name.endswith(".md")}
+
+
 HEADING = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$")
 FENCE = re.compile(r"^[ \t]{0,3}(```|~~~)")
 
@@ -94,7 +105,8 @@ def tracked_markdown():
     paths = [ROOT / "README.md"]
     paths += sorted((ROOT / "docs").rglob("*.md"))
     paths += sorted((ROOT / ".claude").rglob("*.md"))
-    return [p for p in paths if "worktrees" not in p.relative_to(ROOT).parts]
+    generated = generated_docs()
+    return [p for p in paths if "worktrees" not in p.relative_to(ROOT).parts and p.relative_to(ROOT).as_posix() not in generated]
 
 
 class DocLinks(unittest.TestCase):
@@ -230,10 +242,17 @@ class DocVersions(unittest.TestCase):
 class DocHeadings(unittest.TestCase):
     def test_no_doc_repeats_a_heading_under_the_same_parent(self):
         problems = []
+        generated = generated_docs()
         for path in sorted((ROOT / "docs").rglob("*.md")):
+            if path.relative_to(ROOT).as_posix() in generated:
+                continue
             for line, first, title in duplicates(path.read_text(encoding="utf-8")):
                 problems.append(f"{path.relative_to(ROOT)}: '{title}' at line {line} repeats line {first}")
         self.assertEqual([], problems, "duplicate headings (a section pasted twice?)")
+
+    def test_the_generated_roadmap_is_not_judged(self):
+        self.assertIn("docs/ROADMAP.md", generated_docs())
+        self.assertNotIn(ROOT / "docs" / "ROADMAP.md", tracked_markdown())
 
     def test_a_repeated_section_is_caught(self):
         text = "# T\n\n## A\n\n### Knobs\n\n## B\n\n### Knobs\n\n## A\n\n### Knobs\n"

@@ -1,0 +1,35 @@
+# Vanilla sounds and music that break the tone (#1557), one per line: `<token>  <why it breaks the tone>`.
+# checkVanillaSoundGate fails a reference in src/main or src/client Java unless its line carries `// vanilla-ok: <reason>`, and an id in
+# src/main/resources JSON unless gradle/vanilla-sound-allowlist.txt lists it.
+# A `minecraft:` token is a sound id for JSON data files (`*` also spans dots and slashes); any other token is Java. Add a line to ban another.
+SoundEvents.GENERIC_EXPLODE  the vanilla explosion on a breach (#1293) is not the pod's own breach sound; use a DeepSound
+SoundEvents.DRAGON_FIREBALL_EXPLODE  an explosion of the explosion family, a vanilla boss sound with no place in the depth
+SoundEvents.TNT_PRIMED  the vanilla fuse hiss of the explosion family; a blast here has its own sounds
+SoundEvents.FIREWORK_ROCKET_BLAST*  the vanilla firework bang is an explosion of the explosion family
+SoundEvents.FIREWORK_ROCKET_LARGE_BLAST*  the vanilla firework bang is an explosion of the explosion family
+SoundEvents.WIND_CHARGE_BURST  the vanilla wind-charge burst is a blast of the explosion family
+SoundEvents.BREEZE_WIND_CHARGE_BURST  the vanilla wind-charge burst is a blast of the explosion family
+SoundEvents.WARDEN_SONIC_BOOM  a vanilla boss boom of the explosion family
+SoundEvents.SULFUR_CUBE_EXPLOSIVE_*  vanilla explosive-hit sounds of the explosion family
+.explode(  Level#explode plays the vanilla explosion sound; a breach uses its own sound and its own block changes
+SoundEvents.MUSIC_BIOME_*  vanilla biome music breaks the tone: the unbuilt depth must stay without it (#1296); music is DeepSound.MUSIC_*
+SoundEvents.MUSIC_CREATIVE  vanilla game music breaks the tone: the unbuilt depth must stay without it (#1296)
+SoundEvents.MUSIC_CREDITS  vanilla music breaks the tone: the unbuilt depth must stay without it (#1296)
+SoundEvents.MUSIC_DRAGON  vanilla music breaks the tone: the unbuilt depth must stay without it (#1296)
+SoundEvents.MUSIC_END  vanilla music breaks the tone: the unbuilt depth must stay without it (#1296)
+SoundEvents.MUSIC_GAME  vanilla game music breaks the tone: the unbuilt depth must stay without it (#1296)
+SoundEvents.MUSIC_MENU  vanilla music breaks the tone: the unbuilt depth must stay without it (#1296)
+SoundEvents.MUSIC_UNDER_WATER  vanilla music breaks the tone: the unbuilt depth must stay without it (#1296)
+Musics.*  vanilla music tracks break the tone: the unbuilt depth must stay without them (#1296)
+SoundEvents.AMBIENT_*  vanilla ambient loops, cave and biome moods, are not the deep's own ambience (DeepSound)
+minecraft:music.*  vanilla music breaks the tone: the unbuilt depth must stay without it (#1296); a biome or dimension type names a deepcharter music slot
+minecraft:ambient.*  vanilla ambient loops and cave moods are not the deep's own ambience; name a deepcharter ambient slot
+minecraft:entity.generic.explode  the vanilla explosion on a breach (#1293) is not the pod's own sound; alias a deepcharter sound
+minecraft:entity.tnt.primed  the vanilla fuse and blast of the explosion family; alias a deepcharter sound
+minecraft:entity.dragon_fireball.explode  an explosion of the explosion family, a vanilla boss sound with no place in the depth
+minecraft:entity.firework_rocket.blast*  the vanilla firework bang is an explosion of the explosion family
+minecraft:entity.firework_rocket.large_blast*  the vanilla firework bang is an explosion of the explosion family
+minecraft:entity.wind_charge.wind_burst  the vanilla wind-charge burst is a blast of the explosion family
+minecraft:entity.breeze.wind_burst  the vanilla wind-charge burst is a blast of the explosion family
+minecraft:entity.warden.sonic_boom  a vanilla boss boom of the explosion family
+minecraft:entity.sulfur_cube.explosive.*  vanilla explosive-hit sounds of the explosion family
