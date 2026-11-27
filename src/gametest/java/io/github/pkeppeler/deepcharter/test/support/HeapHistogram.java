@@ -34,10 +34,10 @@ public final class HeapHistogram {
     /** Rows kept besides the top: the types that pin a whole world, whatever their rank, and every class of this mod. */
     private static final Pattern KEPT_TYPES = Pattern.compile(
             "\\s(net\\.minecraft\\.(client\\.multiplayer\\.ClientLevel|server\\.level\\.ServerLevel|server\\.MinecraftServer"
-                    + "|server\\.level\\.ChunkMap|world\\.level\\.chunk\\.LevelChunk|client\\.multiplayer\\.ClientChunkCache"
-                    + "|client\\.multiplayer\\.ClientPacketListener|server\\.level\\.ServerPlayer|world\\.level\\.chunk\\.ProtoChunk"
-                    + "|world\\.level\\.chunk\\.LevelChunkSection|client\\.Minecraft|server\\.dedicated\\.\\w+|server\\.network\\.\\w+|network\\.Connection)"
-                    + "|io\\.github\\.pkeppeler\\.deepcharter\\.[\\w.$]+)(?:\\s+\\([^)]*\\))?\\s*$");
+                + "|server\\.level\\.ChunkMap|world\\.level\\.chunk\\.LevelChunk|client\\.multiplayer\\.ClientChunkCache"
+                + "|client\\.multiplayer\\.ClientPacketListener|server\\.level\\.ServerPlayer|world\\.level\\.chunk\\.ProtoChunk"
+                + "|world\\.level\\.chunk\\.LevelChunkSection|client\\.Minecraft|server\\.dedicated\\.\\w+|server\\.network\\.\\w+|network\\.Connection)"
+                + "|io\\.github\\.pkeppeler\\.deepcharter\\.[\\w.$]+)(?:\\s+\\([^)]*\\))?\\s*$");
 
     private static final Splitter ROW = Splitter.onPattern("\\s+");
 

@@ -85,7 +85,8 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
                 require(
                         context.computeOnClient(
                                 client -> CrtText.width(client.font, SAMPLE) != client.font.width(SAMPLE)),
-                        "Unscii draws the sample text no wider or narrower than the game's own font: the font did not load");
+                        "Unscii draws the sample text no wider or narrower than the game's own font: the font did not"
+                                + " load");
                 checkBothSizes(context, open, screen, problems);
             }
         }

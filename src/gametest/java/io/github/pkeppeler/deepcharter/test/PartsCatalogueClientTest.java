@@ -290,7 +290,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(shapedOnly.craftable(DRILL, enough, TABLE), "the 3 x 3 drill head is craftable at a crafting table");
         require(
                 shapedOnly.craftable(DRILL, enough, POCKET),
-                "and in the inventory's 2 x 2 grid too: what is in hand is what counts, the table is only where it is made");
+                "and in the inventory's 2 x 2 grid too: what is in hand is what counts, the table is only where it is"
+                        + " made");
         require(
                 !shapedOnly.craftable(DRILL, enough, new Bench(RecipeBookType.FURNACE, 1, 1)),
                 "a furnace screen does not craft it either");
