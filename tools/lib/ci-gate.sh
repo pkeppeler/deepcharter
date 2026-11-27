@@ -1,7 +1,8 @@
 # Sourced by tools/merge-pr.sh: the CI half of the merge gate (check runs, required checks, the stale-base record, the
 # client suite). merge-pr.sh runs it for a PR in the merge and, as `--ci <n>`, for a batch PR whose branch is not
 # <issue>-<slug> (tools/merge-batch.sh). The caller sets $repo, $pr, $sha and $gate_only (1 prints each state), and
-# sources tools/lib/pr-body-checks.sh (refuse, load_labels, has_label) first. Each failed check calls refuse.
+# sources tools/lib/pr-body-checks.sh (refuse, load_labels, has_label) and tools/lib/generated-paths.sh first. Each
+# failed check calls refuse.
 
 # Job names (ci.yml) that run on every PR; the path-gated client job (client-tests.yml) is not listed. `build` is the aggregate of
 # the `build-shard <i>` jobs and `build-checks` (#1327), which the stale-base rule below also reads.
@@ -73,8 +74,8 @@ check_ci_gate() {
   # unless every deciding run of a required job (and of each passing build-shard, build-checks and client-gametest-shard) merged exactly
   # the current origin/main: a time test cannot see that GitHub served a stale refs/pull/N/merge (#979). A run with
   # no record (one from before this check) is refused as stale. The merge is invisible to a path no job reads, so a
-  # main that differs from the recorded sha only by docs/ROADMAP.md and .papercuts.jsonl (the roadmap and papercut commits that land
-  # after each merge) still counts. Fail closed on any unreadable step.
+  # main that differs from the recorded sha only by a generated path (tools/lib/generated-paths.sh: docs/ROADMAP.md and
+  # .papercuts.jsonl) still counts. Fail closed on any unreadable step.
   git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
   main_sha=$(git rev-parse origin/main 2>/dev/null) || main_sha=
   [[ $main_sha =~ ^[0-9a-f]{40}$ ]] || refuse "could not read the sha of origin/main"
@@ -129,19 +130,15 @@ check_ci_gate() {
     [[ $recorded =~ ^[0-9a-f]{40}$ ]] \
       || refuse "$based run $run_id recorded no merged main sha (a run from before CI recorded it): $stale_fix"
     [[ $recorded != "$main_sha" ]] || continue
-    # Main moved: only a change confined to those two paths may differ. A recorded sha that is not an ancestor of
+    # Main moved: only a change confined to generated paths may differ. A recorded sha that is not an ancestor of
     # origin/main (or whose object is missing) cannot be compared and is stale.
     git merge-base --is-ancestor "$recorded" "$main_sha" >/dev/null 2>&1 \
       || refuse "$based run $run_id merged main ${recorded:0:9}, which is not on origin/main ${main_sha:0:9}: $stale_fix"
-    moved=$(git diff --name-only --no-renames "$recorded" "$main_sha") \
+    moved=$(moved_code_paths "$recorded" "$main_sha") \
       || refuse "could not list the files changed on origin/main since ${recorded:0:9}"
     code_moved=()
     while IFS= read -r path; do
-      case $path in
-        '') ;;
-        docs/ROADMAP.md | .papercuts.jsonl) ;;
-        *) code_moved+=("$path") ;;
-      esac
+      [[ -z $path ]] || code_moved+=("$path")
     done <<<"$moved"
     if [[ ${#code_moved[@]} -gt 0 ]]; then
       shown=${code_moved[*]:0:5}

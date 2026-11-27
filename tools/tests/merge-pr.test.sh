@@ -239,11 +239,14 @@ fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
 reset() { rm -f "$LOG" "$LOG".{merged,push,body,message,title,RUNS,ANN,FILES}; : >"$LOG"; }
 
-# run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
+# run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh, as --direct: the merge through GitHub's endpoint, #1567)
+# on PR 7 with stub env overrides.
 run_script() {
+  local flag=(--direct)
   reset
   rc=0
-  out=$(env "$@" PATH="$work/bin:$PATH" bash "${SCRIPT:-$script}" 7 2>&1) || rc=$?
+  [[ ${SCRIPT-} != "$mark" ]] || flag=()
+  out=$(env "$@" PATH="$work/bin:$PATH" bash "${SCRIPT:-$script}" ${flag[@]+"${flag[@]}"} 7 2>&1) || rc=$?
 }
 
 # The pattern is one log line: grep -F splits a multi-line pattern into several, and an empty one matches any blank line.
@@ -674,7 +677,7 @@ refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/e
 # A relative $0 (./merge-pr.sh from tools/) must still find tools/lib/adr.sh after the script's cd.
 reset
 rc=0
-out=$(cd "$tools" && env PATH="$work/bin:$PATH" ./merge-pr.sh 7 2>&1) || rc=$?
+out=$(cd "$tools" && env PATH="$work/bin:$PATH" ./merge-pr.sh --direct 7 2>&1) || rc=$?
 exited "runs as ./merge-pr.sh from tools/" 0
 
 # Required checks: a copy of the script with the array filled in (the production
@@ -933,6 +936,33 @@ exited "push rejected twice fails" 1
 printed "push rejected twice says merged" "is MERGED, but the roadmap regeneration FAILED"
 count "no third push" "push origin HEAD:main" 2
 
+# Without a flag the PR merges as a batch of one (#1567): the script hands the PR to the batch tool and touches neither
+# GitHub nor git itself. MERGE_BATCH is the test seam.
+cat >"$work/batch" <<'STUB'
+#!/usr/bin/env bash
+echo "batch $*" >>"$LOG"
+exit "${STUB_BATCH_RC:-0}"
+STUB
+chmod +x "$work/batch"
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" 7 2>&1) || rc=$?
+exited "no flag: merges as a batch of one" 0
+logged "no flag: the batch tool gets the PR" "batch 7"
+not_logged "no flag: the script itself calls neither gh nor git" "^gh\|^git"
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" STUB_BATCH_RC=1 PATH="$work/bin:$PATH" bash "$script" 7 2>&1) || rc=$?
+exited "no flag: the batch tool's refusal is the exit status" 1
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --direct 7 2>&1) || rc=$?
+not_logged "--direct never reaches the batch tool" "^batch"
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --check 7 2>&1) || rc=$?
+not_logged "--check never reaches the batch tool" "^batch"
+
 # Argument validation: exit 2, and gh is never called.
 check_args() { # <name> <args...>
   local name=$1
@@ -1020,12 +1050,13 @@ px_first=$(sed -n 's/^PX_REVIEW_FIRST_PR=\([0-9][0-9]*\)$/\1/p' "$tools/lib/pr-b
 [[ -n $px_first ]] || { echo "cannot read PX_REVIEW_FIRST_PR from tools/lib/pr-body-checks.sh" >&2; exit 1; }
 # px_run <script> <pr> [VAR=value ...]
 px_run() {
-  local s=$1 n=$2
+  local s=$1 n=$2 flag=(--direct)
   shift 2
   reset
   rc=0
+  [[ $s == "$script" ]] || flag=() # the merge is the direct one (#1567); mark takes no flag
   out=$(env STUB_BODY="Closes #12
-No map change: test" "$@" PATH="$work/bin:$PATH" bash "$s" "$n" 2>&1) || rc=$?
+No map change: test" "$@" PATH="$work/bin:$PATH" bash "$s" ${flag[@]+"${flag[@]}"} "$n" 2>&1) || rc=$?
 }
 gpl="STUB_LABELS=gameplay
 demo
