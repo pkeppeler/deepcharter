@@ -413,6 +413,9 @@ object GametestScan {
 	/** A class with no entry in client-test-weights.txt counts as this many seconds, so a new class lands in a shard without anyone editing the file. */
 	const val DEFAULT_CLIENT_WEIGHT = 10
 
+	/** An evidence scenario (a name ending in Scenario) does nothing outside tools/record-evidence.sh, so it counts as this many seconds unless the file lists it. */
+	const val SCENARIO_CLIENT_WEIGHT = 1
+
 	/**
 	 * Shard `i/n` (1-based) of [classes]: longest-processing-time-first onto the lightest shard, by [weights] (fully qualified or simple class name to seconds; the full name wins).
 	 * Every shard computes the same partition from the same list, and each class lands in exactly one, so the union of the n shards is the whole list.
@@ -424,7 +427,8 @@ object GametestScan {
 		if (index < 1 || index > count) {
 			throw GradleException("-PclientShard is '$shard', expected i/n with 1 <= i <= n, like 2/3")
 		}
-		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)] ?: DEFAULT_CLIENT_WEIGHT
+		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)]
+			?: if (name.endsWith("Scenario")) SCENARIO_CLIENT_WEIGHT else DEFAULT_CLIENT_WEIGHT
 		val loads = IntArray(count)
 		val mine = mutableListOf<String>()
 		for (name in classes.sortedWith(compareBy({ -weight(it) }, { it }))) {

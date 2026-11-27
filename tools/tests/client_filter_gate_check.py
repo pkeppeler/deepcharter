@@ -160,7 +160,7 @@ class ClientShardTest(unittest.TestCase):
     def test_the_real_shards_are_balanced_by_weight(self):
         weights = real_weights()
         for count in (2, 3, 4):
-            loads = [sum(weights.get(name.rsplit(".", 1)[1], 10) for name in shard) for shard in self.shards("real shard ", count)]
+            loads = [sum(weights.get(name.rsplit(".", 1)[1], 1 if name.endswith("Scenario") else 10) for name in shard) for shard in self.shards("real shard ", count)]
             with self.subTest(count):
                 self.assertLessEqual(max(loads) - min(loads), max(weights.values()))
 
