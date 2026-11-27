@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.RIGHT;
 
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
@@ -266,6 +267,33 @@ public class PodLooseOreTest {
                         PodLooseOre.of(rig.pod).any() && firstLines(rig) == 1,
                         "a second load reads loose again and says nothing more, said %s times",
                         firstLines(rig));
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    /** Loose ore that tips the pod over the climb limit is named by the cue on a held jump, not a generic line. */
+    @GameTest(maxTicks = 40)
+    public void theOverloadCueNamesLooseOreWhenItTipsThePodOver(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, "loose overloaded");
+        rig.giveOre(OreType.GOLDIUM, 5);
+        rig.pilot.setInput(JUMP);
+        helper.runAfterDelay(10, () -> {
+            try {
+                expect(
+                        helper,
+                        PodLoad.of(rig.pod).cannotClimb() && !rig.pod.flying(),
+                        "five loose goldium should hold the pod down, load %s",
+                        PodLoad.of(rig.pod));
+                expect(
+                        helper,
+                        rig.pilot.actionBarMessages().stream()
+                                .anyMatch(message -> message.getContents() instanceof TranslatableContents contents
+                                        && contents.getKey().equals("deepcharter.pod.overloaded_loose")),
+                        "the cue names loose ore and the hold, said %s",
+                        rig.pilot.actionBarMessages());
                 helper.succeed();
             } finally {
                 rig.finish();

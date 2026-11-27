@@ -20,7 +20,8 @@ import net.minecraft.world.entity.Entity;
  *
  * <p>The server measures the riders' packs each tick ({@link #measure}) and copies the result to {@link #LOOSE} for
  * the stats and the client, as {@link PodLoad#EXTRA} does, so a stats listener, which runs often, reads a number and
- * scans no inventory. The weight and the landing read the packs themselves, since each runs once a tick or less.
+ * scans no inventory. The weight and the landing read the packs themselves, and scan them on each call: the weight
+ * once for each {@link PodLoad#of} on the server, the landing once.
  */
 public final class PodLooseOre {
     public static final int VERSION = 1;
@@ -66,7 +67,21 @@ public final class PodLooseOre {
         return LooseOreTuning.DEFAULT.cramp(of(pod).mass());
     }
 
-    /** The hull points the loose ore in the packs now adds to a hard landing. Server only. */
+    /**
+     * Whether racking the loose ore in the hold would let the pod climb: it is over its climb limit and, without the
+     * loose ore, would not be. Server only.
+     */
+    static boolean overloadedByLoose(PodEntity pod) {
+        PodLoad load = PodLoad.of(pod);
+        LooseOre loose = measure(pod);
+        float looseWeight = loose.mass() * LooseOreTuning.DEFAULT.weightFactor();
+        return loose.any() && load.cannotClimb() && load.load() - looseWeight < load.climbLimit();
+    }
+
+    /**
+     * The hull points the loose ore in the packs now adds to a hard landing, before the landing's damage multiplier.
+     * Server only.
+     */
     static float rattle(PodEntity pod) {
         return measure(pod).ore() * LooseOreTuning.DEFAULT.rattlePerOre();
     }

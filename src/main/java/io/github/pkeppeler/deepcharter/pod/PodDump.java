@@ -110,8 +110,8 @@ public final class PodDump {
 
     /**
      * Says once per player, kept as a read mark, that a pod too heavy to lift can dump its cargo from the pod screen,
-     * naming the inventory and drop keys as the pilot binds them. Only when the cargo is what holds it down: a pod that towing alone overloads says nothing.
-     * Says nothing when the marks cannot be read.
+     * naming the inventory and drop keys as the pilot binds them. Only when the cargo is what holds it down: a pod that
+     * towing alone overloads says nothing. Says nothing when the marks cannot be read.
      */
     private static void explainFirstOverload(PodEntity pod) {
         if (!(pod.getControllingPassenger() instanceof ServerPlayer pilot) || !overloadedByCargo(pod)) {
@@ -125,8 +125,9 @@ public final class PodDump {
     }
 
     /**
-     * Whether the pod cannot climb and dumping would help: the load ({@link PodLoad}) reaches its climb limit, and without
-     * the cargo it would not (which also means the hold holds something). {@link PodCues} names how to dump only then.
+     * Whether the pod cannot climb and dumping would help: the load ({@link PodLoad}) reaches its climb limit, and
+     * without the cargo it would not (which also means the hold holds something). {@link PodCues} names how to dump only
+     * then, and names loose ore first ({@link PodLooseOre#overloadedByLoose}).
      */
     static boolean overloadedByCargo(PodEntity pod) {
         PodLoad load = PodLoad.of(pod);

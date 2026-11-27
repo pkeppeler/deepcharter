@@ -47,6 +47,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -464,17 +466,57 @@ public class PodScreenTest {
             player.getInventory().add(OreRegistry.stack(OreType.GOLDIUM));
             PodMenu menu = open(helper, player, pod);
 
+            // Shift-click, a drag over slots past the bay, and a number key over one: none puts the ore in.
             shiftClickFromInventory(menu, player, OreRegistry.item(OreType.GOLDIUM));
+            int packIndex = SlotClicks.inventorySlot(menu, OreRegistry.item(OreType.GOLDIUM)).index;
+            click(menu, player, packIndex, ContainerInput.PICKUP);
+            expect(helper, menu.getCarried().is(OreRegistry.item(OreType.GOLDIUM)), "the ore should be on the cursor");
+            int charitable = 0;
+            menu.clicked(
+                    AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+                    AbstractContainerMenu.getQuickcraftMask(AbstractContainerMenu.QUICKCRAFT_HEADER_START, charitable),
+                    ContainerInput.QUICK_CRAFT,
+                    player);
+            for (int window = slots; window < slots + 2; window++) {
+                menu.clicked(
+                        menu.holdSlot(window).index,
+                        AbstractContainerMenu.getQuickcraftMask(
+                                AbstractContainerMenu.QUICKCRAFT_HEADER_CONTINUE, charitable),
+                        ContainerInput.QUICK_CRAFT,
+                        player);
+            }
+            menu.clicked(
+                    AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+                    AbstractContainerMenu.getQuickcraftMask(AbstractContainerMenu.QUICKCRAFT_HEADER_END, charitable),
+                    ContainerInput.QUICK_CRAFT,
+                    player);
+            click(menu, player, packIndex, ContainerInput.PICKUP);
+            menu.broadcastChanges();
+            expect(
+                    helper,
+                    menu.getCarried().isEmpty()
+                            && held(player, OreRegistry.item(OreType.GOLDIUM)) == 1
+                            && pod.cargo().count(OreType.GOLDIUM) == 0,
+                    "a drag over slots past the bay places nothing: carried %s, %s held",
+                    menu.getCarried(),
+                    held(player, OreRegistry.item(OreType.GOLDIUM)));
+            int hotbarKey =
+                    player.getInventory().findSlotMatchingItem(new ItemStack(OreRegistry.item(OreType.GOLDIUM)));
+            expect(helper, hotbarKey >= 0 && hotbarKey < 9, "the ore should sit in the hotbar, slot %s", hotbarKey);
+            menu.clicked(menu.holdSlot(slots).index, hotbarKey, ContainerInput.SWAP, player);
             menu.broadcastChanges();
             expect(
                     helper,
                     held(player, OreRegistry.item(OreType.GOLDIUM)) == 1
                             && pod.cargoUsed() == slots
                             && pod.cargo().count(OreType.GOLDIUM) == 0,
-                    "a full bay takes no more ore: %s held, %s used of %s",
+                    "a number key over a slot past the bay takes nothing: %s held, %s used of %s",
                     held(player, OreRegistry.item(OreType.GOLDIUM)),
                     pod.cargoUsed(),
                     slots);
+            List<ItemEntity> onTheFloor = helper.getLevel()
+                    .getEntitiesOfClass(ItemEntity.class, pod.getBoundingBox().inflate(6));
+            expect(helper, onTheFloor.isEmpty(), "no ore is dropped on the floor, found %s", onTheFloor);
             helper.succeed();
         } finally {
             scene.clean();

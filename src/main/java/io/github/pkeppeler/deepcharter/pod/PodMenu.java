@@ -488,9 +488,8 @@ public final class PodMenu extends SlottedMenu {
 
     /**
      * Q on a hold stack dumps one of it under the pod ({@link PodDump}), Ctrl+Q the whole stack, as vanilla drops
-     * them, but never into the world at the player. The client
-     * takes it from the slot at once; the server drops it, checking {@link #stillValid} again though the click packet
-     * already has.
+     * them, but never into the world at the player. The client takes it from the slot at once; the server drops it,
+     * checking {@link #stillValid} again though the click packet already has.
      */
     @Override
     public void clicked(int index, int button, ContainerInput input, Player player) {

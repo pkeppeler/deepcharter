@@ -63,5 +63,6 @@
   "key.deepcharter.line_slab": "Line the slab with slag brick",
   "deepcharter.pod.dump.hint": "Too heavy to lift. Open the pod screen (%s) and drop cargo (%s)",
   "deepcharter.pod.loose.first": "Ore in your pack counts double aboard, slows the drill and steering, and rattles the hull on a hard landing. Rack it in the hold",
-  "hud.deepcharter.pod.loose": "LOOSE"
+  "hud.deepcharter.pod.loose": "LOOSE",
+  "deepcharter.pod.overloaded_loose": "Pod overloaded: the ore in your pack counts double. Rack it in the hold (%s)"
 }
