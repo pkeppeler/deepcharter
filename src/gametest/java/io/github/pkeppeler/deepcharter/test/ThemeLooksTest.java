@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.client.theme.TowChainLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.theme.UiTheme;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.client.ui.PixelDigits;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 import io.github.pkeppeler.deepcharter.theme.ThemeData.Layer;
@@ -607,6 +608,47 @@ public class ThemeLooksTest {
                 .camera()
                 .installed()) {
             throw failure(helper, "a pack that names cameraInstalled puts the camera on the pod");
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The altimeter's pixel digits (#1539): the shipped theme gives 3 x 5 glyphs a pixel apart, a glyph's sheet column follows the wide glyphs and then the narrow
+     * ones, a space takes a narrow glyph's room and draws nothing, the width has no gap after the last glyph, and a character with no glyph is refused.
+     */
+    @GameTest
+    public void theAltimetersDigitsAreLaidOutOnTheirSheet(GameTestHelper helper) {
+        CockpitLook.Digits digits = CockpitLook.of(area("cockpit", null)).digits();
+        if (digits.width() != 3 || digits.height() != 5 || digits.gap() != 1 || digits.narrowWidth() != 1) {
+            throw failure(
+                    helper, "the shipped digits are 3 x 5 with a gap of 1 and narrow glyphs of 1, got %s", digits);
+        }
+        if (PixelDigits.width("", digits) != 0 || PixelDigits.width("7", digits) != 3) {
+            throw failure(helper, "no text is 0 wide and one digit is as wide as a digit");
+        }
+        // "-1,2 f": the minus, the 1, the comma, the 2, a space, the f, each a gap apart.
+        List<PixelDigits.Cell> cells = PixelDigits.layout("-1,2 f", digits);
+        List<PixelDigits.Cell> expected = List.of(
+                new PixelDigits.Cell(0, 10 * 3, 3),
+                new PixelDigits.Cell(4, 1 * 3, 3),
+                new PixelDigits.Cell(8, 13 * 3, 1),
+                new PixelDigits.Cell(10, 2 * 3, 3),
+                new PixelDigits.Cell(16, 11 * 3, 3));
+        if (!cells.equals(expected)) {
+            throw failure(helper, "\"-1,2 f\" is laid out as %s, not %s", cells, expected);
+        }
+        if (PixelDigits.width("-1,2 f", digits) != 19) {
+            throw failure(helper, "\"-1,2 f\" is 19 wide, got %s", PixelDigits.width("-1,2 f", digits));
+        }
+        // The longest reading is 37 wide: 8 wide glyphs, 3 narrow ones and 10 gaps.
+        if (PixelDigits.width("-12,345 ft.", digits) != 37) {
+            throw failure(helper, "the longest reading is 37 wide, got %s", PixelDigits.width("-12,345 ft.", digits));
+        }
+        try {
+            PixelDigits.layout("12 m", digits);
+            throw failure(helper, "a letter with no glyph must be refused, not drawn blank");
+        } catch (IllegalArgumentException expectedRefusal) {
+            // the refusal is the pass
         }
         helper.succeed();
     }

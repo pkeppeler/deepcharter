@@ -196,19 +196,6 @@ final class TestSiteTable {
         claim("LayerStructuresTest", 2, 1392, 1439, 1200, 1279);
         claim("LayerStructuresTest", 2, 1472, 1487, 1472, 1487);
         claim("LayerStructuresTest", 2, 1504, 1519, 1344, 1359);
-        claim("LayerStructuresTest", 1, 2560, 2575, 2400, 2415);
-        claim("LayerStructuresTest", 1, 2976, 2991, 2752, 2767);
-        claim("LayerStructuresTest", 1, 3328, 3343, 3136, 3151);
-        claim("LayerStructuresTest", 1, 4144, 4159, 4096, 4111);
-        claim("LayerStructuresTest", 1, 4368, 4383, 4352, 4367);
-        claim("LayerStructuresTest", 1, 12032, 12047, 12144, 12159);
-        claim("LayerStructuresTest", 2, 2560, 2575, 2400, 2415);
-        claim("LayerStructuresTest", 2, 2976, 2991, 2752, 2767);
-        claim("LayerStructuresTest", 2, 3328, 3343, 3136, 3151);
-        claim("LayerStructuresTest", 2, 3760, 3775, 3616, 3631);
-        claim("LayerStructuresTest", 2, 4144, 4159, 4096, 4111);
-        claim("LayerStructuresTest", 2, 4368, 4383, 4352, 4367);
-        claim("LayerStructuresTest", 2, 12032, 12047, 12144, 12159);
 
         claim("LayerTerrainTest", 2, 1795, 1804, 1795, 1804);
         claim("LayerTerrainTest", 1, 896, 975, 896, 975);
@@ -545,6 +532,10 @@ final class TestSiteTable {
         exempt("ClaimFeaturesTest", ownDimension);
         exempt("TheClaimTest", ownDimension);
         exempt("ContinuityEventTest", "stages only in the Nether, which the guards do not check");
+        exempt(
+                "LayerStructuresTest",
+                "stages at the sites StructureSite picks by seed inside whole 384-block cells, which other tests' claims share,"
+                        + " so no box can name them without overlapping those claims");
         exempt(
                 "ObtainableItemsTest",
                 "only reads the layer structure sites the world generates, the chunks LayerStructuresTest claims");

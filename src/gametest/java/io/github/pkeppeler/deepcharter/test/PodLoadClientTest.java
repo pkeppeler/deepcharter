@@ -36,7 +36,7 @@ import net.minecraft.world.level.block.Blocks;
  * Client GameTest for the cockpit's load gauge and overloaded lamp (#1449), read from the pixels of the Ribbon at GUI scale 2: the gauge lights a segment for each tenth
  * of the climb limit the load reaches, with the limit's mark after the tenth; the bar turns the limit colour and the fifth lamp lights, with no key held, once the load
  * reaches the climb limit, whether the weight is in the bay or in the pilot's pack (which reaches the client through the synced extra mass); ore taken out of the bay,
- * as a dump takes it, puts the lamp out. The LOAD title is drawn under the gauge.
+ * as a dump takes it, puts the lamp out. The LOAD title is {@link CockpitTitlesClientTest}'s, with every gauge's.
  */
 public class PodLoadClientTest implements FabricClientGameTest {
     /** High in layer 1, far above the signal decay near its floor. */
@@ -82,7 +82,6 @@ public class PodLoadClientTest implements FabricClientGameTest {
             // A light pod: an empty bay and pack.
             State light = load(context, singleplayer, 0, 0, false);
             expectGauge(light, 0, false, "an empty pod");
-            expectTitle(context, light);
             // Near the limit: two einsteinium are 8 tenths of a stock Mole's climb limit.
             State near = load(context, singleplayer, 2, 0, false);
             expectGauge(near, 8, false, "two einsteinium in the bay");
@@ -212,38 +211,5 @@ public class PodLoadClientTest implements FabricClientGameTest {
             throw new AssertionError("With " + what + " the overloaded lamp is " + Integer.toHexString(lamp)
                     + ", expected " + Integer.toHexString(wantLamp));
         }
-    }
-
-    /** The LOAD title's plate is under the gauge and its text, in the gauge's colour, is drawn on it. */
-    private static void expectTitle(ClientGameTestContext context, State state) {
-        CockpitHud.Box box = context.computeOnClient(client -> CockpitHud.loadTitleBox(
-                client.font,
-                state.look().ribbon(),
-                state.look(),
-                client.getWindow().getGuiScaledWidth(),
-                client.getWindow().getGuiScaledHeight()));
-        int color = state.look().cargoColor() & 0xFFFFFF;
-        int ink = 0;
-        for (int y = box.top() * GUI_SCALE; y < (box.top() + box.height()) * GUI_SCALE; y++) {
-            for (int x = box.left() * GUI_SCALE; x < (box.left() + box.width()) * GUI_SCALE; x++) {
-                if (near(state.shot().getRGB(x, y) & 0xFFFFFF, color)) {
-                    ink++;
-                }
-            }
-        }
-        // LOAD in the game font is some 40 GUI pixels of ink, 4 screen pixels each at GUI scale 2.
-        if (ink < 60) {
-            throw new AssertionError("The LOAD title's plate " + box + " holds " + ink
-                    + " screen pixels of the gauge colour, expected the title's ink");
-        }
-    }
-
-    private static boolean near(int a, int b) {
-        for (int shift = 0; shift <= 16; shift += 8) {
-            if (Math.abs((a >> shift & 0xFF) - (b >> shift & 0xFF)) > 24) {
-                return false;
-            }
-        }
-        return true;
     }
 }
