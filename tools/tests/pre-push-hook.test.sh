@@ -28,6 +28,7 @@ echo "uv $*" >>"$STUB_LOG"
 [[ -z ${STUB_GIT_INIT:-} ]] || { git init -q "$STUB_GIT_INIT" && git -C "$STUB_GIT_INIT" config deepcharter.leak 1; }
 case "$*" in
   *conflict_markers*) [[ ${STUB_FAIL:-} != conflict ]] ;;
+  *comment_length_gate*) [[ ${STUB_FAIL:-} != comment ]] ;;
   *unittest*) [[ ${STUB_FAIL:-} != unittest ]] ;;
   *) true ;;
 esac
@@ -58,30 +59,37 @@ run_hook() {
 }
 
 nl=$'\n'
-check "normal push runs gradle and python" "0:5" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "normal push runs gradle and python" "0:6" "$(run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "branch delete is skipped" "0:0" "$(run_hook "(delete) $zero refs/heads/b $sha$nl")"
 check "push to pr-media is skipped" "0:0" "$(run_hook "refs/heads/pr-media $sha refs/heads/pr-media $zero$nl")"
 check "empty push is skipped" "0:0" "$(run_hook "")"
-check "delete plus normal push still runs checks" "0:5" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
+check "delete plus normal push still runs checks" "0:6" "$(run_hook "(delete) $zero refs/heads/a $sha${nl}refs/heads/b $sha refs/heads/b $zero$nl")"
 check "conflict-marker failure blocks, gradle not reached" "1:1" "$(STUB_FAIL=conflict run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "conflict-marker failure message names the reason" "yes" "$(grep -q 'conflict markers failed' "$work/out" && echo yes || echo no)"
-check "gradle failure blocks, tool unit tests not reached" "1:2" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "comment-length gate failure blocks, gradle not reached" "1:2" "$(STUB_FAIL=comment run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "comment-length gate failure message names the reason" "yes" "$(grep -q 'comment-length gate failed' "$work/out" && echo yes || echo no)"
+run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
+check "one ref: the gate gets --fetch --head <sha> once" "1" "$(grep -c "comment_length_gate.py --fetch --head $sha\$" "$work/calls" || true)"
+sha2=2222222222222222222222222222222222222222
+run_hook "refs/heads/a $sha refs/heads/a $zero${nl}refs/heads/b $sha2 refs/heads/b $zero$nl" >/dev/null
+check "two refs: the gate runs once per pushed sha" "1:1" "$(grep -c "comment_length_gate.py --fetch --head $sha\$" "$work/calls" || true):$(grep -c "comment_length_gate.py --fetch --head $sha2\$" "$work/calls" || true)"
+check "gradle failure blocks, tool unit tests not reached" "1:3" "$(STUB_FAIL=gradle run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "failure message names the failing Gradle task" "yes" "$(grep -q 'pre-push: Gradle task :spotlessJavaCheck failed' "$work/out" && echo yes || echo no)"
 check "a compile failure names its task" "yes" "$(STUB_FAIL=compile run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null; grep -q 'pre-push: Gradle task :compileClientJava failed' "$work/out" && echo yes || echo no)"
 check "the time budget is printed before Gradle runs" "yes" "$(awk '/budget about [0-9]+ s warm, up to [0-9]+ s on a cold/ {b=NR} /^> Task :compileJava/ {t=NR} END {print (b && t && b < t) ? "yes" : "no"}' "$work/out")"
 check "one Gradle run covers the compiles, spotless, generateGametestModJson and the source-scanning gates" "gradlew --console=plain compileJava compileClientJava compileGametestJava spotlessCheck generateGametestModJson checkColourGate checkConstantParams checkEntityQueryGate checkEnumSwitchGate checkFixedPosGate checkInputLiteralGate checkKeepClearGate checkLang checkNullMarkedGate checkOrphanCommentGate checkRecordHolderGate" \
   "$(STUB_FAIL=none run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null; grep '^gradlew' "$work/calls")"
-check "tool unit test failure blocks" "1:3" "$(STUB_FAIL=unittest run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "tool unit test failure blocks" "1:4" "$(STUB_FAIL=unittest run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "tool unit test failure message names the reason" "yes" "$(grep -q 'tool unit tests failed' "$work/out" && echo yes || echo no)"
 STUB_SC_VERSION='' run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "unreadable local version warns clearly" "yes" "$(grep -q 'could not read the local shellcheck version; CI pins 0.11.0' "$work/out" && echo yes || echo no)"
-check "shellcheck failure blocks, gate checks not reached" "1:4" "$(STUB_FAIL=shellcheck run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
+check "shellcheck failure blocks, gate checks not reached" "1:5" "$(STUB_FAIL=shellcheck run_hook "refs/heads/b $sha refs/heads/b $zero$nl")"
 check "shellcheck failure message names the reason" "yes" "$(grep -q 'shellcheck failed' "$work/out" && echo yes || echo no)"
 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "pinned local version prints no warning" "no" "$(grep -q 'CI pins' "$work/out" && echo yes || echo no)"
 STUB_SC_VERSION=0.9.0 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "other local version warns with both versions" "yes" "$(grep -q 'local version is 0.9.0 but CI pins 0.11.0' "$work/out" && echo yes || echo no)"
-check "last line without a newline still counts" "0:5" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
+check "last line without a newline still counts" "0:6" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
 
 # No uv on PATH stops the hook before any check, with tools/py's install hint. PATH holds only a bin dir with the tools the hook needs.
 mkdir -p "$work/nouvbin"
@@ -128,33 +136,33 @@ run_range() { # run_range <local sha> <remote sha or $zero>: "<status>:<stub cal
   echo "$status:$(wc -l <"$work/calls" | tr -d ' ')"
 }
 docs=$(commit_with docs/b.md README.md tools/x.py .claude/CLAUDE.md)
-check "docs-only push skips the Gradle steps" "0:3" "$(run_range "$docs" "$base")"
+check "docs-only push skips the Gradle steps" "0:4" "$(run_range "$docs" "$base")"
 check "docs-only push says it skipped them" "yes" "$(grep -q 'no Gradle input changed.*skipping' "$work/out" && echo yes || echo no)"
 check "docs-only push never calls gradlew or the gate checks" "0" "$(grep -cE 'gradlew|gate_checks' "$work/calls" || true)"
-check "docs-only new branch (origin/main is the base) skips them" "0:3" "$(run_range "$docs" "$zero")"
+check "docs-only new branch (origin/main is the base) skips them" "0:4" "$(run_range "$docs" "$zero")"
 for path in src/A.java gradle/libs.versions.toml build.gradle.kts gradle/x.gradle.kts settings.gradle.kts tools/TestOnlyGate.java \
   tools/tests/room_carver_gate_check.py tools/tests/gate_batch.py tools/tests/gate_checks.py gradle.properties gradle.lockfile config/checkstyle/checkstyle.xml; do
   prev=$(git -C "$g" rev-parse HEAD)
   tip=$(commit_with docs/c.md "$path")
-  check "a change to $path runs everything" "0:5" "$(run_range "$tip" "$prev")"
+  check "a change to $path runs everything" "0:6" "$(run_range "$tip" "$prev")"
 done
-check "a range that includes a Gradle path anywhere in it runs everything" "0:5" "$(run_range "$tip" "$base")"
-check "a new branch with a Gradle path runs everything" "0:5" "$(run_range "$tip" "$zero")"
-check "an unknown remote sha runs everything" "0:5" "$(run_range "$docs" "$sha")"
+check "a range that includes a Gradle path anywhere in it runs everything" "0:6" "$(run_range "$tip" "$base")"
+check "a new branch with a Gradle path runs everything" "0:6" "$(run_range "$tip" "$zero")"
+check "an unknown remote sha runs everything" "0:6" "$(run_range "$docs" "$sha")"
 # A source moved out of src/ shows under its new name only when git detects the rename: the hook must still see the old path.
 prev=$(git -C "$g" rev-parse HEAD)
 git -C "$g" mv src/A.java docs/moved-from-src.txt
 git -C "$g" -c user.name=t -c user.email=t@example.com commit -q -m "move src/A.java out of src"
 moved=$(git -C "$g" rev-parse HEAD)
-check "a source moved out of src/ runs everything" "0:5" "$(run_range "$moved" "$prev")"
+check "a source moved out of src/ runs everything" "0:6" "$(run_range "$moved" "$prev")"
 git -C "$g" update-ref -d refs/remotes/origin/main
-check "a new branch with no origin/main runs everything" "0:5" "$(run_range "$docs" "$zero")"
+check "a new branch with no origin/main runs everything" "0:6" "$(run_range "$docs" "$zero")"
 git -C "$g" update-ref refs/remotes/origin/main "$base"
 two_refs_status=0
 : >"$work/calls"
 (cd "$g" && printf 'refs/heads/a %s refs/heads/a %s\nrefs/heads/b %s refs/heads/b %s\n' "$docs" "$base" "$tip" "$docs" \
   | STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$g/.githooks/pre-push" origin url) >"$work/out" 2>&1 || two_refs_status=$?
-check "one docs-only ref plus one Gradle ref runs everything" "0:5" "$two_refs_status:$(wc -l <"$work/calls" | tr -d ' ')"
+check "one docs-only ref plus one Gradle ref runs everything" "0:7" "$two_refs_status:$(wc -l <"$work/calls" | tr -d ' ')"
 
 # Git hands a hook GIT_DIR. A test that runs `git init` must hit its own temp dir, never the repo GIT_DIR names: here a sacrificial
 # bare repo stands in for the real one, and the stub uv plays the test.
@@ -200,7 +208,7 @@ git -C "$tr_repo" -c user.name=t -c user.email=t@example.com commit -q -m init
 git -C "$tr_repo" worktree add -q -b wt "$work/wt"
 : >"$work/calls"
 STUB_LOG="$work/calls" PATH="$work/bin:$PATH" git -C "$work/wt" push -q origin wt >"$work/out" 2>&1 || true
-check "hook runs from a second worktree, in that worktree" "gradlew in $(cd "$work/wt" && pwd -P)" "$(sed -n 2p "$work/calls")"
+check "hook runs from a second worktree, in that worktree" "gradlew in $(cd "$work/wt" && pwd -P)" "$(sed -n 3p "$work/calls")"
 
 # An absolute core.hooksPath shared by every worktree: the hook of the pushing worktree runs, and git's stdin reaches it.
 cat >"$work/wt/.githooks/pre-push" <<'S'
