@@ -708,7 +708,7 @@ tasks.register("checkGametestFixtures") {
 	val orphanCommentAdvice = project.extra["orphanCommentAdvice"] as String
 	// The keybind gate's scan (keybind-gate.gradle.kts), run the same way.
 	@Suppress("UNCHECKED_CAST")
-	val keybindProblems = project.extra["keybindProblems"] as (File, File) -> List<String>
+	val keybindProblems = project.extra["keybindProblems"] as (File) -> List<String>
 	val keybindAdvice = project.extra["keybindAdvice"] as String
 	// The vanilla-sound gate's scan (vanilla-sound-gate.gradle.kts), run the same way.
 	@Suppress("UNCHECKED_CAST")
@@ -783,7 +783,7 @@ tasks.register("checkGametestFixtures") {
 				}
 				if (c["gate"] == "keybind") {
 					val root = File(c["root"] as String)
-					val problems = keybindProblems(root, root)
+					val problems = keybindProblems(root)
 					if (problems.isNotEmpty()) {
 						throw GradleException("Custom keys without an allow-list entry. $keybindAdvice\n  " + problems.joinToString("\n  "))
 					}
