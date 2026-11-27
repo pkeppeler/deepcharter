@@ -147,7 +147,8 @@ public class SalvageRenewalTest {
         int crates = (int) Math.ceil(Math.max(cratesForIron, Math.max(cratesForCopper, cratesForRedstone)));
         int runs = (int) Math.ceil(crates / cratesPerLayerOneRun());
         LOGGER.info(
-                "[renewal] a crate holds {}; the chain takes {} crates (iron {}, copper {}, redstone {}), {} layer 1 runs at {} crates a run",
+                "[renewal] a crate holds {}; the chain takes {} crates (iron {}, copper {}, redstone {}), {} layer 1"
+                        + " runs at {} crates a run",
                 drops,
                 crates,
                 cratesForIron,

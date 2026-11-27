@@ -534,7 +534,8 @@ public class FoundingMoleHangarTest {
                     expect(
                             helper,
                             newcomerBefore - balance(helper, newcomer) == 150 + 75 * 2 - MOLE_BONUS,
-                            "the newcomer has two pods, so it pays $300, less the bonus of its first bought Mole: it paid %s",
+                            "the newcomer has two pods, so it pays $300, less the bonus of its first bought Mole: it"
+                                    + " paid %s",
                             newcomerBefore - balance(helper, newcomer));
                     clearFloor(helper);
                     helper.succeed();

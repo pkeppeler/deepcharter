@@ -188,7 +188,8 @@ public class RetainedOnFootTest {
                 case 0 -> {
                     if (room.figure.isClinging()) {
                         LOGGER.info(
-                                "[retained-foot] the figure walked 10 blocks to a person in the dark and took hold in {} ticks ({} s)",
+                                "[retained-foot] the figure walked 10 blocks to a person in the dark and took hold in"
+                                        + " {} ticks ({} s)",
                                 waited,
                                 waited / 20f);
                         if (FootGrips.holder(player) == null) {
@@ -199,7 +200,8 @@ public class RetainedOnFootTest {
                     } else if (waited > APPROACH_BUDGET_TICKS) {
                         throw failure(
                                 helper,
-                                "the figure had not taken hold of the person in the dark %s ticks after it was placed 10 blocks away (it stands at %s, the person at %s)",
+                                "the figure had not taken hold of the person in the dark %s ticks after it was placed"
+                                        + " 10 blocks away (it stands at %s, the person at %s)",
                                 waited,
                                 room.figure.position(),
                                 player.position());
@@ -210,7 +212,8 @@ public class RetainedOnFootTest {
                     if (waited == 5) {
                         expectSlowedLikeOre(helper, room, speedFree[0]);
                         LOGGER.info(
-                                "[retained-foot] walking speed {} free, {} held: {} blocks a second to {} (attribute 0.1 is {})",
+                                "[retained-foot] walking speed {} free, {} held: {} blocks a second to {} (attribute"
+                                        + " 0.1 is {})",
                                 speedFree[0],
                                 player.getAttributeValue(Attributes.MOVEMENT_SPEED),
                                 speedFree[0] * 43.17,
@@ -219,7 +222,8 @@ public class RetainedOnFootTest {
                     }
                     if (player.getFoodData().getFoodLevel() <= FOOT.hungerFloor()) {
                         LOGGER.info(
-                                "[retained-foot] the grip drained food 20 to the floor of {} in {} ticks: {} s a point, {} s to the floor",
+                                "[retained-foot] the grip drained food 20 to the floor of {} in {} ticks: {} s a"
+                                        + " point, {} s to the floor",
                                 FOOT.hungerFloor(),
                                 waited,
                                 waited / 20f / (20 - FOOT.hungerFloor()),
@@ -293,7 +297,8 @@ public class RetainedOnFootTest {
         if (!room.figure.isClinging() || !room.figure.isAlive() || FootGrips.holder(room.player()) == null) {
             throw failure(
                     helper,
-                    "the figure let go %s ticks after it took hold, with no one to strike it (clinging %s, alive %s, held %s)",
+                    "the figure let go %s ticks after it took hold, with no one to strike it (clinging %s, alive %s,"
+                            + " held %s)",
                     ticks,
                     room.figure.isClinging(),
                     room.figure.isAlive(),
@@ -320,7 +325,8 @@ public class RetainedOnFootTest {
         if (came != 1 || took != 1 || rule != 1) {
             throw failure(
                     helper,
-                    "the person should be told once that it came, once that it took hold, and the rule once (came %s, hold %s, rule %s)",
+                    "the person should be told once that it came, once that it took hold, and the rule once (came %s,"
+                            + " hold %s, rule %s)",
                     came,
                     took,
                     rule);
@@ -591,7 +597,8 @@ public class RetainedOnFootTest {
                                 expectedBlows);
                     }
                     LOGGER.info(
-                            "[retained-foot] {} blows of {} killed the figure {} ticks after it took hold; food {} to {}",
+                            "[retained-foot] {} blows of {} killed the figure {} ticks after it took hold; food {} to"
+                                    + " {}",
                             blows[0],
                             damage,
                             diedAt[0] - heldAt[0],
