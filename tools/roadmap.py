@@ -4,7 +4,7 @@ import json
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -194,6 +194,10 @@ def _issue_url(number: int) -> str:
     return f"https://github.com/{REPO}/issues/{number}"
 
 
+def _pr_url(number: int) -> str:
+    return f"https://github.com/{REPO}/pull/{number}"
+
+
 def build_roadmap(
     milestones: list[dict],
     issues_by_milestone: dict[int, list[dict]],
@@ -269,12 +273,55 @@ def fetch() -> Roadmap:
     return build_roadmap(milestones, issues, pulls, handoffs, read_adrs())
 
 
+USAGE = "usage: tools/py tools/roadmap.py [--landing <pr>:<issue>]... [--hide <pr>]..."
+
+
+def apply_landing(roadmap: Roadmap, landing: tuple[tuple[int, int], ...], hide: tuple[int, ...]) -> Roadmap:
+    """The roadmap as it reads once the (PR, issue) pairs in `landing` have merged: each issue is closed as completed
+    by its PR, and neither that PR nor a `hide` PR (the batch's own) is in flight. The batch tool renders this before
+    its landing push, when GitHub still shows the issues open (#1567)."""
+    pr_of = {issue: pr for pr, issue in landing}
+    gone = {pr for pr, _ in landing} | set(hide)
+    milestones = []
+    for m in roadmap.milestones:
+        issues = []
+        for i in m.issues:
+            pr = pr_of.get(i.number)
+            if pr is None:
+                issues.append(i)
+                continue
+            linked = any(link.number == pr for link in i.closed_by)
+            by = i.closed_by if linked else (*i.closed_by, Link(pr, _pr_url(pr)))
+            issues.append(replace(i, closed=True, close_reason=i.close_reason or "COMPLETED", closed_by=by))
+        milestones.append(replace(m, issues=tuple(issues)))
+    prs = tuple(p for p in roadmap.pull_requests if p.number not in gone)
+    return replace(roadmap, milestones=tuple(milestones), pull_requests=prs)
+
+
+def parse_args(argv: list[str]) -> tuple[tuple[tuple[int, int], ...], tuple[int, ...]]:
+    landing: list[tuple[int, int]] = []
+    hide: list[int] = []
+    args = iter(argv)
+    for flag in args:
+        value = next(args, "")
+        if flag == "--landing" and re.fullmatch(r"\d+:\d+", value):
+            pr, issue = value.split(":")
+            landing.append((int(pr), int(issue)))
+        elif flag == "--hide" and value.isdigit():
+            hide.append(int(value))
+        else:
+            raise ValueError(f"{flag} {value}".strip())
+    return tuple(landing), tuple(hide)
+
+
 def main() -> int:
-    if len(sys.argv) > 1:
-        print("usage: tools/py tools/roadmap.py (takes no arguments)", file=sys.stderr)
+    try:
+        landing, hide = parse_args(sys.argv[1:])
+    except ValueError as e:
+        print(f"roadmap.py: cannot read '{e}'\n{USAGE}", file=sys.stderr)
         return 2
     try:
-        roadmap = fetch()
+        roadmap = apply_landing(fetch(), landing, hide)
     except RoadmapError as e:
         print(f"roadmap.py: {e}", file=sys.stderr)
         return 1
