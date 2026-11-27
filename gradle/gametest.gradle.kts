@@ -66,9 +66,7 @@ object GametestScan {
 	// or the comment line above it.
 	private const val FORCE_MARKER = "// force-ok:"
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
-	// FarChunks.pin and ColonyChunks.force keep a chunk forced for the world's life. A server shard loads only the test classes it holds
-	// (#1482), so a pin made by a test class exists only in the shard that holds that class (#1586): register it from an entrypoint in
-	// support/ (ColonyPadPin), which every shard loads. Any call outside a support/ file is flagged, or marked with the same marker.
+	// A pin made by a test class exists only in the shard that holds it (#1482, #1586); outside support/ it is flagged or marked.
 	private val worldPin = Regex("""\bFarChunks\s*\.\s*pin\s*\(|\bColonyChunks\s*\.\s*force\s*\(""")
 	private val inSupport = Regex("""(?:^|\.)support\.""")
 	// A synchronous chunk load on the server thread (getChunk or getChunkAt, which load or generate the chunk and wait
