@@ -109,7 +109,7 @@ class ShardsFitTheBudgetTest(unittest.TestCase):
         limit = self.budget["job-limit-minutes"] * 60
         factor = self.budget["slow-runner-factor"]
         self.assertLessEqual((65 + 35 + self.budget["client-shard-seconds"]) * factor, limit)
-        self.assertLessEqual((65 + 15 + self.budget["server-shard-seconds"]) * factor, limit)
+        self.assertLessEqual((60 + 1.55 * self.budget["server-shard-seconds"]) * factor, limit)
         self.assertLessEqual((40 + self.budget["tool-part-seconds"]) * factor, limit)
 
     def test_no_client_class_outweighs_a_client_shard(self):

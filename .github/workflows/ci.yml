@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  BUILD_SHARDS: 13
+  BUILD_SHARDS: 15
 
 jobs:
   # Compiles every source set once and hands build/ and .gradle/ to the jobs below, so none of them compiles for a minute or two
@@ -74,7 +74,7 @@ jobs:
       # At most this many shards at once, so a full run leaves runners for other PRs' runs (ADR 0115).
       max-parallel: 6
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
