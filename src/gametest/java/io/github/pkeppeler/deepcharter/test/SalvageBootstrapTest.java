@@ -173,8 +173,9 @@ public class SalvageBootstrapTest {
         return stalks.stream().filter(pos -> !all.contains(pos.below())).toList();
     }
 
-    /** The id of the biome at a position, generating its chunk. */
+    /** The id of the biome at a position, in a chunk that the caller waited for. */
     private static String biomeAt(ServerLevel level, BlockPos pos) {
+        // sync-load: every caller waited for the chunk with FarChunks.whenBlocksLoaded
         level.getChunkAt(pos);
         return level.getBiome(pos).unwrapKey().orElseThrow().identifier().toString();
     }

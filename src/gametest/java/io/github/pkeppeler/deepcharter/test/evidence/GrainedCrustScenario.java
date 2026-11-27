@@ -291,8 +291,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
                     "a stopped pod should lose " + 2 * squeezeHull + " in two pulses, it lost " + lostStopped);
         }
 
-        // Driven west across the pad (forward, turned to face west) from 20 ticks before a pulse, the same pod takes
-        // nothing.
+        // Driven west across the pad (forward, turned to face west) from 20 ticks before a pulse, the same pod
+        // takes nothing.
         singleplayer.getServer().runOnServer(server -> pod(server).setPos(WALL_X - 3, FLOOR_Y, Z + 0.5));
         int waited = 0;
         while (singleplayer.getServer().computeOnServer(server -> PulseClock.ticksToPulse(level(server))) != 20) {

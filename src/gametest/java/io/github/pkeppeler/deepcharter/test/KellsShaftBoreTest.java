@@ -53,7 +53,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -269,21 +268,15 @@ public class KellsShaftBoreTest {
         FarChunks.awaitEntityTicking(helper, level, probes, index -> launch(helper, server, runs.get(index)));
     }
 
-    /** The shaft of a spacing cell, with the chunks round it generated: the straight bores go down beside it. */
+    /**
+     * The shaft of a spacing cell. Its chunks are made by the wait for the probes beside it
+     * ({@link FarChunks#awaitEntityTicking}): a ticking chunk holds its neighbours loaded, and the straight bores go
+     * down at most {@link #BESIDE} blocks from the shaft.
+     */
     private static StructureSite shaftIn(ServerLevel level, BlockPos conduit, int cellX) {
         LayerChain.Band band = TestLayers.band(level, LAYER);
-        StructureSite site = StructureSite.in(
+        return StructureSite.in(
                 level.getSeed(), StructureKind.KELLS_SHAFT, band.minY(), band.height(), cellX, CELL_Z, conduit);
-        for (int x = (site.origin().getX() - BESIDE - 2) >> 4;
-                x <= (site.origin().getX() + BESIDE + 2) >> 4;
-                x++) {
-            for (int z = (site.origin().getZ() - BESIDE - 2) >> 4;
-                    z <= (site.origin().getZ() + BESIDE + 2) >> 4;
-                    z++) {
-                level.getChunk(x, z, ChunkStatus.FULL);
-            }
-        }
-        return site;
     }
 
     private static int shaftCount(GameTestHelper helper) {
