@@ -465,8 +465,7 @@ public class PhonographTest {
                         Recording.OTHELLO,
                         Recording.EDISON_DOLL,
                         Recording.VOLTA_NURSERY_RHYME)),
-                "the colony's rack holds its three recordings and then the doll and the rhyme, in order, and none of"
-                        + " the found ones: %s",
+                "the colony's rack holds its three recordings and then the doll and the rhyme, in order, and none of the found ones: %s",
                 Recording.COLONY_RACK);
         helper.succeed();
     }

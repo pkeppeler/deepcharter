@@ -434,8 +434,7 @@ public final class MockPlayer {
                 // Not a throw: an exception in a tick event stops the server and every test with it. The mock goes, so
                 // its test fails on it.
                 LOGGER.error(
-                        "Mock player {} stood in the unloaded chunk {} of {} for {} ticks; load it with"
-                                + " FarChunks.whenBlocksLoaded before teleporting the mock there",
+                        "Mock player {} stood in the unloaded chunk {} of {} for {} ticks; load it with FarChunks.whenBlocksLoaded before teleporting the mock there",
                         player.getGameProfile().name(),
                         player.chunkPosition(),
                         player.level().dimension().identifier(),

@@ -195,8 +195,7 @@ public class PodLinerTest {
             if (bricksIn(level, ringCells(x)) != 4 || state.bricks() != 6 || state.dry()) {
                 throw failure(
                         helper,
-                        "tier 1 lines the four open cells with four bricks and leaves 6 in the rack, it lined %s and"
-                                + " left %s (dry %s)",
+                        "tier 1 lines the four open cells with four bricks and leaves 6 in the rack, it lined %s and left %s (dry %s)",
                         bricksIn(level, ringCells(x)),
                         state.bricks(),
                         state.dry());
@@ -212,8 +211,7 @@ public class PodLinerTest {
             if (bricksIn(level, ringCells(x)) != 4 || state.bricks() != 8 || state.dry()) {
                 throw failure(
                         helper,
-                        "tier 2 lines the four open cells with two bricks and leaves 8 in the rack, it lined %s and"
-                                + " left %s (dry %s)",
+                        "tier 2 lines the four open cells with two bricks and leaves 8 in the rack, it lined %s and left %s (dry %s)",
                         bricksIn(level, ringCells(x)),
                         state.bricks(),
                         state.dry());
@@ -229,8 +227,7 @@ public class PodLinerTest {
             if (bricksIn(level, ringCells(x)) != 3 || state.bricks() != 0 || !state.dry()) {
                 throw failure(
                         helper,
-                        "three bricks line three of the four cells and leave the rack dry, it lined %s and left %s"
-                                + " (dry %s)",
+                        "three bricks line three of the four cells and leave the rack dry, it lined %s and left %s (dry %s)",
                         bricksIn(level, ringCells(x)),
                         state.bricks(),
                         state.dry());
@@ -246,8 +243,7 @@ public class PodLinerTest {
             if (bricksIn(level, ringCells(x)) != 2 || state.bricks() != 0 || !state.dry()) {
                 throw failure(
                         helper,
-                        "one brick lines two of the four cells at tier 2 and leaves the rack dry, it lined %s and left"
-                                + " %s (dry %s)",
+                        "one brick lines two of the four cells at tier 2 and leaves the rack dry, it lined %s and left %s (dry %s)",
                         bricksIn(level, ringCells(x)),
                         state.bricks(),
                         state.dry());
@@ -418,8 +414,7 @@ public class PodLinerTest {
                             || state.bricks() != 8) {
                         throw failure(
                                 helper,
-                                "company rock and ore stay and the two open cells are lined with 2 bricks, lined %s,"
-                                        + " rack %s",
+                                "company rock and ore stay and the two open cells are lined with 2 bricks, lined %s, rack %s",
                                 bricksIn(level, ringCells(x)),
                                 state.bricks());
                     }
@@ -829,8 +824,7 @@ public class PodLinerTest {
             if (!rings.equals(expected)) {
                 throw failure(
                         helper,
-                        "tier %s over 10 slabs should lay %s (the depth below the start, the bricks), it laid %s"
-                                + " (start %s, pod at %s after %s ticks)",
+                        "tier %s over 10 slabs should lay %s (the depth below the start, the bricks), it laid %s (start %s, pod at %s after %s ticks)",
                         tier,
                         expected,
                         rings,

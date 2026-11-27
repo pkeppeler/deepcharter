@@ -679,8 +679,7 @@ public class ProspectorChassisTest {
                             helper,
                             registration.owner().equals(charter)
                                     && registration.serial().equals("PROSPECTOR-0002"),
-                            "the Prospector is registered to the restoring charter and keeps its own serial"
-                                    + " PROSPECTOR-0002, it is %s",
+                            "the Prospector is registered to the restoring charter and keeps its own serial PROSPECTOR-0002, it is %s",
                             registration);
                     expect(
                             helper,
@@ -706,8 +705,7 @@ public class ProspectorChassisTest {
                                             .orElseThrow()
                                             .serial()
                                             .equals("PROSPECTOR-0003"),
-                            "the charter's own Prospectors are 0001 and 0003: no second PROSPECTOR-0002, they are %s"
-                                    + " and %s",
+                            "the charter's own Prospectors are 0001 and 0003: no second PROSPECTOR-0002, they are %s and %s",
                             PodComponents.registration(bought),
                             PodComponents.registration(boughtNext));
                     expect(helper, fired(helper, charter), "restoring a Prospector fires T17");
@@ -748,8 +746,7 @@ public class ProspectorChassisTest {
                     expect(
                             helper,
                             account >= PRICE && pack >= CATALYSTS,
-                            "the charter can still afford a restore, so only the held serial can refuse: $%s, %s"
-                                    + " Cicatrium",
+                            "the charter can still afford a restore, so only the held serial can refuse: $%s, %s Cicatrium",
                             account,
                             pack);
                     FoundingMoleHangarTest.expectRefused(

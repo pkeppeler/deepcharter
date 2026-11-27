@@ -213,8 +213,7 @@ public class SalvageBootstrapTest {
             int padCorner = (int) Math.ceil(ColonyTuning.DEFAULT.padSize() / 2.0 * Math.sqrt(2));
             if (inner - EDGE_SLACK < padCorner + ColonyTuning.DEFAULT.edgeMargin()) {
                 throw helper.assertionException(
-                        "the yard starts at %s, so a crate can stand %s from the centre: the pad's corner is at %s and"
-                                + " its graded margin is %s more",
+                        "the yard starts at %s, so a crate can stand %s from the centre: the pad's corner is at %s and its graded margin is %s more",
                         inner, inner - EDGE_SLACK, padCorner, ColonyTuning.DEFAULT.edgeMargin());
             }
             if (insideTheRing > 0) {
@@ -285,8 +284,7 @@ public class SalvageBootstrapTest {
                 String outsideBiome = biomeAt(level, outside);
                 if (!insideBiome.equals(YARD) || outsideBiome.equals(YARD)) {
                     throw helper.assertionException(
-                            "at %s the block %s is %s and the block %s is %s: the yard should hold the first and not"
-                                    + " the second",
+                            "at %s the block %s is %s and the block %s is %s: the yard should hold the first and not the second",
                             List.of(direction[0], direction[1]),
                             inside.toShortString(),
                             insideBiome,
@@ -317,8 +315,7 @@ public class SalvageBootstrapTest {
                 if (base.getY() > HIGHEST_STALK_BASE) {
                     if (distance(base) < inner || distance(base) > outer) {
                         throw helper.assertionException(
-                                "a stalk stands at %s, above the floor of any crater (%s) and outside the yard's %s to"
-                                        + " %s blocks",
+                                "a stalk stands at %s, above the floor of any crater (%s) and outside the yard's %s to %s blocks",
                                 base.toShortString(), HIGHEST_STALK_BASE, inner, outer);
                     }
                     patches++;
@@ -359,8 +356,7 @@ public class SalvageBootstrapTest {
                     .min()
                     .orElse(Double.MAX_VALUE);
             LOGGER.info(
-                    "[salvage] {} stalk columns, the nearest {} blocks from the colony's centre; from a crate to the"
-                            + " nearest column: least {}, median {}, most {} blocks ({} crates)",
+                    "[salvage] {} stalk columns, the nearest {} blocks from the colony's centre; from a crate to the nearest column: least {}, median {}, most {} blocks ({} crates)",
                     bases.size(),
                     (int) nearestToTheOrigin,
                     (int) nearest[0],
