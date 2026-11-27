@@ -125,11 +125,11 @@ public class HotHullClientTest implements FabricClientGameTest {
                 PodGeoRenderer.load(client.getResourceManager(), pod.chassis()).hot(),
                 "the mod's own look has a hot mask");
         PodLook bare = PodLook.parse("a look with no hot mask", new StringReader("""
-                        {"model": "deepcharter:pod/mole", "texture": "deepcharter:textures/entity/pod/mole_wreck.png",
-                         "glow": "never",
-                         "cutters": {"0": "tricone", "1": "stacked", "2": "fluted", "3": "cluster"},
-                         "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png"}}
-                        """));
+            {"model": "deepcharter:pod/mole", "texture": "deepcharter:textures/entity/pod/mole_wreck.png",
+             "glow": "never",
+             "cutters": {"0": "tricone", "1": "stacked", "2": "fluted", "3": "cluster"},
+             "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png"}}
+            """));
         require(
                 client.getResourceManager().getResource(bare.intact().hotmask()).isEmpty(),
                 "the test's texture has no hot mask, " + bare.intact().hotmask());

@@ -165,7 +165,8 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
         }
         if (!stopped(singleplayer)) {
             throw new AssertionError(
-                    "the shaped charge should stop at the stone under the column, and leave the Company rock beside it and under the stone");
+                    "the shaped charge should stop at the stone under the column, and leave the Company rock beside it"
+                            + " and under the stone");
         }
         // Back over the hole: the pod sinks down the whole cleared column.
         context.getInput().holdKey(options -> options.keyDown);
