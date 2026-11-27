@@ -26,6 +26,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.BoltDriverTuning;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.BoltRoom.Corridor;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -95,6 +96,13 @@ public class BoltDriverTest {
     private static final int ROCK_SETTLES_TICKS = 40;
 
     private static final Identifier CREAK = SoundEvents.CREAKING_TWITCH.location();
+    private static final Identifier CAVE_IN_SOUND =
+            DeepSound.CAVE_IN_COLLAPSE.event().location();
+    private static final Identifier EXPLOSION =
+            SoundEvents.GENERIC_EXPLODE.value().location();
+
+    /** How far from the collapse a sound still counts as the collapse's: the stretch is a few blocks wide. */
+    private static final double COLLAPSE_EARSHOT = 4.0;
 
     @GameTest
     public void theIdsArePermanentAndTheDriverIsKeptNotSpent(GameTestHelper helper) {
@@ -608,6 +616,17 @@ public class BoltDriverTest {
                 if (lying == 0) {
                     throw failure(helper, "the roof fell as rock, which lies where it landed: none lies in the tunnel");
                 }
+                Vec3 collapse = Vec3.atCenterOf(corridor.floor(7));
+                List<Identifier> heard = under.soundsHeardAtPlaces().stream()
+                        .filter(sound -> sound.at().distanceTo(collapse) < COLLAPSE_EARSHOT)
+                        .map(MockPlayer.PlacedSound::id)
+                        .toList();
+                expect(
+                        helper,
+                        heard.contains(CAVE_IN_SOUND) && !heard.contains(EXPLOSION),
+                        "the fall sounds as %s and not as an explosion, the person under it heard %s",
+                        CAVE_IN_SOUND,
+                        heard);
                 helper.succeed();
             }
         });

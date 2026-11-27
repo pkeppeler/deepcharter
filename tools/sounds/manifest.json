@@ -31,6 +31,10 @@
     "ogg_sha256": "d990d0a403c128fc6219aa3b71d4aa50b76c5a180d8be0c2c99d1417f449a4f0",
     "pcm_sha256": "50828ccfcb42f8738b36da6e0b80d6904eb35b00294bbe588e6b4a7eba92b44e"
   },
+  "breach/rumble": {
+    "ogg_sha256": "e198d16eab0784117f01dc48b32014b1c2bd1b4d727d1debc25de090eb861e9e",
+    "pcm_sha256": "2e1678ee99e5fc5b54a64ebf70b1add2bcb190fd61722b2a3cc5af694633c7e8"
+  },
   "continuity/lamp_out": {
     "ogg_sha256": "580a5d9067715734979b30c5bb4e1824e2cdd47e27a95efa1747433552b8fd95",
     "pcm_sha256": "b89bb812983872431c5f635d15e93d399f85f2f360dd9809ff9ff8508a02b19d"
@@ -70,6 +74,10 @@
   "hymn/layer_2": {
     "ogg_sha256": "316bd0416597071a4aa7f6b307207d4dea38a2f441ffb398537731bf68fcb35a",
     "pcm_sha256": "16c0ca5fadcd1440abf14e7836323f5ea7ccf1a72ab9dc8b5844864d3dfca8da"
+  },
+  "layer/cave_in": {
+    "ogg_sha256": "f43895ded105a5ec98a8172a30f2eb286a3c8ad75a8ff2bfea4ff0b65d3151a4",
+    "pcm_sha256": "d44361a291dab7d6b7c22df116588d4b8fa3ee64f6de4b3f0594a27fc6e219f6"
   },
   "music/rest": {
     "ogg_sha256": "aeea2bea583744c49e952da6e6658417b7eb2bc903abd7cc622f1e6766b288cb",
