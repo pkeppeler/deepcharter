@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
-import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -15,6 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.level.storage.LevelData;
@@ -22,8 +22,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the cargo is left behind
- * as item entities where the pod was. Nothing mined teleports.
+ * The emergency teleporters (SPEC section 11): the pod and everyone in it go to the colony, and the whole hold is left
+ * behind as item entities where the pod was. Nothing mined teleports.
  */
 final class Teleports {
     /** How many random spots a scattering teleporter tries before it falls back to the exact column. */
@@ -53,7 +53,7 @@ final class Teleports {
         return GlobalPos.of(spawn.dimension(), spawn.pos());
     }
 
-    /** As {@link #send(PodEntity, double)}, to {@code target}, with the spilled ore lying for {@code spill}. */
+    /** As {@link #send(PodEntity, double)}, to {@code target}, with the spilled hold lying for {@code spill}. */
     static Optional<Component> send(PodEntity pod, double scatter, GlobalPos target, SpillLife spill) {
         ServerLevel from = (ServerLevel) pod.level();
         MinecraftServer server = from.getServer();
@@ -73,7 +73,6 @@ final class Teleports {
             return Consumables.refusal("teleport_blocked");
         }
         Vec3 landing = spot.get();
-        List<PodCargo.Entry> held = cargo.entries();
         Vec3 departure = pod.position();
         Entity arrived = pod.teleport(new TeleportTransition(
                 to, landing, Vec3.ZERO, pod.getYRot(), pod.getXRot(), TeleportTransition.DO_NOTHING));
@@ -85,18 +84,17 @@ final class Teleports {
         to.getChunkSource()
                 .addTicketWithRadius(RepairRegistry.TELEPORT_ARRIVAL, arrived.chunkPosition(), ARRIVAL_RADIUS);
         arrived.getPassengersAndSelf().forEach(Entity::resetFallDistance);
-        // The ore is spilled first, so that a failure after it loses nothing: the bay is emptied last.
-        for (PodCargo.Entry entry : held) {
-            ItemEntity drop = new ItemEntity(
-                    from, departure.x, departure.y, departure.z, entry.stack().copy());
-            if (spill == SpillLife.EXTENDED) {
-                drop.setExtendedLifetime();
-            }
-            from.addFreshEntity(drop);
-        }
-        // The saved cargo travelled with the pod (a crossing is a new entity): empty the arriving bay.
+        // The whole hold spills, not only the ore (SPEC section 11: you drop your cargo, and nothing mined teleports).
+        // The saved hold travelled with the pod (a crossing is a new entity), so it is the arriving pod's that empties.
+        // The fuel slot is fuel, not cargo, and stays, as the tank's fuel does.
         if (arrived instanceof PodEntity moved) {
-            moved.cargo().dump(moved);
+            for (ItemStack stack : moved.cargo().takeAll(moved)) {
+                ItemEntity drop = new ItemEntity(from, departure.x, departure.y, departure.z, stack);
+                if (spill == SpillLife.EXTENDED) {
+                    drop.setExtendedLifetime();
+                }
+                from.addFreshEntity(drop);
+            }
         }
         from.playSound(
                 null, departure.x, departure.y, departure.z, DeepSound.TERMINAL_TELEPORT.event(), SoundSource.PLAYERS);
