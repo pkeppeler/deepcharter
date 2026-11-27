@@ -246,7 +246,7 @@ public class BlastingChargeTest {
 
     /**
      * A charge is never a suicide button (#1458): a pod left sitting on a full-depth charge takes the blast and then falls the
-     * {@code chargeDepth} rows unbraked. At exactly that cost the charge is refused; just over it the pod lives through both.
+     * {@code chargeDepth} rows, braked only by the ground cushion. At exactly that cost the charge is refused; just over it the pod lives through both.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodJustOverTheGuardSurvivesTheBlastAndTheDrop(GameTestHelper helper) {
@@ -262,13 +262,6 @@ public class BlastingChargeTest {
                 },
                 pod -> {},
                 (helper2, level, pod, pilot, hull) -> {
-                    if (guard[0] <= TUNING.chargeDamage()) {
-                        throw failure(
-                                helper2,
-                                "the %d row drop should cost hull, the guard is only %.2f",
-                                TUNING.chargeDepth(),
-                                guard[0]);
-                    }
                     ChargeUse.expectSurvivedBlastAndDrop(helper2, pod, hull, guard[0], FLOOR + BOTTOM);
                 });
     }
