@@ -248,12 +248,7 @@ final class TestSiteTable {
         claim("LayerStructuresTest", 1, 3840, 4223, 3840, 4223);
         claim("LayerStructuresTest", 1, 4224, 4607, 4224, 4607);
         claim("LayerStructuresTest", 1, 11520, 11903, 11520, 11903);
-        claim("LayerStructuresTest", 1, 11904, 12287, 11904, 11996);
-        claim("LayerStructuresTest", 1, 11904, 12287, 12004, 12287);
-        claim("LayerStructuresTest", 1, 11904, 11996, 11997, 12003);
-        claim("LayerStructuresTest", 1, 12004, 12096, 11997, 12003);
-        claim("LayerStructuresTest", 1, 12104, 12196, 11997, 12003);
-        claim("LayerStructuresTest", 1, 12204, 12287, 11997, 12003);
+        claim("LayerStructuresTest", 1, 11904, 12287, 11904, 12287);
         claim("LayerStructuresTest", 1, 12288, 12671, 12288, 12671);
         claim("LayerStructuresTest", 1, 12672, 13055, 12672, 12991);
         claim("LayerStructuresTest", 1, 12672, 13055, 13008, 13055);
@@ -278,10 +273,7 @@ final class TestSiteTable {
         claim("LayerStructuresTest", 2, 3840, 4223, 3840, 4223);
         claim("LayerStructuresTest", 2, 4224, 4607, 4224, 4607);
         claim("LayerStructuresTest", 2, 11520, 11903, 11520, 11903);
-        claim("LayerStructuresTest", 2, 11904, 12287, 11904, 11996);
-        claim("LayerStructuresTest", 2, 11904, 12287, 12004, 12287);
-        claim("LayerStructuresTest", 2, 11904, 12246, 11997, 12003);
-        claim("LayerStructuresTest", 2, 12254, 12287, 11997, 12003);
+        claim("LayerStructuresTest", 2, 11904, 12287, 11904, 12287);
         claim("LayerStructuresTest", 2, 12288, 12671, 12288, 12671);
         claim("LayerStructuresTest", 2, 12672, 13055, 12672, 12991);
         claim("LayerStructuresTest", 2, 12672, 13055, 13008, 13055);
