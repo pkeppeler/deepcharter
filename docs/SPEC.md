@@ -251,7 +251,7 @@ The original's rules, in 3D.
 
 ### Fuel and stranded
 
-- Fuel is the clock. It drains even idle, faster while moving and drilling. A beep warns when low.
+- Fuel is the clock. It drains even idle while anyone is aboard, faster while moving and drilling. A parked pod with nobody aboard burns none. A beep warns when low.
 - Early fuel is crafted (coal, charcoal, biofuel). Later it is bought at the pump.
 - Running dry leaves the pod stranded: powered off and dark until rescue or a reserve tank.
 

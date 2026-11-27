@@ -476,6 +476,12 @@ public class CompanyRecoveryTest {
     public void aPodWithNoPilotWaitsForNoCrew(GameTestHelper helper) {
         Plan plan = new Plan();
         plan.mounted = false;
+        // The pilot ran it dry and got out: an empty pod burns nothing (#1434).
+        plan.strand = false;
+        plan.mutate = pod -> {
+            pod.setFuel(0f);
+            pod.setStranded(true);
+        };
         neverWaits(helper, 12_500, plan, null);
     }
 
