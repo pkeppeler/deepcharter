@@ -67,7 +67,7 @@ class ClientShardWorkflowTest(unittest.TestCase):
         job = self.shard_job()
         self.assertEqual(5, int(re.search(r"timeout-minutes: (\d+)", job)[1]))
         deadline = int(re.search(r"^\s+max_seconds=(\d+)$", ACTION, re.M)[1])
-        self.assertLess(deadline + 65, 5 * 60, "65 s of setup before the step, then the run's deadline, inside the job limit")
+        self.assertLess(deadline + 40, 5 * 60, "25 s of setup before the step and 15 s of post steps, then the step's deadline, inside the job limit")
 
     def test_a_shard_downloads_the_compiled_build_and_leaves_the_cache_to_the_compile_job(self):
         job = self.shard_job()
