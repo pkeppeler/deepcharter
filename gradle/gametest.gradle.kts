@@ -112,6 +112,28 @@ object GametestScan {
 	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
 	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
+	// A carve makes LightSync queue a ring re-send. ADR 0092 keeps a pod tracked only for a rider already riding it, already tracking it, and
+	// holding its chunk in view: a pod added, moved before it is ridden, or moved out of the rider's view waits for the send, so the client
+	// pilot is on foot until then (#1249, #1303). The gate cannot tell these from a kept pod, so it matches every seat, add and move. Each
+	// method of a client GameTest or scenario is read in source order as carves, waits and seats, where a call or method reference to a
+	// same-file method stands for that method's steps; a seat after a carve with no wait between fails. The marker goes on the seat's
+	// statement, or on the call that reaches it.
+	// Heuristic: a call through another object or class (a support helper, a base class, another scenario) is not followed, a method is
+	// matched by name across its overloads, and the order is the text's, so a loop that seats before it carves again is not seen.
+	private const val LIGHT_SETTLED_MARKER = "// light-settled-ok:"
+	private val roomCarve = Regex("""\bRoomCarver\s*\.\s*carve\w*\s*\(""")
+	private val podSeat = Regex("""\bstartRiding\s*\(|\baddFreshEntity\s*\(\s*(?:\w+\s*\.\s*)*\w*[pP]od\w*\b|\b\w*[pP]od\w*\s*(?:\((?:[^()]|\([^()]*\))*\)\s*|\[[^\]]*]\s*)?\.\s*(?:setPos|teleportTo|teleport)\s*\(""")
+	private val lightSettledWait = Regex("""\bClientWait\s*\.\s*lightSettled\s*\(""")
+	private val namedCall = Regex("""\b(\w+)\s*\(""")
+	private val methodReference = Regex("""::\s*(\w+)\b""")
+	private val notMethodNames = setOf("if", "for", "while", "switch", "catch", "synchronized", "try", "return", "new", "throw", "super", "this")
+	private val notBeforeMethodName = setOf("new", "return", "throw", "else", "case", "yield", "record", "assert")
+
+	private enum class SettleKind { CARVE, WAIT, SEAT }
+
+	// One step of a method for the light-settled gate, at [at] in the method read; [call] when a call of a same-file method brought it in, so
+	// two steps of one call share [at].
+	private class SettleStep(val kind: SettleKind, val at: Int, val call: Boolean)
 	// FarChunks.Deadline.await does not block (#1071, #1085), so a statement starting with `expect(` (`Failures.` prefix or not), `helper.fail(`,
 	// `helper.assert...(` or `throw` directly after `.await(...);` on a Deadline is flagged; comments between them do not count.
 	// Heuristic: only the direct next statement is seen, so any statement in between defeats it, and an assertion inside a helper method is not seen.
@@ -212,6 +234,98 @@ object GametestScan {
 			if ((inPoll || noDeadline) && !marked(markedNear, rawLines, line, LIGHT_WAIT_MARKER)) {
 				val where = if (inPoll) "inside thenWaitUntil or succeedWhen, which count ticks" else "in a test method that awaits no FarChunks.Deadline"
 				problems.add("$className:${line + 1} reads block light $where, and the light engine runs on Util.backgroundExecutor(), which other tests' chunk work can starve; wait for it under FarChunks.Deadline (poll from TestTicks.each, see #1042 and #1048), or mark a read that is not a wait with '$LIGHT_WAIT_MARKER <reason>'")
+			}
+		}
+		return problems
+	}
+
+	// The methods declared in [text] (comments and literals blanked): the index of each name, and its body from `{` to `}`.
+	private fun methodBodies(text: String): List<Pair<Int, IntRange>> = namedCall.findAll(text).mapNotNull { match ->
+		val nameAt = match.range.first
+		var before = nameAt - 1
+		while (before >= 0 && text[before].isWhitespace()) before--
+		if (match.groupValues[1] in notMethodNames || before == nameAt - 1 || before < 0) return@mapNotNull null
+		val last = text[before]
+		if (!(last.isLetterOrDigit() || last == '_' || last == '>' || last == ']')) return@mapNotNull null
+		var wordStart = before
+		while (wordStart > 0 && (text[wordStart - 1].isLetterOrDigit() || text[wordStart - 1] == '_')) wordStart--
+		if (text.substring(wordStart, before + 1) in notBeforeMethodName) return@mapNotNull null
+		val paramsClose = closing(text, match.range.last)
+		if (paramsClose < 0) return@mapNotNull null
+		var next = paramsClose + 1
+		while (next < text.length && text[next].isWhitespace()) next++
+		if (text.startsWith("throws", next)) {
+			while (next < text.length && text[next] != '{' && text[next] != ';') next++
+		}
+		if (next >= text.length || text[next] != '{') return@mapNotNull null
+		val bodyClose = closing(text, next)
+		if (bodyClose < 0) null else nameAt to next..bodyClose
+	}.toList()
+
+	private fun lightSettledProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val methods = methodBodies(text)
+		val declared = methods.map { it.first }.toSet()
+		val byName = methods.groupBy { namedCall.find(text, it.first)!!.groupValues[1] }
+		val simpleName = className.substringAfterLast('.')
+		fun owner(at: Int) = methods.filter { at in it.second }.minByOrNull { it.second.last - it.second.first }
+		fun isMarked(at: Int) = marked(markedNear, rawLines, lineOf(text, at), LIGHT_SETTLED_MARKER)
+		// A same-file method named at [at]: a method reference, or a call that is unqualified (not after `new`) or through this. or the class's own name.
+		fun sameFileCall(at: Int, name: String, reference: Boolean): Boolean {
+			if (name !in byName || at in declared) return false
+			if (reference) return true
+			fun wordBefore(end: Int): Pair<Int, String> {
+				var last = end
+				while (last >= 0 && text[last].isWhitespace()) last--
+				var first = last
+				while (first >= 0 && (text[first].isLetterOrDigit() || text[first] == '_')) first--
+				return first to text.substring(first + 1, last + 1)
+			}
+			var before = at - 1
+			while (before >= 0 && text[before].isWhitespace()) before--
+			if (before < 0 || text[before] != '.') return wordBefore(at - 1).second != "new"
+			val (receiverStart, receiver) = wordBefore(before - 1)
+			return (receiver == "this" || receiver == simpleName) && (receiverStart < 0 || text[receiverStart] != '.')
+		}
+		val memo = mutableMapOf<String, List<SettleStep>>()
+		fun steps(body: Pair<Int, IntRange>, stack: Set<String>): List<SettleStep> {
+			val range = body.second
+			fun inBody(regex: Regex) = regex.findAll(text, range.first).takeWhile { it.range.first < range.last }
+			val own = { at: Int -> owner(at) == body }
+			val found = mutableListOf<SettleStep>()
+			for ((kind, regex) in listOf(SettleKind.CARVE to roomCarve, SettleKind.WAIT to lightSettledWait, SettleKind.SEAT to podSeat)) {
+				inBody(regex).map { it.range.first }.filter { own(it) && !(kind == SettleKind.SEAT && isMarked(it)) }
+					.forEach { found.add(SettleStep(kind, it, false)) }
+			}
+			val calls = inBody(namedCall).map { Triple(it.range.first, it.groupValues[1], false) } +
+				inBody(methodReference).map { Triple(it.range.first, it.groupValues[1], true) }
+			for ((at, name, reference) in calls) {
+				if (!own(at) || name in stack || !sameFileCall(at, name, reference)) continue
+				val marked = isMarked(at)
+				val inner = memo.getOrPut(name) { byName.getValue(name).flatMap { steps(it, stack + name) } }
+				inner.filter { !(marked && it.kind == SettleKind.SEAT) }.forEach { found.add(SettleStep(it.kind, at, true)) }
+			}
+			return found.sortedBy { it.at }
+		}
+		val problems = mutableListOf<String>()
+		val reported = mutableSetOf<Int>()
+		for (method in methods) {
+			var carve: SettleStep? = null
+			for (step in steps(method, setOf(namedCall.find(text, method.first)!!.groupValues[1]))) {
+				when (step.kind) {
+					SettleKind.CARVE -> carve = step
+					SettleKind.WAIT -> carve = null
+					SettleKind.SEAT -> {
+						val pending = carve ?: continue
+						val line = lineOf(text, step.at)
+						if ((pending.call && step.call && pending.at == step.at) || !reported.add(line)) continue
+						problems.add("$className:${line + 1} seats a pod after a RoomCarver carve (line ${lineOf(text, pending.at) + 1}) with no ClientWait.lightSettled between them, so a pod first tracked while the carve's chunk re-send is queued reaches its rider only after the send (#1303, ADR 0092); carve, call ClientWait.lightSettled over the room's chunks, then seat, or mark a seat the carve cannot affect with '$LIGHT_SETTLED_MARKER <reason>'")
+					}
+				}
 			}
 		}
 		return problems
@@ -450,6 +564,9 @@ object GametestScan {
 				}
 			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
+			if (isClientSide) {
+				problems.addAll(lightSettledProblems(className, text, rawLines, markedNear))
+			}
 			problems.addAll(awaitThenExpectProblems(className, text, rawLines, markedNear))
 			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
 				problems.addAll(lightWaitProblems(className, text, rawLines, markedNear))

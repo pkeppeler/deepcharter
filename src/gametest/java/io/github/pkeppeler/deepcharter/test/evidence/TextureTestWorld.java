@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
@@ -531,5 +532,9 @@ final class TextureTestWorld {
 
     void serverDo(Consumer<MinecraftServer> action) {
         sp.getServer().runOnServer(action::accept);
+    }
+
+    TestServerContext server() {
+        return sp.getServer();
     }
 }
