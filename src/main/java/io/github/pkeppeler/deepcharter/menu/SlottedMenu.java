@@ -161,6 +161,7 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         return switch (input) {
             case PICKUP -> getCarried().isEmpty();
             case QUICK_MOVE, THROW, SWAP -> true;
+            // enum-default: every other input takes nothing from a filled slot
             default -> false;
         };
     }
