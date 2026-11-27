@@ -32,12 +32,6 @@ public record CargoWeight(float mass) implements TooltipProvider {
             Consumer<Component> consumer,
             TooltipFlag flag,
             DataComponentGetter components) {
-        // The tooltip is given the stack itself, so a stack of coal shows what it weighs whole; any other getter has
-        // one item's mass.
-        float shown = components instanceof ItemStack stack ? of(stack) : mass;
-        consumer.accept(Component.translatable(
-                        "deepcharter.ore.tooltip.mass", OreEncumbrance.shown(OreEncumbrance.tenths(shown)))
-                .withStyle(ChatFormatting.GRAY));
         consumer.accept(Component.translatable("deepcharter.ore.tooltip.heavy").withStyle(ChatFormatting.GRAY));
     }
 
