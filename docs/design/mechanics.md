@@ -2751,18 +2751,34 @@ The air rows are the same numbers: the rotor does not change the drive speed. Be
 
 ## Dumping cargo (#1456, A)
 
-**Problem.** A pod too heavy to fly had no way out but driving to a terminal, and the pilot could not tell why it would not lift (friends-server playtest, [#1456](https://github.com/pkeppeler/deepcharter/issues/1456)). Ore must still not reach the pack, where it rides weightless.
+**Problem.** A pod too heavy to fly had no way out but driving to a terminal, and the pilot could not tell why it would not lift (friends-server playtest, [#1456](https://github.com/pkeppeler/deepcharter/issues/1456)). Ore in the pack rode weightless then; [Loose ore](#loose-ore-in-the-pack-1540-a) prices that.
 
-**What it is** ([ADR 0103](../adr/0103-cargo-dumps-to-the-ground-under-the-pod-and-a-seated-player-picks-up-no-ore.md)). Q on a stack in the pod screen's hold drops one of it under the pod, Ctrl+Q the stack; holding the dump key (B) for a second from a seat drops the whole hold. It lies on the ground, where a crewmate or the pilot on foot can pick it up: a player in a seat picks up no ore and nothing a pod dumped. The first time the cargo keeps a held jump from climbing (a load of half the engine's power on a stock Mole, where the thrust no longer beats gravity), the pilot is told once which key dumps.
+**What it is** ([ADR 0103](../adr/0103-cargo-dumps-to-the-ground-under-the-pod-and-a-seated-player-picks-up-no-ore.md)). Q on a stack in the pod screen's hold drops one of it under the pod, Ctrl+Q the stack. The dump key (B) is gone ([#1540](https://github.com/pkeppeler/deepcharter/issues/1540), [ADR 0110](../adr/0110-ore-moves-freely-between-hold-and-pack-and-loose-ore-costs-the-pod.md)). It lies on the ground, where a crewmate or the pilot on foot can pick it up: a player in a seat picks up nothing a pod dumped. The first time the cargo keeps a held jump from climbing (a load of half the engine's power on a stock Mole, where the thrust no longer beats gravity), the pilot is told once which key dumps.
 
 - **Ladder.** By hand: dump, land, step out and carry what you can, or come back for it with a lighter pod or a second one. A crew splits it: the pilot dumps, a crewmate on foot gathers and walks it to a terminal. Later: an engine or a lighter hull lifts more, so dumping is for the deep, heavy hauls.
-- **Readable.** The overload cue on jump names the dump key, and the one-time line says it the first time the cargo holds the pod down.
+- **Readable.** The overload cue on jump names the pod screen's key (E) and the drop key, and the one-time line says it the first time the cargo holds the pod down.
 
-**Trade-offs.** Dumped ore is ore not sold this trip; on the ground it lies five minutes before it despawns, so a dump deep down is usually a loss. Dump over lava and it burns. The dump key has a one-second hold so a brush of it never costs a haul.
+**Trade-offs.** Dumped ore is ore not sold this trip; on the ground it lies five minutes before it despawns, so a dump deep down is usually a loss. Dump over lava and it burns.
 
-**Tuning knobs.** The hold time (one second, `PodDumpKeys`); where the items land (spread over 80% of the pod's width, at its floor).
+**Tuning knobs.** Where the items land (spread over 80% of the pod's width, at its floor).
 
 **Open questions.** Whether dumped ore should lie longer (the extended lifetime of a recovery spill) so that a crew can come back for it; whether a dump while airborne should cost the dumped ore's fall.
+
+## Loose ore in the pack (#1540, A)
+
+**Problem.** Walling ore out of the pack ([ADR 0102](../adr/0102-the-pod-screen-holds-any-item-keeps-ore-until-a-terminal-and-feeds-the-tank-from-a-fuel-slot.md), [ADR 0103](../adr/0103-cargo-dumps-to-the-ground-under-the-pod-and-a-seated-player-picks-up-no-ore.md)) took a refusal and a dump key to explain, and the bay's size was the only limit. The user wanted the choice instead: ore moves freely, and pack ore past the bay costs ([#1468](https://github.com/pkeppeler/deepcharter/issues/1468), [ADR 0110](../adr/0110-ore-moves-freely-between-hold-and-pack-and-loose-ore-costs-the-pod.md)).
+
+**What it is.** Ore in a rider's pack is loose ore while they ride. It weighs double against the lift, it cramps the cab (the drill and A and D slow by half a percent for each unit of ore mass, at most half), and each ore adds a hull point to a hard landing. A full stock bay of goldium (7 ore, 70 mass) in the pack costs 35% of the drill and the steering, and 7 hull on a hard landing, and 140 against a lift of 100: it does not leave the ground alone.
+
+- **Ladder.** By hand: rack the ore in the hold (the pod screen, E) before the climb. A bigger bay or a stronger engine makes the rack cheaper than the pack. A crewmate on foot carries ore at the walking cost.
+- **Readable.** LOOSE on the cockpit readout while any rider carries loose ore, a one-time line on the first, a line over the pack in the pod screen, and `Loose aboard: x2` on an ore's tooltip while seated.
+
+**Trade-offs.** Pack ore is the only way past the bay's size, and it is paid for in lift, drill time, turning and hull: worth it for a short hop with a few rich ore, not for a haul. The measured penalty is in the PR (`PodLooseOreTest`).
+
+**Tuning knobs.** `LooseOreTuning`: the weight factor (2), the cramp for each unit of mass (0.005) and its cap (0.5), the rattle for each ore (1 hull).
+
+**Open questions.** Whether the cramp should also slow the pod's drive speed; whether a pack's ore should count against a bay slot instead once the bay can be upgraded further.
+
 
 ## Pack ore and load (#1446)
 

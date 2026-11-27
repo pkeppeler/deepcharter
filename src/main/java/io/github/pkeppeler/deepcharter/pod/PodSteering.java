@@ -39,11 +39,13 @@ final class PodSteering {
     static void steer(PodEntity pod, Input input) {
         PodSteeringTuning tuning = PodSteeringTuning.DEFAULT;
         float turn = pod.turnRate() * tuning.turnDamping();
+        // Loose ore in a rider's pack cramps the cab: the pod answers A and D less.
+        float acceleration = tuning.turnAcceleration() * (1f - PodLooseOre.cramp(pod));
         if (input.left()) {
-            turn -= tuning.turnAcceleration();
+            turn -= acceleration;
         }
         if (input.right()) {
-            turn += tuning.turnAcceleration();
+            turn += acceleration;
         }
         pod.setTurnRate(turn);
         pod.setYRot(Mth.wrapDegrees(pod.getYRot() + turn));

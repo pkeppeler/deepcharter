@@ -10,7 +10,6 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodDump;
-import io.github.pkeppeler.deepcharter.pod.PodDumpPayload;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLoad;
@@ -46,13 +45,14 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Server GameTests for #1456: dumping cargo from the seat. A stack thrown from the pod screen's hold, or the whole hold
- * by the dump key's request, drops as items under the pod: the mass falls and an overloaded pod lifts again. Ore never
- * reaches a pack while its carrier sits in a pod, though anyone on foot picks it up. Only a crew member seated in the
- * pod dumps it. The first overload with a pilot aboard tells that pilot once how to dump.
+ * Server GameTests for #1456 and #1540: dumping cargo from the seat. A stack thrown from the pod screen's hold drops as
+ * items under the pod: the mass falls and an overloaded pod lifts again. What a pod dumped never reaches a pack while
+ * its carrier sits in a pod, though anyone on foot picks it up. Only a crew member who may open the screen dumps from
+ * it. The first overload with a pilot aboard tells that pilot once how to dump, naming the screen's key and the drop
+ * key. The dump key is gone ({@code PodDumpClientTest}).
  *
  * <p>The clicks are the server menu's own {@code clicked}, which the click packet runs after its {@code stillValid}
- * check; the key's request goes through the payload's real receiver.
+ * check.
  */
 public class PodDumpTest {
     private static final AtomicInteger PLAYERS = new AtomicInteger();
@@ -110,6 +110,17 @@ public class PodDumpTest {
         return menu;
     }
 
+    /** Ctrl+Q on every stack of the hold, as the click packet runs it: the whole hold under the pod. */
+    private static void dumpHold(GameTestHelper helper, Scene scene) {
+        PodMenu menu = open(helper, scene.pilot(), scene.pod());
+        for (int i = 0; i < PodMenu.HOLD_WINDOW; i++) {
+            if (!menu.holdSlot(i).getItem().isEmpty()) {
+                menu.clicked(menu.holdSlot(i).index, 1, ContainerInput.THROW, scene.pilot());
+            }
+        }
+        scene.pilot().closeContainer();
+    }
+
     /** Q on hold slot {@code window} of the page, as the click packet runs it. */
     private static void throwFromHold(PodMenu menu, ServerPlayer player, int window) {
         menu.clicked(menu.holdSlot(window).index, 0, ContainerInput.THROW, player);
@@ -150,6 +161,12 @@ public class PodDumpTest {
             }
         }
         return count;
+    }
+
+    private static boolean keybind(Object argument, String name) {
+        return argument instanceof Component key
+                && key.getContents() instanceof KeybindContents bound
+                && bound.getName().equals(name);
     }
 
     private static Stream<Component> hintMessages(MockPlayer mock) {
@@ -208,18 +225,18 @@ public class PodDumpTest {
     }
 
     @GameTest(maxTicks = 60)
-    public void theDumpKeyDropsTheWholeHoldAsItemsUnderThePod(GameTestHelper helper) {
+    public void ctrlQOnEveryStackDropsTheWholeHoldAsItemsUnderThePod(GameTestHelper helper) {
         Scene scene = seated(helper);
         PodEntity pod = scene.pod();
         overload(pod);
         pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
         // An overloaded pod sits on the ground: dump once it has settled there.
-        helper.runAfterDelay(10, () -> scene.mock().send(new PodDumpPayload()));
+        helper.runAfterDelay(10, () -> dumpHold(helper, scene));
         helper.runAfterDelay(15, () -> {
             expect(
                     helper,
                     pod.cargoUsed() == 0 && pod.cargoMass() == 0f,
-                    "the key empties the hold, %s used, mass %s",
+                    "Ctrl+Q on each stack empties the hold, %s used, mass %s",
                     pod.cargoUsed(),
                     pod.cargoMass());
             expect(
@@ -244,7 +261,7 @@ public class PodDumpTest {
         });
     }
 
-    // ---- ore stays out of the pack ----
+    // ---- what a pod dumped stays out of a seated pack ----
 
     @GameTest(maxTicks = 160)
     public void dumpedOreNeverReachesASeatedPackButAPlayerOnFootPicksItUp(GameTestHelper helper) {
@@ -255,7 +272,7 @@ public class PodDumpTest {
         PodMenu menu = open(helper, scene.pilot(), pod);
         throwFromHold(menu, scene.pilot(), 0);
         scene.pilot().closeContainer();
-        scene.mock().send(new PodDumpPayload());
+        dumpHold(helper, scene);
         helper.runAfterDelay(PICKUP_WAIT, () -> {
             expect(
                     helper,
@@ -285,7 +302,7 @@ public class PodDumpTest {
         PodEntity pod = scene.pod();
         pod.cargo().setAt(pod, 0, new ItemStack(Items.COAL, 16));
         // Dump on the ground, where the stack lands inside the seated rider's pickup box.
-        helper.runAfterDelay(10, () -> scene.mock().send(new PodDumpPayload()));
+        helper.runAfterDelay(10, () -> dumpHold(helper, scene));
         helper.runAfterDelay(10 + PICKUP_WAIT, () -> {
             expect(
                     helper,
@@ -316,7 +333,7 @@ public class PodDumpTest {
         Scene scene = seated(helper);
         PodEntity pod = scene.pod();
         pod.cargo().setAt(pod, 0, new ItemStack(Items.COAL, 4));
-        helper.runAfterDelay(10, () -> scene.mock().send(new PodDumpPayload()));
+        helper.runAfterDelay(10, () -> dumpHold(helper, scene));
         helper.runAfterDelay(
                 12, () -> itemsUnder(pod).forEach(item -> UnreadableChecks.makeUnreadable(item, PodDump.DUMPED)));
         helper.runAfterDelay(10 + PICKUP_WAIT, () -> {
@@ -333,26 +350,27 @@ public class PodDumpTest {
     // ---- who may dump ----
 
     @GameTest(maxTicks = 40)
-    public void onlyACrewMemberSeatedInThePodDumpsIt(GameTestHelper helper) {
+    public void aSeatedStrangerCannotOpenTheScreenToDump(GameTestHelper helper) {
         Scene scene = seated(helper);
         PodEntity pod = scene.pod();
         pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
         scene.pilot().stopRiding();
-        scene.mock().send(new PodDumpPayload());
         MockPlayer stranger = join(helper);
         TestCharters.found(helper, helper.getLevel().getServer(), stranger.player());
         stranger.teleportTo((ServerLevel) pod.level(), pod.position(), 0f, 0f);
         expect(helper, stranger.player().startRiding(pod, true, false), "the stranger should be seated");
-        stranger.send(new PodDumpPayload());
-        helper.runAfterDelay(10, () -> {
-            expect(
-                    helper,
-                    pod.cargoUsed() == 1 && oreLying(pod) == 0,
-                    "a crew member on foot and a seated stranger dump nothing: %s used, %s lying",
-                    pod.cargoUsed(),
-                    oreLying(pod));
-            helper.succeed();
-        });
+        Optional<Component> refusal = PodMenu.open(stranger.player(), pod);
+        expect(
+                helper,
+                refusal.isPresent()
+                        && stranger.player().containerMenu == stranger.player().inventoryMenu
+                        && pod.cargoUsed() == 1
+                        && oreLying(pod) == 0,
+                "a seated stranger gets no screen to dump from: refusal %s, %s used, %s lying",
+                refusal,
+                pod.cargoUsed(),
+                oreLying(pod));
+        helper.succeed();
     }
 
     @GameTest(maxTicks = 40)
@@ -420,11 +438,8 @@ public class PodDumpTest {
             Object[] args = ((TranslatableContents) hint.getContents()).getArgs();
             expect(
                     helper,
-                    args.length == 1
-                            && args[0] instanceof Component key
-                            && key.getContents() instanceof KeybindContents bound
-                            && bound.getName().equals(PodDump.KEY),
-                    "the hint names the dump key as the player binds it, args %s",
+                    args.length == 2 && keybind(args[0], "key.inventory") && keybind(args[1], "key.drop"),
+                    "the hint names the screen's key and the drop key as the player binds them, args %s",
                     List.of(args));
             scene.pilot().stopRiding();
         });

@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.LooseOreTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
@@ -37,9 +38,11 @@ public class PodLoadTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 2;
     private static final float TOLERANCE = 1e-4f;
+    /** What ore in a rider's pack weighs, as a multiple of its mass (ADR 0110). */
+    private static final float LOOSE = LooseOreTuning.DEFAULT.weightFactor();
     /** Ticks of held jump in which an unloaded pod climbs well clear of its floor. */
     private static final int CLIMB_TICKS = 15;
-    /** Blocks a load under the climb limit rises in {@link #CLIMB_TICKS}: two einsteinium and an ironium (45 of 50) rise well over this. */
+    /** Blocks a load under the climb limit rises in {@link #CLIMB_TICKS}: an einsteinium, a platinium and an ironium in the pack (45 of 50) rise well over this. */
     private static final double CLIMBED = 0.1;
 
     /** A pod on a small stone floor with a mock pilot seated. */
@@ -85,7 +88,7 @@ public class PodLoadTest {
     }
 
     /**
-     * #1446: ore in a seated pilot's pack rode with no weight, so a pack was free cargo. It weighs on the pod now, as its own mass and on
+     * #1446: ore in a seated pilot's pack rode with no weight, so a pack was free cargo. It weighs on the pod now, double its mass (ADR 0110) and on
      * top of the bay's (never counted twice), and a pack heavier than the engine keeps the pod on the ground.
      */
     @GameTest(maxTicks = 60)
@@ -97,7 +100,11 @@ public class PodLoadTest {
         rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.GOLDIUM));
         rig.pilot.player().getInventory().add(new ItemStack(OreRegistry.item(OreType.IRONIUM), 3));
         near(helper, "the bay's mass with two goldium", 2 * goldium, rig.pod.cargoMass());
-        near(helper, "the pod's extra mass with three ironium in the pack", 3 * ironium, PodEvents.extraMass(rig.pod));
+        near(
+                helper,
+                "the pod's extra mass with three ironium in the pack",
+                3 * ironium * LOOSE,
+                PodEvents.extraMass(rig.pod));
         // Enough pack ore to outweigh the engine on its own: the rotor gets no lift at all.
         int heavy = (int) Math.ceil(PodStats.of(rig.pod).enginePower() / ironium);
         rig.pilot.player().getInventory().add(new ItemStack(OreRegistry.item(OreType.IRONIUM), heavy));
@@ -132,7 +139,7 @@ public class PodLoadTest {
             near(
                     helper,
                     "the extra mass of a passenger with three ironium",
-                    3 * OreType.IRONIUM.mass(),
+                    3 * OreType.IRONIUM.mass() * LOOSE,
                     PodEvents.extraMass(rig.pod));
             passenger.player().stopRiding();
             near(helper, "the extra mass once the passenger is out", 0, PodEvents.extraMass(rig.pod));
@@ -163,7 +170,7 @@ public class PodLoadTest {
                     "the tower's extra mass",
                     TowTuning.DEFAULT.baseMass()
                             + OreType.GOLDIUM.mass()
-                            + 2 * OreType.IRONIUM.mass()
+                            + 2 * OreType.IRONIUM.mass() * LOOSE
                             + bricks * PodLiningTuning.DEFAULT.brickMass(),
                     PodEvents.extraMass(rig.pod));
             helper.succeed();
@@ -222,7 +229,7 @@ public class PodLoadTest {
         PodTowing.attach(rig.pod, towed);
         PodLining.modify(rig.pod, state -> state.fused(0, bricks));
         double expected = 2 * OreType.GOLDIUM.mass()
-                + OreType.IRONIUM.mass()
+                + OreType.IRONIUM.mass() * LOOSE
                 + 8 * FuelTuning.DEFAULT.weight().coal()
                 + TowTuning.DEFAULT.baseMass()
                 + OreType.IRONIUM.mass()
@@ -266,7 +273,7 @@ public class PodLoadTest {
         for (int i = 0; i < einsteinium; i++) {
             rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.EINSTEINIUM));
         }
-        int under = (int) ((limit - rig.pod.cargoMass()) / OreType.IRONIUM.mass()) - 1;
+        int under = (int) ((limit - rig.pod.cargoMass()) / (OreType.IRONIUM.mass() * LOOSE)) - 1;
         rig.pilot.player().getInventory().add(new ItemStack(OreRegistry.item(OreType.IRONIUM), under));
         rig.pilot.setInput(JUMP);
         helper.runAfterDelay(2, () -> {
@@ -303,12 +310,13 @@ public class PodLoadTest {
 
     /**
      * The climb limit is where the held rotor stops climbing, well under the engine's power: a load under it climbs, a load over it stays on the
-     * ground while the engine still has lift left. Two einsteinium in the bay and {@code packIronium} in the pack.
+     * ground while the engine still has lift left. An einsteinium and a platinium in the bay and {@code packIronium} in the pack,
+     * where ore weighs {@link #LOOSE} times its mass.
      */
     private static void climbs(GameTestHelper helper, int packIronium, boolean expected) {
         Rig rig = Rig.build(helper, "climb pilot " + packIronium);
         rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.EINSTEINIUM));
-        rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.EINSTEINIUM));
+        rig.pod.cargo().tryAdd(rig.pod, OreRegistry.stack(OreType.PLATINIUM));
         rig.pilot.player().getInventory().add(new ItemStack(OreRegistry.item(OreType.IRONIUM), packIronium));
         PodLoad load = PodLoad.of(rig.pod);
         double startY = rig.pod.getY();
@@ -338,7 +346,7 @@ public class PodLoadTest {
 
     @GameTest(maxTicks = 40)
     public void aLoadJustOverTheClimbLimitDoesNotClimbThoughTheEngineStillLiftsSome(GameTestHelper helper) {
-        climbs(helper, 3, false);
+        climbs(helper, 2, false);
     }
 
     /**

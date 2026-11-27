@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.LooseOreTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -110,7 +111,9 @@ public class PodLoadClientTest implements FabricClientGameTest {
             int einsteinium,
             int ironium,
             boolean overloaded) {
-        float expected = einsteinium * OreType.EINSTEINIUM.mass() + ironium * OreType.IRONIUM.mass();
+        // Ore in the pack is loose ore, which weighs double (ADR 0110).
+        float expected = einsteinium * OreType.EINSTEINIUM.mass()
+                + ironium * OreType.IRONIUM.mass() * LooseOreTuning.DEFAULT.weightFactor();
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.vehicle(player, PodEntity.class);

@@ -24,5 +24,6 @@
   "item.deepcharter.goldium": "Goldium",
   "item.deepcharter.ironium": "Ironium",
   "item.deepcharter.platinium": "Platinium",
-  "item.deepcharter.silverium": "Silverium"
+  "item.deepcharter.silverium": "Silverium",
+  "tooltip.deepcharter.ore.loose_aboard": "Loose aboard: x%s"
 }

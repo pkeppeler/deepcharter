@@ -447,6 +447,41 @@ public class PodScreenTest {
     // ---- hold ----
 
     @GameTest
+    public void aFullBayRefusesOreFromThePackAndDropsNoneOnTheFloor(GameTestHelper helper) {
+        Scene scene = scene(helper);
+        try {
+            ServerPlayer player = scene.player();
+            PodEntity pod = scene.pod();
+            int slots = PodStats.of(pod).cargoSlots();
+            for (int i = 0; i < slots; i++) {
+                expect(
+                        helper,
+                        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM)),
+                        "the bay should take ore number %s of %s",
+                        i,
+                        slots);
+            }
+            player.getInventory().add(OreRegistry.stack(OreType.GOLDIUM));
+            PodMenu menu = open(helper, player, pod);
+
+            shiftClickFromInventory(menu, player, OreRegistry.item(OreType.GOLDIUM));
+            menu.broadcastChanges();
+            expect(
+                    helper,
+                    held(player, OreRegistry.item(OreType.GOLDIUM)) == 1
+                            && pod.cargoUsed() == slots
+                            && pod.cargo().count(OreType.GOLDIUM) == 0,
+                    "a full bay takes no more ore: %s held, %s used of %s",
+                    held(player, OreRegistry.item(OreType.GOLDIUM)),
+                    pod.cargoUsed(),
+                    slots);
+            helper.succeed();
+        } finally {
+            scene.clean();
+        }
+    }
+
+    @GameTest
     public void theHoldMovesItemsBothWaysLikeAChest(GameTestHelper helper) {
         Scene scene = scene(helper);
         try {
@@ -473,17 +508,24 @@ public class PodScreenTest {
                     pod.cargo().stackAt(4));
 
             click(menu, player, menu.holdSlot(0).index, ContainerInput.QUICK_MOVE);
-            click(menu, player, menu.holdSlot(0).index, ContainerInput.PICKUP);
             menu.broadcastChanges();
             expect(
                     helper,
-                    held(player, OreRegistry.item(OreType.GOLDIUM)) == 0
-                            && menu.getCarried().isEmpty()
-                            && pod.cargo().entries().size() == 1
-                            && menu.refusal().isPresent(),
-                    "ore stays in the hold until a terminal takes it, with a reason: %s held, refusal %s",
+                    held(player, OreRegistry.item(OreType.GOLDIUM)) == 1
+                            && pod.cargo().entries().isEmpty()
+                            && menu.refusal().isEmpty(),
+                    "ore moves from the hold to the pack with no refusal (ADR 0110): %s held, %s in the hold, refusal %s",
                     held(player, OreRegistry.item(OreType.GOLDIUM)),
+                    pod.cargo().entries().size(),
                     menu.refusal());
+            shiftClickFromInventory(menu, player, OreRegistry.item(OreType.GOLDIUM));
+            expect(
+                    helper,
+                    held(player, OreRegistry.item(OreType.GOLDIUM)) == 0
+                            && pod.cargo().entries().size() == 1,
+                    "and back: %s held, %s ore in the hold",
+                    held(player, OreRegistry.item(OreType.GOLDIUM)),
+                    pod.cargo().entries().size());
             int dirtSlot = -1;
             for (int i = 0; i < PodMenu.HOLD_WINDOW; i++) {
                 if (menu.holdSlot(i).getItem().is(Items.DIRT)) {

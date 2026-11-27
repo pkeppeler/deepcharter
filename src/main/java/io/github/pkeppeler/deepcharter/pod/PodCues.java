@@ -73,7 +73,10 @@ public final class PodCues {
         LAST_CUE.put(pod, now);
         pilot.sendOverlayMessage(
                 PodDump.overloadedByCargo(pod)
-                        ? Component.translatable("deepcharter.pod.overloaded", Component.keybind(PodDump.KEY))
+                        ? Component.translatable(
+                                "deepcharter.pod.overloaded",
+                                Component.keybind("key.inventory"),
+                                Component.keybind("key.drop"))
                         : Component.translatable("deepcharter.pod.overloaded_load"));
         ((ServerLevel) pod.level()).playSound(null, pod, DeepSound.CARGO_FULL.event(), SoundSource.NEUTRAL, 1f, 1f);
     }
