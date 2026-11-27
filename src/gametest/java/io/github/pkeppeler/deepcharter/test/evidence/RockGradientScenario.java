@@ -65,7 +65,6 @@ public class RockGradientScenario extends EvidenceScenario {
         int bottom = LIVE_GAUGES_FLOOR_Y;
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             awaitWorld(context);
-            waitOutTheTransmission(context);
             int top = singleplayer.getServer().computeOnServer(server -> {
                 ServerLevel level = TestLayers.level(server, 1);
                 int rock = band.topExclusive() - 8;
@@ -94,13 +93,6 @@ public class RockGradientScenario extends EvidenceScenario {
                 }
             }
         }
-    }
-
-    /** The charter's founding transmission types over the screen; the first still waits until it has come and gone. */
-    private static void waitOutTheTransmission(ClientGameTestContext context) {
-        ClientWait.until(context, "the founding transmission on screen", client -> TransmissionOverlay.active());
-        ClientWait.until(context, "the founding transmission over", client -> !TransmissionOverlay.active());
-        context.waitTicks(60); // tick-wait: the chat lines and toasts of the founding fade
     }
 
     /** Mounts the first player on a new pod with a scanner of {@code tier} over the open shaft and holds it at {@code top}. */
@@ -138,7 +130,12 @@ public class RockGradientScenario extends EvidenceScenario {
                             && client.player.getVehicle() instanceof PodEntity pod
                             && Math.abs(pod.getY() - target) < 0.1);
             context.waitTicks(2 * ScannerTuning.DEFAULT.rescanTicks() + 2);
-            context.runOnClient(client -> client.gui.toastManager().clear());
+            // A transmission or a toast that arrives on the way down (each zone sends one) would cover the scanner
+            // panel.
+            context.runOnClient(client -> {
+                TransmissionOverlay.reset();
+                client.gui.toastManager().clear();
+            });
             frame(context);
             screenshot(context, String.format("scanner-tier-%d-step-%d", tier, step));
             step++;
