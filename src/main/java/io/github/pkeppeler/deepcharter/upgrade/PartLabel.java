@@ -4,18 +4,14 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
-import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.netty.buffer.ByteBuf;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Consumer;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipProvider;
 import org.jspecify.annotations.Nullable;
@@ -60,12 +56,6 @@ public record PartLabel(int tier, CharterId charter, String serial) implements T
             DataComponentGetter components) {
         consumer.accept(Component.translatable("item.deepcharter.part.tier", tier));
         consumer.accept(Component.translatable("item.deepcharter.part.serial", serial));
-        // The getter is the stack itself when an item shows its tooltip, and it says which track this part is of.
-        if (components instanceof ItemStack stack
-                && ComponentItems.trackOf(stack).equals(Optional.of(ComponentTrack.ENGINE))) {
-            consumer.accept(Component.translatable("item.deepcharter.part.lift", PodLoad.shownEngineLift(tier))
-                    .withStyle(ChatFormatting.GRAY));
-        }
     }
 
     private static @Nullable String problem(int tier, String serial) {

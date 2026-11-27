@@ -14,15 +14,12 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
+import io.github.pkeppeler.deepcharter.upgrade.PartLift;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
-import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -33,17 +30,11 @@ import org.jspecify.annotations.Nullable;
 public class PartLiftTooltipTest {
     private static final String LIFT_KEY = "item.deepcharter.part.lift";
 
-    /** The text the stack's lift line shows, or null when it has none; fails on more than one. */
-    private static @Nullable String shownLift(GameTestHelper helper, ItemStack stack) {
-        List<TranslatableContents> lifts =
-                stack.getTooltipLines(Item.TooltipContext.of(helper.getLevel()), null, TooltipFlag.NORMAL).stream()
-                        .map(Component::getContents)
-                        .filter(TranslatableContents.class::isInstance)
-                        .map(TranslatableContents.class::cast)
-                        .filter(contents -> contents.getKey().equals(LIFT_KEY))
-                        .toList();
-        expect(helper, lifts.size() <= 1, "%s should have at most one lift line, has %s", stack, lifts.size());
-        return lifts.isEmpty() ? null : (String) lifts.getFirst().getArgs()[0];
+    /** The text the stack's lift line shows, or null when it has none. */
+    private static @Nullable String shownLift(ItemStack stack) {
+        return PartLift.line(stack)
+                .map(line -> (String) ((TranslatableContents) line.getContents()).getArgs()[0])
+                .orElse(null);
     }
 
     /** Each tier a Prospector takes: the part's tooltip shows what the climb limit of a pod with that part is. */
@@ -58,7 +49,7 @@ public class PartLiftTooltipTest {
             PodComponents.install(pod, part);
             int tenths = OreEncumbrance.tenths(PodLoad.of(pod).climbLimit());
             String expected = OreEncumbrance.shown(tenths);
-            String shown = shownLift(helper, part);
+            String shown = shownLift(part);
             expect(
                     helper,
                     expected.equals(shown),
@@ -92,7 +83,7 @@ public class PartLiftTooltipTest {
                     ComponentTrack.ENGINE, new PartLabel(tier, CharterId.random(), "ENGINE-" + tier));
             float power = PodStats.base().enginePower() * UpgradeTuning.DEFAULT.ratio(ComponentTrack.ENGINE, tier);
             String expected = OreEncumbrance.shown(OreEncumbrance.tenths((float) (power * share)));
-            String shown = shownLift(helper, part);
+            String shown = shownLift(part);
             expect(
                     helper,
                     expected.equals(shown),
@@ -111,10 +102,10 @@ public class PartLiftTooltipTest {
                 continue;
             }
             ItemStack part = ComponentItems.stackOf(track, new PartLabel(1, CharterId.random(), "X-0001"));
-            expect(helper, shownLift(helper, part) == null, "a %s part shows a lift line", track);
+            expect(helper, shownLift(part) == null, "a %s part shows a lift line", track);
         }
         ItemStack unlabelled = new ItemStack(ComponentItems.item(ComponentTrack.ENGINE));
-        expect(helper, shownLift(helper, unlabelled) == null, "an engine part with no label shows a lift line");
+        expect(helper, shownLift(unlabelled) == null, "an engine part with no label shows a lift line");
         helper.succeed();
     }
 }
