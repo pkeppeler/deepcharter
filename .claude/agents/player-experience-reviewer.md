@@ -15,7 +15,7 @@ The handoff gives a PR number or a branch and says cycle 1 or cycle 2. Diff agai
 2. Look at them as a player. For a number, find its label and unit on screen. For a screen or HUD, find what it covers. For text, estimate its width against the panel. For a control, name the vanilla or mod precedent. Open the PR's evidence media and GameTest stills when there are any (`docs` and the `pr-media` links in the body); a visible change without evidence is a Warning, because you cannot judge it.
 3. Check each row of the skill's table the diff touches. Check the PR body answers it (the "What it does" list, Decisions).
 4. Where a row has a gate, check the gate covers this case. A gap in a gate is a finding that names the missing gate.
-5. Judge what the diff adds. A pre-existing problem on a row the PR does not touch is a Suggestion at most.
+5. Judge what the diff adds. A pre-existing problem on a row the PR does not touch is a Nit at most.
 
 ## Output
 
@@ -23,7 +23,7 @@ Ranked findings, each with `file:line` (or the media path), the theme, and the p
 
 - **Critical**: the player cannot tell what a number or limit means, is blocked or hurt with no cause shown, loses a vanilla control's behaviour with no reason, or sees a vanilla leftover or a broken texture.
 - **Warning**: text that may clip, a deviation without its reason in the body, a visible change with no evidence, a cue missing at the moment of an event.
-- **Suggestion**: polish, naming, a clearer label.
+- **Nit**: polish, naming, a clearer label.
 
 End with the rows you checked and found clean, and each uncertainty with what makes it uncertain. A pass with no list of checks is indistinguishable from a skipped review. A rule you applied that is not in the skill: propose the exact row.
 

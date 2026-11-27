@@ -124,21 +124,15 @@ check_map_fresh() {
   fi
 }
 
-# A `gameplay` PR also needs the label `px-reviewed`, set after the player-experience reviewer's cycle-2 PASS (skill
-# .claude/skills/player-experience/SKILL.md). A PR whose `review-passed <sha>` comment was posted before
-# PX_REVIEW_CUTOFF, the day this check merged, is grandfathered so PRs already queued are not blocked;
-# tools/mark-review-passed.sh sets px_grandfather=0 because the comment it is about to post is never old. Needs $sha.
-PX_REVIEW_CUTOFF=2026-11-28T00:00:00Z
+# A `gameplay` PR numbered PX_REVIEW_FIRST_PR or above also needs the label `px-reviewed`, set after the
+# player-experience reviewer's cycle-2 PASS (skill .claude/skills/player-experience/SKILL.md). A lower number, a PR that
+# was open when this check merged, is exempt, with no lookup that could fail open. The label is not pinned to a sha:
+# cycle 2 re-judges after any push. Needs $pr.
+PX_REVIEW_FIRST_PR=1588
 check_px_review() {
-  local passed_at
   has_label gameplay || return 0
+  [[ $pr -ge $PX_REVIEW_FIRST_PR ]] || return 0
   ! has_label px-reviewed || return 0
-  if [[ ${px_grandfather-1} -eq 1 ]]; then
-    passed_at=$(gh api "repos/$repo/issues/$pr/comments?per_page=100" --paginate \
-      --jq ".[] | select(.user.login == \"$TRUSTED_LOGIN\") | select((.body | split(\"\n\")[0]) == \"review-passed $sha\") | .created_at" \
-      | sort | head -1) || passed_at=
-    [[ -z $passed_at || ! $passed_at < $PX_REVIEW_CUTOFF ]] || return 0
-  fi
   refuse "is labelled 'gameplay' but lacks the 'px-reviewed' label: run player-experience-reviewer (cycle 1, cycle 2) and label the PR after its PASS"
 }
 

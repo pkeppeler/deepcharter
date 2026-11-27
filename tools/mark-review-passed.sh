@@ -34,7 +34,6 @@ remote_sha=${remote_line%%[[:space:]]*}
 [[ $remote_sha == "$sha" ]] \
   || { echo "REFUSED: PR #$pr has head $sha on GitHub but origin/$branch is at $remote_sha (wait and retry)" >&2; exit 1; }
 
-px_grandfather=0
 check_pr_body_and_labels
 
 gh api -X POST "repos/$repo/issues/$pr/comments" -f body="review-passed $sha" >/dev/null

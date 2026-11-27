@@ -14,8 +14,7 @@ Recorded from `pkeppeler/deepcharter` with `gh api`, then cut to the fields the 
 Files named `*.hand-edited.json` are a recorded file with a value changed, for a case that cannot be recorded live:
 
 - `pulls-open-reviewed.hand-edited.json`: `pulls-open.json` with `head.sha` set to the sha in `issue-comments.json` and the
-  `review-passed` and `px-reviewed` labels added, so the recorded comment matches the PR's head and the gate reaches its later reads. The two `mergeable` files below carry both labels too.
-- `pulls-open.px-reviewed.hand-edited.json`: `pulls-open.json` with the `px-reviewed` label added, for the `mark-review-passed.sh` case (a `gameplay` PR needs it).
+  `review-passed` label added, so the recorded comment matches the PR's head and the gate reaches its later reads.
 - `pulls-open-reviewed.mergeable-null.hand-edited.json`: that PR with `mergeable: null` (GitHub still computing it).
 - `pulls-open-reviewed.mergeable-false.hand-edited.json`: that PR with `mergeable: false` (a conflict).
 - `check-run-annotations.no-record.hand-edited.json`: that response with the `merged-main` record dropped, a run from before CI recorded its main.
