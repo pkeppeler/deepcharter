@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -277,8 +278,7 @@ public final class CaveIns {
             falling.setHurtsEntities(CaveInTuning.DEFAULT.fallDamage(), CaveInTuning.DEFAULT.fallDamageMax());
             rocks.add(falling);
         }
-        // PLACEHOLDER sound until the sound pass.
-        level.playSound(null, feet, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 0.8F, 0.5F);
+        level.playSound(null, feet, DeepSound.CAVE_IN_COLLAPSE.event(), SoundSource.BLOCKS, 1.0F, 1.0F);
     }
 
     /**

@@ -52,8 +52,8 @@ public final class ColonyRations {
 
     /** Gives {@code player} the starting rations if the ledger says they have none yet; a second call gives nothing. */
     static void giveStartingRations(ServerPlayer player) {
-        // A new player's ledger comes from the initializer and is always readable: only data another version wrote is
-        // skipped.
+        // A new player's ledger comes from the initializer and is always readable: only data another version wrote
+        // is skipped.
         Optional<RationLedger> ledger = Versioned.readable(player, LEDGER);
         if (ledger.isEmpty() || ledger.get().starterGiven()) {
             return;

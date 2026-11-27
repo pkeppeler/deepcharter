@@ -167,8 +167,8 @@ public class AmbienceSchedulerTest {
 
     @GameTest
     public void aFragmentDoesNotRepeatAcrossALayerChangeEither(GameTestHelper helper) {
-        // Pools of one name per tier: the last heard is the only candidate, so nothing may be played, and nothing is
-        // stuck.
+        // Pools of one name per tier: the last heard is the only candidate, so nothing may be played, and nothing
+        // is stuck.
         Map<AmbienceTier, List<String>> single = Map.of(
                 AmbienceTier.FAINT,
                 List.of("only"),
@@ -234,8 +234,8 @@ public class AmbienceSchedulerTest {
         List<Pick> picks = new ArrayList<>();
         picksAt(scheduler, 2, false, true, DAYS * 24_000L, picks);
         expect(helper, picks.isEmpty(), "%s fragments played over a hymn or a phonograph", picks.size());
-        // The fragments that fell due were held, and one comes back once the sound has ended, within a retry's longest
-        // wait.
+        // The fragments that fell due were held, and one comes back once the sound has ended, within a retry's
+        // longest wait.
         picksAt(scheduler, 2, false, false, AmbienceTuning.DEFAULT.retryMaxTicks() + 1L, picks);
         expect(helper, picks.size() >= 1, "no fragment came back once the sound ended");
         helper.succeed();
@@ -408,8 +408,8 @@ public class AmbienceSchedulerTest {
             for (long seed = 70; seed < 75; seed++) {
                 List<Pick> picks = new ArrayList<>();
                 List<Long> at = picksAt(scheduler(seed), layer, true, false, ticks, picks);
-                // The first fragment after arriving is the one extra; every gap after it is at least the layer's own
-                // minimum.
+                // The first fragment after arriving is the one extra; every gap after it is at least the layer's
+                // own minimum.
                 expect(
                         helper,
                         picks.size() <= ticks / rate.minTicks() + 1,

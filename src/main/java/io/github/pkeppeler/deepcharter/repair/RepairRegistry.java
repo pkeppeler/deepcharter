@@ -84,6 +84,8 @@ public final class RepairRegistry {
         return switch (consumable) {
             case TETHER -> new TetherItem(properties);
             case BOLT_DRIVER -> new BoltDriverItem(properties);
+            // enum-default: only item()'s TOOL arm calls this, so a new tool needs its own arm and the throw refuses
+            // any other member at registration
             default -> throw new IllegalStateException(consumable + " is not a tool");
         };
     }

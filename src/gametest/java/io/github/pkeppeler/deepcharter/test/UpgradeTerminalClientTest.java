@@ -141,8 +141,8 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                     .orElseThrow());
             require(!unaffordable.active, "a part the account cannot pay for is dead");
 
-            // #483: the scanner's tier 1 is crafted, so its row is not for sale and the next tier waits for it to be
-            // fitted.
+            // #483: the scanner's tier 1 is crafted, so its row is not for sale and the next tier waits for it to
+            // be fitted.
             context.clickScreenButton("SCANNER  T0");
             ClientWait.until(
                     context,
