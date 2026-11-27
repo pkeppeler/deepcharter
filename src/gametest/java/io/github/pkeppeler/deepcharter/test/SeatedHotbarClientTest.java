@@ -39,6 +39,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for the hotbar under the cockpit (#1457): a seated pilot sees vanilla's hotbar and its selection frame (read from pixels: the frame moves to the slot a
@@ -235,6 +236,32 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
                 client -> "slot " + ClientSession.player(client).getInventory().getSelectedSlot());
     }
 
+    /** Server ticks the pod must stand on one spot, on the ground, before the blast's cube is laid out round it. */
+    private static final int AT_REST_TICKS = 10;
+
+    /**
+     * Waits until the pod has stood on one spot, on the ground, for {@link #AT_REST_TICKS} ticks. The blast's cube is centred on the pod's footprint when
+     * the stick is used, and the test lays out the rock to match when it packs: a pod that was still settling (it is put one row over the carved
+     * floor) or being nudged between the two moved the cube off the rock the test expected it to spare (#1569).
+     */
+    private static void awaitPodAtRest(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        Vec3[] last = {null};
+        int[] still = {0};
+        ClientWait.until(
+                context,
+                "the pod at rest on the ground",
+                () -> singleplayer.getServer().computeOnServer(server -> {
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                    if (!(player.getVehicle() instanceof PodEntity pod)) {
+                        throw new AssertionError("the pilot left the pod before the dynamite");
+                    }
+                    still[0] = pod.onGround() && pod.position().equals(last[0]) ? still[0] + 1 : 0;
+                    last[0] = pod.position();
+                    return still[0] >= AT_REST_TICKS;
+                }),
+                () -> "the pod at " + last[0] + ", " + still[0] + " ticks still");
+    }
+
     /**
      * With the dynamite picked, the use key blasts the natural rock in its cube (packed round the pod for the test, as a blocked shaft would be) and spends
      * the stick. The cube sits on the row the pod's feet are in, so the rock above it, over the cab, stays, and so does a rock just past its reach (#1478).
@@ -242,6 +269,7 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
     private static void expectDynamiteFromThePickedSlotBlasts(
             ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         int radius = RepairTuning.DEFAULT.dynamiteRadius();
+        awaitPodAtRest(context, singleplayer);
         List<List<BlockPos>> packed = singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             if (!(player.getVehicle() instanceof PodEntity pod)) {

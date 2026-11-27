@@ -96,7 +96,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /** A backward teleport past the snap gap, from a pod that has just coasted: a snap, so it arrives as one does. */
     private static final double TELEPORT_BACK = 24.0;
 
-    /** How near the drawn pod must get to the server's, which keeps driving off, in {@link #SNAP_TICKS}: measured 1.73 with the snap held, 10.9 without it. */
+    /** How near the drawn pod must get to where the server's pod, which keeps driving off, has been, in {@link #SNAP_TICKS} from the tick that draws the teleport: measured 1.73 with the snap held, 10.9 without it. */
     private static final double DRIVING_TELEPORT_TOLERANCE = 3.0;
 
     /** Client ticks a held move is stalled for before the teleport arrives behind a coasting pod. */
@@ -332,8 +332,10 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
     /**
      * A teleport of more than {@code snapGap} blocks while the pod is still being driven snaps, though the moves that follow it find the
-     * pod within {@code snapGap} of its place: the snap lasts until the pod arrives. Judged against the server's own pod, which keeps
-     * driving, by how near the drawn pod gets within {@link #SNAP_TICKS} ticks.
+     * pod within {@code snapGap} of its place: the snap lasts until the pod arrives. The ticks are counted from the one on which the
+     * client draws the teleport, not from the put, since how late a loaded runner delivers it is not what is judged; and the drawn pod is
+     * judged by how near it gets to the places the server's pod, which keeps driving, has been since the put, since the drive carries the
+     * server's pod on while the move is in flight (#1569).
      */
     private static void expectTeleportWhileDrivingSnaps(ClientGameTestContext context, Rig rig) {
         returnToStart(context, rig);
@@ -342,12 +344,29 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         try {
             context.getInput().holdKey(options -> options.keyUp);
             context.waitTicks(PIN_AFTER_TICKS);
+            Vec3 before = onClient(context, rig.ownPodId());
+            List<Vec3> serverTrail = new ArrayList<>();
             rig.two().server().runOnServer(server -> put(server.overworld(), rig.ownPodId(), to));
+            ClientWait.until(
+                    context,
+                    "the client to draw the teleport",
+                    () -> {
+                        serverTrail.add(serverPosition(rig.two(), rig.ownPodId()));
+                        return onClient(context, rig.ownPodId()).distanceTo(before) >= TELEPORT_BACK / 4;
+                    },
+                    () -> "pod on the client " + onClient(context, rig.ownPodId()) + ", before the put " + before);
             for (int tick = 1; tick <= SNAP_TICKS; tick++) {
-                context.waitTick();
+                if (tick > 1) {
+                    context.waitTick();
+                    serverTrail.add(serverPosition(rig.two(), rig.ownPodId()));
+                }
+                Vec3 drawn = onClient(context, rig.ownPodId());
                 nearest = Math.min(
                         nearest,
-                        onClient(context, rig.ownPodId()).distanceTo(serverPosition(rig.two(), rig.ownPodId())));
+                        serverTrail.stream()
+                                .mapToDouble(drawn::distanceTo)
+                                .min()
+                                .orElseThrow());
             }
         } finally {
             stopDriving(context);
