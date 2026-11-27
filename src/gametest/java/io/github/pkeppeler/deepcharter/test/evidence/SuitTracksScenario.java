@@ -84,8 +84,8 @@ public class SuitTracksScenario extends EvidenceScenario {
             screenshot(context, "suit-tracks-2-heat-tier-1-bought");
             context.setScreen(() -> null);
 
-            // A stock suit in the unbuilt depth: 180 suit-seconds at 5.5 a second is 0:33, short 5 on heat and
-            // pressure.
+            // A stock suit in the unbuilt depth: 180 suit-seconds at 5.5 a second is 0:33, short 5 on heat
+            // and pressure.
             singleplayer.getServer().runOnServer(server -> {
                 first(server).setPermanentlyInvulnerable(true);
                 SuitScenes.setTracks(first(server), SuitTracks.STOCK);

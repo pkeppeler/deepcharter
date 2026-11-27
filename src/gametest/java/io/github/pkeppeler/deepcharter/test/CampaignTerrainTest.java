@@ -280,8 +280,8 @@ public class CampaignTerrainTest {
             Band layer = CampaignBands.layer(number);
             for (int zone = 0; zone < Zones.COUNT; zone++) {
                 Zones.Span span = Zones.span(layer.minY(), layer.height(), zone);
-                // A cell is 4 blocks, judged by its middle, so a zone edge inside a cell is off by up to 2 blocks
-                // (ZoneBiomeSource).
+                // A cell is 4 blocks, judged by its middle, so a zone edge inside a cell is off by up to 2
+                // blocks (ZoneBiomeSource).
                 for (int y : new int[] {span.low() + 2, (span.low() + span.high()) / 2, span.high() - 2}) {
                     String expected = Zones.of(number, layer.minY(), layer.height(), y)
                             .orElseThrow()
@@ -650,8 +650,8 @@ public class CampaignTerrainTest {
     }
 
     private static String biomeAt(ServerLevel level, BlockPos pos) {
-        // The cell the generator stored, not level.getBiome(pos): that one blurs a band's edge with the cell next to
-        // it.
+        // The cell the generator stored, not level.getBiome(pos): that one blurs a band's edge with the cell next
+        // to it.
         Optional<String> key = level.getChunk(pos)
                 .getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2)
                 .unwrapKey()

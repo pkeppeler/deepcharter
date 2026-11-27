@@ -506,7 +506,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "clientShard" (optional "i/n"), "clientWeights" (optional {class: seconds}), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "keep_clear", "orphan_comment", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -529,6 +529,10 @@ tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
 	val keepClearProblems = project.extra["keepClearProblems"] as (File, File, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
 	val keepClearAdvice = project.extra["keepClearAdvice"] as String
+	// The orphan-comment gate's scan (orphan-comment-gate.gradle.kts), run the same way.
+	@Suppress("UNCHECKED_CAST")
+	val orphanCommentProblems = project.extra["orphanCommentProblems"] as (Iterable<File>, File) -> List<String>
+	val orphanCommentAdvice = project.extra["orphanCommentAdvice"] as String
 	// The null-marked gate's scan (null-marked-gate.gradle.kts), run the same way.
 	@Suppress("UNCHECKED_CAST")
 	val nullMarkedProblems = project.extra["nullMarkedProblems"] as (File, File) -> List<String>
@@ -581,6 +585,15 @@ tasks.register("checkGametestFixtures") {
 					val problems = keepClearProblems(root, root, markedNear)
 					if (problems.isNotEmpty()) {
 						throw GradleException("HUD elements that no popup knows to keep clear of. $keepClearAdvice\n  " + problems.joinToString("\n  "))
+					}
+					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
+					continue
+				}
+				if (c["gate"] == "orphan_comment") {
+					val root = File(c["root"] as String)
+					val problems = orphanCommentProblems(root.walkTopDown().toList(), root)
+					if (problems.isNotEmpty()) {
+						throw GradleException("One-word orphan comment lines. $orphanCommentAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue

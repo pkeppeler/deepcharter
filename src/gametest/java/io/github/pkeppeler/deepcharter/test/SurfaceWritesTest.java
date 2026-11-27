@@ -76,8 +76,8 @@ public class SurfaceWritesTest {
                 helper,
                 !SurfaceWrites.neutral(stone, Blocks.GLASS.defaultBlockState()),
                 "glass differs in light and heightmap");
-        // Equal light properties, so only the heightmap branch can refuse this pair: grass is no motion block, glass
-        // is.
+        // Equal light properties, so only the heightmap branch can refuse this pair: grass is no motion block,
+        // glass is.
         BlockState grass = Blocks.SHORT_GRASS.defaultBlockState();
         BlockState glass = Blocks.GLASS.defaultBlockState();
         expect(helper, !LightEngine.hasDifferentLightProperties(grass, glass), "grass and glass light alike");

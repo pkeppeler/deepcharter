@@ -687,8 +687,8 @@ public final class CataloguePanel {
             return true;
         }
         if (event.isEscape() && showsRecipePanel()) {
-            // Before the screen sees it: Escape puts the recipe panel away first and closes the inventory the next
-            // time.
+            // Before the screen sees it: Escape puts the recipe panel away first and closes the inventory the
+            // next time.
             state.clear();
             return true;
         }
@@ -1069,8 +1069,8 @@ public final class CataloguePanel {
             textX += termWidth(tail);
         }
         if (caretOn) {
-            // A solid bar at least as thick as the scanline spacing, so a scanline over it never turns it into dashes
-            // ("=").
+            // A solid bar at least as thick as the scanline spacing, so a scanline over it never turns it into
+            // dashes ("=").
             int baseline = textY + font.lineHeight - look.caretHeight();
             graphics.fill(textX, baseline, textX + caretWidth, baseline + look.caretHeight(), crt.phosphorColor());
         }

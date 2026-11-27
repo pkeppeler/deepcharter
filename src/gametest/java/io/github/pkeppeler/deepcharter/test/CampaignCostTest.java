@@ -278,8 +278,8 @@ public class CampaignCostTest {
     public void theCostWorldsRunTheZoneFill(GameTestHelper helper) {
         for (String world : FILLED_WORLDS) {
             ServerLevel level = world(helper, world);
-            // Not the column of the colony or of another test's cell: the middle of the sample, as ColumnCost samples
-            // it.
+            // Not the column of the colony or of another test's cell: the middle of the sample, as ColumnCost
+            // samples it.
             LevelChunk chunk = level.getChunk(CHUNK, CHUNK);
             boolean ore = false;
             for (LevelChunkSection section : chunk.getSections()) {

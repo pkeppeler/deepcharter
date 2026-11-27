@@ -460,8 +460,8 @@ public class GrainedCrustDecoyTest {
         for (Layer layer : layers) {
             boolean grained = chunk.getBlockState(new BlockPos(at.getMinBlockX(), layer.minY(), at.getMinBlockZ()))
                     .is(LayerBlocks.GRAINED_CRUST);
-            // The kind is the same in every row and column of the boundary, or this fails here and not in the
-            // comparison.
+            // The kind is the same in every row and column of the boundary, or this fails here and not in
+            // the comparison.
             for (int y = layer.minY(); y < layer.minY() + CampaignBands.crustRows(); y++) {
                 for (int x = 0; x < 16; x += 5) {
                     for (int z = 0; z < 16; z += 5) {
