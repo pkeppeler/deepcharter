@@ -19,6 +19,8 @@
     "deepcharter:flare_light",
     "deepcharter:roof_bolt",
     "deepcharter:note",
+    "deepcharter:lunch_pail",
+    "deepcharter:prayer_card",
     "deepcharter:colony_sculpture",
     "deepcharter:ironium_ore",
     "deepcharter:bronzium_ore",
@@ -27,6 +29,20 @@
     "deepcharter:platinium_ore",
     "deepcharter:einsteinium_ore",
     "deepcharter:cicatrium_ore",
-    "deepcharter:glowcap"
+    "deepcharter:phonograph",
+    "deepcharter:colony_phonograph",
+    "deepcharter:company_horn",
+    "deepcharter:wreck_phonograph",
+    "deepcharter:company_clock",
+    "deepcharter:glowcap",
+    "deepcharter:parasol_stem",
+    "deepcharter:parasol_ring",
+    "deepcharter:parasol_gills",
+    "deepcharter:parasol_cap",
+    "deepcharter:parasol_rim",
+    "deepcharter:fungal_flare",
+    "deepcharter:spire",
+    "deepcharter:spire_tip",
+    "deepcharter:spire_base"
   ]
 }

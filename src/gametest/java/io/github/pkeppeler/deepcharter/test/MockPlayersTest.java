@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -51,11 +53,11 @@ public class MockPlayersTest {
     public void mockPlayerSurvivesOneMinuteOfTicks(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "stays-online");
         if (!mock.isOnline()) {
-            throw helper.assertionException("mock player is not on the player list after joining");
+            throw failure(helper, "mock player is not on the player list after joining");
         }
         helper.runAfterDelay(TICKS, () -> {
             if (!mock.isOnline()) {
-                throw helper.assertionException("mock player left the player list within %d ticks", TICKS);
+                throw failure(helper, "mock player left the player list within %d ticks", TICKS);
             }
             helper.succeed();
         });
@@ -74,17 +76,22 @@ public class MockPlayersTest {
         long deadline = System.nanoTime() + SURVIVAL_SECONDS * 1_000_000_000L;
         TestTicks.each(helper, () -> {
             if (!mock.player().isAlive()) {
-                throw helper.assertionException(
-                        "the server-joined mock died at %s", mock.player().position());
+                throw failure(
+                        helper,
+                        "the server-joined mock died at %s",
+                        mock.player().position());
             }
             if (System.nanoTime() - deadline <= 0 || helper.getTick() < MIN_TICKS) {
                 sleepOneTick();
             } else {
                 if (mock.player().position().distanceTo(spawn) > 0.5) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "the mock is at %s, not at its spawn %s",
-                            mock.player().position(), spawn);
+                            mock.player().position(),
+                            spawn);
                 }
+                mock.leave();
                 helper.succeed();
             }
         });
@@ -97,15 +104,17 @@ public class MockPlayersTest {
         long deadline = System.nanoTime() + SURVIVAL_SECONDS * 1_000_000_000L;
         TestTicks.each(helper, () -> {
             if (!mock.player().isAlive()) {
-                throw helper.assertionException(
-                        "the helper-joined mock died at %s", mock.player().position());
+                throw failure(
+                        helper,
+                        "the helper-joined mock died at %s",
+                        mock.player().position());
             }
             if (System.nanoTime() - deadline <= 0 || helper.getTick() < MIN_TICKS) {
                 sleepOneTick();
             } else {
                 Vec3 at = mock.player().position();
                 if (at.distanceTo(helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN)) > 5) {
-                    throw helper.assertionException("the helper-joined mock is at %s, outside the structure", at);
+                    throw failure(helper, "the helper-joined mock is at %s, outside the structure", at);
                 }
                 helper.succeed();
             }
@@ -133,12 +142,12 @@ public class MockPlayersTest {
                 ownerDone::get);
         helper.runAfterDelay(5, () -> {
             if (!mock.isOnline()) {
-                throw helper.assertionException("mock player left before its owner was done");
+                throw failure(helper, "mock player left before its owner was done");
             }
             ownerDone.set(true);
             helper.runAfterDelay(5, () -> {
                 if (mock.isOnline()) {
-                    throw helper.assertionException("mock player outlived its owner");
+                    throw failure(helper, "mock player outlived its owner");
                 }
                 helper.succeed();
             });
@@ -164,13 +173,13 @@ public class MockPlayersTest {
                 long sentAt = (long) getField(mock.player().connection, "keepAliveTime");
                 boolean pending = (boolean) getField(mock.player().connection, "keepAlivePending");
                 if (sentAt <= backdated) {
-                    throw helper.assertionException("the server never sent a keep-alive to the mock player");
+                    throw failure(helper, "the server never sent a keep-alive to the mock player");
                 }
                 if (pending) {
-                    throw helper.assertionException("the mock player left a keep-alive unanswered");
+                    throw failure(helper, "the mock player left a keep-alive unanswered");
                 }
                 if (!mock.isOnline()) {
-                    throw helper.assertionException("mock player left the player list");
+                    throw failure(helper, "mock player left the player list");
                 }
             } catch (ReflectiveOperationException e) {
                 throw reflectionFailure("keepAliveTime or keepAlivePending", e);
@@ -191,11 +200,10 @@ public class MockPlayersTest {
         loaded.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 2.0F);
         unloaded.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 2.0F);
         if (loaded.getHealth() >= loadedBefore) {
-            throw helper.assertionException("loaded mock took no damage: %s of %s", loaded.getHealth(), loadedBefore);
+            throw failure(helper, "loaded mock took no damage: %s of %s", loaded.getHealth(), loadedBefore);
         }
         if (unloaded.getHealth() != unloadedBefore) {
-            throw helper.assertionException(
-                    "unloaded mock took damage: %s of %s", unloaded.getHealth(), unloadedBefore);
+            throw failure(helper, "unloaded mock took damage: %s of %s", unloaded.getHealth(), unloadedBefore);
         }
         helper.succeed();
     }
@@ -210,8 +218,11 @@ public class MockPlayersTest {
             unloaded.hurtServer(
                     helper.getLevel(), helper.getLevel().damageSources().generic(), 2.0F);
             if (unloaded.getHealth() >= before) {
-                throw helper.assertionException(
-                        "an unloaded mock was still immune after 100 ticks: %s of %s", unloaded.getHealth(), before);
+                throw failure(
+                        helper,
+                        "an unloaded mock was still immune after 100 ticks: %s of %s",
+                        unloaded.getHealth(),
+                        before);
             }
             helper.succeed();
         });
@@ -226,14 +237,13 @@ public class MockPlayersTest {
         player.teleport(
                 new TeleportTransition(other, new Vec3(0.5, 8, 0.5), Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
         if (!player.isChangingDimension()) {
-            throw helper.assertionException(
-                    "the crossing did not leave the player mid-change, so this test proves nothing");
+            throw failure(helper, "the crossing did not leave the player mid-change, so this test proves nothing");
         }
         helper.runAfterDelay(2, () -> {
             float before = player.getHealth();
             player.hurtServer(other, other.damageSources().generic(), 2.0F);
             if (player.getHealth() >= before) {
-                throw helper.assertionException("loaded mock is immune after changing dimension");
+                throw failure(helper, "loaded mock is immune after changing dimension");
             }
             helper.succeed();
         });
@@ -266,14 +276,16 @@ public class MockPlayersTest {
         ServerPlayer player = mock.player();
         TickLists.snapshotAsIfChangedWhileTicking(level);
         if (!TickLists.retains(level, player)) {
-            throw helper.assertionException("the snapshot should hold the live mock");
+            throw failure(helper, "the snapshot should hold the live mock");
         }
         mock.leave();
         helper.succeedWhen(() -> {
             for (ServerLevel each : level.getServer().getAllLevels()) {
                 if (TickLists.retains(each, player)) {
-                    throw helper.assertionException(
-                            "the tick list of " + each.dimension().identifier() + " still holds the mock that left");
+                    throw failure(
+                            helper,
+                            "the tick list of %s still holds the mock that left",
+                            each.dimension().identifier());
                 }
             }
         });
@@ -293,12 +305,12 @@ public class MockPlayersTest {
         List<WeakReference<ServerPlayer>> probes = startProbes(helper, finished);
         helper.succeedWhen(() -> {
             if (finished.stream().anyMatch(info -> !info.isDone())) {
-                throw helper.assertionException("waiting for the probes to end");
+                throw failure(helper, "waiting for the probes to end");
             }
             for (WeakReference<ServerPlayer> probe : probes) {
                 System.gc();
                 if (probe.get() != null) {
-                    throw helper.assertionException("a finished test still holds its mock ServerPlayer");
+                    throw failure(helper, "a finished test still holds its mock ServerPlayer");
                 }
             }
         });
@@ -362,7 +374,7 @@ public class MockPlayersTest {
                 new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
         ServerPlayer reborn = dead.connection.getPlayer();
         if (reborn == dead) {
-            throw helper.assertionException("the respawn should replace the dead ServerPlayer");
+            throw failure(helper, "the respawn should replace the dead ServerPlayer");
         }
         weak.add(new WeakReference<>(dead));
         weak.add(new WeakReference<>(reborn));

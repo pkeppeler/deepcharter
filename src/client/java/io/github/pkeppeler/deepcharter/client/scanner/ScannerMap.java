@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.scanner;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -37,8 +38,10 @@ import org.slf4j.LoggerFactory;
  * costs the same); one blit costs the same at any scan size, and the picture is rebuilt only when the scanner rescans, every few ticks, or
  * when the resources reload.
  *
- * <p>A cell drawn in fewer screen pixels than {@link ScannerLook#oreMarkBelowPixels()} cannot show a texture. There an ore cell is one flat mark of its
- * ore's colour (see {@link #oreMark}), which stays easy to spot, and rock takes the darker small-cell shade; every other cell keeps its texture.
+ * <p>A cell drawn in fewer screen pixels than {@link ScannerLook#oreMarkBelowPixels()} cannot show a texture. There an
+ * ore cell is one flat mark of its ore's colour (see {@link #oreMark}), which stays easy to spot, and rock takes the
+ * darker small-cell shade; every other cell keeps its texture. Two quadrants of a textured rock cell are lightened and
+ * two darkened by a pattern its block's place picks ({@link ScannerGrain}), so uniform rock is not one repeated tile.
  *
  * <p>A cell's pixels are read from the active resource pack's texture file for the sprite that {@link ScannerSprites} names, because the block
  * atlas lives on the graphics card and cannot be read back. The first frame of an animated texture is the cell's. Each texture is
@@ -57,6 +60,9 @@ final class ScannerMap {
 
     /** The picture; null before the first scan is drawn and after {@link #release}. */
     private static @Nullable DynamicTexture texture;
+
+    /** Whether the last release of a picture ran on the render thread; null until one has. */
+    private static volatile @Nullable Boolean releasedOnRenderThread;
 
     private static int textureWidth;
     private static int textureHeight;
@@ -77,6 +83,14 @@ final class ScannerMap {
     private record TileKey(List<Identifier> sprites, int pixels, int backdrop) {}
 
     private ScannerMap() {}
+
+    static boolean held() {
+        return texture != null;
+    }
+
+    static @Nullable Boolean releasedOnRenderThread() {
+        return releasedOnRenderThread;
+    }
 
     /** Draws the known cells of {@code slice}, {@code cell} GUI pixels each, the top left of the area at ({@code left}, {@code top}). Air is left as it is. */
     static void draw(GuiGraphicsExtractor graphics, ScanSlice slice, ScannerLook look, int cell, int left, int top) {
@@ -105,9 +119,13 @@ final class ScannerMap {
                 textureHeight);
     }
 
-    /** Drops the picture and everything kept for it, when the player leaves the world: the texture can be large and nothing draws it until the next scan. */
+    /**
+     * Drops the picture and everything kept for it, when the player has left the world: the texture can be large and
+     * nothing draws it until the next scan. Render thread only.
+     */
     static void release() {
         if (texture != null) {
+            releasedOnRenderThread = RenderSystem.isOnRenderThread();
             Minecraft.getInstance().getTextureManager().release(ID);
             texture = null;
         }
@@ -161,7 +179,9 @@ final class ScannerMap {
                                 pixels,
                                 tile.get(),
                                 overlay(look, found, small),
-                                pixels >= look.oreOutlineMinPixels() ? outline(look, found) : 0);
+                                pixels >= look.oreOutlineMinPixels() ? outline(look, found) : 0,
+                                found instanceof Cell.Rock ? ScannerGrain.pattern(slice.posLong(ahead, up)) : 0,
+                                look.rockGrainLevels());
                     }
                 }
             }
@@ -177,15 +197,47 @@ final class ScannerMap {
         }
     }
 
-    /** The tile with {@code overlay} laid over it, and a one-pixel frame of {@code outline} round its edge ({@code 0}: none). */
-    private static void copyTile(NativeImage image, int x, int y, int pixels, int[] tile, int overlay, int outline) {
+    /**
+     * The tile with {@code overlay} laid over it, a one-pixel frame of {@code outline} round its edge ({@code 0}:
+     * none), and the grain {@code pattern} at up to {@code levels} ({@link ScannerGrain}).
+     */
+    private static void copyTile(
+            NativeImage image,
+            int x,
+            int y,
+            int pixels,
+            int[] tile,
+            int overlay,
+            int outline,
+            int pattern,
+            int levels) {
+        int[] shaded = new int[tile.length];
+        for (int i = 0; i < tile.length; i++) {
+            shaded[i] = over(overlay, tile[i]);
+        }
+        int amplitude = pattern == 0 ? 0 : ScannerGrain.amplitude(levels, shaded);
         for (int dy = 0; dy < pixels; dy++) {
             for (int dx = 0; dx < pixels; dx++) {
-                int argb = over(overlay, tile[dy * pixels + dx]);
+                int argb = shift(shaded[dy * pixels + dx], ScannerGrain.levels(pattern, amplitude, dx, dy, pixels));
                 boolean edge = dx == 0 || dy == 0 || dx == pixels - 1 || dy == pixels - 1;
                 image.setPixel(x + dx, y + dy, edge ? over(outline, argb) : argb);
             }
         }
+    }
+
+    /**
+     * {@code argb} with each colour channel moved by {@code levels}, which {@link ScannerGrain#amplitude} keeps in 0 to
+     * 255.
+     */
+    private static int shift(int argb, int levels) {
+        if (levels == 0) {
+            return argb;
+        }
+        int result = argb & OPAQUE;
+        for (int bits = 0; bits <= 16; bits += 8) {
+            result |= (((argb >> bits) & 0xFF) + levels) << bits;
+        }
+        return result;
     }
 
     /** The colour laid over a cell's texture, {@code small} when cells are too small to read a texture ({@link ScannerLook#oreMarkBelowPixels()}); transparent for a cell that has none. */

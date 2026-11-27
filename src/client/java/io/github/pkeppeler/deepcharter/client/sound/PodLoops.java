@@ -1,7 +1,10 @@
 package io.github.pkeppeler.deepcharter.client.sound;
 
+import io.github.pkeppeler.deepcharter.client.layer.SeamSwapEvents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodSeats;
+import io.github.pkeppeler.deepcharter.pod.VoidBelow;
+import io.github.pkeppeler.deepcharter.pod.VoidBelowTuning;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.SoundTuning;
 import java.util.HashMap;
@@ -66,6 +69,8 @@ public final class PodLoops {
     public static void init() {
         ClientTickEvents.END_CLIENT_TICK.register(PodLoops::tick);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset(null));
+        // A swap keeps the pods and everything playing: the loops follow the pod into the new level.
+        SeamSwapEvents.SWAPPED.register((from, to) -> trackedLevel = to);
     }
 
     /** Ends every loop and forgets every pod: the pods of the old level are not the pods of {@code level}. */
@@ -176,6 +181,10 @@ public final class PodLoops {
             }
             boolean wanted = key.channel().soundOf(pod).equals(Optional.of(key.sound())) && isCab(pod) == key.fromCab();
             volume = Mth.clamp(volume + (wanted ? fadeStep : -fadeStep), 0f, 1f);
+            // The drill sounds hollow over the last rows before it breaks into a drop that lands hard (#1387).
+            if (key.sound() == DeepSound.POD_ENGINE_DRILL_DOWN) {
+                pitch = VoidBelow.hollow(pod) ? VoidBelowTuning.DEFAULT.hollowPitch() : 1f;
+            }
             if (!wanted && volume == 0f) {
                 stop();
                 return;

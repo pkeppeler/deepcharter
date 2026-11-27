@@ -119,6 +119,12 @@ public class SuitPacingTest {
                 expect(helper, heatThree == 45, "a heat tier 3 suit lasts 45 s dry, it lasted %s", heatThree);
                 SuitScenes.setTracks(player, SuitTracks.STOCK);
 
+                // An air canister (#1194) on a spent suit: a minute of reserve, which is all the suit has to spend.
+                SuitScenes.setReserve(player, SuitTuning.DEFAULT.canisterSeconds(), true);
+                int canister = SuitScenes.secondsToEmpty(player, LIMIT);
+                print("unbuilt depth, dry, from empty with an air canister", "measured", canister);
+                expect(helper, canister == 11, "a canister keeps a stock suit going 11 s dry, it lasted %s", canister);
+
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(pocket.stand());
                 level.addFreshEntity(pod);
@@ -207,8 +213,8 @@ public class SuitPacingTest {
         ServerPlayer player = mock.player();
         SuitTuning tuning = SuitTuning.DEFAULT;
         int hits = (int) Math.ceil(player.getMaxHealth() / tuning.breachDamage());
-        // The second that finds the suit spent, then the wait for the breach cadence, then a tick of slack for the
-        // teleport.
+        // The second that finds the suit spent, then the wait for the breach cadence, then a tick of slack for
+        // the teleport.
         int firstHitBound = SECOND_TICKS + tuning.breachTicks() + 1;
         long[] ticks = {-1, -1, -1};
         SuitScenes.sequence(helper, pocket)
@@ -305,6 +311,15 @@ public class SuitPacingTest {
         expect(helper, allDry == 144, "all tier 3 lasts 144 s dry, it lasts %s", allDry);
         expect(helper, allWet == 80, "all tier 3 lasts 80 s submerged, it lasts %s", allWet);
         expect(helper, allHall == 288, "all tier 3 lasts 288 s in an unrated hall, it lasts %s", allHall);
+        // A canister (#1194) adds a fixed minute whatever the suit holds, so it buys more of a better suit's seconds.
+        int canisterAllThree = (int) Math.ceil(SuitTuning.DEFAULT.canisterSeconds()
+                / SuitDrain.perSecond(row, all.ratings(), false, SuitTuning.DEFAULT));
+        print("air canister from empty, all tier 3, dry", "modelled", canisterAllThree);
+        expect(
+                helper,
+                canisterAllThree == 24,
+                "a canister keeps an all tier 3 suit going 24 s dry, it lasts %s",
+                canisterAllThree);
         float refill = SuitTuning.DEFAULT.refillPerSecond();
         int rest = (int) Math.ceil(all.capacity(SuitTuning.DEFAULT) / refill);
         print("refill from empty at air tier 3", "modelled", rest);

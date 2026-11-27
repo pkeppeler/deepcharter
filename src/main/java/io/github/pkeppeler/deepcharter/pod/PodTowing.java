@@ -34,6 +34,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -95,6 +96,10 @@ public final class PodTowing {
     private static final Map<PodEntity, Line> LINES = Collections.synchronizedMap(new WeakHashMap<>());
 
     private static final double EPSILON = 1e-7;
+    /** Blocks a tick the line must drag a towed pod, across the ground, for it to turn toward the drag. */
+    private static final double TRAIL_MIN_DRAG = 0.02;
+    /** Degrees a tick a towed pod turns toward the way it is dragged. */
+    private static final float TRAIL_TURN_DEGREES = 10f;
     /**
      * Blocks a pod hangs below its tower at least for the line to drape over a lip: beside it a line that is blocked is not a line
      * over an edge. 0.25, not more: a hull's bottom corners meet a lip at about 0.46 of drop.
@@ -335,13 +340,17 @@ public final class PodTowing {
                                         .isPresent());
     }
 
+    /**
+     * The cable's base mass and the towed pod's whole weight: its bay and its own extra mass (a rider's pack, its lining). A towed pod
+     * tows nothing (the guard below, and {@link #refusal}), so its own extra mass has no tow in it and this never recurses further.
+     */
     private static float towedMass(PodEntity tower) {
         if (isTowed(tower)) {
             return 0f;
         }
         float mass = 0f;
         for (PodEntity towed : towedBy(tower, TowTuning.DEFAULT)) {
-            mass += TowTuning.DEFAULT.baseMass() + towed.cargoMass();
+            mass += TowTuning.DEFAULT.baseMass() + towed.cargoMass() + PodEvents.extraMass(towed);
         }
         return mass;
     }
@@ -439,9 +448,24 @@ public final class PodTowing {
         }
         line.bend = bend;
         line.velocity = carried == null ? withoutPullAgainstLine(moved, next.subtract(pivot)) : Vec3.ZERO;
+        Vec3 dragged = next.subtract(towed.position());
         towed.setPos(next);
+        trail(towed, dragged);
         towed.setDeltaMovement(Vec3.ZERO);
         towed.resetFallDistance();
+    }
+
+    /**
+     * Turns a towed pod toward the way the line drags it, as a trailer follows its tower. The server steers the pod's
+     * yaw now (ADR 0095) and nothing else turns a pod no one pilots, so without this it would be dragged at the yaw it
+     * was left with.
+     */
+    private static void trail(PodEntity towed, Vec3 dragged) {
+        if (dragged.x * dragged.x + dragged.z * dragged.z < TRAIL_MIN_DRAG * TRAIL_MIN_DRAG) {
+            return;
+        }
+        float heading = (float) (Mth.atan2(-dragged.x, dragged.z) * Mth.RAD_TO_DEG);
+        towed.setYRot(Mth.wrapDegrees(Mth.approachDegrees(towed.getYRot(), heading, TRAIL_TURN_DEGREES)));
     }
 
     /**

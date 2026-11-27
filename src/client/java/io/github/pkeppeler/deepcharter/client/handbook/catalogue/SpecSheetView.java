@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
+import static io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueHardware.fit;
+import static io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueHardware.termWidth;
+
 import com.google.common.base.Splitter;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
@@ -26,10 +29,25 @@ import net.minecraft.world.item.ItemStack;
  * sheet of any shipped item that is.
  */
 final class SpecSheetView {
-    /** The dots a line loses its tail to when it is too long. */
-    private static final String ELLIPSIS = "..";
-
     private SpecSheetView() {}
+
+    /** What a click on a placed sheet does. */
+    enum Click {
+        /** The Recipes link: show the item's recipes in the catalogue. */
+        RECIPES,
+        /** The close switch, or anywhere off the sheet's console: put the sheet away. */
+        CLOSE,
+        /** Anywhere else on the console: nothing, so a stray click never loses the sheet. */
+        NONE
+    }
+
+    /** What a click at ({@code x}, {@code y}) does to a sheet laid out as {@code layout}. */
+    static Click clickAt(SpecSheetLayout layout, double x, double y) {
+        if (layout.recipes().contains(x, y)) {
+            return Click.RECIPES;
+        }
+        return layout.close().contains(x, y) || !layout.casing().contains(x, y) ? Click.CLOSE : Click.NONE;
+    }
 
     /** How a planned line is drawn. */
     enum Style {
@@ -43,21 +61,21 @@ final class SpecSheetView {
     /**
      * Everything a sheet draws as text.
      *
-     * @param title the item's name, in capitals
+     * @param title the item's name, in capitals, a line for each the width takes
      * @param cell the item's cell
      * @param lines the lines under the title
      * @param usedBottom the y under the last of the text
      * @param complete whether every line of the sheet fits
      */
-    record Plan(String title, Rect cell, List<Line> lines, int usedBottom, boolean complete) {}
+    record Plan(List<String> title, Rect cell, List<Line> lines, int usedBottom, boolean complete) {}
 
     /** A sheet placed on a screen: the console, and the text on its glass. */
     record Placed(SpecSheetLayout layout, Plan plan) {}
 
     /** Places {@code sheet} on a screen {@code width} by {@code height}: a console as tall as the text needs, centred. */
     static Placed place(SpecSheet sheet, int width, int height, CatalogueLook look, CrtTuning crt, Font font) {
-        // The text is planned once in the tallest console to see how much room it takes, then again in the console that
-        // size.
+        // The text is planned once in the tallest console to see how much room it takes, then again in the console
+        // that size.
         SpecSheetLayout tallest = SpecSheetLayout.of(width, height, look, crt, font.lineHeight, Integer.MAX_VALUE / 2);
         Plan measured = plan(sheet, tallest, look, font);
         int needed = measured.usedBottom() - tallest.glass().y() + look.pad();
@@ -69,12 +87,16 @@ final class SpecSheetView {
     static Plan plan(SpecSheet sheet, SpecSheetLayout layout, CatalogueLook look, Font font) {
         boolean complete = true;
         int width = layout.right() - layout.left();
-        String title =
-                fit(font, new ItemStack(sheet.item()).getHoverName().getString().toUpperCase(Locale.ROOT), width);
+        List<String> title = TextWrap.lines(
+                text -> termWidth(font, text),
+                new ItemStack(sheet.item()).getHoverName().getString().toUpperCase(Locale.ROOT),
+                width);
         List<Line> lines = new ArrayList<>();
         int pitch = font.lineHeight + look.sheetLineGap();
 
-        Rect cell = new Rect(layout.left(), layout.bodyTop(), look.slotSize(), look.slotSize());
+        // Each line of the title past the first pushes the body down.
+        int bodyTop = layout.bodyTop() + (title.size() - 1) * font.lineHeight;
+        Rect cell = new Rect(layout.left(), bodyTop, look.slotSize(), look.slotSize());
         int kindX = cell.right() + look.sheetGap();
         lines.add(new Line(
                 fit(font, sheet.kind().getString(), layout.right() - kindX),
@@ -120,7 +142,8 @@ final class SpecSheetView {
             SpecSheet sheet,
             Plan plan,
             int mouseX,
-            int mouseY) {
+            int mouseY,
+            boolean recipesActive) {
         CatalogueLook look = CatalogueLook.current();
         CrtTuning crt = CrtTuning.current();
         PanelLook panel = PanelLook.current();
@@ -128,7 +151,7 @@ final class SpecSheetView {
         CatalogueHardware.body(graphics, look, layout.casing(), layout.glass(), List.of());
         graphics.nextStratum();
 
-        CrtDraw.header(graphics, font, CrtText.terminal(plan.title()), layout.left(), layout.titleY(), layout.right());
+        CatalogueHardware.title(graphics, font, plan.title(), layout.left(), layout.titleY(), layout.right());
         Rect cell = plan.cell();
         CrtDraw.border(graphics, cell.x(), cell.y(), cell.right(), cell.bottom(), crt.phosphorColor());
         graphics.item(new ItemStack(sheet.item()), cell.x() + look.iconInset(), cell.y() + look.iconInset());
@@ -150,27 +173,22 @@ final class SpecSheetView {
                 look,
                 panel,
                 crt,
+                layout.recipes(),
+                Component.translatable("deepcharter.catalogue.sheet.recipes").getString(),
+                false,
+                recipesActive,
+                layout.recipes().contains(mouseX, mouseY));
+        CatalogueHardware.legendSwitch(
+                graphics,
+                font,
+                look,
+                panel,
+                crt,
                 layout.close(),
                 Component.translatable("deepcharter.catalogue.sheet.close").getString(),
                 false,
                 true,
                 layout.close().contains(mouseX, mouseY));
-    }
-
-    private static int termWidth(Font font, String text) {
-        return font.width(CrtText.terminal(text));
-    }
-
-    /** {@code text} cut to {@code width} with {@link #ELLIPSIS} in place of its tail when it is wider. */
-    private static String fit(Font font, String text, int width) {
-        if (termWidth(font, text) <= width) {
-            return text;
-        }
-        String cut = text;
-        while (!cut.isEmpty() && termWidth(font, cut + ELLIPSIS) > width) {
-            cut = cut.substring(0, cut.length() - 1);
-        }
-        return cut.stripTrailing() + ELLIPSIS;
     }
 
     /** {@code text} broken at spaces into lines no wider than {@code width}; a word wider than that is cut. */

@@ -102,8 +102,8 @@ public class BandFiguresTest {
             if (ready[0] < 3) {
                 return;
             }
-            // The light engine runs behind the carve: the light of the ore the room replaced is read until it catches
-            // up.
+            // The light engine runs behind the carve: the light of the ore the room replaced is read until it
+            // catches up.
             boolean dark = Stream.of(one, two, surface)
                     .allMatch(room -> level.getBrightness(LightLayer.BLOCK, room) < TUNING.litBlockLight());
             deadline.await(helper, level, dark, () -> "the light of the old rock did not leave the rooms");
@@ -174,6 +174,7 @@ public class BandFiguresTest {
             // Made and counted in one tick: a figure with no player near it despawns on the next.
             List<LamplessFigure> placed = new ArrayList<>();
             for (int i = 0; i < TUNING.maxPerBand(); i++) {
+                // Counted and discarded in this callback, before the figure's first tick (#1237).
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 figure.markNatural();
                 figure.setNoAi(true);

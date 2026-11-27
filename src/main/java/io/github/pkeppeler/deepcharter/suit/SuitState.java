@@ -111,15 +111,15 @@ public record SuitState(float reserve, boolean explained, Mode mode, float rate,
         return 1 << axis.ordinal();
     }
 
-    /** The axes that drain the suit, in capitals, one after another with {@code separator} between: "HEAT PRESSURE". */
-    public Component axesText(String separator) {
-        return joined(separator, axis -> Component.translatable("hud.deepcharter.suit.axis." + axis.id()));
+    /** The axes that drain the suit, in capitals, one after another with commas between: "HEAT, PRESSURE". */
+    public Component axesText() {
+        return joined(", ", axis -> Component.translatable("hud.deepcharter.suit.axis." + axis.id()));
     }
 
-    /** How short each axis is, in capitals, one after another with {@code separator} between: "HEAT -2 PRESSURE -2". */
-    public Component shortText(String separator) {
+    /** How short each axis is, in capitals, one after another with spaces between: "HEAT -2 PRESSURE -2". */
+    public Component shortText() {
         return joined(
-                separator,
+                " ",
                 axis -> Component.translatable(
                         "hud.deepcharter.suit.short",
                         Component.translatable("hud.deepcharter.suit.axis." + axis.id()),
@@ -144,7 +144,7 @@ public record SuitState(float reserve, boolean explained, Mode mode, float rate,
     public MutableComponent exceededLine() {
         return axes() == 0
                 ? Component.translatable("message.deepcharter.suit.draining")
-                : Component.translatable("message.deepcharter.suit.exceeded", axesText(", "));
+                : Component.translatable("message.deepcharter.suit.exceeded", axesText());
     }
 
     /**
@@ -164,6 +164,11 @@ public record SuitState(float reserve, boolean explained, Mode mode, float rate,
     /** This state with {@code reserve} in place of its own. */
     SuitState withReserve(float reserve) {
         return new SuitState(reserve, explained, mode, rate, shortfall);
+    }
+
+    /** This state with its mode {@link Mode#EXPOSED}. */
+    SuitState exposed() {
+        return new SuitState(reserve, explained, Mode.EXPOSED, rate, shortfall);
     }
 
     /** This state with the first drain's line marked shown. */

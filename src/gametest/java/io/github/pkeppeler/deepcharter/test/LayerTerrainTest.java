@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -24,6 +25,8 @@ import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -105,8 +108,20 @@ public class LayerTerrainTest {
      * A layer's band is rock to its ceiling, cut by noise caves: a 64 x 64 sample has caves in it, and the air rows of a column differ
      * from column to column, which flat terrain never does.
      */
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void terrainIsNoiseWithCaves(GameTestHelper helper) {
+        List<FarChunks.At> sample = new ArrayList<>();
+        for (int layer = 1; layer <= 2; layer++) {
+            for (int chunkX = 900 >> 4; chunkX <= 963 >> 4; chunkX++) {
+                for (int chunkZ = 900 >> 4; chunkZ <= 963 >> 4; chunkZ++) {
+                    sample.add(new FarChunks.At(TestLayers.level(helper, layer), chunkX, chunkZ));
+                }
+            }
+        }
+        FarChunks.whenBlocksLoaded(helper, sample, () -> terrainIsNoiseWithCavesOnceLoaded(helper));
+    }
+
+    private static void terrainIsNoiseWithCavesOnceLoaded(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             LayerChain.Band band = TestLayers.band(level, layer);
@@ -114,7 +129,6 @@ public class LayerTerrainTest {
             int most = 0;
             for (int x = 900; x < 964; x += 4) {
                 for (int z = 900; z < 964; z += 4) {
-                    level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL);
                     int air = 0;
                     for (int y = band.minY() + 12; y < band.maxY() - 8; y++) {
                         if (level.getBlockState(new BlockPos(x, y, z)).isAir()) {
@@ -135,13 +149,23 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void onlyTheRetainedSpawnNaturally(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(helper, spawnChunks(helper), () -> onlyTheRetainedSpawnNaturallyOnceLoaded(helper));
+    }
+
+    /** Chunk (0, 0) of each layer, where the zone tests read a biome and the mobs the generator lists. */
+    private static List<FarChunks.At> spawnChunks(GameTestHelper helper) {
+        return List.of(
+                new FarChunks.At(TestLayers.level(helper, 1), 0, 0),
+                new FarChunks.At(TestLayers.level(helper, 2), 0, 0));
+    }
+
+    private static void onlyTheRetainedSpawnNaturallyOnceLoaded(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             for (int zone = 0; zone < 3; zone++) {
                 BlockPos pos = new BlockPos(0, zoneMiddle(level, layer, zone), 0);
-                level.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.FULL);
                 for (MobCategory category : MobCategory.values()) {
                     var mobs = level.getChunkSource()
                             .getGenerator()
@@ -213,8 +237,12 @@ public class LayerTerrainTest {
         throw failure(helper, "a chain longer than the named layers passed the check");
     }
 
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void eachZoneHasItsOwnBiomeNamedInTheLore(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(helper, spawnChunks(helper), () -> eachZoneHasItsOwnBiomeOnceLoaded(helper));
+    }
+
+    private static void eachZoneHasItsOwnBiomeOnceLoaded(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             for (int zone = 0; zone < 3; zone++) {
@@ -225,7 +253,6 @@ public class LayerTerrainTest {
                     throw failure(helper, "layer_%d zone %d is %s, expected %s", layer, zone, found, expected);
                 }
                 BlockPos pos = new BlockPos(0, zoneMiddle(level, layer, zone), 0);
-                level.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.FULL);
                 Identifier biome = level.getBiome(pos).unwrapKey().orElseThrow().identifier();
                 if (!biome.equals(expected)) {
                     throw failure(helper, "layer_%d zone %d has biome %s, expected %s", layer, zone, biome, expected);
@@ -235,9 +262,12 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** Below layer 1 rock is out of reach of hands (SPEC section 9); layer 1 is not. */
+    /**
+     * Below layer 1 rock is pod-only (SPEC section 9, ADR 0069): an empty hand cannot break it; layer 1's is ordinary.
+     * {@link HandBreakTest} covers the tools that can.
+     */
     @GameTest
-    public void handsCannotBreakDeepRock(GameTestHelper helper) {
+    public void bareHandsCannotBreakDeepRock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-hands");
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
@@ -248,7 +278,7 @@ public class LayerTerrainTest {
         two.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
         two.setBlock(pos.east(), Blocks.DIRT.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(Blocks.STONE)) {
-            throw failure(helper, "a survival player broke rock by hand in layer 2");
+            throw failure(helper, "a bare-handed survival player broke rock in layer_2");
         }
         if (!mock.player().gameMode.destroyBlock(pos.east())) {
             throw failure(helper, "the guard stopped dirt, which is not rock");
@@ -256,11 +286,11 @@ public class LayerTerrainTest {
         two.setBlock(pos.west(), Blocks.IRON_ORE.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos.west())
                 || !two.getBlockState(pos.west()).is(Blocks.IRON_ORE)) {
-            throw failure(helper, "a survival player broke iron ore by hand in layer 2");
+            throw failure(helper, "a bare-handed survival player broke iron ore in layer_2");
         }
         mock.player().setGameMode(GameType.ADVENTURE);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(Blocks.STONE)) {
-            throw failure(helper, "an adventure player broke rock by hand in layer 2");
+            throw failure(helper, "a bare-handed adventure player broke rock in layer_2");
         }
         mock.player().setGameMode(GameType.CREATIVE);
         if (!mock.player().gameMode.destroyBlock(pos)) {
@@ -275,9 +305,9 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** The attack callback runs on the client too, so a refused swing starts no crack animation. */
+    /** The attack callback runs on the client too, so a swing with no tool starts no crack animation. */
     @GameTest
-    public void startingToBreakDeepRockByHandIsRefused(GameTestHelper helper) {
+    public void startingToBreakDeepRockWithABareHandIsRefused(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-attack");
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
@@ -342,8 +372,13 @@ public class LayerTerrainTest {
     }
 
     /** The generator's own copies of the layers' ranges must equal the level's and the band table's, or zones and terrain drift apart. */
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void generatorMatchesTheBands(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper, List.of(new FarChunks.At(TestLayers.level(helper, 1), 0, 0)), () -> generatorMatches(helper));
+    }
+
+    private static void generatorMatches(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
         if (!(level.getChunkSource().getGenerator() instanceof NoiseBasedChunkGenerator generator)) {
             throw failure(helper, "the campaign level is not generated by noise");
@@ -366,7 +401,7 @@ public class LayerTerrainTest {
             throw failure(helper, "the campaign level is not given its biomes by band");
         }
         // The stored cell of a chunk, never level.getBiome, which blurs a band's edge.
-        var chunk = level.getChunk(0, 0, ChunkStatus.FULL);
+        var chunk = Objects.requireNonNull(level.getChunkSource().getChunkNow(0, 0), "chunk (0, 0) is loaded");
         for (int layer = 1; layer <= 2; layer++) {
             LayerChain.Band levelBand = TestLayers.band(level, layer);
             for (int quartY = QuartPos.fromBlock(levelBand.minY());
@@ -402,6 +437,8 @@ public class LayerTerrainTest {
             long start = System.nanoTime();
             for (int cx = base; cx < base + side; cx++) {
                 for (int cz = base; cz < base + side; cz++) {
+                    // sync-load: the test times what the generation of a fresh chunk costs, so it must run on
+                    // this thread
                     level.getChunk(cx, cz, ChunkStatus.FULL);
                 }
             }

@@ -139,7 +139,7 @@ public class BoltDriverPacingTest {
                 return;
             }
             if (fights[1] == null) {
-                Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+                Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
                 tally.setPos(corridor.stand(11));
                 tally.setNoAi(true);
                 level.addFreshEntity(tally);
@@ -301,8 +301,8 @@ public class BoltDriverPacingTest {
         ServerLevel level = corridor.level();
         BlockPos middle = corridor.floor(7);
         int half = CAVE_IN.stretchRadius();
-        // The corridor is 1 wide: open it into a room as wide as the stretch, so the fall's radius is measured in two
-        // dimensions.
+        // The corridor is 1 wide: open it into a room as wide as the stretch, so the fall's radius is measured in
+        // two dimensions.
         RoomCarver.carve(
                 level,
                 corridor.x(),

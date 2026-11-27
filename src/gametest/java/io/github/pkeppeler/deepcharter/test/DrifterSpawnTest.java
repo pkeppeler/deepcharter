@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.Drifter;
 import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
 import io.github.pkeppeler.deepcharter.creature.DrifterTuning;
+import io.github.pkeppeler.deepcharter.creature.DrifterVariant;
 import io.github.pkeppeler.deepcharter.creature.Drifters;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Zones;
@@ -24,6 +25,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
@@ -35,6 +37,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +58,9 @@ public class DrifterSpawnTest {
 
     private static final Identifier HOLLOWS_TEST_BIOME = Identifier.fromNamespaceAndPath("deepcharter-test", "hollows");
     private static final Identifier DRONE = Identifier.fromNamespaceAndPath("deepcharter", "creature.alarm_drone");
+    /** Placements a run of forms is drawn over. */
+    private static final int VARIANT_DRAWS = 60;
+
     /** The long room of the spawn test: 47 blocks along x (four chunks), 13 across and 19 high, so that a place 18 to 36 blocks from its middle is in it. */
     private static final int CX = 25_032;
 
@@ -150,8 +156,11 @@ public class DrifterSpawnTest {
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void driftersKeyOnTheTagAndAreCountedByPodsAndCappedByZone(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
+        // Not layer 3: its zones are in the hollows tag already. Layer 2's top zone and layer 1's bottom zone are
+        // this test's.
         CampaignBands.Band one = CampaignBands.LAYER_1;
-        int top = topY(one.minY(), one.height(), 0);
+        CampaignBands.Band two = CampaignBands.LAYER_2;
+        int top = topY(two.minY(), two.height(), 0);
         int bottom = topY(one.minY(), one.height(), 2);
         List<BlockPos> columns = new ArrayList<>();
         for (int x = CX - HALF_X; x <= CX + HALF_X; x += 16) {
@@ -181,38 +190,42 @@ public class DrifterSpawnTest {
                     level.getBiome(BlockPos.containing(topSource.pos())).is(Drifters.FUNGAL_HOLLOWS),
                     "the test biome is not in the hollows tag");
             List<Drifter> made = new ArrayList<>();
-            Drifter first = placed(helper, level, topSource, 1, made);
-            double away = first.position().distanceTo(topSource.pos());
-            LOGGER.info("[drifter] one placed {} blocks from its source", String.format("%.1f", away));
-            expect(
-                    helper,
-                    away >= TUNING.spawn().minBlocks() - 1.5
-                            && away <= TUNING.spawn().maxBlocks() + 1.5,
-                    "a drifter was placed %s blocks from its source",
-                    away);
-            expect(
-                    helper,
-                    level.getBiome(first.blockPosition()).is(Drifters.FUNGAL_HOLLOWS),
-                    "a drifter was placed outside the hollows");
-            refused(helper, level, topSource, 1, "a second one for one source");
-            placed(helper, level, topSource, 2, made);
-            refused(helper, level, topSource, 3, "a third in a zone that holds two");
-            made.forEach(Drifter::discard);
-            made.clear();
-            // The alarm of the top zone lets one source hold two.
-            DrifterAlarm.raise(level, top);
-            placed(helper, level, topSource, 1, made);
-            placed(helper, level, topSource, 1, made);
-            refused(helper, level, topSource, 1, "a third for one source under the alarm");
-            made.forEach(Drifter::discard);
-            made.clear();
-            // The bottom zone holds four.
-            Drifters.Source bottomSource = middle(bottom);
-            for (int i = 0; i < 4; i++) {
-                placed(helper, level, bottomSource, 5, made);
+            try {
+                Drifter first = placed(helper, level, topSource, 1, made);
+                double away = first.position().distanceTo(topSource.pos());
+                LOGGER.info("[drifter] one placed {} blocks from its source", String.format("%.1f", away));
+                expect(
+                        helper,
+                        away >= TUNING.spawn().minBlocks() - 1.5
+                                && away <= TUNING.spawn().maxBlocks() + 1.5,
+                        "a drifter was placed %s blocks from its source",
+                        away);
+                expect(
+                        helper,
+                        level.getBiome(first.blockPosition()).is(Drifters.FUNGAL_HOLLOWS),
+                        "a drifter was placed outside the hollows");
+                refused(helper, level, topSource, 1, "a second one for one source");
+                placed(helper, level, topSource, 2, made);
+                refused(helper, level, topSource, 3, "a third in a zone that holds two");
+                made.forEach(Drifter::discard);
+                made.clear();
+                // The alarm of the top zone lets one source hold two.
+                DrifterAlarm.raise(level, top);
+                placed(helper, level, topSource, 1, made);
+                placed(helper, level, topSource, 1, made);
+                refused(helper, level, topSource, 1, "a third for one source under the alarm");
+                made.forEach(Drifter::discard);
+                made.clear();
+                // The bottom zone holds four.
+                Drifters.Source bottomSource = middle(bottom);
+                for (int i = 0; i < 4; i++) {
+                    placed(helper, level, bottomSource, 5, made);
+                }
+                refused(helper, level, bottomSource, 5, "a fifth in the bottom zone, which holds four");
+            } finally {
+                // A failed check must not leave a drifter in a zone another test counts (#1180).
+                made.forEach(Drifter::discard);
             }
-            refused(helper, level, bottomSource, 5, "a fifth in the bottom zone, which holds four");
-            made.forEach(Drifter::discard);
             helper.succeed();
         });
         FarChunks.awaitEntityTicking(helper, level, columns, index -> ready[0]++);
@@ -222,8 +235,8 @@ public class DrifterSpawnTest {
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 120)
     public void killingADrifterRaisesTheAlarmOfItsZone(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        CampaignBands.Band two = CampaignBands.LAYER_2;
-        int top = topY(two.minY(), two.height(), 0);
+        CampaignBands.Band three = CampaignBands.LAYER_3;
+        int top = topY(three.minY(), three.height(), 0);
         BlockPos origin = new BlockPos(25_500, top, 25_500);
         MockPlayer[] striker = {null};
         long[] since = {-1};
@@ -262,13 +275,13 @@ public class DrifterSpawnTest {
                     DrifterAlarm.ticksLeft(level, top));
             expect(
                     helper,
-                    !DrifterAlarm.isRinging(level, topY(two.minY(), two.height(), 2)),
-                    "the alarm of the top zone rings in the bottom zone");
+                    !DrifterAlarm.isRinging(level, topY(three.minY(), three.height(), 2)),
+                    "the alarm of the top zone of layer 3 rings in its bottom zone");
             expect(
                     helper,
                     !DrifterAlarm.isRinging(
                             level, topY(CampaignBands.LAYER_1.minY(), CampaignBands.LAYER_1.height(), 2)),
-                    "the alarm of layer 2 rings in layer 1");
+                    "the alarm of layer 3 rings in the bottom zone of layer 1");
             since[0] = helper.getTick();
         });
     }
@@ -320,8 +333,10 @@ public class DrifterSpawnTest {
     }
 
     /**
-     * The alarm shows and ends: the pilot's readout carries the seconds it has left, the drone beats for a person in the zone, and after
-     * {@link DrifterTuning.Alarm#ticks()} ticks the line goes and the zone is quiet. It is held in memory only, so there is no saved form to read.
+     * The alarm shows and ends: the pilot's readout carries the seconds it has left, the drone beats for a person in
+     * the zone within {@link DrifterTuning.Alarm#droneTicks()} ticks of the alarm, and after
+     * {@link DrifterTuning.Alarm#ticks()} ticks the line goes and the zone is quiet. It is held in memory only, so
+     * there is no saved form to read.
      */
     @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 3_800)
     public void theAlarmShowsDronesAndEnds(GameTestHelper helper) {
@@ -331,6 +346,7 @@ public class DrifterSpawnTest {
         BlockPos origin = new BlockPos(25_900, middle, 25_900);
         Arena[] made = {null};
         long[] since = {-1};
+        long[] raisedAt = {-1};
         boolean[] droned = {false};
         TestTicks.each(helper, () -> {
             if (since[0] < 0) {
@@ -339,7 +355,18 @@ public class DrifterSpawnTest {
             Arena arena = made[0];
             long tick = helper.getTick() - since[0];
             PodEntity pod = arena.pod();
-            droned[0] |= arena.pilot().soundsHeard().contains(DRONE);
+            // The mock reads sounds after the test's tick, so judge a beat by its play tick (#1359).
+            int beat = droned[0] ? -1 : arena.pilot().soundsHeard().indexOf(DRONE);
+            if (beat >= 0) {
+                long after = arena.pilot().soundTicks().get(beat) - raisedAt[0];
+                expect(
+                        helper,
+                        after <= TUNING.alarm().droneTicks(),
+                        "the first drone beat came %d ticks after the alarm, past its %d",
+                        after,
+                        TUNING.alarm().droneTicks());
+                droned[0] = true;
+            }
             int seconds = TUNING.alarm().ticks() / 20;
             if (tick == 100) {
                 int shown = DrifterAlarm.warning(pod)
@@ -353,11 +380,6 @@ public class DrifterSpawnTest {
                         "the readout shows %d s 100 ticks after the alarm, of %d",
                         shown,
                         seconds);
-                expect(
-                        helper,
-                        droned[0],
-                        "no drone beat for a pilot in the zone: %s",
-                        arena.pilot().soundsHeard());
             }
             if (tick > 100 && tick < TUNING.alarm().ticks() - 40) {
                 expect(
@@ -374,6 +396,11 @@ public class DrifterSpawnTest {
                         "the alarm still rings %d ticks after it was raised",
                         tick);
                 expect(helper, DrifterAlarm.warning(pod).isEmpty(), "the readout still shows the alarm after it ended");
+                expect(
+                        helper,
+                        droned[0],
+                        "no drone beat for a pilot in the zone: %s",
+                        arena.pilot().soundsHeard());
                 arena.clear();
                 helper.succeed();
             }
@@ -382,6 +409,7 @@ public class DrifterSpawnTest {
             made[0] = Arena.build(helper, level, origin);
             DrifterAlarm.raise(level, middle);
             since[0] = helper.getTick();
+            raisedAt[0] = level.getGameTime();
         });
     }
 
@@ -393,10 +421,10 @@ public class DrifterSpawnTest {
     public void aDrifterIsPlacedInTheZoneOfItsSourceAndNeverAcrossAnEdge(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band one = CampaignBands.LAYER_1;
-        CampaignBands.Band two = CampaignBands.LAYER_2;
-        // Three blocks under layer 1's ceiling, and four blocks inside layer 2's middle zone from its top zone.
+        CampaignBands.Band three = CampaignBands.LAYER_3;
+        // Three blocks under layer 1's ceiling, and the top of layer 3's middle zone (its own: no other test uses it).
         int ceiling = one.minY() + one.height() - 4;
-        int edge = Zones.span(two.minY(), two.height(), 1).high() - 3;
+        int edge = Zones.span(three.minY(), three.height(), 1).high() - 3;
         int[] ready = {0};
         boolean[] done = {false};
         List<BlockPos> columns = columns(ceiling);
@@ -417,24 +445,30 @@ public class DrifterSpawnTest {
                     if (spawned.isPresent()) {
                         Drifter drifter = spawned.get();
                         found++;
-                        expect(
-                                helper,
+                        // Read and discard before any check: a failed check must not leave a drifter in a zone another
+                        // test counts (#1180: one stray made theTickPlacesDriftersByPodsUpToTheZoneCap fail too).
+                        boolean inZone =
                                 DrifterAlarm.Zone.at(level, drifter.getBlockY()).equals(zone)
                                         && DrifterAlarm.Zone.at(level, drifter.getBlockY() + 1)
                                                 .equals(zone)
-                                        && level.isInWorldBounds(drifter.blockPosition()),
+                                        && level.isInWorldBounds(drifter.blockPosition());
+                        double placedY = drifter.getY();
+                        // The spawner's own measure, on the same doubles: its place is the drifter's position.
+                        double away = drifter.position().distanceTo(Vec3.atCenterOf(BlockPos.containing(source.pos())));
+                        drifter.discard();
+                        expect(
+                                helper,
+                                inZone,
                                 "a drifter was placed at y %s, out of the source's zone %s (source y %d)",
-                                drifter.getY(),
+                                placedY,
                                 zone,
                                 y);
                         expect(
                                 helper,
-                                drifter.position().distanceTo(source.pos())
-                                        >= TUNING.spawn().minBlocks(),
+                                away >= TUNING.spawn().minBlocks(),
                                 "a drifter was placed %s blocks from its source, under %s",
-                                drifter.position().distanceTo(source.pos()),
+                                away,
                                 TUNING.spawn().minBlocks());
-                        drifter.discard();
                     }
                 }
                 expect(
@@ -450,11 +484,157 @@ public class DrifterSpawnTest {
     }
 
     /**
+     * A placement picks the drifter's form with the source of chance it is given ({@link Drifters#seed} installs one
+     * for the tick): the same seed makes the same run of forms, another seed another, and a run of {@link
+     * #VARIANT_DRAWS} placements meets all three about as often as the equal weights say. Layer 1's middle zone, which
+     * no other test fills.
+     */
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    public void aPlacementPicksItsFormFromTheSeed(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        CampaignBands.Band one = CampaignBands.LAYER_1;
+        int y = topY(one.minY(), one.height(), 1);
+        List<BlockPos> columns = columns(y);
+        int[] ready = {0};
+        boolean[] done = {false};
+        TestTicks.each(helper, () -> {
+            if (ready[0] < columns.size() || done[0]) {
+                return;
+            }
+            done[0] = true;
+            room(level, y);
+            hollows(level, y);
+            List<DrifterVariant> first = placedForms(helper, level, middle(y), SEED);
+            List<DrifterVariant> again = placedForms(helper, level, middle(y), SEED);
+            List<DrifterVariant> other = placedForms(helper, level, middle(y), SEED + 1);
+            expect(helper, first.equals(again), "the same seed placed %s, then %s", first, again);
+            expect(helper, !first.equals(other), "another seed placed the same forms: %s", first);
+            for (DrifterVariant variant : DrifterVariant.values()) {
+                long count = first.stream().filter(variant::equals).count();
+                LOGGER.info("[drifter] {} of {} placements are a {}", count, VARIANT_DRAWS, variant);
+                expect(
+                        helper,
+                        count >= VARIANT_DRAWS / 6,
+                        "%d of %d placements were a %s: the weights are equal thirds",
+                        count,
+                        VARIANT_DRAWS,
+                        variant);
+            }
+            helper.succeed();
+        });
+        FarChunks.awaitEntityTicking(helper, level, columns, index -> ready[0]++);
+    }
+
+    /**
+     * The form's roll comes after the placement's, so the weights never move where a drifter appears: the same seed
+     * puts it at the same place under equal weights and under a skewed list, and the roll that picks its form is the
+     * last draw of the call, not the first.
+     */
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    public void theFormWeightsNeverMoveWhereADrifterIsPlaced(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        CampaignBands.Band one = CampaignBands.LAYER_1;
+        int y = topY(one.minY(), one.height(), 1);
+        List<BlockPos> columns = columns(y);
+        int[] ready = {0};
+        boolean[] done = {false};
+        TestTicks.each(helper, () -> {
+            if (ready[0] < columns.size() || done[0]) {
+                return;
+            }
+            done[0] = true;
+            room(level, y);
+            hollows(level, y);
+            Drifters.Source source = middle(y);
+            DrifterTuning.Spawn base = TUNING.spawn();
+            DrifterTuning.Spawn skewed = new DrifterTuning.Spawn(
+                    base.checkTicks(),
+                    base.perMinute(),
+                    base.zoneCap(),
+                    base.perSource(),
+                    base.minBlocks(),
+                    base.maxBlocks(),
+                    base.tries(),
+                    List.of(1.0, 5.0, 0.5));
+            for (long seed = SEED; seed < SEED + 20; seed++) {
+                Vec3 equal = placedAt(level, source, seed, base);
+                Vec3 other = placedAt(level, source, seed, skewed);
+                expect(
+                        helper,
+                        equal.equals(other),
+                        "seed %d placed at %s, and at %s under other weights",
+                        seed,
+                        equal,
+                        other);
+                double[] last = {Double.NaN};
+                RandomSource recording = new LegacyRandomSource(seed) {
+                    @Override
+                    public double nextDouble() {
+                        last[0] = super.nextDouble();
+                        return last[0];
+                    }
+                };
+                Drifter drifter = placed(level, source, recording, skewed);
+                RandomSource replay = new LegacyRandomSource(0) {
+                    @Override
+                    public double nextDouble() {
+                        return last[0];
+                    }
+                };
+                expect(
+                        helper,
+                        drifter.variant() == DrifterVariant.pick(replay, skewed.variantWeights()),
+                        "seed %d: the form was not rolled by the last draw of the call",
+                        seed);
+                drifter.discard();
+            }
+            helper.succeed();
+        });
+        FarChunks.awaitEntityTicking(helper, level, columns, index -> ready[0]++);
+    }
+
+    private static Vec3 placedAt(ServerLevel level, Drifters.Source source, long seed, DrifterTuning.Spawn tuning) {
+        Drifter drifter = placed(level, source, new LegacyRandomSource(seed), tuning);
+        Vec3 at = drifter.position();
+        drifter.discard();
+        return at;
+    }
+
+    private static Drifter placed(
+            ServerLevel level, Drifters.Source source, RandomSource random, DrifterTuning.Spawn tuning) {
+        for (int i = 0; i < ATTEMPTS; i++) {
+            Optional<Drifter> spawned = Drifters.spawnFor(level, source, 1, random, tuning);
+            if (spawned.isPresent()) {
+                return spawned.get();
+            }
+        }
+        throw new IllegalStateException("no drifter was placed in " + ATTEMPTS + " calls");
+    }
+
+    /**
+     * The forms of the next {@link #VARIANT_DRAWS} placements for {@code source} drawn from a source of chance made
+     * from {@code seed}.
+     */
+    private static List<DrifterVariant> placedForms(
+            GameTestHelper helper, ServerLevel level, Drifters.Source source, long seed) {
+        RandomSource random = RandomSource.create(seed);
+        List<DrifterVariant> forms = new ArrayList<>();
+        for (int i = 0; i < VARIANT_DRAWS * ATTEMPTS && forms.size() < VARIANT_DRAWS; i++) {
+            Drifters.spawnFor(level, source, 1, random).ifPresent(drifter -> {
+                forms.add(drifter.variant());
+                drifter.discard();
+            });
+        }
+        expect(helper, forms.size() == VARIANT_DRAWS, "only %d placements in the calls made", forms.size());
+        return forms;
+    }
+
+    /**
      * The production tick (the look, the roll every {@code checkTicks}, the count by pods and the cap) places the drifters, with the alarm
      * ringing so that a roll comes in a few checks: none while {@code spawn_mobs} is off; one pod holds two (1 plus the alarm's 1), a second pod
      * three (the middle zone's cap), and each new drifter comes at least a check after the last. The drifters are held still so that none
      * bursts on its pod. The roll and the placement draw from a seeded source ({@link Drifters#seed}), so the counts are reproducible, not a
-     * chance of a flake; the seed is of this zone alone (no other test uses layer 2's middle zone), so a timeout that skips the reset leaves
+     * chance of a flake; the seed is of this zone alone (no other test uses layer 2's middle zone; GameTests of a batch run side by side, and drifters are counted level-wide by zone), so a timeout that skips the reset leaves
      * nothing another test draws from. The budget only bounds a failure.
      */
     @GameTest(

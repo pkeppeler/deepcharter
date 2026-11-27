@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientReadMarks;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookControls;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookKeys;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
@@ -58,8 +59,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "no_such_chapter");
     /** Chapters 1 to 4 of the synthetic handbook, each with two directives named {@code d<chapter>_<n>}. */
     private static final int CHAPTERS = 4;
-    /** Cover, slip, letter, and two contents pages: four chapters at three entries a page. */
-    private static final int FRONT_PAGES = 5;
+    /** Cover, slip, letter, two contents pages (four chapters at three entries a page) and the controls pages. */
+    private static final int FRONT_PAGES = 5 + HandbookControls.sheets();
 
     private static final int SPEC_CHAPTERS = 9;
     /** A window so small that the sheet is at its minimum size. */
@@ -217,6 +218,9 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
         require(
                 pages.get(3) instanceof HandbookPage.Contents && pages.get(4) instanceof HandbookPage.Contents,
                 "the contents come next, over two pages");
+        require(
+                pages.subList(5, FRONT_PAGES).stream().allMatch(HandbookPage.Controls.class::isInstance),
+                "the controls pages follow the contents");
         require(
                 pages.get(FRONT_PAGES + CHAPTERS) instanceof HandbookPage.Appendix,
                 "the end page comes after the chapters");
@@ -813,7 +817,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
         }
     }
 
-    private static int handbookSlot(Inventory inventory) {
+    /** The hotbar slot of the handbook, or -1. Shared with SeatedTerminalsClientTest. */
+    static int handbookSlot(Inventory inventory) {
         for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) {
             if (HandbookItems.isHandbook(inventory.getItem(slot))) {
                 return slot;

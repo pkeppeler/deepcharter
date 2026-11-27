@@ -37,7 +37,8 @@ runs:
     # were never restored, so verification fails and the failed run saves the broken state again
     # (#830). This resolves everything the run needs first (the compile classpaths through `classes`,
     # the run's runtime classpaths through resolveClientGameTestRuntime) and, on a dependency-verification
-    # failure only, clears the module cache and retries once with --refresh-dependencies. It is
+    # failure only, clears the module cache and retries once with --refresh-dependencies; when a
+    # repository fails to answer (Maven Central's 429s, #1358), it waits and retries with backoff. It is
     # work the client run would do anyway, moved ahead of it, so a healthy run costs about nothing.
     - name: Resolve dependencies
       shell: bash
@@ -99,8 +100,8 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
-        # One shard of three runs a third of the suite: the tests took 30 minutes whole on #841's tall world (run
-        # 45122099960), so a shard takes about 10 minutes of tests plus 3 of build and client start-up, all inside
+        # One shard of four runs a quarter of the suite: the tests took about 44 minutes whole under load (run
+        # 45590213665), so a shard takes about 11 minutes of tests plus 3 of build and client start-up, all inside
         # this deadline. $SECONDS starts after the dependency resolve; the job limits (30 minutes for a shard, 60
         # for a whole-suite run) leave room for setup, the post steps and the stop. Raise only together with
         # the job limits.
@@ -112,9 +113,15 @@ runs:
         else
           max_seconds=3000
         fi
+        warn_seconds=$((max_seconds * 8 / 10))
+        warned=
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then
             stop_gradle "Minecraft could not create a graphics backend"
+          fi
+          if [ "$SECONDS" -ge "$warn_seconds" ] && [ -z "$warned" ]; then
+            warned=1
+            echo "::warning::Client GameTests passed 80% of their $((max_seconds / 60))-minute budget: rebalance gradle/client-test-weights.txt or add a shard (#1325)"
           fi
           if [ "$SECONDS" -ge "$max_seconds" ]; then
             stop_gradle "Client GameTests exceeded $((max_seconds / 60)) minutes"

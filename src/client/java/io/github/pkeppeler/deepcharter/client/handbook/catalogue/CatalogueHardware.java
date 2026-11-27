@@ -7,8 +7,14 @@ import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import java.util.List;
+import java.util.function.ToIntFunction;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /**
  * What the catalogue's units are made of: the casing with its groove and rivets, the shadowed lip round the glass, the bulge of the glass
@@ -20,7 +26,126 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
  * scanlines stop at those corners ({@link CrtDraw#roundedScanlines}, cut to {@link PanelLook#glassRadius()}), as the shared CRT glass's do.
  */
 final class CatalogueHardware {
+    /** Item icons are 16 pixels. */
+    static final int ICON = 16;
+    /** The dots a text loses its tail to when it is too long for its line. */
+    private static final String ELLIPSIS = "..";
+
     private CatalogueHardware() {}
+
+    /** A cell's frame on the glass: dim, or lit and filled while it is hovered or its item is the one looked up. */
+    static void slot(GuiGraphicsExtractor graphics, Rect cell, boolean lit, CrtTuning crt) {
+        if (lit) {
+            graphics.fill(cell.x(), cell.y(), cell.right(), cell.bottom(), crt.hoverFillColor());
+        }
+        CrtDraw.border(
+                graphics, cell.x(), cell.y(), cell.right(), cell.bottom(), lit ? crt.phosphorColor() : crt.dimColor());
+    }
+
+    /** A crafting table, small, at ({@code x}, {@code y}): what marks an item or a recipe that only a crafting table makes. */
+    static void tableIcon(GuiGraphicsExtractor graphics, CatalogueLook look, int x, int y) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y);
+        float scale = look.tableIconSize() / (float) ICON;
+        graphics.pose().scale(scale, scale);
+        graphics.item(new ItemStack(Items.CRAFTING_TABLE), 0, 0);
+        graphics.pose().popMatrix();
+    }
+
+    /**
+     * The favourite's star, {@code size} pixels square with its top left at ({@code x}, {@code y}): filled for a favourite, its outline for any
+     * other item. Lit, it is phosphor with the glow terminal text has; otherwise dim, as dim text is.
+     */
+    static void star(GuiGraphicsExtractor graphics, int x, int y, int size, boolean filled, boolean lit) {
+        Identifier sprite = filled ? CatalogueLook.STAR : CatalogueLook.STAR_HOLLOW;
+        if (!lit) {
+            graphics.blitSprite(
+                    RenderPipelines.GUI_TEXTURED,
+                    sprite,
+                    x,
+                    y,
+                    size,
+                    size,
+                    PanelLook.current().dimTextColor());
+            return;
+        }
+        CrtTuning crt = CrtTuning.current();
+        // The halo of CrtDraw.glowText: a copy one pixel out on each side, under the star.
+        for (int[] out : new int[][] {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
+            graphics.blitSprite(
+                    RenderPipelines.GUI_TEXTURED, sprite, x + out[0], y + out[1], size, size, crt.glowColor());
+        }
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, size, size, crt.phosphorColor());
+    }
+
+    /**
+     * A strip of terminal text with its top left at ({@code x}, {@code y}): {@code lines} in phosphor on the phosphor black, in a phosphor
+     * border {@code inset} pixels out from the text. Where a name or a note is shown over a console, in place of the game's purple tooltip.
+     */
+    static void strip(GuiGraphicsExtractor graphics, Font font, List<String> lines, int x, int y, int inset) {
+        CrtTuning crt = CrtTuning.current();
+        int width = lines.stream().mapToInt(line -> termWidth(font, line)).max().orElse(0) + 2 * inset;
+        int height = lines.size() * font.lineHeight + 2 * inset;
+        graphics.nextStratum();
+        graphics.fill(x, y, x + width, y + height, crt.backgroundColor());
+        CrtDraw.border(graphics, x, y, x + width, y + height, crt.phosphorColor());
+        for (int i = 0; i < lines.size(); i++) {
+            glow(graphics, font, lines.get(i), x + inset, y + inset + i * font.lineHeight);
+        }
+    }
+
+    /** {@code text} in dim phosphor, the terminal font, at ({@code x}, {@code y}). */
+    static void dim(GuiGraphicsExtractor graphics, Font font, String text, int x, int y) {
+        graphics.text(font, CrtText.terminal(text), x, y, PanelLook.current().dimTextColor(), false);
+    }
+
+    /** {@code text} in glowing phosphor, the terminal font, at ({@code x}, {@code y}). */
+    static void glow(GuiGraphicsExtractor graphics, Font font, String text, int x, int y) {
+        CrtDraw.glowText(
+                graphics,
+                font,
+                CrtText.terminal(text),
+                x,
+                y,
+                CrtTuning.current().phosphorColor());
+    }
+
+    /** How wide {@code text} is in the terminal font. */
+    static int termWidth(Font font, String text) {
+        return font.width(CrtText.terminal(text));
+    }
+
+    /** {@code text} cut to {@code width} with {@link #ELLIPSIS} in place of its tail when it is wider. */
+    static String fit(Font font, String text, int width) {
+        return fit(line -> termWidth(font, line), text, width);
+    }
+
+    /** {@link #fit(Font, String, int)} measured by {@code measure}, for a line with something other than text in it. */
+    static String fit(ToIntFunction<String> measure, String text, int width) {
+        if (measure.applyAsInt(text) <= width) {
+            return text;
+        }
+        String cut = text;
+        while (!cut.isEmpty() && measure.applyAsInt(cut + ELLIPSIS) > width) {
+            cut = cut.substring(0, cut.length() - 1);
+        }
+        return cut.stripTrailing() + ELLIPSIS;
+    }
+
+    /** A console's title, a line for each {@code lines} holds, the last of them on the header rule. */
+    static void title(GuiGraphicsExtractor graphics, Font font, List<String> lines, int left, int top, int right) {
+        int last = lines.size() - 1;
+        for (int i = 0; i < last; i++) {
+            CrtDraw.glowText(
+                    graphics,
+                    font,
+                    CrtText.terminal(lines.get(i)),
+                    left,
+                    top + i * font.lineHeight,
+                    CrtTuning.current().phosphorColor());
+        }
+        CrtDraw.header(graphics, font, CrtText.terminal(lines.get(last)), left, top + last * font.lineHeight, right);
+    }
 
     /** The casing of a unit, the lip round its glass, the vents and rivets on the casing, and the phosphor behind the glass's content. */
     static void body(GuiGraphicsExtractor graphics, CatalogueLook look, Rect casing, Rect glass, Iterable<Rect> vents) {
@@ -217,6 +342,40 @@ final class CatalogueHardware {
         graphics.text(font, CrtText.terminal(legend), x, y, panel.labelColor(active, hot || (on && active)), false);
         if (hot && active) {
             CrtDraw.border(graphics, rect.x(), rect.y(), rect.right(), rect.bottom(), crt.dimColor());
+        }
+    }
+
+    /**
+     * The show/hide button's face: a small casing with a lit top and left and a shaded bottom and right, and on it a grid of cells like the
+     * catalogue's, in phosphor while the panels are shown and dim while they are put away; the phosphor rings the button under the mouse.
+     */
+    static void toggleButton(
+            GuiGraphicsExtractor graphics, CatalogueLook look, CrtTuning crt, Rect rect, boolean shown, boolean hot) {
+        CatalogueLook.Casing c = look.casing();
+        graphics.fill(rect.x(), rect.y(), rect.right(), rect.bottom(), c.casingColor());
+        graphics.fill(rect.x(), rect.y(), rect.right(), rect.y() + 1, c.casingLightColor());
+        graphics.fill(rect.x(), rect.y(), rect.x() + 1, rect.bottom(), c.casingLightColor());
+        graphics.fill(rect.x(), rect.bottom() - 1, rect.right(), rect.bottom(), c.casingDarkColor());
+        graphics.fill(rect.right() - 1, rect.y(), rect.right(), rect.bottom(), c.casingDarkColor());
+        int cell = look.buttonCell();
+        int gap = look.buttonCellGap();
+        int columns = look.buttonColumns();
+        int rows = look.buttonRows();
+        int width = columns * cell + (columns - 1) * gap;
+        int height = rows * cell + (rows - 1) * gap;
+        int left = rect.x() + (rect.width() - width) / 2;
+        int top = rect.y() + (rect.height() - height) / 2;
+        graphics.fill(left - 2, top - 2, left + width + 2, top + height + 2, c.plateColor());
+        int color = shown ? crt.phosphorColor() : crt.dimColor();
+        for (int row = 0; row < rows; row++) {
+            for (int column = 0; column < columns; column++) {
+                int x = left + column * (cell + gap);
+                int y = top + row * (cell + gap);
+                graphics.fill(x, y, x + cell, y + cell, color);
+            }
+        }
+        if (hot) {
+            CrtDraw.border(graphics, rect.x(), rect.y(), rect.right(), rect.bottom(), crt.phosphorColor());
         }
     }
 

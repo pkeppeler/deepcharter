@@ -8,9 +8,9 @@ It skips pushes that only delete a branch and pushes to `pr-media`. On failure i
 
 `core.hooksPath` can be one absolute path that every worktree shares. The hook therefore finds the tree being pushed with `git rev-parse --show-toplevel`. If that tree has its own `.githooks/pre-push`, the hook runs that copy, so each branch is checked by its own hook version against its own sources. Otherwise it checks that tree with the hook it has.
 
-The Gradle step waits if another Gradle build holds the lock, and the hook says so. Press Ctrl-C and push with `--no-verify` to skip.
+The Gradle step waits if another Gradle build holds the lock, and the hook says so. Press Ctrl-C and push with `--no-verify` to skip. The lock is `flock` on `$(git rev-parse --git-common-dir)/gradle-slot.lock`, one file for every worktree of the clone, or on `DEEPCHARTER_GRADLE_LOCK` when set. The compile step and the gate checks both take it. The wait ends after `DEEPCHARTER_GRADLE_LOCK_WAIT` seconds (default 1800) with a message naming the lock. Without `flock` (macOS has none) the hook runs Gradle unlocked.
 
-Enable it once:
+The SessionStart hook (`.claude/hooks/session-start.sh`) sets `core.hooksPath` to `.githooks` when it is unset, and leaves any set value alone. To enable it by hand:
 
 ```
 git config core.hooksPath .githooks

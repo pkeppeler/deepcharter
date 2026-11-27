@@ -10,7 +10,7 @@ The game wants you to feel two things. The first is the pull of the upgrade loop
 
 It is a Fabric mod for Minecraft 26.3, for 2 to 4 friends (up to about 8). The plan is in [docs/SPEC.md](docs/SPEC.md).
 
-**Status.** This is an early friends build. It has the colony, layers 1 and 2, and the main machines. There is no public release (not on Modrinth yet). The look is "Prosperity at dusk": a rust-red world under a slow dusk sky, a small riveted company town, and a black shaft below that your lamp barely lights ([art direction](docs/design/art-direction.md)). The ores, the town and the pods are in their new art. The sounds and the story text are still stand-ins.
+**Status.** This is an early friends build. It has the colony, layers 1 to 3 and the main machines, all in one tall world. There is no public release (not on Modrinth yet). The look is "Prosperity at dusk": a rust-red world under a slow dusk sky, a small riveted company town, and a black shaft below that your lamp barely lights ([art direction](docs/design/art-direction.md)). The ores, the town and the pods are in their new art. The sounds and the story text are still stand-ins.
 
 ## Feature map
 
@@ -27,7 +27,7 @@ A player installs one modpack in a launcher such as Prism. [docs/PLAYING.md](doc
 
 | Piece | What it is |
 |---|---|
-| **Deep Charter** | The mod itself: the layers, the pods, the colony and its machines, the scanner, the handbook. Fabric Loader 0.19.5, Fabric API 0.162.0, Java 25. |
+| **Deep Charter** | The mod itself: the layers, the pods, the colony and its machines, the scanner, the handbook. Fabric Loader 0.19.5, Fabric API 0.164.0, Java 25. |
 | **Sodium and Lithium** | Two speed mods that are in the pack. They are not ours. |
 | **Skins** | The look of the screens and HUD is resource-pack data, not code ([skins](docs/design/skins.md)). A resource pack can restyle it in game with F3+T. |
 | **Optional, planned** | A dynamic-lights mod (LambDynamicLights) for smooth moving light, and an opt-in shader pack through Iris on OpenGL. The pack does not include them today. |
@@ -56,7 +56,7 @@ A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills 
 
 ![A pod drills down through three slabs of stone](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/drilling.gif?raw=true)
 
-Sprint to drill down, or push into a wall to drill sideways. Ore goes into the cargo bay and the stone is gone, unless you fit a spoil hopper (stop 10). Fuel drains all the time, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the colony pump, or feed the pod coal. (This picture uses night vision, so you can see the bore.)
+Sprint to drill down, or drive into a wall (W) to drill sideways. Ore goes into the cargo bay and the stone is gone, unless you fit a spoil hopper (stop 10). Fuel drains while anyone is aboard, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the colony pump, or feed the pod coal. (This picture uses night vision, so you can see the bore.)
 
 ### 4. The scanner
 
@@ -66,7 +66,7 @@ The scanner is a side-view map of the rock around your pod, drawn cell by cell, 
 
 ### 5. Ore and selling
 
-![A pod's cargo screen, loaded with ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
+![The pod screen, its hold loaded with ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
 
 Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park by the ore processor in the colony and sell it, and the money goes to your charter's account.
 
@@ -154,7 +154,7 @@ A pod with no hull goes dark and stays where it fell, and its owners are told. A
 
 ![A transmission from an unknown signal, on a green screen](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-transmission.png?raw=true)
 
-A crust of hard rock at the floor of each layer is a breach. Any drill can get through, slowly and hot. Crossing is an event: a rumble, then a transmission on a green screen. The words in this picture are stand-ins until the story is written.
+A crust of hard rock at the floor of each layer is a breach. Any drill can get through, slowly and hot. In the campaign world you cross by digging, in place, with no teleport: a rumble, then a transmission on a green screen. The words in this picture are stand-ins until the story is written.
 
 ![The pod's readout warns CRUST 7 DOWN, HULL 8, IT TAKES 24](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-brace.png?raw=true)
 
@@ -164,7 +164,43 @@ The crust costs hull, so the readout warns you before you reach it: how many sla
 
 ![The Employee Handbook contents page](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/handbook.png?raw=true)
 
-Press H for the Employee Handbook. Its chapters are directives that tick off as you do them. It teaches the rules. The world stays a mystery.
+Press H for the Employee Handbook. Its chapters are directives that tick off as you do them, drawn as a flowchart (stop 18). It teaches the rules. The world stays a mystery.
+
+### 15. One tall world
+
+![A cavern of layer 3, the Fungal Hollows: basalt columns, and glowcaps along a ledge](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/hollows-garden.png?raw=true)
+
+The surface and the layers are bands of one tall world, each with its own light and fog ([ADR 0029](docs/adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md)). Layer 3 is the Fungal Hollows: huge caverns held up by basalt columns, in three levels, the Garden, the Spore Fields and the Quiet. Cold glowcaps are its only light. (This picture uses night vision.)
+
+### 16. On foot
+
+![The suit readout at the top left: SUIT 0:13 on an amber bar, HEAT -5 PRESSURE -5](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/suit-timer.png?raw=true)
+
+From layer 3 down, heat, pressure and water drain your suit's 3 minute reserve. It warns amber, then red, and at zero it breaches and hurts. A powered pod seat or a sound outpost hall refills it, an air canister adds a minute, and the repair station sells suit tiers. Layers 1 and 2 ask nothing.
+
+The repair station also sells a kit for use on foot: flares and decoys to throw, charges with a fuse, a tether that clips to your pod and winches you home, and the bolt driver. A flare keeps the Retained off you and the Tallies off a pod. See [the thrown kit](docs/design/mechanics.md#the-thrown-kit-985-a), [the tether](docs/design/mechanics.md#the-tether-986-a) and [the bolt driver](docs/design/mechanics.md#the-bolt-driver-and-the-cave-in-987-a).
+
+### 17. Tallies and the sonar
+
+![The sonar scope on the pilot's HUD, with echoes round the pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/navigator-sonar.png?raw=true)
+
+Tallies are brass counting drones that click over ore in layers 1 and 2. One that trails your pod clamps to the cargo hatch and takes a sample of the cheapest ore. The cutter breaks it, and a lit pod draws none ([creatures](docs/CREATURES.md#tallies)).
+
+The second seat of the Prospector is the navigator's. Press V to ping the sonar and G to mark an echo on the pilot's HUD. Real things echo, hollow things such as the Retained do not, and a ping is loud ([the sonar](docs/design/mechanics.md#the-navigators-sonar-988-a)).
+
+### 18. Recipes, spec sheets and the quest map
+
+![A recipe console beside the parts catalogue](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/parts-catalogue.png?raw=true)
+
+The parts catalogue lists the items your charter knows, with recipes and uses. Hover an item and press R or U.
+
+![A spec sheet of the scanner unit over the recipe console](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/spec-sheet.png?raw=true)
+
+Each Company item has a spec sheet with its ratings, read from the game's own numbers.
+
+![The handbook's quest map: chapter 3 as a flowchart with a pencilled note](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/quest-map.png?raw=true)
+
+The handbook's quest map draws each chapter's directives as a flowchart. After chapter 9, each Note you find draws a pencil path from earlier miners. You finish it by reaching the place it points to.
 
 To refresh these images, see [docs/tooling/readme-tour.md](docs/tooling/readme-tour.md).
 

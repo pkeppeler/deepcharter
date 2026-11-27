@@ -15,7 +15,7 @@ With --out DIR, each of those stills also gets two PNGs in DIR:
     NAME-side-by-side.png   A on the left, B on the right
     NAME-diff.png           B dimmed, every changed pixel in red
 
-Noise floors: a still can come out differently twice (terrain at the far edge of the loaded chunks, four pixels of the cargo screen). A floor
+Noise floors: a still can come out differently twice (terrain at the far edge of the loaded chunks). A floor
 PREFIX=TOL:PERCENT gives the stills whose name starts with PREFIX their own tolerance TOL (channel delta) and hides them
 while at most PERCENT of their pixels changed beyond it. The longest matching prefix wins. --noise may repeat; --design-tour
 adds the floors measured on the design-tour (NOISE_FAMILIES below). A real art change should stand well above a floor.
@@ -42,8 +42,6 @@ DEFAULT_TOLERANCE = 2
 NOISE_FAMILIES = [
     # Terrain at the far edge of the loaded chunks: 1.86% of the pixels, up to 60 levels, in one run of three (cause not found).
     ("colony-aerial-northwest", DEFAULT_TOLERANCE, 2.0),
-    # Four pixels of one row, up to 5 levels, in one run of three (cause not found).
-    ("screen-pod-cargo", 5, 0.0),
 ]
 
 

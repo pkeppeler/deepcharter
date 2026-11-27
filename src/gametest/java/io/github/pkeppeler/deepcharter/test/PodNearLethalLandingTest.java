@@ -106,7 +106,11 @@ public class PodNearLethalLandingTest {
         ZERO
     }
 
-    /** The lost hull of the probe at its landing, then {@code spare} more hull on the subject, which takes the same fall. */
+    /**
+     * The lost hull of the probe at its landing, then {@code spare} more hull on the subject, which takes the same
+     * fall. A crewed case flies the rider in the probe too, because the ground cushion (#1432) brakes only a crewed
+     * pod.
+     */
     private static void drop(GameTestHelper helper, int x, Hit hit, float spare, boolean crewed) {
         ServerLevel level = helper.getLevel();
         int z = 22004;
@@ -125,6 +129,9 @@ public class PodNearLethalLandingTest {
             }
             if (pods[1] == null && pods[0].onGround() && pods[0].tickCount >= 5) {
                 cost[0] = pods[0].maxHull() - pods[0].hull();
+                if (rider != null) {
+                    rider.player().stopRiding();
+                }
                 pods[0].discard();
                 PodEntity subject = TestEntities.create(PodRegistry.POD, level);
                 subject.setPos(subjectX + 0.5, startY, z + 0.5);
@@ -180,6 +187,13 @@ public class PodNearLethalLandingTest {
             pods[0] = TestEntities.create(PodRegistry.POD, level);
             pods[0].setPos(x + 0.5, startY, z + 0.5);
             level.addFreshEntity(pods[0]);
+            if (rider != null) {
+                rider.player().setGameMode(GameType.SURVIVAL);
+                rider.teleportTo(level, pods[0].position(), 0f, 0f);
+                if (!rider.player().startRiding(pods[0], true, false)) {
+                    findings.note("the rider could not board the probe");
+                }
+            }
         });
         helper.succeedWhen(() -> {
             findings.ensure(helper);
@@ -191,7 +205,8 @@ public class PodNearLethalLandingTest {
             boolean lethal = hit != Hit.LANDING || spare <= 0f;
             if (lethal != Wrecks.isWreck(subject) || Math.abs(hull - (lethal ? 0f : spare)) > HULL_EPSILON) {
                 throw helper.assertionException(Component.literal(String.format(
-                        "a landing that costs %s on %s hull should leave a wreck exactly when the hull is gone, hull %s wreck %s",
+                        "a landing that costs %s on %s hull should leave a wreck exactly when the hull is gone, hull"
+                                + " %s wreck %s",
                         cost[0], cost[0] + spare, hull, Wrecks.isWreck(subject))));
             }
             if (rider != null) {

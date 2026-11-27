@@ -1,15 +1,33 @@
 package io.github.pkeppeler.deepcharter.client.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.layer.mixin.ClientLevelMapAccess;
 import io.github.pkeppeler.deepcharter.client.layer.mixin.ClientPacketListenerAccess;
+import io.github.pkeppeler.deepcharter.client.layer.mixin.MinecraftSeamAccess;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.SeamAcceptPayload;
 import io.github.pkeppeler.deepcharter.layer.SeamChunkPayload;
 import io.github.pkeppeler.deepcharter.layer.SeamDiscardPayload;
 import io.github.pkeppeler.deepcharter.layer.SeamMissedPayload;
 import io.github.pkeppeler.deepcharter.layer.SeamPreparePayload;
+import io.github.pkeppeler.deepcharter.layer.SeamRefusePayload;
+import io.github.pkeppeler.deepcharter.layer.SeamRefuseReason;
 import io.github.pkeppeler.deepcharter.layer.SeamSender;
+import io.github.pkeppeler.deepcharter.layer.SeamSwapPayload;
+import io.github.pkeppeler.deepcharter.layer.mixin.EntitySeamAccess;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLevelEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -17,15 +35,21 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacketData;
 import net.minecraft.network.protocol.game.CommonPlayerSpawnInfo;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraft.world.level.entity.EntityInLevelCallback;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -60,12 +84,31 @@ public final class SeamClient {
 
     private static @Nullable ClientLevel held;
     private static @Nullable Prepared heldPrepared;
+    /** The generation of the prepare the held level was built or kept for, which the swap must name. */
+    private static int heldGeneration;
     /** The chunks put into the held level, to drop when it is let go. */
     private static final LongSet LOADED = new LongOpenHashSet();
     /** The dimension of the latest prepare, even when its level could not be built: the server skips chunks on the strength of it. */
     private static @Nullable ResourceKey<Level> preparedDimension;
+    /** An entity the server will add again to the new level after a swap, which the client holds already. */
+    private record Carried(UUID uuid, EntityType<?> type) {}
+
+    /**
+     * The entities a swap carried that the server has not yet added again, by id: their removal is dropped, and their
+     * add pairs.
+     */
+    private static final Map<Integer, Carried> CARRIED = new HashMap<>();
+    /** The client tick at which the carried window ends. */
+    private static long carriedUntil;
+    /** Client ticks counted here, for the carried window. */
+    private static long ticks;
+    /** Whether the latest swap failed its checks, so the breach payload that follows it starts the fade. */
+    private static boolean swapFailed;
     /** The held level a respawn has claimed, until that respawn's handler ends. */
     private static @Nullable ClientLevel adopting;
+
+    /** Whether the swap's checks fail on purpose, so a test can send the client down the recovery path. */
+    private static volatile boolean failSwaps;
 
     private static boolean adoptedThisRespawn;
     private static long bytesReceived;
@@ -79,12 +122,16 @@ public final class SeamClient {
                 SeamChunkPayload.TYPE, (payload, context) -> receive(context.client(), payload));
         ClientPlayNetworking.registerGlobalReceiver(
                 SeamDiscardPayload.TYPE, (payload, context) -> discard(context.client(), payload.dimension()));
+        ClientPlayNetworking.registerGlobalReceiver(
+                SeamSwapPayload.TYPE, (payload, context) -> swap(context.client(), payload));
         ClientTickEvents.END_CLIENT_TICK.register(SeamClient::drain);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             release();
             preparedDimension = null;
             adopting = null;
             bytesReceived = 0;
+            CARRIED.clear();
+            swapFailed = false;
         });
     }
 
@@ -105,6 +152,12 @@ public final class SeamClient {
         return level == held && level != Minecraft.getInstance().level;
     }
 
+    /** Makes every swap's checks fail while {@code fail} is true, as a client that could not take it would. */
+    // test-seam: SeamSwapClientTest drives the recovery path, which a client cannot be made to need on demand
+    public static void failSwapsForTest(boolean fail) {
+        failSwaps = fail;
+    }
+
     /** The held level a respawn is adopting right now, if it is. */
     public static @Nullable ClientLevel adopting() {
         return adopting;
@@ -122,6 +175,7 @@ public final class SeamClient {
         if (current != null && prepared.equals(heldPrepared)) {
             current.getChunkSource()
                     .updateViewCenter(payload.centre().x(), payload.centre().z());
+            accept(payload);
             return;
         }
         release();
@@ -145,12 +199,21 @@ public final class SeamClient {
                     .updateViewCenter(payload.centre().x(), payload.centre().z());
             held = level;
             heldPrepared = prepared;
+            accept(payload);
         } catch (RuntimeException e) {
             DeepCharter.LOGGER.warn(
                     "The background level of {} could not be built: the crossing will take the vanilla path",
                     payload.dimension().identifier(),
                     e);
+            ClientPlayNetworking.send(
+                    new SeamRefusePayload(payload.dimension(), payload.generation(), SeamRefuseReason.BUILD_FAILED));
         }
+    }
+
+    /** Tells the server the held level is ready for the prepare of this generation: it may swap this client into it. */
+    private static void accept(SeamPreparePayload payload) {
+        heldGeneration = payload.generation();
+        ClientPlayNetworking.send(new SeamAcceptPayload(payload.dimension(), payload.generation()));
     }
 
     private static void receive(Minecraft client, SeamChunkPayload payload) {
@@ -204,6 +267,10 @@ public final class SeamClient {
 
     /** Each client tick the held level's light is polled and run, as the shown level's is by the client's own tick. */
     private static void drain(Minecraft client) {
+        ticks++;
+        if (!CARRIED.isEmpty() && ticks >= carriedUntil) {
+            endCarriedWindow(client);
+        }
         ClientLevel level = held;
         if (level == null) {
             return;
@@ -224,6 +291,188 @@ public final class SeamClient {
             LOADED.forEach(packed -> level.getChunkSource().drop(ChunkPos.unpack(packed)));
         }
         LOADED.clear();
+    }
+
+    /**
+     * The swap (#1229, ADR 0089): the vehicle the player rides, and everything it carries, moves into the held level
+     * with no respawn. Checks first; a client that cannot swap tells the server, which respawns it alone, and fades
+     * while it waits.
+     */
+    private static void swap(Minecraft client, SeamSwapPayload payload) {
+        String problem = swapProblem(client, payload);
+        if (problem != null) {
+            DeepCharter.LOGGER.warn(
+                    "The swap into {} cannot be taken: {}", payload.dimension().identifier(), problem);
+            refuseSwap(payload);
+            return;
+        }
+        try {
+            applySwap(client, payload);
+        } catch (RuntimeException failure) {
+            // Best effort: what has moved stays where it is, the server is told, and its recovery respawns this
+            // player, which builds the level again from nothing.
+            DeepCharter.LOGGER.error(
+                    "The swap into {} failed half way", payload.dimension().identifier(), failure);
+            refuseSwap(payload);
+        }
+    }
+
+    /** Tells the server this client could not take the swap, and fades the breach that follows it. */
+    private static void refuseSwap(SeamSwapPayload payload) {
+        swapFailed = true;
+        ClientPlayNetworking.send(
+                new SeamRefusePayload(payload.dimension(), payload.generation(), SeamRefuseReason.SWAP_FAILED));
+    }
+
+    /** Moves the player and what it rides into the held level and shows that level: the part of a swap that mutates. */
+    private static void applySwap(Minecraft client, SeamSwapPayload payload) {
+        ClientLevel from = Objects.requireNonNull(client.level);
+        ClientLevel to = Objects.requireNonNull(held);
+        LocalPlayer player = Objects.requireNonNull(client.player);
+        ClientPacketListener listener = Objects.requireNonNull(client.getConnection());
+        // The light the held level has been sent is applied before it is shown, so the first frame is lit.
+        to.pollLightUpdates();
+        to.getChunkSource().getLightEngine().runLightUpdates();
+
+        Entity root = player.getRootVehicle();
+        List<Entity> tree = root.getSelfAndPassengers().toList();
+        Vec3 shift = payload.arrival().subtract(root.position());
+        for (Entity entity : tree) {
+            // Never removed from the old level: removal runs unRide. It is left to be forgotten with that level.
+            ((EntitySeamAccess) entity).deepcharter$setLevel(to);
+            entity.setLevelCallback(EntityInLevelCallback.NULL);
+            entity.setPos(entity.position().add(shift));
+            entity.setOldPosAndRot(entity.oldPosition().add(shift), entity.yRotO, entity.xRotO);
+            entity.getInterpolation().cancel();
+        }
+        ClientLevelMapAccess maps = (ClientLevelMapAccess) from;
+        ((ClientLevelMapAccess) to).deepcharter$addMapData(maps.deepcharter$allMapData());
+        for (Entity entity : tree) {
+            to.addEntity(entity);
+        }
+
+        ClientPacketListenerAccess access = (ClientPacketListenerAccess) listener;
+        access.deepcharter$setLevel(to);
+        access.deepcharter$setLevelData(to.getLevelData());
+        to.getChunkSource().updateViewRadius(access.deepcharter$serverChunkRadius());
+        to.setServerSimulationDistance(access.deepcharter$serverSimulationDistance());
+        client.level = to;
+        ((MinecraftSeamAccess) client).deepcharter$updateLevelInEngines(to, false);
+        client.setCameraEntity(player);
+
+        held = null;
+        heldPrepared = null;
+        LOADED.clear();
+        preparedDimension = null;
+        swapFailed = false;
+        CARRIED.clear();
+        for (Entity entity : tree) {
+            if (entity != player) {
+                CARRIED.put(entity.getId(), new Carried(entity.getUUID(), entity.getType()));
+            }
+        }
+        carriedUntil = ticks + LayerTuning.DEFAULT.seamMissedWindowTicks();
+        ClientLevelEvents.AFTER_CLIENT_LEVEL_CHANGE.invoker().afterLevelChange(client, to);
+        SeamSwapEvents.SWAPPED.invoker().onSwapped(from, to);
+    }
+
+    /** Why the client cannot take {@code payload}'s swap, or null when it can. */
+    private static @Nullable String swapProblem(Minecraft client, SeamSwapPayload payload) {
+        ClientLevel to = held;
+        Prepared prepared = heldPrepared;
+        LocalPlayer player = client.player;
+        if (failSwaps) {
+            return "made to fail by a test";
+        }
+        if (client.getConnection() == null || client.level == null || player == null) {
+            return "the client has no connection, level or player";
+        }
+        if (to == null || prepared == null || !prepared.dimension().equals(payload.dimension())) {
+            return "no level is held for " + payload.dimension().identifier();
+        }
+        if (heldGeneration != payload.generation()) {
+            return "the held level is of generation " + heldGeneration + ", not " + payload.generation();
+        }
+        if (player.isDeadOrDying()) {
+            return "the player is dying";
+        }
+        Entity root = player.getRootVehicle();
+        if (root.getId() != payload.rootId() || !root.getUUID().equals(payload.rootUuid())) {
+            return "the vehicle is " + root.getId() + ", not " + payload.rootId();
+        }
+        Set<Integer> carried = new HashSet<>();
+        root.getSelfAndPassengers().forEach(entity -> carried.add(entity.getId()));
+        if (!carried.equals(new HashSet<>(payload.carried()))) {
+            return "the client carries " + carried + ", the server " + payload.carried();
+        }
+        BlockPos arrival = BlockPos.containing(payload.arrival());
+        if (to.getChunkSource().getChunk(arrival.getX() >> 4, arrival.getZ() >> 4, false) == null) {
+            return "the held level lacks the arrival chunk";
+        }
+        return null;
+    }
+
+    /**
+     * Whether the breach payload that follows a failed swap fades: it does, once, since the client is about to respawn.
+     */
+    public static boolean takeSwapFailure() {
+        boolean failed = swapFailed;
+        swapFailed = false;
+        return failed;
+    }
+
+    /**
+     * An add of {@code packet}'s entity into the level {@code level} the client swapped into, which it holds already:
+     * only its position codec is synced. Returns true when it was one of those and the add is done.
+     */
+    public static boolean pairCarried(ClientLevel level, ClientboundAddEntityPacket packet) {
+        Carried carried = CARRIED.get(packet.getId());
+        if (carried == null) {
+            return false;
+        }
+        // entity-query: an id the swap carried is in the level the client moved it to; a miss leaves the vanilla add
+        // to run
+        Entity entity = level.getEntity(packet.getId());
+        if (entity == null || !carried.uuid().equals(packet.getUUID()) || carried.type() != packet.getType()) {
+            return false;
+        }
+        entity.syncPacketPositionCodec(packet.getX(), packet.getY(), packet.getZ());
+        CARRIED.remove(packet.getId());
+        return true;
+    }
+
+    /**
+     * {@code ids} without the carried entities that await their add: the server removed them from the level the vehicle
+     * left.
+     */
+    public static IntList withoutCarried(IntList ids) {
+        if (CARRIED.isEmpty()) {
+            return ids;
+        }
+        IntList kept = new IntArrayList(ids.size());
+        for (int id : ids) {
+            if (!CARRIED.containsKey(id)) {
+                kept.add(id);
+            }
+        }
+        return kept;
+    }
+
+    /** Drops the carried entities the server never added again: they were not in the level it moved the vehicle to. */
+    private static void endCarriedWindow(Minecraft client) {
+        ClientLevel level = client.level;
+        if (level != null) {
+            CARRIED.keySet().forEach(id -> {
+                // entity-query: an id the swap carried that was never added again; a miss means it is gone already
+                Entity entity = level.getEntity(id);
+                if (entity != null && entity != client.player) {
+                    DeepCharter.LOGGER.warn(
+                            "A carried entity {} was never added again after the swap: dropped", entity);
+                    level.removeEntity(id, Entity.RemovalReason.DISCARDED);
+                }
+            });
+        }
+        CARRIED.clear();
     }
 
     /**

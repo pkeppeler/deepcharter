@@ -16,9 +16,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
 /**
- * What the readout under the crosshair says about the block looked at (#859): the block's name and, for some blocks, a short hint on how to
- * deal with them. The client draws it ({@code BlockReadoutHud}); this class only decides the words, from the block state and its place in the
- * level, so a server GameTest can check them.
+ * What the readout above the hotbar says about the block looked at (#859): the block's name and, for some blocks, a
+ * short hint on how to deal with them. The client draws it ({@code BlockReadoutHud}); this class only decides the
+ * words, from the block state and its place in the level, so a server GameTest can check them.
  *
  * <p>Two rules keep it from telling more than the eye sees. It reads only the block whose face the hit landed on, never anything behind it;
  * and a block that is drawn as another ({@link #disguise}) reads as that one, hint and all, so the readout never gives away what the world

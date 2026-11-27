@@ -102,7 +102,10 @@ public class EconomyAffordabilityTest {
             Map.entry(Consumable.TETHER, new Target(false, 0.25, 1)),
             // On foot (#987): the driver is about two fifths of a layer 2 run, a pack of bolts a twentieth.
             Map.entry(Consumable.BOLT_DRIVER, new Target(true, 0.25, 1)),
-            Map.entry(Consumable.BOLT, new Target(true, 0.02, 0.25)));
+            Map.entry(Consumable.BOLT, new Target(true, 0.02, 0.25)),
+            // A layer 3 item (#1194), about a third of a Mole layer 2 run: a minute of suit that a trip below layer
+            // 2 buys.
+            Map.entry(Consumable.AIR_CANISTER, new Target(true, 0.25, 0.5)));
 
     private static Run stockRunInLayerOne() {
         return EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);

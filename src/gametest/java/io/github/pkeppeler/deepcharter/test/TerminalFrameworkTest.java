@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -135,7 +137,7 @@ public class TerminalFrameworkTest {
                         mock.player().getUUID(),
                         name + " " + UUID.randomUUID().toString().substring(0, 8))
                 .isPresent()) {
-            throw helper.assertionException("founding a charter for %s should succeed", name);
+            throw failure(helper, "founding a charter for %s should succeed", name);
         }
         return mock;
     }
@@ -181,13 +183,13 @@ public class TerminalFrameworkTest {
     private static void expectRefused(
             GameTestHelper helper, TerminalRefusal expected, Optional<TerminalRefusal> actual, String what) {
         if (!actual.equals(Optional.of(expected))) {
-            throw helper.assertionException("%s should be refused with %s, got %s", what, expected, actual);
+            throw failure(helper, "%s should be refused with %s, got %s", what, expected, actual);
         }
     }
 
     private static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
         if (refusal.isPresent()) {
-            throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
+            throw failure(helper, "%s should succeed, was refused: %s", what, refusal.get());
         }
     }
 
@@ -224,8 +226,7 @@ public class TerminalFrameworkTest {
                         TerminalParts.insert(player, positions.get(step), part),
                         "a part of " + early.id() + " before its predecessor is repaired");
                 if (!state.inserted(early).isEmpty() || count(player, part) != held) {
-                    throw helper.assertionException(
-                            "a refused insert must keep the part and change no state for %s", early.id());
+                    throw failure(helper, "a refused insert must keep the part and change no state for %s", early.id());
                 }
             }
 
@@ -233,9 +234,12 @@ public class TerminalFrameworkTest {
                 TerminalType type = COLONY.get(step);
                 for (int i = 0; i < type.parts().size(); i++) {
                     if (state.repaired(type)) {
-                        throw helper.assertionException(
+                        throw failure(
+                                helper,
                                 "%s is repaired before its last part: %s of %s",
-                                type.id(), i, type.parts().size());
+                                type.id(),
+                                i,
+                                type.parts().size());
                     }
                     expectDone(
                             helper,
@@ -244,11 +248,10 @@ public class TerminalFrameworkTest {
                             "inserting part " + i + " of " + type.id());
                 }
                 if (!state.repaired(type)) {
-                    throw helper.assertionException("%s should be repaired with all its parts in", type.id());
+                    throw failure(helper, "%s should be repaired with all its parts in", type.id());
                 }
                 if (REPAIRED_LOG.size() != step + 1 || !REPAIRED_LOG.getLast().equals(type.id())) {
-                    throw helper.assertionException(
-                            "REPAIRED should fire once for %s, log is %s", type.id(), REPAIRED_LOG);
+                    throw failure(helper, "REPAIRED should fire once for %s, log is %s", type.id(), REPAIRED_LOG);
                 }
                 if (step + 2 < COLONY.size()) {
                     TerminalType skipped = COLONY.get(step + 2);
@@ -264,7 +267,7 @@ public class TerminalFrameworkTest {
                 }
             }
             if (REPAIRED_LOG.size() != COLONY.size()) {
-                throw helper.assertionException("REPAIRED fires once per terminal, log is %s", REPAIRED_LOG);
+                throw failure(helper, "REPAIRED fires once per terminal, log is %s", REPAIRED_LOG);
             }
             expectRefused(
                     helper,
@@ -302,14 +305,14 @@ public class TerminalFrameworkTest {
                     "a part the player does not hold");
             if (count(player, foreign) != 1
                     || !state.inserted(TerminalTypes.FUEL_PUMP).isEmpty()) {
-                throw helper.assertionException("refused inserts change nothing");
+                throw failure(helper, "refused inserts change nothing");
             }
 
             give(player, own, 2);
             expectDone(helper, TerminalParts.insert(player, pump, own), "inserting a part");
             if (count(player, own) != 1
                     || !state.inserted(TerminalTypes.FUEL_PUMP).equals(List.of(own))) {
-                throw helper.assertionException("an insert takes one part from the player and records it");
+                throw failure(helper, "an insert takes one part from the player and records it");
             }
             expectRefused(
                     helper,
@@ -317,7 +320,7 @@ public class TerminalFrameworkTest {
                     TerminalParts.insert(player, pump, own),
                     "the same part twice");
             if (count(player, own) != 1) {
-                throw helper.assertionException("the refused second insert must keep the part");
+                throw failure(helper, "the refused second insert must keep the part");
             }
         });
         helper.succeed();
@@ -335,7 +338,7 @@ public class TerminalFrameworkTest {
             Charter secondCharter =
                     Charters.charterOfOrThrow(server, second.player().getUUID()).orElseThrow();
             if (firstCharter.id().equals(secondCharter.id())) {
-                throw helper.assertionException("the test needs two charters");
+                throw failure(helper, "the test needs two charters");
             }
             BlockPos terminal = place(helper, type, 0);
             stand(helper, first, terminal, 2);
@@ -358,9 +361,12 @@ public class TerminalFrameworkTest {
                     "the second charter's action after the first repaired");
             if (TerminalTestTypes.pings() != before + 1
                     || !TerminalTestTypes.lastPinger().equals(Optional.of(Optional.of(secondCharter)))) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the action should run once, for the second charter: pings %s -> %s, charter %s",
-                        before, TerminalTestTypes.pings(), TerminalTestTypes.lastPinger());
+                        before,
+                        TerminalTestTypes.pings(),
+                        TerminalTestTypes.lastPinger());
             }
         });
         helper.succeed();
@@ -392,7 +398,7 @@ public class TerminalFrameworkTest {
                     "an action from inside the range");
             expectDone(helper, Terminals.open(member.player(), terminal), "opening from inside the range");
             if (TerminalTestTypes.pings() != before + 1) {
-                throw helper.assertionException("the action should have run once");
+                throw failure(helper, "the action should have run once");
             }
 
             stand(helper, member, terminal, 6.5);
@@ -439,9 +445,11 @@ public class TerminalFrameworkTest {
                     "opening a position with no terminal");
 
             if (TerminalTestTypes.pings() != before + 1) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "no refused action may have run its handler, pings went from %s to %s",
-                        before, TerminalTestTypes.pings());
+                        before,
+                        TerminalTestTypes.pings());
             }
         });
         helper.succeed();
@@ -486,7 +494,7 @@ public class TerminalFrameworkTest {
                     || !type.parts().isEmpty()
                     || type.access() != TerminalType.Access.ANYONE
                     || !RepairState.get(server).repaired(type)) {
-                throw helper.assertionException("the open terminal needs no repair, and is online for anyone");
+                throw failure(helper, "the open terminal needs no repair, and is online for anyone");
             }
             expectDone(helper, Terminals.open(outsider.player(), terminal), "a player on no charter opening it");
             expectDone(
@@ -496,9 +504,13 @@ public class TerminalFrameworkTest {
             if (TerminalTestTypes.pings() != before + 1
                     || !TerminalTestTypes.lastPinger().equals(Optional.of(Optional.empty()))
                     || !OPENED_LOG.equals(List.of(type.id() + "/Newcomer"))) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the action runs with no charter and the open is announced once: pings %s -> %s, charter %s, opened %s",
-                        before, TerminalTestTypes.pings(), TerminalTestTypes.lastPinger(), OPENED_LOG);
+                        before,
+                        TerminalTestTypes.pings(),
+                        TerminalTestTypes.lastPinger(),
+                        OPENED_LOG);
             }
             expectRefused(
                     helper,
@@ -513,7 +525,7 @@ public class TerminalFrameworkTest {
                     Terminals.open(outsider.player(), terminal),
                     "opening it from too far");
             if (!state.inserted(type).isEmpty()) {
-                throw helper.assertionException("a terminal with no repair has no parts in the state");
+                throw failure(helper, "a terminal with no repair has no parts in the state");
             }
         });
         helper.succeed();
@@ -534,8 +546,8 @@ public class TerminalFrameworkTest {
                     member.player(),
                     new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false));
             if (!OPENED_LOG.equals(List.of(TerminalTypes.FUEL_PUMP.id() + "/User"))) {
-                throw helper.assertionException(
-                        "using the block should open the terminal for the player, opened: %s", OPENED_LOG);
+                throw failure(
+                        helper, "using the block should open the terminal for the player, opened: %s", OPENED_LOG);
             }
             stand(helper, member, pump, 6.5);
             OPENED_LOG.clear();
@@ -544,7 +556,7 @@ public class TerminalFrameworkTest {
                     member.player(),
                     new BlockHitResult(Vec3.atCenterOf(pump), Direction.UP, pump, false));
             if (!OPENED_LOG.isEmpty()) {
-                throw helper.assertionException("using the block from too far must not open it: %s", OPENED_LOG);
+                throw failure(helper, "using the block from too far must not open it: %s", OPENED_LOG);
             }
         });
         helper.succeed();
@@ -596,7 +608,7 @@ public class TerminalFrameworkTest {
                     Terminals.open(outsider.player(), open),
                     "a terminal that needs no repair state still opens");
             if (OPENED_LOG.size() != opened + 1) {
-                throw helper.assertionException("the terminal that needs no repair state opens once");
+                throw failure(helper, "the terminal that needs no repair state opens once");
             }
         });
         UnreadableChecks.assertSavedDataNoThrow(helper, "repair state", server, RepairState.TYPE, paths);
@@ -604,7 +616,7 @@ public class TerminalFrameworkTest {
                 || OPENED_LOG.stream()
                         .anyMatch(entry ->
                                 entry.startsWith(TerminalTypes.FUEL_PUMP.id().toString()))) {
-            throw helper.assertionException("a refused request keeps the part and opens nothing");
+            throw failure(helper, "a refused request keeps the part and opens nothing");
         }
         helper.succeed();
     }
@@ -653,7 +665,7 @@ public class TerminalFrameworkTest {
         UnreadableChecks.assertSavedDataNoThrow(
                 helper, "terminals on unreadable charters", server, CharterData.TYPE, paths);
         if (count(member.player(), TerminalTypes.FUEL_PUMP.parts().getFirst()) != 1) {
-            throw helper.assertionException("a refused request keeps the part");
+            throw failure(helper, "a refused request keeps the part");
         }
         helper.succeed();
     }
@@ -664,9 +676,11 @@ public class TerminalFrameworkTest {
             BlockPos pos = place(helper, type, 0);
             if (!(helper.getLevel().getBlockEntity(pos) instanceof TerminalBlockEntity entity)
                     || entity.type() != type) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "%s should have a terminal block entity of its type, got %s",
-                        type.id(), String.valueOf(helper.getLevel().getBlockEntity(pos)));
+                        type.id(),
+                        String.valueOf(helper.getLevel().getBlockEntity(pos)));
             }
         }
         helper.succeed();
@@ -682,14 +696,19 @@ public class TerminalFrameworkTest {
             ServerLevel level = helper.getLevel();
             BlockState state = level.getBlockState(pos);
             if (state.getDestroySpeed(level, pos) >= 0 || state.getDestroyProgress(player, level, pos) != 0F) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "%s must be unbreakable in survival: speed %s, progress %s",
-                        type.id(), state.getDestroySpeed(level, pos), state.getDestroyProgress(player, level, pos));
+                        type.id(),
+                        state.getDestroySpeed(level, pos),
+                        state.getDestroyProgress(player, level, pos));
             }
-            if (state.getBlock().getExplosionResistance() < 3_600_000F) {
-                throw helper.assertionException(
+            if (state.getBlock().getExplosionResistance() < Blocks.BEDROCK.getExplosionResistance()) {
+                throw failure(
+                        helper,
                         "%s must survive explosions, resistance %s",
-                        type.id(), state.getBlock().getExplosionResistance());
+                        type.id(),
+                        state.getBlock().getExplosionResistance());
             }
         }
         helper.succeed();
@@ -703,8 +722,8 @@ public class TerminalFrameworkTest {
                     && (!state.is(TERMINALS)
                             || !state.is(BlockTags.WITHER_IMMUNE)
                             || !state.is(BlockTags.DRAGON_IMMUNE))) {
-                throw helper.assertionException(
-                        "%s must be in deepcharter:terminals, wither_immune and dragon_immune", type.id());
+                throw failure(
+                        helper, "%s must be in deepcharter:terminals, wither_immune and dragon_immune", type.id());
             }
         }
         helper.succeed();
@@ -716,19 +735,21 @@ public class TerminalFrameworkTest {
         Set<Item> allParts = new HashSet<>();
         for (TerminalType type : COLONY) {
             if (type.parts().size() < 2 || type.parts().size() > 3) {
-                throw helper.assertionException(
-                        "%s needs 2 or 3 parts, has %s", type.id(), type.parts().size());
+                throw failure(
+                        helper,
+                        "%s needs 2 or 3 parts, has %s",
+                        type.id(),
+                        type.parts().size());
             }
             for (Item part : type.parts()) {
                 if (!allParts.add(part)) {
-                    throw helper.assertionException("%s is a part of two terminals", id(part));
+                    throw failure(helper, "%s is a part of two terminals", id(part));
                 }
                 used.addAll(recipeIngredients(helper, part));
             }
         }
         if (!used.equals(RECIPE_INGREDIENTS)) {
-            throw helper.assertionException(
-                    "the part recipes should use exactly %s, they use %s", RECIPE_INGREDIENTS, used);
+            throw failure(helper, "the part recipes should use exactly %s, they use %s", RECIPE_INGREDIENTS, used);
         }
         helper.succeed();
     }
@@ -739,14 +760,14 @@ public class TerminalFrameworkTest {
                 + BuiltInRegistries.ITEM.getKey(part).getPath() + ".json";
         try (InputStream stream = TerminalFrameworkTest.class.getResourceAsStream(path)) {
             if (stream == null) {
-                throw helper.assertionException("%s has no recipe at %s", id(part), path);
+                throw failure(helper, "%s has no recipe at %s", id(part), path);
             }
             try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
                 JsonObject recipe = JsonParser.parseReader(reader).getAsJsonObject();
                 JsonObject result = recipe.getAsJsonObject("result");
                 if (!result.get("id").getAsString().equals(id(part))
                         || result.get("count").getAsInt() != 1) {
-                    throw helper.assertionException("the recipe at %s should make one %s", path, id(part));
+                    throw failure(helper, "the recipe at %s should make one %s", path, id(part));
                 }
                 Set<String> ingredients = new HashSet<>();
                 for (JsonElement ingredient :
@@ -754,9 +775,12 @@ public class TerminalFrameworkTest {
                     ingredients.add(ingredient.getAsString());
                 }
                 if (!RECIPE_INGREDIENTS.containsAll(ingredients)) {
-                    throw helper.assertionException(
+                    throw failure(
+                            helper,
                             "the recipe for %s uses %s, only %s are allowed",
-                            id(part), ingredients, RECIPE_INGREDIENTS);
+                            id(part),
+                            ingredients,
+                            RECIPE_INGREDIENTS);
                 }
                 return ingredients;
             }
@@ -768,23 +792,24 @@ public class TerminalFrameworkTest {
     @GameTest
     public void theColonyTerminalsFormOneChain(GameTestHelper helper) {
         if (TerminalTypes.FUEL_PUMP.prerequisite().isPresent()) {
-            throw helper.assertionException("the pump is first and has no prerequisite");
+            throw failure(helper, "the pump is first and has no prerequisite");
         }
         for (int i = 1; i < COLONY.size(); i++) {
             if (!COLONY.get(i).prerequisite().equals(Optional.of(COLONY.get(i - 1)))) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "%s should need %s first",
-                        COLONY.get(i).id(), COLONY.get(i - 1).id());
+                        COLONY.get(i).id(),
+                        COLONY.get(i - 1).id());
             }
         }
         if (!TerminalTypes.all().subList(0, COLONY.size()).equals(COLONY)) {
-            throw helper.assertionException(
-                    "the colony terminals are registered first, in order: %s", TerminalTypes.all());
+            throw failure(helper, "the colony terminals are registered first, in order: %s", TerminalTypes.all());
         }
         for (TerminalType type : TerminalTypes.all()) {
             if (TerminalTypes.get(type.id()).orElse(null) != type
                     || TerminalTypes.of(type.block()).orElse(null) != type) {
-                throw helper.assertionException("%s should be found by id and by block", type.id());
+                throw failure(helper, "%s should be found by id and by block", type.id());
             }
         }
         helper.succeed();
@@ -810,11 +835,11 @@ public class TerminalFrameworkTest {
                 threw = true;
             }
             if (!threw) {
-                throw helper.assertionException("bad registration %s should throw IllegalArgumentException", i);
+                throw failure(helper, "bad registration %s should throw IllegalArgumentException", i);
             }
         }
         if (TerminalTypes.get(fresh).isPresent() || TerminalTypes.all().size() != before) {
-            throw helper.assertionException("a refused registration must leave nothing behind");
+            throw failure(helper, "a refused registration must leave nothing behind");
         }
         helper.succeed();
     }
@@ -823,15 +848,14 @@ public class TerminalFrameworkTest {
     public void anOversizedActionPayloadDoesNotDecode(GameTestHelper helper) {
         BlockPos pos = helper.absolutePos(BlockPos.ZERO);
         CompoundTag small = new CompoundTag();
-        small.putString(Terminals.PART_KEY, "deepcharter:pump_motor");
+        small.putString("part", "deepcharter:pump_motor");
         CompoundTag big = new CompoundTag();
         big.putString("junk", "x".repeat(TerminalActionPayload.MAX_ARGS_BYTES * 4));
         if (!decodes(helper, pos, small)) {
-            throw helper.assertionException("a small args compound should decode");
+            throw failure(helper, "a small args compound should decode");
         }
         if (decodes(helper, pos, big)) {
-            throw helper.assertionException(
-                    "args of more than %s bytes should not decode", TerminalActionPayload.MAX_ARGS_BYTES);
+            throw failure(helper, "args of more than %s bytes should not decode", TerminalActionPayload.MAX_ARGS_BYTES);
         }
         helper.succeed();
     }
@@ -840,7 +864,7 @@ public class TerminalFrameworkTest {
         RegistryFriendlyByteBuf buf =
                 new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
         BlockPos.STREAM_CODEC.encode(buf, pos);
-        Identifier.STREAM_CODEC.encode(buf, Terminals.INSERT_PART);
+        Identifier.STREAM_CODEC.encode(buf, Identifier.fromNamespaceAndPath("deepcharter_test", "any_action"));
         ByteBufCodecs.COMPOUND_TAG.encode(buf, args);
         try {
             TerminalActionPayload payload = TerminalActionPayload.CODEC.decode(buf);
@@ -876,7 +900,7 @@ public class TerminalFrameworkTest {
                                 .equals(List.of(
                                         TerminalTypes.ORE_PROCESSOR.parts().getFirst()))
                         || !loaded.inserted(TerminalTypes.UPGRADE_TERMINAL).isEmpty()) {
-                    throw helper.assertionException("the repairs and the part in the processor should load as saved");
+                    throw failure(helper, "the repairs and the part in the processor should load as saved");
                 }
             }
         } finally {
@@ -902,9 +926,11 @@ public class TerminalFrameworkTest {
             Path file = savedFile(dir);
             CompoundTag stamped = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
             if (NbtUtils.getDataVersion(stamped) <= olderDataVersion) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the test needs a saved DataVersion above %s, got %s",
-                        olderDataVersion, NbtUtils.getDataVersion(stamped));
+                        olderDataVersion,
+                        NbtUtils.getDataVersion(stamped));
             }
             Tag savedBody = Objects.requireNonNull(stamped.get("data"), "the stamped save has no data tag");
             NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
@@ -914,8 +940,8 @@ public class TerminalFrameworkTest {
                 Tag reloaded =
                         RepairState.CODEC.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow();
                 if (!reloaded.equals(savedBody) || !loaded.repaired(TerminalTypes.FUEL_PUMP)) {
-                    throw helper.assertionException(
-                            "the fixer changed the repair state: saved %s, loaded %s", savedBody, reloaded);
+                    throw failure(
+                            helper, "the fixer changed the repair state: saved %s, loaded %s", savedBody, reloaded);
                 }
             }
         } catch (IOException e) {
@@ -934,7 +960,7 @@ public class TerminalFrameworkTest {
 
         RepairState data = RepairState.CODEC.parse(NbtOps.INSTANCE, future).getOrThrow();
         if (data.isReadable()) {
-            throw helper.assertionException("data of another version should load as unreadable");
+            throw failure(helper, "data of another version should load as unreadable");
         }
         boolean threw = false;
         try {
@@ -943,11 +969,11 @@ public class TerminalFrameworkTest {
             threw = String.valueOf(e.getMessage()).contains(Integer.toString(RepairState.VERSION + 1));
         }
         if (!threw) {
-            throw helper.assertionException("using unreadable repair state should throw and name its version");
+            throw failure(helper, "using unreadable repair state should throw and name its version");
         }
         Tag written = RepairState.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
         if (!future.equals(written)) {
-            throw helper.assertionException("unreadable data must be written back unchanged, got %s", written);
+            throw failure(helper, "unreadable data must be written back unchanged, got %s", written);
         }
         helper.succeed();
     }
@@ -975,7 +1001,8 @@ public class TerminalFrameworkTest {
 
             List<PodEntity> parked = Terminals.parkedPods(helper.getLevel(), terminal);
             if (!parked.equals(List.of(foreign, near, far, edge))) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "pods parked at a terminal are those within 8 blocks, nearest first: expected the foreign pod, the near, the far and the edge pod, got %s",
                         parked.stream()
                                 .map(pod -> pod.position().subtract(centre))
@@ -983,7 +1010,8 @@ public class TerminalFrameworkTest {
             }
             List<PodEntity> ownedByTheMember = Terminals.parkedPods(helper.getLevel(), terminal, Optional.of(ours));
             if (!ownedByTheMember.equals(List.of(near, far, edge))) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "a charter is served only the pods PodComponents.mayAccess allows it, nearest first, got %s",
                         ownedByTheMember.stream()
                                 .map(pod -> pod.position().subtract(centre))
@@ -991,7 +1019,7 @@ public class TerminalFrameworkTest {
             }
             if (!Terminals.parkedPods(helper.getLevel(), terminal, Optional.empty())
                     .equals(List.of())) {
-                throw helper.assertionException("a player on no charter may use no pod that a charter owns");
+                throw failure(helper, "a player on no charter may use no pod that a charter owns");
             }
             helper.succeed();
         } finally {
@@ -1003,28 +1031,22 @@ public class TerminalFrameworkTest {
     public void aTerminalViewCarriesItsTypesFeatureOnTheWire(GameTestHelper helper) {
         BlockPos pos = new BlockPos(1, 2, 3);
         TerminalView withFeature = new TerminalView(
-                pos,
-                TerminalTestTypes.OPEN.id(),
-                true,
-                true,
-                List.of(),
-                Optional.of(new TerminalTestTypes.Note("hello")));
+                pos, TerminalTestTypes.OPEN.id(), Optional.of(new TerminalTestTypes.Note("hello")), List.of());
         TerminalView decoded = roundTrip(withFeature);
         if (!decoded.equals(withFeature)
                 || !decoded.feature(TerminalTestTypes.Note.class)
                         .equals(Optional.of(new TerminalTestTypes.Note("hello")))) {
-            throw helper.assertionException(
-                    "a view should keep its feature across the wire, got %s from %s", decoded, withFeature);
+            throw failure(
+                    helper, "a view should keep its feature across the wire, got %s from %s", decoded, withFeature);
         }
         if (decoded.feature(TerminalFeature.class).isEmpty()
                 || decoded.feature(TerminalTestTypes.Note.class).isEmpty()) {
-            throw helper.assertionException("the feature should be readable by its class");
+            throw failure(helper, "the feature should be readable by its class");
         }
-        TerminalView without =
-                new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), false, true, List.of(), Optional.empty());
+        TerminalView without = new TerminalView(pos, TerminalTypes.FUEL_PUMP.id(), Optional.empty(), List.of());
         if (!roundTrip(without).equals(without)) {
-            throw helper.assertionException(
-                    "a view of a type with no feature should round-trip with none, got %s", roundTrip(without));
+            throw failure(
+                    helper, "a view of a type with no feature should round-trip with none, got %s", roundTrip(without));
         }
         ByteBuf bytes = Unpooled.buffer();
         TerminalView.STREAM_CODEC.encode(bytes, without);
@@ -1032,24 +1054,17 @@ public class TerminalFrameworkTest {
         if (!TerminalView.STREAM_CODEC.decode(bytes).equals(without)
                 || !TerminalView.STREAM_CODEC.decode(bytes).equals(withFeature)
                 || bytes.isReadable()) {
-            throw helper.assertionException(
-                    "a view of a type with no feature should leave the next view in the buffer readable");
+            throw failure(helper, "a view of a type with no feature should leave the next view in the buffer readable");
         }
         boolean refused = false;
         try {
             roundTrip(new TerminalView(
-                    pos,
-                    TerminalTestTypes.REPAIRABLE.id(),
-                    true,
-                    true,
-                    List.of(),
-                    Optional.of(new TerminalTestTypes.Note("x"))));
+                    pos, TerminalTestTypes.REPAIRABLE.id(), Optional.of(new TerminalTestTypes.Note("x")), List.of()));
         } catch (IllegalStateException unregistered) {
             refused = true;
         }
         if (!refused) {
-            throw helper.assertionException(
-                    "a feature on a type that registered none must fail loudly, not be dropped");
+            throw failure(helper, "a feature on a type that registered none must fail loudly, not be dropped");
         }
         helper.succeed();
     }

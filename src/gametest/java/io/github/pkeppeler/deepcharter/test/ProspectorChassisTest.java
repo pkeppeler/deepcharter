@@ -35,6 +35,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
+import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -351,7 +352,7 @@ public class ProspectorChassisTest {
         });
     }
 
-    @GameTest(maxTicks = 12000)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 12000)
     public void everyWreckSiteHoldsAnUnownedProspectorWreckAndOnlyPROSPECTOR0002HasALampAndN10(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = TestLayers.level(helper, 2);
@@ -370,9 +371,14 @@ public class ProspectorChassisTest {
         if (prospector.equals(ordinary)) {
             throw failure(helper, "cell %d is the Prospector's own site, so it cannot be the ordinary one", WRECK_CELL);
         }
-        generate(level, ordinary);
-        generate(level, prospector);
+        List<FarChunks.At> chunks = new ArrayList<>(chunksOf(level, ordinary));
+        chunks.addAll(chunksOf(level, prospector));
+        boolean[] generated = {false};
+        FarChunks.whenBlocksLoaded(helper, chunks, () -> generated[0] = true);
         helper.succeedWhen(() -> {
+            if (!generated[0]) {
+                throw helper.assertionException("the wreck sites' chunks are not loaded yet");
+            }
             // Loading the chunks again must not add a second pod to either site.
             generate(level, ordinary);
             generate(level, prospector);
@@ -438,8 +444,9 @@ public class ProspectorChassisTest {
                             "restoring the Prospector on the advance alone");
                     expect(
                             helper,
-                            !Wrecks.isWreck(wreck) && FoundingMoleHangarTest.balance(helper, owner) == 0,
-                            "the Prospector is restored for its $1,390");
+                            !Wrecks.isWreck(wreck)
+                                    && FoundingMoleHangarTest.balance(helper, owner) == Transmission.Bonus.B3.amount(),
+                            "the Prospector is restored for its $1,390, and T17 pays B3");
                     expect(
                             helper,
                             FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST) == 0,
@@ -597,8 +604,10 @@ public class ProspectorChassisTest {
                             "the first charter restoring a second Prospector with no Cicatrium");
                     expect(
                             helper,
-                            Wrecks.isWreck(two) && FoundingMoleHangarTest.balance(helper, first) == PRICE,
-                            "the refused restore took nothing");
+                            Wrecks.isWreck(two)
+                                    && FoundingMoleHangarTest.balance(helper, first)
+                                            == PRICE + Transmission.Bonus.B3.amount(),
+                            "the refused restore took nothing (the first restore's T17 paid B3)");
 
                     // The second charter gets its own advance for the other wreck.
                     FoundingMoleHangarTest.expectDone(
@@ -649,8 +658,9 @@ public class ProspectorChassisTest {
                             "restoring the Prospector");
                     expect(
                             helper,
-                            FoundingMoleHangarTest.balance(helper, owner) == FoundingMoleHangarTest.RICH - PRICE,
-                            "restoring a Prospector costs $1,390, the account holds %s",
+                            FoundingMoleHangarTest.balance(helper, owner)
+                                    == FoundingMoleHangarTest.RICH - PRICE + Transmission.Bonus.B3.amount(),
+                            "restoring a Prospector costs $1,390 and T17 pays B3, the account holds %s",
                             FoundingMoleHangarTest.balance(helper, owner));
                     expect(
                             helper,
@@ -972,13 +982,14 @@ public class ProspectorChassisTest {
         double x = 3700.5;
         double z = 3700.5;
         ServerLevel one = TestLayers.level(helper, 1);
-        openShaft(one, x, z);
         MockPlayer pilot = MockPlayers.join(helper, "prospector-cross-pilot");
         MockPlayer navigator = MockPlayers.join(helper, "prospector-cross-navigator");
         pilot.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         navigator.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pod = {null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(2, 8), z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            openShaft(one, x, z);
             pod[0] = TestEntities.create(PodRegistry.PROSPECTOR, one);
             pod[0].setPos(x, TestLayers.worldY(2, 8), z);
             one.addFreshEntity(pod[0]);
@@ -1028,13 +1039,14 @@ public class ProspectorChassisTest {
         double x = 3800.5;
         double z = 3800.5;
         ServerLevel one = TestLayers.level(helper, 1);
-        openShaft(one, x, z);
         MockPlayer pilot = MockPlayers.join(helper, "prospector-tow-pilot");
         MockPlayer navigator = MockPlayers.join(helper, "prospector-tow-navigator");
         pilot.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
         navigator.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
         PodEntity[] pods = {null, null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(2, 8), z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            openShaft(one, x, z);
             pods[0] = TestEntities.create(PodRegistry.POD, one);
             pods[0].setPos(x, TestLayers.worldY(2, 8), z);
             one.addFreshEntity(pods[0]);
@@ -1116,13 +1128,17 @@ public class ProspectorChassisTest {
                 .contains(T17);
     }
 
-    /** Loads every chunk the site touches, so that a fresh one is drawn. */
-    private static void generate(ServerLevel level, StructureSite site) {
+    /** Every chunk the site touches. */
+    private static List<FarChunks.At> chunksOf(ServerLevel level, StructureSite site) {
         BoundingBox box = site.bounds();
-        for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
-            for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {
-                level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
-            }
+        return FarChunks.overBlocks(level, box.minX(), box.minZ(), box.maxX(), box.maxZ());
+    }
+
+    /** Asks for every chunk the site touches again, so that one that is loaded already must not be drawn twice. */
+    private static void generate(ServerLevel level, StructureSite site) {
+        for (FarChunks.At chunk : chunksOf(level, site)) {
+            // sync-load: the chunks are loaded and forced by the caller's wait; asking for them again is the case
+            level.getChunk(chunk.chunkX(), chunk.chunkZ(), ChunkStatus.FULL);
         }
     }
 

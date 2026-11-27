@@ -146,8 +146,8 @@ public class RetainedTest {
                     for (int y = -1; y <= ARENA_HEIGHT; y++) {
                         boolean shell =
                                 y == -1 || y == ARENA_HEIGHT || Math.abs(u) == HALF + 1 || Math.abs(v) == HALF + 1;
-                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not layer
-                        // rock
+                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not
+                        // layer rock
                         level.setBlock(
                                 origin.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
                     }
@@ -163,6 +163,7 @@ public class RetainedTest {
                 PodComponents.register(pod, charter);
                 PodComponents.install(pod, ComponentItems.mint(level.getServer(), ComponentTrack.LIGHTS, 1, charter));
             }
+            pod.setYRot(WEST);
             pilot.teleportTo(level, pod.position(), WEST, 0f);
             if (!pilot.player().startRiding(pod)) {
                 throw failure(helper, "the pilot could not mount the pod");
@@ -432,6 +433,7 @@ public class RetainedTest {
         MockPlayer pilot = MockPlayers.join(helper, "retained-draw");
         try {
             expect(helper, !LamplessFigure.draws(pod), "an empty pod draws a figure");
+            pod.setYRot(WEST);
             pilot.teleportTo(level, pod.position(), WEST, 0f);
             expect(helper, pilot.player().startRiding(pod), "the pilot could not mount the pod");
             expect(helper, LamplessFigure.draws(pod), "a dark pod with a pilot does not draw a figure");
@@ -495,7 +497,13 @@ public class RetainedTest {
                 helper.succeed();
             }
         });
-        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+        // The treads drill through the arena's west wall and on, into the chunks beyond it (#1089): a pod drives up to
+        // 0.4 blocks a tick, about 48 in the 120 ticks it is watched.
+        FarChunks.awaitAllEntityTicking(
+                helper,
+                level,
+                List.of(origin, origin.west(16), origin.west(32), origin.west(48)),
+                () -> made[0] = Arena.build(helper, level, origin, false));
     }
 
     /**
@@ -584,8 +592,8 @@ public class RetainedTest {
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             made[0] = Arena.build(helper, level, origin, false);
-            // A bore of stone under the pod, so that it drills for as long as the test needs and does not fall into the
-            // void.
+            // A bore of stone under the pod, so that it drills for as long as the test needs and does not fall into
+            // the void.
             for (int u = -HALF; u <= HALF; u++) {
                 for (int v = -HALF; v <= HALF; v++) {
                     for (int y = BORE_DEPTH; y < 0; y++) {
@@ -868,6 +876,7 @@ public class RetainedTest {
         FarChunks.awaitEntityTicking(helper, nether, spot, () -> {
             List<LamplessFigure> naturals = new ArrayList<>();
             for (int i = 0; i < TUNING.maxPerBand(); i++) {
+                // Counted and discarded in this callback, before the figure's first tick (#1237).
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, nether);
                 figure.markNatural();
                 figure.setNoAi(true);

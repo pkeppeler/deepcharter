@@ -180,6 +180,7 @@ public final class ShaftViews {
 
     /** The top of the ground at ({@code x}, {@code z}) in {@code level}, generating its chunk first. */
     public static BlockPos ground(ServerLevel level, int x, int z) {
+        // sync-load: a client test calls this on the singleplayer server with no GameTestHelper to wait with
         level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
         return level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING, new BlockPos(x, 0, z));
     }

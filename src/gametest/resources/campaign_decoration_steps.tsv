@@ -15,7 +15,13 @@
 8	1	deepcharter:glowcaps_spore_fields
 8	2	deepcharter:fungal_stalks_hollows
 8	3	deepcharter:glowcaps_garden
+8	4	deepcharter:giant_fungi_quiet
+8	5	deepcharter:giant_fungi_spore_fields
+8	6	deepcharter:giant_fungi_garden
 9	0	deepcharter:salvage_litter
 9	1	deepcharter:fungal_stalks
 9	2	deepcharter:fungal_stalks_yard
 9	3	deepcharter:fungal_stalks_cave
+10	0	deepcharter:claim_shafts
+10	1	deepcharter:claim_cave_ores
+10	2	deepcharter:claim_salvage_caches

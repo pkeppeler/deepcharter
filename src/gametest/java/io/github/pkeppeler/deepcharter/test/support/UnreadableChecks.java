@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import java.util.List;
 import java.util.Map;
@@ -52,12 +54,16 @@ public final class UnreadableChecks {
         WorldData.with(server, type, unreadable, () -> assertNoThrow(helper, feature, paths));
         List<String> errors = log.errors();
         if (errors.size() != 1) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s: unreadable %s should be logged once, not %s times: %s",
-                    feature, type.id(), errors.size(), errors);
+                    feature,
+                    type.id(),
+                    errors.size(),
+                    errors);
         }
         if (!future.equals(type.codec().encodeStart(NbtOps.INSTANCE, unreadable).getOrThrow())) {
-            throw helper.assertionException("%s: unreadable %s must be written back unchanged", feature, type.id());
+            throw failure(helper, "%s: unreadable %s must be written back unchanged", feature, type.id());
         }
     }
 
@@ -73,11 +79,15 @@ public final class UnreadableChecks {
                 try {
                     path.getValue().run();
                 } catch (RuntimeException | Error e) {
-                    RuntimeException failure = helper.assertionException(
+                    RuntimeException error = failure(
+                            helper,
                             "%s: the %s path threw on unreadable data (visit %s): %s",
-                            feature, path.getKey(), visit, e);
-                    failure.initCause(e);
-                    throw failure;
+                            feature,
+                            path.getKey(),
+                            visit,
+                            e);
+                    error.initCause(e);
+                    throw error;
                 }
             }
         }

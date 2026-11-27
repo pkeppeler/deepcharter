@@ -1,0 +1,122 @@
+{
+  "templates": {},
+  "recipes": {
+    "block/parasol_stem": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["stalk.3", "stalk.4", "stalk.4", "stalk.5"], "seed": 120201, "breaks": 3, "spread": 1},
+      {"op": "pixels", "legend": {"b": "fungus.1", "d": "fungus.0"}, "at": [0, 1], "rows": [
+        "b..b..b..b..b..b",
+        ".bb.bb.bb.bb.bb.",
+        "................",
+        "................",
+        "................",
+        "...d...d...d...d",
+        "..d.d.d.d.d.d.d.",
+        ".d...d...d...d..",
+        "................",
+        "................",
+        "b..b..b..b..b..b",
+        ".bb.bb.bb.bb.bb."]},
+      {"op": "speckle", "colours": ["stalk.2"], "density": 0.04, "seed": 120202}
+    ]},
+    "block/parasol_cap_top": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["fungus.2", "fungus.3", "fungus.3", "fungus.4"], "seed": 120211, "cell": 4, "octaves": 2, "dither": 0.6},
+      {"op": "pixels", "legend": {"s": "fungus.1", "l": "fungus.0", "h": "fungus.4"}, "rows": [
+        "..h........h....",
+        ".sls......sls...",
+        "..s........s....",
+        "......h.........",
+        ".....sls......h.",
+        "......s......sls",
+        "h.............s.",
+        "ls.....h........",
+        "s.....sls.......",
+        "..h....s.....h..",
+        ".sls........sls.",
+        "..s..........s..",
+        ".......h........",
+        "......sls...h...",
+        ".......s...sls..",
+        "............s..."]}
+    ]},
+    "block/parasol_cap_umbo": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["fungus.0", "fungus.0", "fungus.1", "fungus.1"], "seed": 120221, "cell": 4, "octaves": 2, "dither": 0.5},
+      {"op": "speckle", "colours": ["stalk.0"], "density": 0.06, "seed": 120222},
+      {"op": "speckle", "colours": ["fungus.2"], "density": 0.03, "seed": 120223}
+    ]},
+    "block/parasol_cap_side": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["basalt.1", "fungus.0", "fungus.0", "fungus.1"], "seed": 120231, "breaks": 3, "spread": 1},
+      {"op": "speckle", "colours": ["basalt.0"], "density": 0.05, "seed": 120232}
+    ]},
+    "block/parasol_gills": {"kind": "opaque", "layers": [
+      {"op": "fill", "colour": "cold.2"},
+      {"op": "rect", "rect": [0, 1, 16, 1], "colour": "cold.4"},
+      {"op": "rect", "rect": [0, 4, 16, 1], "colour": "cold.3"},
+      {"op": "rect", "rect": [0, 7, 16, 1], "colour": "cold.4"},
+      {"op": "rect", "rect": [0, 10, 16, 1], "colour": "cold.3"},
+      {"op": "rect", "rect": [0, 13, 16, 1], "colour": "cold.4"},
+      {"op": "speckle", "colours": ["cold.5"], "density": 0.05, "seed": 120241, "rect": [0, 1, 16, 1]},
+      {"op": "speckle", "colours": ["cold.5"], "density": 0.05, "seed": 120242, "rect": [0, 7, 16, 1]},
+      {"op": "speckle", "colours": ["cold.1"], "density": 0.06, "seed": 120243}
+    ]},
+    "block/parasol_gills_diagonal": {"kind": "opaque", "layers": [
+      {"op": "fill", "colour": "cold.2"},
+      {"op": "stripes", "colours": ["cold.4", "cold.2", "cold.3"], "period": 3, "direction": "\\"},
+      {"op": "speckle", "colours": ["cold.1"], "density": 0.06, "seed": 120244}
+    ]},
+    "block/parasol_gills_lamp": {"kind": "opaque", "layers": [
+      {"op": "fill", "colour": "cold.3"},
+      {"op": "rect", "rect": [0, 1, 16, 1], "colour": "cold.5"},
+      {"op": "rect", "rect": [0, 4, 16, 1], "colour": "cold.4"},
+      {"op": "rect", "rect": [0, 7, 16, 1], "colour": "cold.5"},
+      {"op": "rect", "rect": [0, 10, 16, 1], "colour": "cold.4"},
+      {"op": "rect", "rect": [0, 13, 16, 1], "colour": "cold.5"}
+    ]},
+    "block/parasol_gills_lamp_diagonal": {"kind": "opaque", "layers": [
+      {"op": "fill", "colour": "cold.3"},
+      {"op": "stripes", "colours": ["cold.5", "cold.4", "cold.3"], "period": 3, "direction": "\\"}
+    ]},
+    "block/parasol_rim": {"kind": "cutout", "layers": [
+      {"op": "fibres", "ramp": ["fungus.0", "fungus.1", "fungus.1", "fungus.2"], "seed": 120251, "breaks": 2, "spread": 1},
+      {"op": "pixels", "legend": {"g": "cold.5", "G": "cold.4", "d": "cold.2", "x": "clear"}, "at": [0, 10], "rows": [
+        "d......dd......d",
+        "Gd....dGGd....dG",
+        "xGd..dGxxGd..dGx",
+        "xxgddgxxxxgddgxx",
+        "xxxggxxxxxxggxxx",
+        "xxxxxxxxxxxxxxxx"]}
+    ]},
+    "block/parasol_ring": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["stalk.4", "stalk.5", "stalk.5", "fungus.4"], "seed": 120261, "cell": 4, "octaves": 2, "dither": 0.5},
+      {"op": "rect", "rect": [0, 0, 16, 1], "colour": "fungus.2"},
+      {"op": "speckle", "colours": ["fungus.2"], "density": 0.05, "seed": 120262}
+    ]},
+    "block/fungal_flare": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["stalk.0", "stalk.1", "stalk.1", "stalk.2"], "seed": 120271, "breaks": 4, "spread": 1},
+      {"op": "speckle", "colours": ["basalt.0", "stalk.3"], "density": 0.05, "seed": 120272}
+    ]},
+    "block/spire_4": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["basalt.1", "stalk.0", "stalk.0", "fungus.0"], "seed": 120281, "breaks": 3, "spread": 1},
+      {"op": "speckle", "colours": ["basalt.0"], "density": 0.06, "seed": 120282}
+    ]},
+    "block/spire_3": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["stalk.0", "fungus.0", "stalk.1", "stalk.1"], "seed": 120283, "breaks": 3, "spread": 1},
+      {"op": "speckle", "colours": ["basalt.1"], "density": 0.05, "seed": 120284}
+    ]},
+    "block/spire_2": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["stalk.1", "stalk.2", "stalk.2", "stalk.3"], "seed": 120285, "breaks": 3, "spread": 1},
+      {"op": "speckle", "colours": ["stalk.4"], "density": 0.06, "seed": 120286}
+    ]},
+    "block/spire_1": {"kind": "opaque", "layers": [
+      {"op": "fibres", "ramp": ["stalk.3", "stalk.4", "stalk.4", "stalk.5"], "seed": 120287, "breaks": 3, "spread": 1},
+      {"op": "speckle", "colours": ["cold.4"], "density": 0.04, "seed": 120288}
+    ]},
+    "block/spire_tip": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["cold.3", "cold.4", "cold.4", "cold.5"], "seed": 120291, "cell": 4, "octaves": 2, "dither": 0.6},
+      {"op": "speckle", "colours": ["stalk.5"], "density": 0.15, "seed": 120292}
+    ]},
+    "block/spire_base": {"kind": "opaque", "layers": [
+      {"op": "noise", "ramp": ["basalt.0", "basalt.1", "stalk.0", "basalt.1"], "seed": 120295, "cell": 4, "octaves": 3, "dither": 0.6},
+      {"op": "speckle", "colours": ["fungus.0", "stalk.1"], "density": 0.05, "seed": 120296}
+    ]}
+  }
+}

@@ -51,6 +51,28 @@ fail() {
   echo "pre-push: $1 failed. Fix it, or skip the hook once with: git push --no-verify" >&2
   exit 1
 }
+# Gradle runs under the clone's shared slot lock, so the hook and the agents queue instead of racing. DEEPCHARTER_GRADLE_LOCK overrides the
+# path. Without flock (macOS has none) or without a git dir to put the lock in, it runs unlocked.
+gradle_lock=${DEEPCHARTER_GRADLE_LOCK:-}
+if [[ -z $gradle_lock ]] && common=$(git rev-parse --git-common-dir 2>/dev/null) && common=$(cd "$common" && pwd -P); then
+  gradle_lock=$common/gradle-slot.lock
+fi
+# -o: the Gradle client and daemon do not inherit the lock fd. -w: give up after DEEPCHARTER_GRADLE_LOCK_WAIT seconds (exit 200) rather than hang.
+gradle_lock_wait=${DEEPCHARTER_GRADLE_LOCK_WAIT:-1800}
+with_gradle_lock() { # with_gradle_lock <command>...
+  if [[ -z $gradle_lock ]] || ! command -v flock >/dev/null 2>&1; then "$@"; return; fi
+  if ! { : >>"$gradle_lock"; } 2>/dev/null; then
+    echo "pre-push: cannot open the Gradle lock file $gradle_lock. Fix its path or permissions, or skip the hook once with: git push --no-verify" >&2
+    exit 1
+  fi
+  local rc=0
+  flock -o -w "$gradle_lock_wait" -E 200 "$gradle_lock" "$@" || rc=$?
+  if [[ $rc -eq 200 ]]; then
+    echo "pre-push: timed out after $gradle_lock_wait s waiting for the Gradle lock $gradle_lock. Retry later, or skip the hook once with: git push --no-verify" >&2
+    exit 1
+  fi
+  return "$rc"
+}
 echo "pre-push: conflict markers" >&2
 tools/py tools/tests/conflict_markers.py \
   || fail "conflict markers"
@@ -62,7 +84,7 @@ for sha in "${pushed_shas[@]}"; do
 done
 if [[ $need_gradle -eq 1 ]]; then
   echo "pre-push: compile and checkstyle (waits if another Gradle build holds the lock; Ctrl-C and push with --no-verify to skip)" >&2
-  ./gradlew -q compileJava compileClientJava compileGametestJava checkstyleMain checkstyleClient checkstyleGametest \
+  with_gradle_lock ./gradlew -q compileJava compileClientJava compileGametestJava checkstyleMain checkstyleClient checkstyleGametest \
     || fail "compile or checkstyle"
 else
   echo "pre-push: no Gradle input changed in the pushed range, skipping compile, checkstyle and gate checks (CI runs them)" >&2
@@ -78,6 +100,6 @@ else
 fi
 if [[ $need_gradle -eq 1 ]]; then
   echo "pre-push: gate checks on fixtures (one Gradle run)" >&2
-  tools/py tools/tests/gate_checks.py \
+  with_gradle_lock tools/py tools/tests/gate_checks.py \
     || fail "gate checks"
 fi

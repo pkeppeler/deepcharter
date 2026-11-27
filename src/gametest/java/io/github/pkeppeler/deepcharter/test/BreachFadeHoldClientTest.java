@@ -5,10 +5,17 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.layer.FadeHold;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import java.util.ArrayList;
+import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.sounds.SoundEventListener;
+import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundEvents;
 
 /**
  * Client GameTest of the breach fade's hold (#1185, ADR 0089): the fade stays black from the end of its black stretch while the client
@@ -28,6 +35,7 @@ public class BreachFadeHoldClientTest implements FabricClientGameTest {
                     context, "the client in the world", client -> client.player != null && client.level != null);
             context.runOnClient(client -> {
                 BreachEffects.reset();
+                aCrossingSoundsAsTheCrustGivingWayNotAsAnExplosion(client);
                 holdsWhileLoadingAndReleasesWhenItFlips();
                 heldAtTheCapWhenNoRespawnComes();
                 aLateRespawnLiftsTheHoldOnceLoaded();
@@ -36,6 +44,23 @@ public class BreachFadeHoldClientTest implements FabricClientGameTest {
                 BreachEffects.reset();
             });
         }
+    }
+
+    /** A crossing plays the breach's own sound to the pilot, never the vanilla explosion it played before (#1293). */
+    private static void aCrossingSoundsAsTheCrustGivingWayNotAsAnExplosion(Minecraft client) {
+        List<Identifier> started = new ArrayList<>();
+        SoundEventListener listener = (sound, events, range) -> started.add(sound.getIdentifier());
+        client.getSoundManager().addListener(listener);
+        BreachEffects.reset();
+        BreachEffects.begin(true);
+        client.getSoundManager().removeListener(listener);
+        BreachEffects.reset();
+        require(
+                started.contains(DeepSound.BREACH_RUMBLE.event().location()),
+                "A crossing should play " + DeepSound.BREACH_RUMBLE.event().location() + ", it started " + started);
+        require(
+                !started.contains(SoundEvents.GENERIC_EXPLODE.value().location()),
+                "A crossing should not play the vanilla explosion, it started " + started);
     }
 
     private static int blackEnd() {

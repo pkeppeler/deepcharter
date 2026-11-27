@@ -11,6 +11,7 @@ public final class PodClientInit {
         PodClientRegistry.register();
         PodPaint.init();
         PodStatusHud.init();
+        PodChase.init();
         CockpitHud.init();
         FrontCameraFeed.init();
         LowFuelBeep.init();
@@ -18,6 +19,8 @@ public final class PodClientInit {
         PilotFire.init();
         LiningKeys.register();
         SonarKeys.register();
+        PodScreenKeys.register();
+        PodDumpKeys.register();
         SonarHud.init();
         SonarMarksHud.init();
     }
