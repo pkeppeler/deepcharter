@@ -94,7 +94,7 @@ public final class PodMenu extends SlottedMenu {
     private static final int OCCUPIED = 2;
     private static final int FUEL_TENTHS = 3;
     private static final int TANK_TENTHS = 4;
-    private static final int MASS = 5;
+    private static final int MASS_TENTHS = 5;
     private static final int SPOIL = 6;
     private static final int BRICKS = 7;
     private static final int HOPPER = 8;
@@ -303,9 +303,9 @@ public final class PodMenu extends SlottedMenu {
         return data.get(TANK_TENTHS);
     }
 
-    /** The hold's mass, whole units. */
-    public int mass() {
-        return data.get(MASS);
+    /** The hold's mass, in tenths of a pod unit. */
+    public int massTenths() {
+        return data.get(MASS_TENTHS);
     }
 
     /** The spoil in the hopper, or -1 for a pod with no hopper fitted. */
@@ -591,7 +591,7 @@ public final class PodMenu extends SlottedMenu {
                             * PodStats.of(pod).tankLitres()
                             * 10f);
                 case TANK_TENTHS -> Math.round(PodStats.of(pod).tankLitres() * 10f);
-                case MASS -> OreEncumbrance.shown(pod.cargoMass());
+                case MASS_TENTHS -> OreEncumbrance.tenths(pod.cargoMass());
                 case SPOIL ->
                     PodLining.readable(pod).map(PodLining.State::spoil).orElse(0);
                 case BRICKS ->
