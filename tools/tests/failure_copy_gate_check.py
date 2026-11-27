@@ -1,7 +1,7 @@
 """Tests the failure-copy gate in gradle/gametest.gradle.kts: a test class that declares its own `failure(...)` or `fail(...)`, or an `expect(...)` or `require(...)` over a boolean, with or without a GameTestHelper, fails the build, because test/support/Failures has them.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
-repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build-checks CI job and the pre-push hook run it.
 Usage: tools/py tools/tests/gate_checks.py failure_copy
 """
 import unittest

@@ -10,6 +10,7 @@ WORKFLOWS = Path(__file__).resolve().parents[2] / ".github/workflows"
 # (workflow, job, the job that picks main)
 PINNED = [
     ("ci.yml", "build", "setup"),
+    ("ci.yml", "checks", "setup"),
     ("ci.yml", "tool-tests", "setup"),
     ("client-tests.yml", "client-shard", "changes"),
 ]

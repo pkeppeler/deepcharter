@@ -81,19 +81,10 @@ jobs:
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
         with:
           main-sha: ${{ needs.changes.outputs.main-sha }}
-      # The shard's merged main sha, for the aggregate (a matrix job's output holds one shard's value, so a file per shard).
-      # Uploaded before the tests so a failed shard still hands it over.
-      - env:
-          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
-        run: echo "$MAIN_SHA" > "$RUNNER_TEMP/main-sha-${{ matrix.shard }}"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - uses: ./.github/actions/upload-merged-main
         with:
-          name: merged-main-${{ matrix.shard }}
-          # A re-run uploads the same name again, which v4+ rejects without this. After `--failed` the aggregate
-          # reads the earlier sha of each shard that did not re-run; if main moved, the shas differ and it fails.
-          overwrite: true
-          path: ${{ runner.temp }}/main-sha-${{ matrix.shard }}
-          retention-days: 1
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: ${{ matrix.shard }}
       - uses: ./.github/actions/client-gametest
         with:
           client-shard: ${{ matrix.shard }}/${{ env.CLIENT_SHARDS }}
