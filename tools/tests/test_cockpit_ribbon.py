@@ -355,6 +355,45 @@ def tallest_hole(rows) -> int:
     return tallest
 
 
+class Digits(unittest.TestCase):
+    """The altimeter's pixel digits (#1539): the sheet and the theme's glyph sizes agree, and the longest reading is small and fits its recess in the band."""
+
+    SHEET = ASSETS / "textures/gui/cockpit/digits.png"
+
+    def test_the_sheet_is_as_big_as_the_theme_says(self):
+        wide, narrow = cockpit_ribbon.WIDE_GLYPHS, cockpit_ribbon.NARROW_GLYPHS
+        self.assertEqual((len(wide) * THEME["digitsW"] + len(narrow) * THEME["digitsNarrowW"], THEME["digitsH"]), png_size(self.SHEET))
+
+    def test_every_glyph_of_the_sheet_has_a_bitmap_of_its_size_with_something_lit(self):
+        for glyph in cockpit_ribbon.WIDE_GLYPHS + cockpit_ribbon.NARROW_GLYPHS:
+            rows = cockpit_ribbon.GLYPHS[glyph]
+            width = THEME["digitsW"] if glyph in cockpit_ribbon.WIDE_GLYPHS else THEME["digitsNarrowW"]
+            with self.subTest(glyph=glyph):
+                self.assertEqual(THEME["digitsH"], len(rows))
+                self.assertEqual({width}, {len(row) for row in rows})
+                self.assertTrue(any("#" in row for row in rows))
+
+    def test_the_glyphs_of_the_reading_are_all_in_the_sheet(self):
+        lang = json.loads((ROOT / "src/lang/en_us/breach.json").read_text(encoding="utf-8"))
+        for char in "-12,345" + lang["deepcharter.breach.altimeter"].replace("%s", ""):
+            with self.subTest(char=char):
+                self.assertTrue(char == " " or char in cockpit_ribbon.GLYPHS, "the client refuses a character with no glyph")
+
+    def test_the_recess_is_the_longest_reading_and_a_pixel_each_side_and_the_glyphs_sit_in_its_height(self):
+        self.assertEqual(37, cockpit_ribbon.LONGEST_READING_W)
+        self.assertEqual(40, cockpit_ribbon.RECESS_W, "37 and a pixel each side is 39, made even so the centred band keeps its bars on whole pixels")
+        self.assertGreaterEqual(cockpit_ribbon.RECESS_W - cockpit_ribbon.LONGEST_READING_W, 2, "a pixel each side at least")
+        self.assertEqual(cockpit_ribbon.RECESS_Y + 1, THEME[STYLE + "AltimeterY"])
+        self.assertEqual(cockpit_ribbon.RECESS_Y + cockpit_ribbon.RECESS_H - 1, THEME[STYLE + "AltimeterY"] + THEME["digitsH"])
+
+    def test_a_character_with_no_glyph_is_refused_as_the_client_does(self):
+        with self.assertRaises(ValueError):
+            cockpit_ribbon.digits_width("12 m")
+
+    def test_the_digits_are_smaller_than_the_font_they_replace(self):
+        self.assertLess(THEME["digitsH"], THEME["titleTextHeight"], "the font's capitals are 7 pixels tall")
+
+
 class Coverage(unittest.TestCase):
     def test_the_status_is_under_the_budget_and_smaller_than_the_scanner(self):
         screen = cockpit_ribbon.SCREEN_W * cockpit_ribbon.SCREEN_H

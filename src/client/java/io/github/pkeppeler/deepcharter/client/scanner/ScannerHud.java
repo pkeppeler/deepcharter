@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.client.ui.PixelDigits;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.EchoedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
@@ -35,8 +36,6 @@ public final class ScannerHud {
     private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
     private static final int TITLE_HEIGHT = 10;
     private static final int FRAME = 1;
-    /** Half the width the altimeter ({@code BreachHud}, top centre) can take: "-12,345 ft." is 66 pixels at GUI scale 1. */
-    private static final int ALTIMETER_HALF_WIDTH = 36;
     /** GUI pixels kept clear between the altimeter and the panel. */
     private static final int ALTIMETER_GAP = 4;
 
@@ -80,7 +79,12 @@ public final class ScannerHud {
      */
     public static int cellSize(int guiWidth, int guiHeight, ScanArea area) {
         ScannerLook look = ScannerLook.current();
-        int clearOfAltimeter = guiWidth / 2 + ALTIMETER_HALF_WIDTH + ALTIMETER_GAP;
+        int altimeterHalfWidth = (PixelDigits.width(
+                                PixelDigits.LONGEST_READING,
+                                CockpitLook.current().digits())
+                        + 1)
+                / 2;
+        int clearOfAltimeter = guiWidth / 2 + altimeterHalfWidth + ALTIMETER_GAP;
         int fitWidth = (guiWidth - look.margin() - 2 * FRAME - clearOfAltimeter) / area.columns();
         int fitHeight = (guiHeight - 2 * (look.margin() + FRAME) - TITLE_HEIGHT) / area.rows();
         return Math.max(1, Math.min(look.cellPixels(), Math.min(fitWidth, fitHeight)));

@@ -6,7 +6,9 @@ import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.client.ui.PixelDigits;
 import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +21,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * The altimeter, top centre (the pod readout is top left), always on screen while in a world. Then the
+ * The altimeter, top centre (the pod readout is top left), always on screen while in a world, in the cockpit's pixel digits (#1539, {@link CrtDraw#pixelDigits}). Then the
  * breach fade over the whole HUD. The transmission of a crossing is drawn on top of it by the transmission feature.
  *
  * <p>The fade is a full blackout, so it is registered when the client has started, after every mod's
@@ -41,7 +43,7 @@ public final class BreachHud {
     }
 
     /** The altimeter's reading as it is drawn, and the box it covers. */
-    private record Reading(Component text, HudKeepClear.Rect box) {}
+    private record Reading(String text, HudKeepClear.Rect box) {}
 
     /**
      * The altimeter on a GUI {@code guiWidth} x {@code guiHeight} with {@code jitter} on it: top centre, or in the ribbon's recess in the
@@ -55,8 +57,10 @@ public final class BreachHud {
         }
         return CockpitHud.altimeter(
                         client, guiWidth, guiHeight, Altimeter.reading(client.level, client.player.getBlockY()))
+                .map(Component::getString)
                 .map(text -> {
-                    int width = client.font.width(text);
+                    CockpitLook.Digits digits = CockpitLook.current().digits();
+                    int width = PixelDigits.width(text, digits);
                     int top = CockpitHud.seated(client, guiWidth, guiHeight)
                             .map(CockpitLook.Layout::altimeterY)
                             .orElse(HudLook.current().altimeterMargin());
@@ -67,7 +71,7 @@ public final class BreachHud {
                                     (guiWidth - width) / 2 + jitter.x(),
                                     top + jitter.y(),
                                     width,
-                                    client.font.lineHeight));
+                                    digits.height()));
                 });
     }
 
@@ -81,12 +85,13 @@ public final class BreachHud {
     public static void extractAltimeter(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         reading(client, graphics.guiWidth(), graphics.guiHeight(), BreachEffects.jitter())
-                .ifPresent(reading -> graphics.text(
-                        client.font,
+                .ifPresent(reading -> CrtDraw.pixelDigits(
+                        graphics,
                         reading.text(),
                         reading.box().x(),
                         reading.box().y(),
-                        HudLook.current().altimeterColor()));
+                        HudLook.current().altimeterColor(),
+                        CockpitLook.current().digits()));
     }
 
     private static void extractBreach(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
