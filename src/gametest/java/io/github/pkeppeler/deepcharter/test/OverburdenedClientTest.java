@@ -99,9 +99,10 @@ public class OverburdenedClientTest implements FabricClientGameTest {
             require(
                     lines.equals(List.of(
                             ore.getHoverName().getString(),
+                            "Mass 20",
                             "Heavy: it slows you while you carry it.",
                             "Won't stack. Haul it in your pod's cargo bay.")),
-                    "an ore tooltip should say it is heavy and where to haul it, listed " + lines);
+                    "an ore tooltip should give its mass, say it is heavy and where to haul it, listed " + lines);
         }
     }
 }
