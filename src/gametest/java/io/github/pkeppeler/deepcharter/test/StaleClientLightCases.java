@@ -98,7 +98,8 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
      */
     final void layerTrials(ClientGameTestContext context, TestServerContext server, int part) {
         if (TRIALS % TRIAL_PARTS != 0) {
-            throw new IllegalStateException("TRIALS (" + TRIALS + ") is not a multiple of TRIAL_PARTS (" + TRIAL_PARTS + "): a trial would run in no class");
+            throw new IllegalStateException("TRIALS (" + TRIALS + ") is not a multiple of TRIAL_PARTS (" + TRIAL_PARTS
+                    + "): a trial would run in no class");
         }
         int perPart = TRIALS / TRIAL_PARTS;
         for (int trial = part * perPart; trial < (part + 1) * perPart; trial++) {
