@@ -11,8 +11,8 @@
     {
       "type": "deepcharter:layer_rows",
       "layer": 1,
-      "min": 10,
-      "max": 150
+      "min": 128,
+      "max": 191
     },
     {
       "type": "minecraft:environment_scan",

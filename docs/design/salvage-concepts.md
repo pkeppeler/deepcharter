@@ -24,8 +24,8 @@ The test `aNewPlayerReachesTheFirstCraftingGoalsFromSalvageAndStalksAlone` walks
 
 1. A crate's planks complete the first directive. A stalk presses into 4 planks; two stalks give 8.
 2. Sticks, a crafting table, the five stone tools from regolith rock, and a furnace from 8 more.
-3. Scrap iron (5) and scrap copper (4) are melted with the planks as fuel; the first ingot completes `smelt_iron`.
-4. A third stalk chars to charcoal. A torch is charcoal and a stick; a lantern is the torch ringed with iron nuggets.
+3. A third stalk chars to charcoal, which completes `smelt_charcoal` (charcoal also refuels the Mole by hand). Scrap iron (5) and scrap copper (4) are melted with the planks as fuel; the first ingot completes `smelt_iron`.
+4. A torch is the charcoal and a stick; a lantern is the torch ringed with iron nuggets.
 5. The pump motor and the fuel valve are crafted from iron, copper and redstone, and put into the fuel pump, which comes back online.
 
 `theWholeRepairChainIsWithinReachOfTheCratesAlone` does the same for all four colony terminals from 60 crates. They need 23 iron, 21 copper and 13 redstone in all; 60 crates hold 63 scrap iron, 63 scrap copper and 28 redstone. The redstone is the scarce one (about half a dust to a crate), so the chain takes about 26 crates on average. A survey of 12 chunks round the colony finds 160 crates.
