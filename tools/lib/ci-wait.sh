@@ -20,9 +20,10 @@ wait_ci() {
 
 # rerun_ci <pr> <sha> [<workflow|job|optional>...]: re-run the workflow runs holding the given jobs; by default the
 # jobs whose `merged-main` record the gate reads (build, tool-tests and, when it ran, client-gametest; each merges the
-# live main itself). The `client-gametest` aggregate is matched, not a shard: it sits in the same `Client tests` run as
-# every `client-gametest-shard <i>` job (#1079), is skipped exactly when the shards are, and is the legacy single job in
-# CI from before sharding. Never a single job: a job re-run copies the run's other finished jobs without their
+# live main itself or records what its shards merged). The aggregates `build` and `client-gametest` are matched, not a shard:
+# `build` sits in the same `CI` run as every `build-shard <i>` job and `build-checks` (#1327), `client-gametest` in the same
+# `Client tests` run as every `client-gametest-shard <i>` job (#1079); each is skipped exactly when its shards are, and is the
+# legacy single job in CI from before sharding. Never a single job: a job re-run copies the run's other finished jobs without their
 # annotations, so the gate calls the base stale again (#1094).
 # Per job it takes the newest non-skipped one across the head sha's runs (#1092), then re-runs each distinct run whole.
 # Returns 1 and sets $rerun_err when a non-optional job has no such job, a listing fails or the API refuses a re-run.

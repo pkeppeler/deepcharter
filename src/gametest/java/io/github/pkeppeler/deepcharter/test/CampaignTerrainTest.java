@@ -78,8 +78,14 @@ public class CampaignTerrainTest {
             "deepcharter:basalt_outcrop",
             "deepcharter:salvage_crate",
             "deepcharter:fungal_stalk");
-    /** The cave stalks of layer 1's first zone are the one thing besides rock that its biomes place. */
+    /**
+     * The stalk blocks, ordinary and great, that layer 1's first zone grows (#1401) besides its rock and what
+     * {@link #CLAIM_SHAFT_BLOCKS} lists, and that layer 3's Garden grows too.
+     */
     private static final String STALK = "deepcharter:fungal_stalk";
+
+    private static final String GREAT_STALK = "deepcharter:great_stalk";
+    private static final String GREAT_STALK_CAP = "deepcharter:great_stalk_cap";
     /**
      * Layer 1's rock by zone (#1277), and what its abandoned shafts and salvage caches put in it: rubble, timber, a
      * lunch pail, a prayer card, a crate, and the shafts' ladders and candle stubs, the two vanilla blocks the campaign
@@ -102,8 +108,8 @@ public class CampaignTerrainTest {
             COLUMNAR_BASALT,
             "deepcharter:glowcap",
             STALK,
-            "deepcharter:great_stalk",
-            "deepcharter:great_stalk_cap",
+            GREAT_STALK,
+            GREAT_STALK_CAP,
             "deepcharter:parasol_stem",
             "deepcharter:parasol_ring",
             "deepcharter:parasol_gills",
@@ -257,8 +263,8 @@ public class CampaignTerrainTest {
                 }
             }
         }
-        Set<String> layer1 =
-                new TreeSet<>(Set.of(PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", STALK));
+        Set<String> layer1 = new TreeSet<>(Set.of(
+                PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", STALK, GREAT_STALK, GREAT_STALK_CAP));
         layer1.addAll(CLAIM_SHAFT_BLOCKS);
         expectOnly(helper, found, CampaignBands.SURFACE, SURFACE_BLOCKS);
         expectOnly(helper, found, CampaignBands.LAYER_1, layer1);

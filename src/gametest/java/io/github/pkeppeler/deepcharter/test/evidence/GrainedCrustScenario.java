@@ -25,7 +25,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -62,6 +61,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
     private static final float FOOT_PITCH = 12f;
     private static final float LOOK_DOWN = 18f;
 
+    private int podId;
+
     @Override
     protected String name() {
         return "grained-crust";
@@ -87,6 +88,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 pod.setPos(X - 4, FLOOR_Y, Z + 0.5);
                 pod.setYRot(EAST);
                 one.addFreshEntity(pod);
+                podId = pod.getId();
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the player could not mount the pod");
                 }
@@ -400,22 +402,15 @@ public class GrainedCrustScenario extends EvidenceScenario {
         return TestLayers.level(server, 1);
     }
 
-    private static PodEntity pod(MinecraftServer server) {
+    private PodEntity pod(MinecraftServer server) {
         return server.getPlayerList().getPlayers().getFirst().getVehicle() instanceof PodEntity pod
                 ? pod
                 : podOnTheFloor(server);
     }
 
-    /**
-     * The one pod of the room, when the player is out of it. Asked of the room, not of the level: layer 1 is a band of the
-     * overworld, which also holds the colony's derelict Mole, a wreck nobody can mount (#1373).
-     */
-    private static PodEntity podOnTheFloor(MinecraftServer server) {
-        AABB room = new AABB(
-                ROOM_WEST, FLOOR_Y - 1, Z - HALF_WIDTH, ROOM_EAST + 1, FLOOR_Y + HEIGHT + 1, Z + HALF_WIDTH + 1);
-        return level(server).getEntitiesOfClass(PodEntity.class, room).stream()
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("no pod in the grained-crust room"));
+    /** The scenario's own pod, when the player is out of it; the colony's wreck pod shares the level (#1417). */
+    private PodEntity podOnTheFloor(MinecraftServer server) {
+        return TestEntities.require(level(server), podId, PodEntity.class);
     }
 
     /** True while the cell against the wall, at the end of the water's channel, holds a fluid. */
@@ -427,7 +422,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
                         .isEmpty());
     }
 
-    private static float refill(TestSingleplayerContext singleplayer) {
+    private float refill(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
             PodEntity pod = pod(server);
             pod.setHull(pod.maxHull());
@@ -436,11 +431,11 @@ public class GrainedCrustScenario extends EvidenceScenario {
         });
     }
 
-    private static float podHull(TestSingleplayerContext singleplayer) {
+    private float podHull(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> pod(server).hull());
     }
 
-    private static double podX(TestSingleplayerContext singleplayer) {
+    private double podX(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> pod(server).getX());
     }
 
