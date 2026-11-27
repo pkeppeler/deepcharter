@@ -25,9 +25,17 @@ touches_gradle_inputs() { # <local sha> <remote sha>; an unknown base counts as 
   else
     base=$2
   fi
-  files=$(git -C "$root" diff --name-only "$base" "$1" 2>/dev/null) || return 0
+  files=$(git -C "$root" diff --name-only --no-renames "$base" "$1" 2>/dev/null) || return 0
   grep -qE "$gradle_inputs" <<<"$files"
 }
+# Build time budget in seconds, printed once the lock is held (measured on a warm cache, see docs/tooling/pre-push-hook.md).
+budget_warm=120
+budget_cold=600
+# The fast part of CI's build: every source set compiles, spotless, generateGametestModJson and the source-scanning gates. Checkstyle,
+# buildHealth, the jars and the slower gates are CI's (`check` runs them all).
+gradle_tasks=(compileJava compileClientJava compileGametestJava spotlessCheck generateGametestModJson
+  checkColourGate checkConstantParams checkEntityQueryGate checkEnumSwitchGate checkFixedPosGate checkInputLiteralGate
+  checkKeepClearGate checkLang checkNullMarkedGate checkOrphanCommentGate checkRecordHolderGate)
 need_checks=0
 need_gradle=0
 while read -r _ local_sha remote_ref remote_sha || [[ -n ${local_sha:-} ]]; do
@@ -46,7 +54,7 @@ cd "$root"
 # Git exports GIT_DIR and its siblings to a hook; a test that runs git in a temp repo must not inherit them.
 unset "${!GIT_@}"
 fail() {
-  echo "pre-push: $1 failed. Fix it, or skip the hook once with: git push --no-verify" >&2
+  echo "pre-push: $1 failed. Fix it. --no-verify is for the cases docs/tooling/pre-push-hook.md lists" >&2
   exit 1
 }
 # Gradle runs under the clone's shared slot lock, so the hook and the agents queue instead of racing. DEEPCHARTER_GRADLE_LOCK overrides the
@@ -56,18 +64,31 @@ if [[ -z $gradle_lock ]] && common=$(git rev-parse --git-common-dir 2>/dev/null)
   gradle_lock=$common/gradle-slot.lock
 fi
 # -o: the Gradle client and daemon do not inherit the lock fd. -w: give up after DEEPCHARTER_GRADLE_LOCK_WAIT seconds (exit 200) rather than hang.
+# Exit code of a failed lock step, so the Gradle pipeline can tell it from a failed build (the lock step has already printed why).
+lock_failed=3
 gradle_lock_wait=${DEEPCHARTER_GRADLE_LOCK_WAIT:-1800}
 with_gradle_lock() { # with_gradle_lock <command>...
   if [[ -z $gradle_lock ]] || ! command -v flock >/dev/null 2>&1; then "$@"; return; fi
   if ! { : >>"$gradle_lock"; } 2>/dev/null; then
     echo "pre-push: cannot open the Gradle lock file $gradle_lock. Fix its path or permissions, or skip the hook once with: git push --no-verify" >&2
-    exit 1
+    exit "$lock_failed"
   fi
+  # An ancestor already running under `flock <this lock>` is the pushing agent itself: waiting for it would hang until the timeout.
+  local pid=$$ args
+  while [[ -n $pid && $pid -gt 1 ]]; do
+    args=$(ps -o args= -p "$pid" 2>/dev/null || true)
+    if [[ $args == *flock*"$gradle_lock"* ]]; then
+      echo "pre-push: the process pushing already holds the Gradle lock $gradle_lock (a push inside flock), so the hook would wait for itself." \
+        "Push without holding the lock, outside the flock command." >&2
+      exit "$lock_failed"
+    fi
+    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+  done
   local rc=0
   flock -o -w "$gradle_lock_wait" -E 200 "$gradle_lock" "$@" || rc=$?
   if [[ $rc -eq 200 ]]; then
     echo "pre-push: timed out after $gradle_lock_wait s waiting for the Gradle lock $gradle_lock. Retry later, or skip the hook once with: git push --no-verify" >&2
-    exit 1
+    exit "$lock_failed"
   fi
   return "$rc"
 }
@@ -75,11 +96,26 @@ echo "pre-push: conflict markers" >&2
 tools/py tools/tests/conflict_markers.py \
   || fail "conflict markers"
 if [[ $need_gradle -eq 1 ]]; then
-  echo "pre-push: compile and checkstyle (waits if another Gradle build holds the lock; Ctrl-C and push with --no-verify to skip)" >&2
-  with_gradle_lock ./gradlew -q compileJava compileClientJava compileGametestJava checkstyleMain checkstyleClient checkstyleGametest \
-    || fail "compile or checkstyle"
+  # The fast part of CI's build in one Gradle run. Gradle skips up-to-date tasks, so a warm run redoes only what the branch changed.
+  echo "pre-push: Gradle checks (compile, spotless, gate tasks); waits if another Gradle build holds the lock. Ctrl-C and push with" \
+    "--no-verify to skip." >&2
+  gradle_log=$(mktemp)
+  trap 'rm -f "$gradle_log"' EXIT
+  rc=0
+  # The budget is printed inside the lock, so the lock wait is not part of it.
+  with_gradle_lock bash -c 'echo "pre-push: Gradle budget about $1 s warm, up to $2 s on a cold daemon or cache (the lock wait is not counted)" >&2
+    shift 2
+    exec ./gradlew --console=plain "$@"' _ "$budget_warm" "$budget_cold" "${gradle_tasks[@]}" 2>&1 \
+    | tee "$gradle_log" >&2 || rc=${PIPESTATUS[0]}
+  if [[ $rc -eq $lock_failed ]]; then exit 1; fi
+  if [[ $rc -ne 0 ]]; then
+    failed_task=$(grep -oE "^> Task [^ ]+ FAILED|Execution failed for task '[^']+'" "$gradle_log" | head -n 1 \
+      | sed -E "s/^> Task ([^ ]+) FAILED/\1/; s/^Execution failed for task '([^']+)'/\1/" || true)
+    fail "Gradle task ${failed_task:-(none named, see the Gradle output above)}"
+  fi
+  echo "pre-push: Gradle checks passed" >&2
 else
-  echo "pre-push: no Gradle input changed in the pushed range, skipping compile, checkstyle and gate checks (CI runs them)" >&2
+  echo "pre-push: no Gradle input changed in the pushed range, skipping the Gradle checks and gate checks (CI runs them)" >&2
 fi
 echo "pre-push: tool unit tests" >&2
 tools/py -m unittest discover -s tools/tests -p 'test_*.py' \
