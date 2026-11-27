@@ -36,7 +36,7 @@ FILES = {
     "gradle/client-test-weights.txt": "OneClientTest 40\nTwoClientTest 40\nThreeClientTest 40\n",
     "gradle/ci-budget.txt": "server-shard-seconds 100\nclient-shard-seconds 100\n",
 }
-FULL = {"server": 15, "client": 30}
+FULL = {"server": 15, "client": 29}
 
 
 def plan(changed: list[str], head_ref: str = "1-slug", labels: tuple[str, ...] = (), files: dict[str, str] | None = None) -> dict[str, str]:
@@ -165,7 +165,7 @@ class FallBackTest(unittest.TestCase):
 
 
 class RealTreeTest(unittest.TestCase):
-    full = (15, 30)
+    full = (15, 29)
 
     def real(self, changed: list[str], **kwargs: object) -> dict[str, str]:
         return affected.plan(changed, kwargs.get("head_ref", "1-slug"), set(), *self.full)  # type: ignore[arg-type]
@@ -176,7 +176,7 @@ class RealTreeTest(unittest.TestCase):
 
     def test_a_batch_runs_every_shard(self):
         result = self.real(["docs/design/mechanics.md"], head_ref="batch/20261127T101500Z")
-        self.assertEqual(("15", "30"), (result["server-count"], result["client-count"]))
+        self.assertEqual(("15", "29"), (result["server-count"], result["client-count"]))
 
     def test_a_changed_server_test_class_runs_at_least_that_class(self):
         test = next((REPO / "src/gametest/java").rglob("PodDrillTest.java"))

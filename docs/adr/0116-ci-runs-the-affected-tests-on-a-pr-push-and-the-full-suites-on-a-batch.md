@@ -4,7 +4,7 @@ status: accepted
 
 # CI runs the affected tests on a PR push and the full suites on a batch
 
-Issue #1592, part 2 of #1574. [ADR 0115](0115-no-ci-job-runs-longer-than-five-minutes.md) cut every suite into shards that fit five minutes: 30 client shards, 15 server shards, 8 tool-test parts, a compile job each for CI and the client suite, and the aggregates, about 50 jobs. Run on every PR push, that is more than the account's concurrent-job cap allows more than one PR at a time, and most pushes change one class.
+Issue #1592, part 2 of #1574. [ADR 0115](0115-no-ci-job-runs-longer-than-five-minutes.md) cut every suite into shards that fit five minutes: 29 client shards, 15 server shards, 8 tool-test parts, a compile job each for CI and the client suite, and the aggregates, about 50 jobs. Run on every PR push, that is more than the account's concurrent-job cap allows more than one PR at a time, and most pushes change one class.
 
 ## Decision
 
@@ -21,7 +21,7 @@ GitHub's usage-limits table allows 20 concurrent jobs on the Free plan, 40 on Pr
 | Run | Jobs | Peak at once |
 | --- | --- | --- |
 | Full `CI` (batch) | plan, compile, 8 tool parts and gates, 15 server shards, checks, aggregates | about 10 (shards in waves of 6) |
-| Full `Client tests` (batch) | changes, compile, 30 client shards, aggregate | 10 (waves of 10) |
+| Full `Client tests` (batch) | changes, compile, 29 client shards, aggregate | 10 (waves of 10) |
 | PR tier, one class changed | plan, compile, 8 tool parts and gates, checks, 1 server shard, aggregates, and the client suite's 3 jobs when it selects a class | about 12 |
 | PR tier, docs only | plan, 8 tool parts and gates, aggregates (the compile job runs, the shards do not) | about 10 |
 

@@ -5,6 +5,7 @@
 # drop a test. Refresh from green client job logs when the shard wall times drift apart, and average two or more runs, so one loaded runner does not skew a class.
 # Refreshed (#1553) from the five-shard CI run 46042722092 (head 7b52fef1): the START-to-next-START seconds of each class, applied where the old weight was off by more than 15%; the others keep their older means. StaleClientLightClientTest measured 286 (shard 1 ran 821 s against 616-783 s for the rest); the old 195 and 220 were too low. Expected shard totals: 669, 668, 667, 667, 667.
 # Split (#1574): StaleClientLightClientTest (286 s) became it plus three StaleClientLightTrials*ClientTest classes, and HandBreakClientTest (163 s) became it plus HandBreakIronClientTest, so no class outruns a shard (gradle/ci-budget.txt). The new weights are estimates: the old time split by the cases each runs, plus a world's start-up each; refresh from the first CI run.
+# Refreshed (#1574) from the client jobs of this change's first CI runs (runs 46059180670, 46061730162, 46067559615: START-to-next-START seconds, the last class of a shard to the end of its run): a listed class that moved by more than 15% over two runs or more, every class not listed that took 5 s or more. PodDriveSmoothClientTest took 153 s and 158 s on two runs against 121 s before, so it is split into PodDriveSmoothClientTest (the server's pushes, teleports, coast and pin) and PodDriveSmoothDrivesClientTest (the jittered drives), estimated at 85 and 70 s; HandBreakIronClientTest is estimated from HandBreakClientTest's 104 s and the old 163 s whole.
 # Any class named ...Scenario not listed counts 1 s, not 10: an evidence scenario returns at once without DEEPCHARTER_EVIDENCE (GametestScan.SCENARIO_CLIENT_WEIGHT).
 # BoreTripsClientTest: one CI run (45741859329, #1418), which added a settle to two of its trips; refresh from CI.
 # PodDriveLateClientTest and PodDriveSmoothClientTest: the mean over CI runs 45808423857 and 45806374168, not the two runs above.
@@ -17,7 +18,7 @@ BeamsClientTest 16
 BlockReadoutClientTest 21
 BoreTripsClientTest 124
 BreachCrossingClientTest 15
-BreachFadeHoldClientTest 12
+BreachFadeHoldClientTest 18
 BreachHudTest 17
 BreachVoidClientTest 74
 CampaignWorldClientTest 78
@@ -31,6 +32,7 @@ CavernSkyClientTest 38
 CharterCoreClientTest 26
 CockpitHudClientTest 36
 CockpitTitlesClientTest 19
+ContinuityClientTest 29
 ContinuityPackClientTest 101
 ContractTerminalClientTest 12
 CrtTitleCornerClientTest 68
@@ -41,8 +43,8 @@ FarChunksReleaseClientTest 10
 FloodlightBeamsClientTest 11
 FrontCameraClientTest 36
 FuelPumpClientTest 14
-HandBreakClientTest 88
-HandBreakIronClientTest 80
+HandBreakClientTest 104
+HandBreakIronClientTest 65
 HandbookScreenClientTest 13
 HangarClientTest 14
 HotHullClientTest 21
@@ -53,7 +55,7 @@ LayerAtmosphereClientTest 81
 LayerConceptsClientTest 28
 NoVanillaAdvancementsClientTest 13
 NotesClientTest 14
-OldWorldRefusedClientTest 17
+OldWorldRefusedClientTest 14
 OreProcessorClientTest 23
 OutpostClientTest 28
 OverburdenedClientTest 13
@@ -64,10 +66,12 @@ PencilSheetClientTest 1
 PlacementReadoutClientTest 22
 PodAttachmentClientTest 11
 PodBraceClientTest 22
+PodChaseClientTest 30
 PodComponentsClientTest 13
 PodDrillClientTest 18
 PodDriveLateClientTest 73
-PodDriveSmoothClientTest 121
+PodDriveSmoothClientTest 85
+PodDriveSmoothDrivesClientTest 70
 PodEngineSoundClientTest 24
 PodGeckoLibClientTest 12
 PodHeatShieldClientTest 25
@@ -77,9 +81,10 @@ PodLiningClientTest 13
 PodLoadClientTest 24
 PodLookFallbackClientTest 34
 PodMovementClientTest 21
-PodRotorPaintClientTest 13
+PodRotorPaintClientTest 5
+PodScreenClientTest 10
 PodSeatsClientTest 12
-PodShellClientTest 11
+PodShellClientTest 19
 PodSounderClientTest 9
 ProspectorChassisClientTest 22
 QuestMapClientTest 15
@@ -100,15 +105,16 @@ ScreenLayoutClientTest 17
 ScrollListClientTest 1
 SeamAdoptionClientTest 30
 SeamSwapClientTest 45
+SeatedTerminalsClientTest 20
 SkyClientTest 20
 SonarHudClientTest 31
 SoundWiringClientTest 45
 SpecSheetClientTest 27
-StaleClientLightClientTest 110
-StaleClientLightTrialsAClientTest 100
-StaleClientLightTrialsBClientTest 100
-StaleClientLightTrialsCClientTest 100
-StepToastClearOfHudClientTest 1
+StaleClientLightClientTest 28
+StaleClientLightTrialsAClientTest 82
+StaleClientLightTrialsBClientTest 81
+StaleClientLightTrialsCClientTest 71
+StepToastClearOfHudClientTest 18
 StepToastClearOfSonarClientTest 34
 StepToastClientTest 11
 StepToastPlaceClientTest 1

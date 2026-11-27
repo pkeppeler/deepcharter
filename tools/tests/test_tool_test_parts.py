@@ -40,16 +40,19 @@ class ToolTestPartsTest(unittest.TestCase):
         self.assertIn("tools/tests/gate_checks.py $CHECKS", gates[1])
         self.assertEqual(WORKFLOW.count("tools/tests/gate_checks.py"), 1)
         parts_of_gates = [int(n) for n in re.findall(r"- \{ part: (\d+), checks:", gates[1])]
-        self.assertEqual([len(matrix()) + 1, len(matrix()) + 2], parts_of_gates)
+        self.assertEqual(list(range(len(matrix()) + 1, len(matrix()) + 1 + len(parts_of_gates))), parts_of_gates)
 
-    def test_the_two_gate_check_jobs_together_run_every_check_once(self):
-        # The first job names the checks it runs, the second runs every check but those: the union is the whole list.
+    def test_the_gate_check_jobs_together_run_every_check_once(self):
+        # Some jobs name the checks they run, the last runs every check but those: the union is the whole list.
         gates = re.search(r"^  tool-gates:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)[1]
-        named = re.search(r'checks: "([a-z_ ]+)" \}', gates)[1].split()
-        left_out = re.search(r'checks: "--except ([a-z_ ]+)" \}', gates)[1].split()
-        self.assertEqual(sorted(named), sorted(left_out), "the second job must leave out exactly what the first runs")
-        every = re.search(r"CHECKS = \(([^)]*)\)", (REPO / "tools/tests/gate_checks.py").read_text())[1]
-        self.assertTrue(set(named) <= set(re.findall(r'"(\w+)"', every)), "the first job names a check gate_checks.py does not have")
+        named = [c.split() for c in re.findall(r'checks: "([a-z_ ]+)" \}', gates)]
+        left_out = re.findall(r'checks: "--except ([a-z_ ]+)" \}', gates)
+        self.assertEqual(1, len(left_out), "one job runs the rest")
+        every = re.findall(r'"(\w+)"', re.search(r"CHECKS = \(([^)]*)\)", (REPO / "tools/tests/gate_checks.py").read_text())[1])
+        flat = [name for names in named for name in names]
+        self.assertEqual(sorted(flat), sorted(left_out[0].split()), "the last job must leave out exactly what the others run")
+        self.assertEqual(len(flat), len(set(flat)), "a check runs in two jobs")
+        self.assertTrue(set(flat) <= set(every), "a job names a check gate_checks.py does not have")
 
     def test_the_parts_hand_their_main_sha_over_in_artifacts_the_builds_aggregate_does_not_read(self):
         # tools/ci-shard-main.sh (main's copy) counts main-sha-<n> files in one directory, so the parts use their own artifacts.
@@ -58,8 +61,10 @@ class ToolTestPartsTest(unittest.TestCase):
         self.assertNotIn("merged-main-tool", WORKFLOW)
 
     def test_the_aggregate_waits_for_every_part_and_the_gate_checks(self):
-        self.assertIn(f'ci-shard-main.sh "$RUNNER_TEMP/shard-main" {len(matrix()) + 2}', WORKFLOW)
+        gate_jobs = len(re.findall(r"- \{ part: \d+, checks:", WORKFLOW))
+        self.assertIn(f'ci-shard-main.sh "$RUNNER_TEMP/shard-main" {len(matrix()) + gate_jobs}', WORKFLOW)
         self.assertIn("needs: [tool-part, tool-gates]", WORKFLOW)
+        self.assertIn("needs.tool-gates.result", WORKFLOW)
 
     def test_every_test_file_is_in_exactly_one_part_and_no_part_is_empty(self):
         for kind, pattern in parts.KINDS.items():
