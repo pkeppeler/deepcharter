@@ -28,8 +28,6 @@ import org.jspecify.annotations.Nullable;
  * limit {@link PodLoad} reads for a pod fitted with that part.
  */
 public class PartLiftTooltipTest {
-    private static final String LIFT_KEY = "item.deepcharter.part.lift";
-
     /** The text the stack's lift line shows, or null when it has none. */
     private static @Nullable String shownLift(ItemStack stack) {
         return PartLift.line(stack)
