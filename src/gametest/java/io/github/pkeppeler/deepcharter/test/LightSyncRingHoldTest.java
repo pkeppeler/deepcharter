@@ -116,10 +116,15 @@ public class LightSyncRingHoldTest {
                     if (each.tasks().isDone()) {
                         continue;
                     }
+                    // The light engine completes the tasks on its own thread, so the tasks can finish between the check
+                    // above and the read of a neighbour. Read the neighbour first and the tasks after: a done future
+                    // stays done, so a future still pending after a neighbour was seen sendable was pending when it
+                    // was seen.
                     ChunkPos.rangeClosed(each.chunk(), 1)
                             .filter(near -> !near.equals(each.chunk()))
                             .filter(near -> level.getChunkSource().chunkMap.getChunkToSend(near.pack()) != null)
                             .findFirst()
+                            .filter(early -> !each.tasks().isDone())
                             .ifPresent(early -> {
                                 throw failure(
                                         helper,

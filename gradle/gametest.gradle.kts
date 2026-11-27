@@ -84,6 +84,9 @@ object GametestScan {
 			?.let { "the constant " + it.groupValues[1] }
 	}
 
+	// A pin made by a test class exists only in the shard that holds it (#1482, #1586); outside support/ it is flagged or marked.
+	private val worldPin = Regex("""\bFarChunks\s*\.\s*pin\s*\(|\bColonyChunks\s*\.\s*force\s*\(|\bimport\s+static\s+[\w.]*\b(?:FarChunks\s*\.\s*(?:pin|\*)|ColonyChunks\s*\.\s*(?:force|\*))\s*;""")
+	private val inSupport = Regex("""(?:^|\.)support\.""")
 	// A synchronous chunk load on the server thread (getChunk or getChunkAt, which load or generate the chunk and wait
 	// for it) stalls the one thread that every server GameTest in the batch shares, so a test beside it makes no
 	// progress; the suite spent most of its time there (#1016, #1020). A server test or its support waits with
@@ -529,7 +532,8 @@ object GametestScan {
 		val serverEnvironments = mutableMapOf<String, Set<String>>()
 		var client = mutableListOf<String>()
 		val problems = mutableListOf<String>()
-		val siteTable = javaFiles.firstOrNull { it.name == SITE_TABLE }?.readText() ?: ""
+		// Only a tree that has the table is checked against it: the fixture trees of the other gates stage with no table (#1182).
+		val siteTable = javaFiles.firstOrNull { it.name == SITE_TABLE }?.readText()
 		val campaignEnvironments = javaFiles.filter { it.name == "CampaignEnvironments.java" }
 			.flatMap { file -> campaignEnvironmentName.findAll(file.readText()).map { it.groupValues[1] }.toList() }
 		for (source in javaFiles) {
@@ -600,6 +604,14 @@ object GametestScan {
 					}
 				}
 			}
+			if (!inSupport.containsMatchIn(className)) {
+				for (pin in worldPin.findAll(text)) {
+					val line = lineOf(text, pin.range.first)
+					if (!marked(markedNear, rawLines, line, FORCE_MARKER)) {
+						problems.add("$className:${line + 1} pins chunks for the world's life from a test class, and a server shard loads only the test classes it holds, so the pin is missing in every shard that does not hold this class (#1586: the colony pad was unpinned in three of four shards); register it from a test-mod entrypoint in test/support (like ColonyPadPin), which every shard loads, or mark a pin that only this class needs with '$FORCE_MARKER <reason>'")
+					}
+				}
+			}
 			if (!isClientSide && !className.contains(".test.evidence.")) {
 				for (load in chunkLoad.findAll(text)) {
 					val open = load.range.last
@@ -631,7 +643,7 @@ object GametestScan {
 			val isServer = gameTestAnnotation.containsMatchIn(text)
 			if (isServer && !isClientSide) {
 				fixedSite(text)?.let { staging ->
-					if (!siteTable.contains("\"$simpleName\"")) {
+					if (siteTable != null && !siteTable.contains("\"$simpleName\"")) {
 						problems.add("$className stages at a fixed place ($staging) but $SITE_TABLE (test/support) names no \"$simpleName\"; claim its block columns with claim or row so no other test shares them, or exempt it with the reason it needs no claim (#1182)")
 					}
 				}

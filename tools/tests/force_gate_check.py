@@ -37,7 +37,14 @@ public class ThroughFarChunksTest {
     public void forces(GameTestHelper helper) {
         FarChunks.force(helper, level, 3, 4);
         FarChunks.release(helper, level, 3, 4);
+    }
+}
+""",
+    "support/PinsInSupport.java": """
+public class PinsInSupport {
+    static void pins(ServerLevel level) {
         FarChunks.pin(level, 3, 4);
+        ColonyChunks.force(level, colony);
     }
 }
 """,
@@ -48,6 +55,9 @@ public class MarkedTest {
         // force-ok: the pad stays loaded for the world's lifetime
         level.setChunkForced(3, 4, true);
         level.setChunkForced(3, 4, true); // force-ok: same-line reason
+        FarChunks.pin(level, 3, 4); // force-ok: this class tests the pin
+        // force-ok: this class tests the pad pin
+        ColonyChunks.force(level, colony);
         level.getChunkSource().addTicketWithRadius(TicketType.FORCED, pos, 0); // force-ok: released in the finally below
     }
 }
@@ -76,6 +86,15 @@ VIOLATIONS = {
     "a method reference": "chunks.forEach(level::setChunkForced);",
     "a forced ticket": "level.getChunkSource().addTicketWithRadius(TicketType.FORCED, pos, 0);",
 }
+PINS = {
+    "a pin": "FarChunks.pin(level, 3, 4);",
+    "a pad pin": "ColonyChunks.force(level, colony);",
+    "a pad pin in a lambda": "ColonyEvents.BUILT.register((server, colony) -> ColonyChunks.force(server.overworld(), colony));",
+    "a static import of pin": "import static io.github.pkeppeler.deepcharter.test.support.FarChunks.pin;",
+    "a static import of force": "import static io.github.pkeppeler.deepcharter.test.support.ColonyChunks.force;",
+    "a wildcard static import": "import static io.github.pkeppeler.deepcharter.test.support.FarChunks.*;",
+    "a wrapped pin": "FarChunks\n            .pin(level, 3, 4);",
+}
 BARE = "// force-ok:\n        level.setChunkForced(3, 4, true);"
 IN_STRING = 'String note = "// force-ok: not a comment"; level.setChunkForced(3, 4, true);'
 NEXT_STATEMENT = "level.setChunkForced(3, 4, true);\n        int gap = 0; // force-ok: belongs to the next statement"
@@ -84,6 +103,7 @@ CLASS_LINE = "public class ForcesTest"
 # label: (file, class declaration, statement, line the gate reports)
 BAD = {
     **{f"violation/{label}": ("ForcesTest.java", CLASS_LINE, statement, 4) for label, statement in VIOLATIONS.items()},
+    **{f"pin/{label}": ("PinsTest.java", "public class PinsTest", statement, 4) for label, statement in PINS.items()},
     "marker/a bare marker": ("ForcesTest.java", CLASS_LINE, BARE, 5),
     "marker/a marker in a string": ("ForcesTest.java", CLASS_LINE, IN_STRING, 4),
     "marker/a marker on the next statement": ("ForcesTest.java", CLASS_LINE, NEXT_STATEMENT, 4),
@@ -135,6 +155,17 @@ class ForceGateTest(unittest.TestCase):
         for label in VIOLATIONS:
             with self.subTest(label):
                 self.check_fails(f"violation/{label}")
+
+    def test_pinning_from_a_test_class_fails_with_the_shard_hazard(self):
+        for label in PINS:
+            with self.subTest(label):
+                result = gate_batch.result(f"{__name__}/pin/{label}")
+                self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+                self.assertIn("PinsTest:4 pins chunks for the world's life from a test class", result.message)
+                self.assertIn("server shard loads only the test classes it holds", result.message)
+                self.assertIn("test-mod entrypoint in test/support", result.message)
+                self.assertIn("force-ok:", result.message)
+                self.assertNotIn("PinsInSupport", result.message)
 
     def test_marker_without_a_reason_or_in_a_string_does_not_count(self):
         for label in (key.removeprefix("marker/") for key in BAD if key.startswith("marker/")):
