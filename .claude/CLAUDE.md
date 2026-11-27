@@ -2,12 +2,12 @@
 
 # Deep Charter
 
-The general autonomous rules (merging, review pipeline, handoff, evidence, trust) come from the profile above. This file holds only what is specific to Deep Charter. Where this file conflicts with the profile, this file wins.
+This file holds only what is specific to Deep Charter. Where it conflicts with the profile above, this file wins.
 
-- **Merge only when all checks are green.** GitHub does not enforce this: every session acts as the repo admin, and the merge tools push the regenerated `docs/ROADMAP.md` to `main`, so required checks would block those pushes or be bypassed. A ruleset (`protect-main`) blocks force-push and deletion of `main`. `main` changes only through the merge tools below: never a hand commit or push, and a papercut goes into a PR (an in-flight one, or a doc-only PR), never straight to `main`. Merge only through `tools/merge-batch.sh <n>...` for two or more PRs (one CI run on an integration branch, landed by a fast-forward push; the PRs show as closed, not merged, [ADR 0106](../docs/adr/0106-reviewed-prs-merge-in-batches-on-an-integration-branch-with-one-ci-run.md)), `tools/merge-pr.sh <n>` for one, or `tools/merge-queue.sh <n>...` to merge them one at a time, also when a PR must show GitHub's merged state (it waits for CI, re-runs a stale base, and cleans up worktrees). All refuse and give the reason.
+- **Merge only when all checks are green.** GitHub does not enforce this: every session acts as the repo admin, and the merge tools push the regenerated `docs/ROADMAP.md` to `main`, so required checks would block those pushes or be bypassed. A ruleset (`protect-main`) blocks force-push and deletion of `main`. `main` changes only through the merge tools below: never a hand commit or push, and a papercut goes into a PR (an in-flight one, or a doc-only PR), never straight to `main`. `tools/merge-batch.sh` lands PRs by fast-forward, so they show as closed, not merged ([ADR 0106](../docs/adr/0106-reviewed-prs-merge-in-batches-on-an-integration-branch-with-one-ci-run.md)); use `tools/merge-queue.sh` when a PR must show GitHub's merged state. The merge tools wait for CI, re-run a stale base and clean up worktrees.
 - **Every PR, doc-only included, gets the full pipeline** (CI green, reviewer, simplifier, reviewer cycle 2). This overrides the profile's doc-only shortcut.
 - **Not used here:** there is no `tools/gate.conf`, and verification uses GameTests, mcpfabric and the evidence rules below, not a `verify-<app>` skill. The profile's never-block (`docs/BLOCKERS.md`, `stage:blocked`) and decision-log rules apply.
-- **Code, test, evidence-scenario or tool work loads the `deepcharter-conventions` skill first.** It holds the code layout, the M2 rules, the test and evidence rules and the toolchain commands.
+- **Code, test, evidence-scenario or tool work loads the `deepcharter-conventions` skill first.** It holds the M2 rules and the toolchain commands.
 - Settled decisions are in [docs/SPEC.md](../docs/SPEC.md).
 
 ## Ask the user only for
@@ -38,7 +38,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 
 ## Feedback loop
 
-- **Play the real game.** The dev client (`runClient`, with an offline dev account) may run on the user's Mac at any time, and windows popping up is fine.
+- **The dev client** (`runClient`, with an offline dev account) may run on the user's Mac at any time, and windows popping up is fine.
 - **Drive and observe it** with:
   - mcpfabric, dev-only and set up under the conditions in [docs/tooling/mcpfabric-audit.md](../docs/tooling/mcpfabric-audit.md)
   - Fabric server and client GameTests
