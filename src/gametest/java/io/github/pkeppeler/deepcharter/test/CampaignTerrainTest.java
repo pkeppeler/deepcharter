@@ -60,7 +60,10 @@ public class CampaignTerrainTest {
     /** Every column of the sample in a grid this many blocks apart. */
     private static final int SAMPLE_STEP = 3;
 
-    private static final String CRUST = "deepcharter:breach_crust";
+    private static final String BREACH_CRUST = "deepcharter:breach_crust";
+    /** A floor the seed draws grained holds this where it would hold the breach crust (#216, #1022). */
+    private static final String GRAINED_CRUST = "deepcharter:grained_crust";
+
     private static final String PACKED_SHALE = "deepcharter:packed_shale";
     private static final String GREEN_SHALE = "deepcharter:green_shale";
     private static final String BASALT_CORE = "deepcharter:basalt_core";
@@ -76,6 +79,19 @@ public class CampaignTerrainTest {
             "deepcharter:fungal_stalk");
     /** The cave stalks of layer 1's first zone are the one thing besides rock that its biomes place. */
     private static final String STALK = "deepcharter:fungal_stalk";
+    /**
+     * Layer 1's rock by zone (#1277), and what its abandoned shafts and salvage caches put in it: rubble, timber, a
+     * lunch pail, a prayer card, a crate, and the shafts' ladders and candle stubs, the two vanilla blocks the campaign
+     * world generates.
+     */
+    private static final Set<String> CLAIM_SHAFT_BLOCKS = Set.of(
+            "deepcharter:packed_shale_rubble",
+            "deepcharter:stalk_planks",
+            "deepcharter:lunch_pail",
+            "deepcharter:prayer_card",
+            "deepcharter:salvage_crate",
+            "minecraft:ladder",
+            "minecraft:candle");
     /**
      * Layer 3's blocks (#972): the basalt core, the columns that line its caverns, and what grows in them, the glowcaps and the surface's own
      * stalks and great stalks.
@@ -123,6 +139,10 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
+    private static boolean isCrust(String block) {
+        return block.equals(BREACH_CRUST) || block.equals(GRAINED_CRUST);
+    }
+
     @GameTest(environment = CampaignEnvironments.D, dimension = FULL, maxTicks = MAX_TICKS)
     public void theFloorOfEachLayerHoldsThreeRowsOfCrust(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -133,7 +153,7 @@ public class CampaignTerrainTest {
                     String block = idAt(level, column.atY(y));
                     expect(
                             helper,
-                            block.equals(CRUST),
+                            isCrust(block),
                             "%s: expected crust at %d %d %d, found %s",
                             layer.name(),
                             column.getX(),
@@ -144,7 +164,7 @@ public class CampaignTerrainTest {
                 String above = idAt(level, column.atY(layer.minY() + rows));
                 expect(
                         helper,
-                        !above.equals(CRUST),
+                        !isCrust(above),
                         "%s: more than %d rows of crust at %d %d",
                         layer.name(),
                         rows,
@@ -167,7 +187,7 @@ public class CampaignTerrainTest {
         Set<Integer> found = new TreeSet<>();
         for (BlockPos column : sampledColumns()) {
             for (int y = worldMinY(); y < worldTopExclusive(); y++) {
-                if (idAt(level, column.atY(y)).equals(CRUST)) {
+                if (isCrust(idAt(level, column.atY(y)))) {
                     found.add(y);
                 }
             }
@@ -177,7 +197,7 @@ public class CampaignTerrainTest {
                     y++) {
                 expect(
                         helper,
-                        !idAt(level, column.atY(y)).equals(CRUST),
+                        !isCrust(idAt(level, column.atY(y))),
                         "crust under the surface at %d %d %d",
                         column.getX(),
                         y,
@@ -204,7 +224,9 @@ public class CampaignTerrainTest {
                 }
             }
         }
-        Set<String> layer1 = Set.of(PACKED_SHALE, STALK);
+        Set<String> layer1 =
+                new TreeSet<>(Set.of(PACKED_SHALE, "deepcharter:hardpan", "deepcharter:black_shale", STALK));
+        layer1.addAll(CLAIM_SHAFT_BLOCKS);
         expectOnly(helper, found, CampaignBands.SURFACE, SURFACE_BLOCKS);
         expectOnly(helper, found, CampaignBands.LAYER_1, layer1);
         expectOnly(helper, found, CampaignBands.LAYER_2, Set.of(GREEN_SHALE));
@@ -295,11 +317,16 @@ public class CampaignTerrainTest {
         for (int chunkX = SAMPLE_CHUNK_X; chunkX < SAMPLE_CHUNK_X + SAMPLE_CHUNKS; chunkX++) {
             for (int chunkZ = SAMPLE_CHUNK_Z; chunkZ < SAMPLE_CHUNK_Z + SAMPLE_CHUNKS; chunkZ++) {
                 ChunkAccess chunk = level.getChunk(chunkX, chunkZ);
-                for (var section : chunk.getSections()) {
+                for (int index = 0; index < chunk.getSectionsCount(); index++) {
+                    var section = chunk.getSection(index);
+                    // Layer 1's shafts are the one place a vanilla block (their ladders and candle stubs) is generated.
+                    boolean claim = bandOf(chunk.getSectionYFromSectionIndex(index) << 4) == CampaignBands.LAYER_1;
                     section.maybeHas(state -> {
                         String id =
                                 BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
-                        if (id.startsWith("minecraft:") && !FLUIDS_AND_AIR.contains(id)) {
+                        if (id.startsWith("minecraft:")
+                                && !FLUIDS_AND_AIR.contains(id)
+                                && !(claim && CLAIM_SHAFT_BLOCKS.contains(id))) {
                             vanilla.add(id);
                         }
                         return false;

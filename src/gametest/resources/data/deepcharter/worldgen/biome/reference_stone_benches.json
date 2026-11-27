@@ -1,0 +1,86 @@
+{
+  "attributes": {
+    "minecraft:audio/ambient_sounds": {
+      "loop": "deepcharter:ambient.layer_1_loop",
+      "additions": [
+        {
+          "sound": "deepcharter:ambient.layer_1_creak",
+          "tick_chance": 0.001
+        },
+        {
+          "sound": "deepcharter:ambient.layer_1_knock",
+          "tick_chance": 0.0005
+        }
+      ]
+    },
+    "minecraft:audio/background_music": {
+      "default": {
+        "max_delay": 1800,
+        "min_delay": 600,
+        "replace_current_music": true,
+        "sound": "deepcharter:music.layer_1"
+      }
+    },
+    "minecraft:gameplay/bed_rule": {
+      "can_set_spawn": "never",
+      "can_sleep": "never",
+      "destroy_on_use": false
+    },
+    "minecraft:gameplay/can_pillager_patrol_spawn": false,
+    "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
+    "minecraft:gameplay/natural_mob_spawns": {
+      "argument": {
+        "spawn_costs": {},
+        "spawns_by_category": {
+          "monster": [
+            {
+              "type": "deepcharter:lampless_figure",
+              "count": 1,
+              "weight": 1
+            }
+          ]
+        }
+      },
+      "modifier": "overlay"
+    },
+    "minecraft:gameplay/straw_bed_rule": {
+      "can_set_spawn": "never",
+      "can_sleep": "never",
+      "destroy_on_use": false
+    },
+    "minecraft:visual/ambient_light_color": "#1c1814",
+    "minecraft:visual/ambient_particles": [],
+    "minecraft:visual/fog_color": "#241c14",
+    "minecraft:visual/fog_end_distance": 64.0,
+    "minecraft:visual/fog_start_distance": 8.0,
+    "minecraft:visual/moon_angle": 180.0,
+    "minecraft:visual/sky_color": "#241c14",
+    "minecraft:visual/sky_fog_end_distance": 0.0,
+    "minecraft:visual/sky_light_factor": 0.0,
+    "minecraft:visual/star_brightness": 0.0,
+    "minecraft:visual/sun_angle": 180.0,
+    "minecraft:visual/sunrise_sunset_color": "#00000000"
+  },
+  "carvers": [],
+  "downfall": 0.0,
+  "effects": {
+    "water_color": "#3f76e4"
+  },
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "deepcharter:fill_stone_benches"
+    ],
+    [],
+    [],
+    [],
+    []
+  ],
+  "has_precipitation": false,
+  "temperature": 0.5
+}

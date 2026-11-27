@@ -183,19 +183,19 @@ HYMNS = {
 }
 
 
-def _hymn(seed, play):
-    """The motif played on one reed, then bent by how deep it is."""
+def _hymn(seed, play, notes=HYMN):
+    """The motif (or the opening `notes` of it) played on one reed, then bent by how deep it is."""
     rng = random.Random(seed)
     sin = math.sin
     harmonic_weights = [(h, h**1.1) for h in range(1, 9)]
     beat = play["beat"]
-    length = sum(beats for _, beats in HYMN) * beat + 0.5
+    length = sum(beats for _, beats in notes) * beat + 0.5
     count = dsp.seconds(length)
     depth, rate = play["wobble"]
     wobble = [depth * v for v in dsp.sine(count, rate)]
     out = [0.0] * count
     at = 0.0
-    for step, beats in HYMN:
+    for step, beats in notes:
         cents = play["shift"] * 100 + rng.uniform(-1, 1) * play["drift"]
         freq = A3 * 2 ** ((step * 100 + cents) / 1200)
         start = dsp.seconds(at)
@@ -222,6 +222,12 @@ def hymn_layer_1():
 
 def hymn_layer_2():
     return _hymn(2499, HYMNS["layer_2"])
+
+
+def hymn_chapter():
+    """A handbook chapter is done: the hymn's first three notes on the colony reed, rising and held on the step where the whole motif
+    stalls, with a shorter room, so it is over in a little over four seconds."""
+    return _hymn(2520, dict(HYMNS["colony"], tail=1.0), notes=((0, 1.0), (3, 1.0), (5, 1.5)))
 
 
 def _harmonics(count, length, base, top, falloff):
@@ -347,6 +353,25 @@ def power_on():
     return dsp.normalize(dsp.widen(dsp.plus(dsp.scale(click, 1.5), dsp.times(dsp.scale(hum, 0.3), dsp.fade(rise, 0.0, 0.4))), 5), 0.6)
 
 
+def terminal_online():
+    """A machine comes online: soft square tones in the terminal's voice (`_blips`) stack upward, a step apart, into a held G major
+    chord over the cabinet's hum, and ring away. It opens on 0.7 seconds of quiet, the length of `power_on`'s click and hum-up, so the
+    server plays both at once and hears "power on, then chord" without a timer."""
+    notes = (392.0, 493.88, 587.33, 783.99)
+    step, hold = 0.12, 1.1
+    count = dsp.seconds(step * (len(notes) - 1) + hold)
+    out = [0.0] * count
+    for n, freq in enumerate(notes):
+        start = dsp.seconds(step * n)
+        span = count - start
+        tone = [math.tanh(2 * v) for v in dsp.sine(span, freq)]
+        rung = dsp.times(dsp.fade(tone, 0.01, 0.5), dsp.decay(span, 1.5))
+        for i, v in enumerate(rung):
+            out[start + i] += v
+    quiet = [0.0] * dsp.seconds(0.7)
+    return dsp.normalize(dsp.widen(quiet + dsp.filt(out, "lp", 3500, 0.7), 5), 0.5)
+
+
 def terminal_hum():
     """A terminal waiting: a cabinet hum, a thin whine from the tube and the odd relay tick."""
     length = 8.0
@@ -420,6 +445,30 @@ def ui_refused():
     return _blips(((220, 0.1), (165, 0.2)), 8)
 
 
+def needle():
+    """The gramophone needle jumping back a groove (#1337): a short bright scrape and a thump, each pass of the skip."""
+    rng = random.Random(1337)
+    count = dsp.seconds(0.25)
+    scrape = dsp.times(dsp.filt(dsp.filt(dsp.noise(rng, count), "hp", 400, 0.7), "lp", 6000, 0.7), dsp.decay(count, 0.004))
+    thump = dsp.times(dsp.filt(dsp.noise(rng, count), "lp", 500, 0.7), dsp.decay(count, 0.012))
+    return dsp.normalize(dsp.widen(dsp.plus(scrape, dsp.scale(thump, 0.6)), 3), 0.7)
+
+
+def lamp_out():
+    """A crewmate's lamp going out (#1337): the switch's two clicks and the filament ticking as it cools."""
+    rng = random.Random(1338)
+    count = dsp.seconds(0.35)
+    out = [0.0] * count
+    for at, level in ((0.0, 1.0), (0.045, 0.55), (0.16, 0.12), (0.27, 0.07)):
+        start = dsp.seconds(at)
+        length = count - start
+        click = dsp.times(dsp.filt(dsp.noise(rng, length), "bp", 3200, 1.4), dsp.decay(length, 0.003))
+        for i, v in enumerate(click):
+            out[start + i] += v * level
+    # Mono (MONO below): the lamp plays where the crewmate fell, and Minecraft attenuates and pans mono sounds only.
+    return dsp.normalize(dsp.Clip(out, list(out)), 0.6)
+
+
 def rest():
     """Three seconds of silence: the placeholder of the layers' music slots, so the drone beds are all a layer plays until a score is dropped in."""
     count = dsp.seconds(3.0)
@@ -438,6 +487,7 @@ RECIPES = {
     "hymn/colony": hymn_colony,
     "hymn/layer_1": hymn_layer_1,
     "hymn/layer_2": hymn_layer_2,
+    "hymn/chapter": hymn_chapter,
     "pod/engine_idle_loop": engine_idle,
     "pod/engine_drive_loop": engine_drive,
     "pod/engine_drill_side_loop": engine_drill_side,
@@ -448,6 +498,7 @@ RECIPES = {
     "drill/dig_3": dig_3,
     "drill/blocked": blocked,
     "terminal/power_on": power_on,
+    "terminal/online": terminal_online,
     "terminal/hum_loop": terminal_hum,
     "ui/typewriter_1": typewriter_1,
     "ui/typewriter_2": typewriter_2,
@@ -459,7 +510,13 @@ RECIPES = {
     "ui/error": ui_error,
     "ui/refused": ui_refused,
     "music/rest": rest,
+    "continuity/needle": needle,
+    "continuity/lamp_out": lamp_out,
 }
+
+# Recipes the game plays at a place in the world: written as mono Vorbis, because Minecraft attenuates and pans mono sounds only. Their
+# recipe makes a Clip whose two channels are the same.
+MONO = frozenset({"continuity/lamp_out"})
 
 
 @cache

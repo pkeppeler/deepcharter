@@ -1,7 +1,10 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_LEFT;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.RIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
@@ -64,6 +67,8 @@ public class PodDrillTest {
     private static final int Z = 3000;
     private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final float EAST = -90f;
+    /** The columns of the alignment tests, 64 apart; no other test stages from here. */
+    private static final int ALIGN_X = 9300;
 
     /**
      * A mock pilot, and the pod it sits in once the far chunk ticks entities. The pilot joins and moves there at
@@ -101,6 +106,8 @@ public class PodDrillTest {
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
+                // The pod faces where the test says; the pilot's own view does not steer it.
+                pod.setYRot(yaw);
                 level.addFreshEntity(pod);
                 if (!pilot.player().startRiding(pod)) {
                     throw failure(helper, "the pilot could not mount the pod");
@@ -161,6 +168,178 @@ public class PodDrillTest {
                             x,
                             Z + 1,
                             pod.position());
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /** The pod faces 35 degrees off east at the wall: it turns to the grid before the bore, then bores straight. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSidewaysBoreTurnsThePodToTheGridFirst(GameTestHelper helper) {
+        int x = ALIGN_X;
+        int floor = FLOOR;
+        int height = Chassis.MOLE.boreHeight();
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        wall(level, x + 2, x + 5, Z, floor, floor + 10);
+        Rig rig = Rig.await(
+                helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST + 35f, "drill-turns-to-grid", FORWARD_LEFT);
+        boolean[] turning = {false};
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            // The pod slides along the wall while it turns, so the slab is wherever it ends: any two columns of the
+            // wall's face.
+            boolean bored =
+                    count(level, x + 2, x + 2, floor, floor + height - 1, Z - 3, Z + 3, Blocks.AIR) == 2 * height;
+            if (pod.drilling() && pod.getYRot() != EAST) {
+                turning[0] = true;
+                if (bored) {
+                    throw failure(helper, "the slab was bored while the pod was still turned to %s", pod.getYRot());
+                }
+            }
+            if (bored) {
+                if (pod.getYRot() != EAST) {
+                    throw failure(
+                            helper, "the bore should leave the pod on the grid, facing east, yaw %s", pod.getYRot());
+                }
+                if (!turning[0]) {
+                    throw failure(helper, "the pod never showed a turn to the grid before the bore");
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /** Sprint alone drills down; the pod ends up facing the nearest compass direction, not the way it was left. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aDownwardBoreTurnsThePodToTheNearestCardinal(GameTestHelper helper) {
+        int x = ALIGN_X + 64;
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.8), 20f, "drill-down-turns", SPRINT);
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            if (count(level, x - 1, x, floor - 1, floor - 1, Z, Z + 1, Blocks.AIR) == 4) {
+                if (pod.getYRot() != 0f) {
+                    throw failure(helper, "the pod should face the nearest cardinal (south), yaw %s", pod.getYRot());
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /** Back is for reversing out of trouble: it never drills, and never turns the pod to face the wall behind it. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void backingIntoARockNeverDrillsOrTurns(GameTestHelper helper) {
+        int x = ALIGN_X + 128;
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        wall(level, x + 2, x + 5, Z, floor, floor + 10);
+        float west = 90f;
+        Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), west, "drill-back", BACK);
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            if (pod.drilling() || pod.getYRot() != west) {
+                throw failure(
+                        helper, "reversing drilled (%s) or turned the pod (yaw %s)", pod.drilling(), pod.getYRot());
+            }
+            if (pod.tickCount > 80) {
+                if (count(level, x + 2, x + 5, floor, floor + 10, Z - 3, Z + 3, Blocks.AIR) != 0) {
+                    throw failure(helper, "the wall behind the reversing pod was bored");
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /** Between two walls the pod straightens to the grid and A and D cannot turn it: tunnels stay straight. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPodInATightBoreStraightensAndIgnoresSteering(GameTestHelper helper) {
+        int x = ALIGN_X + 192;
+        int floor = FLOOR;
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        box(level, x - 2, x - 2, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        box(level, x + 1, x + 1, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z - 2.5), 25f, "drill-tight-bore", FORWARD_LEFT);
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            if (pod.tickCount > 8) {
+                if (pod.getYRot() != 0f) {
+                    throw failure(
+                            helper,
+                            "in a bore as wide as the pod it should stand square to it, yaw %s at %s",
+                            pod.getYRot(),
+                            pod.position());
+                }
+                pod.discard();
+                helper.succeed();
+            }
+        });
+    }
+
+    /**
+     * In a pod-wide bore one press of D turns the pod a quarter to the next compass direction, and W then bores that
+     * branch.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPressOfDInATightBoreTurnsAQuarterAndWBoresTheBranch(GameTestHelper helper) {
+        int x = ALIGN_X + 256;
+        int floor = FLOOR;
+        int height = Chassis.MOLE.boreHeight();
+        ServerLevel level = TestLayers.level(helper, 1);
+        room(level, x, floor, 4);
+        box(level, x - 2, x - 2, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        box(level, x + 1, x + 1, floor, floor + 4, Z - 3, Z + 3, Blocks.STONE);
+        // Facing south, square in the corridor; D is pressed for two ticks once it stands. D turns clockwise, so the
+        // next compass direction is west; the turn is under way after the key is let go. The pod faces open side
+        // space once turned, so a held D would go on steering freely there, as it does anywhere out of a bore.
+        Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z - 2.5), 0f, "drill-branch", Input.EMPTY);
+        float west = 90f;
+        boolean[] drove = {false};
+        TestTicks.each(helper, () -> {
+            if (!rig.pod.isPresent()) {
+                return;
+            }
+            PodEntity pod = rig.pod.get();
+            // Landed first: a bore holds a pod that stands on the ground.
+            if (pod.tickCount == 5) {
+                rig.pilot.setInput(RIGHT);
+            }
+            if (pod.tickCount == 7) {
+                rig.pilot.releaseInput();
+            }
+            if (pod.tickCount == 30) {
+                if (pod.getYRot() != west) {
+                    throw failure(
+                            helper, "one press of D should turn the pod a quarter to the west, yaw %s", pod.getYRot());
+                }
+                rig.pilot.setInput(FORWARD);
+                drove[0] = true;
+            }
+            if (drove[0]
+                    && count(level, x - 2, x - 2, floor, floor + height - 1, Z - 3, Z + 3, Blocks.AIR) == 2 * height) {
+                if (pod.getYRot() != west) {
+                    throw failure(helper, "the branch should leave the pod facing west, yaw %s", pod.getYRot());
                 }
                 pod.discard();
                 helper.succeed();
@@ -614,12 +793,21 @@ public class PodDrillTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
-        int x = 3576;
+        lastCrustIsNotDrilled(helper, 3576, LayerBlocks.BREACH_CRUST);
+    }
+
+    /** A grained floor under the last layer leads nowhere either, whatever that floor's layer data says (#1022). */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theLastLayersGrainedCrustIsNotDrilled(GameTestHelper helper) {
+        lastCrustIsNotDrilled(helper, 4216, LayerBlocks.GRAINED_CRUST);
+    }
+
+    private static void lastCrustIsNotDrilled(GameTestHelper helper, int x, Block crust) {
         ServerLevel two = TestLayers.level(helper, CampaignBands.lastLayer());
         int floor = TestLayers.band(two, CampaignBands.lastLayer()).minY();
-        RoomCarver.carve(two, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(two, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, crust);
         RoomCarver.carve(two, x - 2, x + 2, floor + 3, floor + 10, Z - 2, Z + 2, Blocks.AIR);
-        Rig rig = Rig.await(helper, two, new Vec3(x, floor + 3, Z), 0f, "drill-last-crust", SPRINT);
+        Rig rig = Rig.await(helper, two, new Vec3(x, floor + 3, Z), 0f, "lastcrust-" + x, SPRINT);
         TestTicks.each(helper, () -> {
             if (!rig.pod.isPresent()) {
                 return;
@@ -632,7 +820,7 @@ public class PodDrillTest {
                 return;
             }
             if (!pod.onGround()
-                    || !two.getBlockState(new BlockPos(x, floor + 2, Z)).is(LayerBlocks.BREACH_CRUST)) {
+                    || !two.getBlockState(new BlockPos(x, floor + 2, Z)).is(crust)) {
                 throw failure(helper, "the pod should be standing on intact crust, it is at %s", pod.position());
             }
             pod.discard();

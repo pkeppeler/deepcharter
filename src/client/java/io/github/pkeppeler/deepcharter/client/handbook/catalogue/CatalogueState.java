@@ -1,14 +1,20 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.item.Item;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What the catalogue is set to, for the client session: the search, the craftable-now filter, the page, the favourites row's scroll, the recipe lookup and whether the panels are put away.
+ * What the catalogue is set to, for the client session: the search, the craftable-now filter, the page, the favourites row's scroll, the recipe lookup and its history, whether the console shows the recipe or its total materials, and whether the panels are put away.
  * No drawing and no input here, so the rules of the filter and the lookup are testable on their own.
+ *
+ * <p>The history is EMI's: each lookup the player leaves (for another item, for the other mode, or put away) is remembered with the recipe
+ * it showed, and {@link #back} walks them newest first. Stepping through one item's recipes is one page, not several. It lives as long as
+ * this state, so it outlives a screen closing and is gone when the player leaves the world.
  */
 public final class CatalogueState {
     /** Which recipes a lookup lists: the ones that make the item (R) or the ones that take it (U). */
@@ -20,12 +26,21 @@ public final class CatalogueState {
     /** The item being looked up, in a mode, at the recipe shown out of those found (from 0). */
     public record Lookup(Item item, Mode mode, int index) {}
 
+    /** How many lookups the history keeps: the oldest goes when another is added past it. */
+    public static final int HISTORY_DEPTH = 32;
+
     private String query = "";
     private boolean craftableOnly;
     private int page;
     private int favouriteOffset;
     private boolean hidden;
     private @Nullable Lookup lookup;
+    /** Whether the console shows the total materials of its recipe instead of the recipe; any other lookup turns it off. */
+    private boolean materials;
+    /** The first row of the total materials shown. */
+    private int materialsOffset;
+    /** The lookups left, newest first. */
+    private final Deque<Lookup> history = new ArrayDeque<>();
 
     public String query() {
         return query;
@@ -105,9 +120,42 @@ public final class CatalogueState {
         favouriteOffset = Math.max(0, favouriteOffset + delta);
     }
 
-    /** Puts the recipe panel away: nothing is looked up. */
+    /** Puts the recipe panel away: nothing is looked up. What it showed joins the history. */
     public void clear() {
+        remember(lookup);
         lookup = null;
+        showRecipe();
+    }
+
+    /** Whether the console shows the total materials of the recipe it shows ({@link MaterialsTree}) instead of the recipe. */
+    public boolean materials() {
+        return materials;
+    }
+
+    /**
+     * Switches the console between the recipe and its total materials; with no recipe shown ({@code catalogue} knows none for the
+     * lookup, or nothing is looked up) there is nothing to switch.
+     */
+    public void toggleMaterials(PartsCatalogue catalogue) {
+        if (shownRecipe(catalogue) != null) {
+            materials = !materials;
+            materialsOffset = 0;
+        }
+    }
+
+    /** The first row of the total materials shown, kept inside {@code total} rows of which {@code rows} fit. */
+    public int materialsOffset(int total, int rows) {
+        materialsOffset = Math.clamp(materialsOffset, 0, Math.max(0, total - rows));
+        return materialsOffset;
+    }
+
+    public void scrollMaterials(int delta) {
+        materialsOffset = Math.max(0, materialsOffset + delta);
+    }
+
+    private void showRecipe() {
+        materials = false;
+        materialsOffset = 0;
     }
 
     public @Nullable Lookup lookup() {
@@ -124,7 +172,52 @@ public final class CatalogueState {
             step(catalogue, 1);
             return;
         }
+        remember(now);
         lookup = new Lookup(item, mode, 0);
+        showRecipe();
+    }
+
+    /** Adds {@code left} to the history, unless it is the page already newest there, and lets the oldest go past {@link #HISTORY_DEPTH}. */
+    private void remember(@Nullable Lookup left) {
+        if (left == null) {
+            return;
+        }
+        Lookup newest = history.peekFirst();
+        if (newest != null && newest.item() == left.item() && newest.mode() == left.mode()) {
+            history.removeFirst();
+        }
+        history.addFirst(left);
+        while (history.size() > HISTORY_DEPTH) {
+            history.removeLast();
+        }
+    }
+
+    /**
+     * Goes back to the lookup left last, at the recipe it showed; returns whether there was one. A page of the item and mode shown now
+     * (put away, then looked up again) is passed over and dropped: going back to it would change nothing.
+     */
+    public boolean back() {
+        Lookup previous = history.pollFirst();
+        while (previous != null && shownNow(previous)) {
+            previous = history.pollFirst();
+        }
+        if (previous == null) {
+            return false;
+        }
+        lookup = previous;
+        showRecipe();
+        return true;
+    }
+
+    /** Whether {@link #back} has a lookup to go back to. */
+    public boolean canGoBack() {
+        return history.stream().anyMatch(page -> !shownNow(page));
+    }
+
+    /** Whether {@code page} is of the item and mode looked up now. */
+    private boolean shownNow(Lookup page) {
+        Lookup now = lookup;
+        return now != null && now.item() == page.item() && now.mode() == page.mode();
     }
 
     /** Shows the recipe {@code delta} on from the one shown, wrapping round. */
@@ -136,6 +229,7 @@ public final class CatalogueState {
         int count = found(catalogue).size();
         int index = count == 0 ? 0 : Math.floorMod(now.index() + delta, count);
         lookup = new Lookup(now.item(), now.mode(), index);
+        materialsOffset = 0;
     }
 
     /** The recipes the lookup lists; none when nothing is looked up or the charter knows none. */

@@ -48,7 +48,7 @@ public final class ColonyKit {
             SoundType.METAL,
             properties -> new OreCarBlock(properties.noOcclusion(), Block.box(1, 0, 0, 15, 16, 16)));
 
-    /** The Lamp and Pick's ration dispenser: one ration per player per in-game day ({@link CanteenBlock}). Gives no light. */
+    /** The Lamp and Pick's ration dispenser: a ration on every use ({@link CanteenBlock}). Gives no light. */
     public static final Block CANTEEN = ColonyBlocks.register(
             "canteen", SoundType.METAL, properties -> new CanteenBlock(properties, Block.box(0, 0, 0, 16, 16, 16)));
 

@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.io.IOException;
 import java.io.Reader;
@@ -34,7 +35,9 @@ import net.minecraft.world.item.ItemStack;
 /**
  * The items that refuel a pod, defined in data: an item is fuel when it is in the {@link #TAG} tag, and the litres
  * it gives come from the table, one JSON file for each item. The file's path is the item's id:
- * {@code data/minecraft/pod_fuel/coal.json} holds {@code {"litres": 2.0}} for {@code minecraft:coal}. A datapack
+ * {@code data/minecraft/pod_fuel/coal.json} holds {@code {"litres": 2.0, "soot": 0.75}} for {@code minecraft:coal}: the
+ * litres one item gives, and the litres of soot each litre leaves in the engine as it burns ({@code soot} is optional,
+ * 0 for a clean fuel). A datapack
  * adds a fuel by adding the item to the tag and a file to the table, and replaces one with a file of the same path,
  * so the pack order decides, as it does for any data file.
  *
@@ -49,11 +52,16 @@ public final class PodFuelItems {
     public static final TagKey<Item> TAG =
             TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_fuel"));
     private static final String DIRECTORY = "pod_fuel";
-    private static final Codec<Float> LITRES =
-            ExtraCodecs.POSITIVE_FLOAT.fieldOf("litres").codec();
+    private static final Codec<Fuel> FUEL = RecordCodecBuilder.create(instance -> instance.group(
+                    ExtraCodecs.POSITIVE_FLOAT.fieldOf("litres").forGetter(Fuel::litres),
+                    ExtraCodecs.NON_NEGATIVE_FLOAT.optionalFieldOf("soot", 0f).forGetter(Fuel::soot))
+            .apply(instance, Fuel::new));
+
+    /** What one fuel item gives: its litres, and the soot each litre leaves. */
+    private record Fuel(float litres, float soot) {}
 
     /** Replaced whole on each reload, so a reader never sees half a table. */
-    private static volatile Map<Item, Float> table = Map.of();
+    private static volatile Map<Item, Fuel> table = Map.of();
 
     private PodFuelItems() {}
 
@@ -71,8 +79,17 @@ public final class PodFuelItems {
 
     /** Server only. The litres the stack gives when used on a pod, or empty when it is not fuel. */
     public static OptionalDouble litresOf(ItemStack stack) {
-        Float litres = stack.is(TAG) ? table.get(stack.getItem()) : null;
-        return litres == null ? OptionalDouble.empty() : OptionalDouble.of(litres);
+        Fuel fuel = stack.is(TAG) ? table.get(stack.getItem()) : null;
+        return fuel == null ? OptionalDouble.empty() : OptionalDouble.of(fuel.litres());
+    }
+
+    /**
+     * Server only. The litres of soot a litre of the stack's fuel leaves in the engine as it burns; 0 for a clean fuel
+     * or no fuel.
+     */
+    public static float sootOf(ItemStack stack) {
+        Fuel fuel = stack.is(TAG) ? table.get(stack.getItem()) : null;
+        return fuel == null ? 0f : fuel.soot();
     }
 
     /** Logs an ERROR for each of {@code fuelItems} with no litres entry, and returns those items: they are not fuel. */
@@ -102,12 +119,12 @@ public final class PodFuelItems {
         checkLitresFor(fuelItems);
     }
 
-    private static final class Loader extends SimplePreparableReloadListener<Map<Item, Float>> {
+    private static final class Loader extends SimplePreparableReloadListener<Map<Item, Fuel>> {
         private static final FileToIdConverter FILES = FileToIdConverter.json(DIRECTORY);
 
         @Override
-        protected Map<Item, Float> prepare(ResourceManager manager, ProfilerFiller profiler) {
-            Map<Item, Float> loaded = new HashMap<>();
+        protected Map<Item, Fuel> prepare(ResourceManager manager, ProfilerFiller profiler) {
+            Map<Item, Fuel> loaded = new HashMap<>();
             // One resource for each path: the top pack's, so a later pack replaces an earlier one.
             FILES.listMatchingResources(manager).forEach((file, resource) -> {
                 Identifier id = FILES.fileToId(file);
@@ -116,20 +133,20 @@ public final class PodFuelItems {
                     DeepCharter.LOGGER.error("Pod fuel file {} names no item {}: skipped", file, id);
                     return;
                 }
-                litres(file, resource).ifPresent(litres -> loaded.put(item.get(), litres));
+                fuel(file, resource).ifPresent(fuel -> loaded.put(item.get(), fuel));
             });
             return loaded;
         }
 
         @Override
-        protected void apply(Map<Item, Float> loaded, ResourceManager manager, ProfilerFiller profiler) {
+        protected void apply(Map<Item, Fuel> loaded, ResourceManager manager, ProfilerFiller profiler) {
             table = Map.copyOf(loaded);
         }
 
-        private static Optional<Float> litres(Identifier file, Resource resource) {
+        private static Optional<Fuel> fuel(Identifier file, Resource resource) {
             try (Reader reader = resource.openAsReader()) {
                 JsonElement json = JsonParser.parseReader(reader);
-                return LITRES.parse(JsonOps.INSTANCE, json)
+                return FUEL.parse(JsonOps.INSTANCE, json)
                         .resultOrPartial(error ->
                                 DeepCharter.LOGGER.error("Pod fuel file {} is not valid, skipped: {}", file, error));
             } catch (IOException | RuntimeException e) {

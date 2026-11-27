@@ -7,7 +7,7 @@ import net.minecraft.resources.Identifier;
 
 /**
  * The cockpit HUD a pilot sees from the seat: the Ribbon ({@code theme/cockpit.json}, #247, docs/design/cockpit-concepts-2.md, the user's pick of 2026-10-11). One slim
- * ribbon along the top edge holds a bar for each of fuel, hull, cargo, depth and heat, the altimeter in a recess at its middle and a row of warning lamps at its end;
+ * ribbon along the top edge holds a bar for each of fuel, hull, load, depth and heat, the altimeter in a recess at its middle and a row of warning lamps at its end;
  * the scanner hangs from the ribbon's right end and the readout plate (the tally and every other line of the readout) under it. Its sprites are GUI sprites under
  * {@code textures/gui/sprites/cockpit/ribbon/} ({@link Layout#sprite}); the gauges only draw what moves, on the bar the sprites left room for. A pack restyles the
  * colours and the places, or turns the cockpit off ({@code enabled} 0) to get the plain text HUD back. Colours are ARGB, lengths are GUI pixels.
@@ -20,8 +20,9 @@ import net.minecraft.resources.Identifier;
  * @param hullColor the hull gauge
  * @param depthColor the depth gauge
  * @param heatColor the heat gauge
- * @param cargoColor the cargo gauge
- * @param lowColor a gauge that is in warning: fuel at the low-fuel beep, hull under {@code hullLowFraction}
+ * @param cargoColor the load gauge (in the cargo slot) and its title
+ * @param lowColor a gauge that is in warning: fuel at the low-fuel beep, hull under {@code hullLowFraction}, a load the rotor cannot climb with; the load gauge's
+ *     limit mark and the overloaded lamp
  * @param offColor an unlit bar segment or lamp
  * @param hullLowFraction the share of the hull from which and below the hull gauge warns
  * @param heatRisePerTick how fast the heat gauge climbs toward 1 while lava burns the hull, per client tick
@@ -31,6 +32,8 @@ import net.minecraft.resources.Identifier;
  * @param scannerTitleGap the space between the scanner window and its title under it
  * @param lampGap the space between two warning lamps
  * @param tallyGap the space between two numbers of the plate's tally
+ * @param titleGap the space between the inside of a gauge title's plate border and its text, on each side
+ * @param titleTextHeight how tall the font's capitals are drawn, which a gauge title's plate holds
  * @param camera the front camera's feed (#448)
  * @param decay what the signal decay (#502) does to the instruments
  */
@@ -54,6 +57,8 @@ public record CockpitLook(
         int scannerTitleGap,
         int lampGap,
         int tallyGap,
+        int titleGap,
+        int titleTextHeight,
         CameraLook camera,
         DecayLook decay) {
     /** How a bar fills: segments lit from its start across, or up. */
@@ -112,7 +117,8 @@ public record CockpitLook(
      * @param hull the hull gauge
      * @param depth the depth gauge
      * @param heat the heat gauge
-     * @param cargo the cargo gauge
+     * @param cargo the cargo slot's gauge, which reads the pod's load against its climb limit (#1449)
+     * @param loadLimit the segment of the load gauge after which the climb limit is marked: the bar runs to {@code segments / loadLimit} of the limit
      * @param lamps where the warning lamps go: {@link CockpitHud#LAMPS} lamps in a row (a slot wider than it is tall) or a column
      * @param scanner where the scanner's cells go (and its title, under them)
      * @param readout where the readout's plate hangs: under the anchor
@@ -126,6 +132,7 @@ public record CockpitLook(
             Gauge depth,
             Gauge heat,
             Gauge cargo,
+            int loadLimit,
             Decal lamps,
             Decal scanner,
             Anchor readout,
@@ -133,6 +140,14 @@ public record CockpitLook(
         private static final String P = "ribbon";
 
         static Layout of(ThemeData d) {
+            Gauge cargo = Gauge.of(d, P + "Cargo");
+            int loadLimit = d.integer(P + "CargoLimit", 1, 63);
+            if (loadLimit >= cargo.segments()) {
+                throw d.conflict(
+                        "the load gauge's limit mark must leave segments past it",
+                        P + "CargoLimit",
+                        P + "CargoSegments");
+            }
             return new Layout(
                     Decal.of(d, P + "PartA"),
                     Decal.of(d, P + "Cap"),
@@ -140,7 +155,8 @@ public record CockpitLook(
                     Gauge.of(d, P + "Hull"),
                     Gauge.of(d, P + "Depth"),
                     Gauge.of(d, P + "Heat"),
-                    Gauge.of(d, P + "Cargo"),
+                    cargo,
+                    loadLimit,
                     Decal.of(d, P + "Lamps"),
                     Decal.of(d, P + "Scanner"),
                     Anchor.of(d, P + "Readout"),
@@ -362,6 +378,8 @@ public record CockpitLook(
                 d.integer("scannerTitleGap", 0, 16),
                 d.integer("lampGap", 0, 8),
                 d.integer("tallyGap", 0, 16),
+                d.integer("titleGap", 0, 8),
+                d.integer("titleTextHeight", 1, 32),
                 CameraLook.of(d),
                 DecayLook.of(d));
     }

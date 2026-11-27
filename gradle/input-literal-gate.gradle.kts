@@ -1,14 +1,15 @@
 // Input literal gate (#1304): Minecraft 26.3 runs on SDL, which numbers mouse buttons from 1, so `event.button() == 0` is not the left
-// button, and a raw key code is a key no rebinding or layout reaches. This fails the build on one in code under src/client/java.
+// button, and a raw key code is a key no rebinding or layout reaches. This fails the build on a hand-built literal of either in code
+// under src/client/java and src/gametest/java.
 //
 // It is a scan of whole statements (a formatter wraps before `==` and `&&`), with no type information, so it keys on the accessors of
 // the input events (`.button()` and `.key()`):
 //   - `.button()` or `.key()` compared (== or !=) with a number or a char literal, in either order
-//   - `new MouseButtonInfo(` with a number as its first argument
+//   - `new MouseButtonInfo(` or `new KeyEvent(` with a number or a char literal as its first argument
 // Compare with InputConstants.MOUSE_BUTTON_LEFT / MOUSE_BUTTON_RIGHT / KEY_* instead. A statement that must keep one carries
 // `// input-literal: <reason>` (the reason is required) on a line of the statement or the comment lines above it (`markedNear`).
-// Not seen, the price of no type information: a `switch` on `.button()` or `.key()`, a button number handed through a variable or a
-// field, and a literal compared with a differently named accessor.
+// Not seen, the price of no type information: a `switch` on `.button()` or `.key()`, a button or key number handed through a variable
+// or a field, and a literal compared with a differently named accessor.
 //
 // config/input-literal-gate/Flagged.java.txt must be flagged on every single-tab code line (a continuation line takes two tabs) and
 // Allowed.java.txt on none: `checkInputLiteralGate` scans both before the real scan, so a change that makes the pattern miss fails
@@ -18,6 +19,7 @@ object InputLiteralGate {
 		Regex("""\.\s*(button|key)\s*\(\s*\)\s*[=!]=\s*(-?\d|'')"""),
 		Regex("""(\d|'')\s*[=!]=\s*[\w.()\s]*\.\s*(button|key)\s*\(\s*\)"""),
 		Regex("""\bnew\s+MouseButtonInfo\s*\(\s*-?\d"""),
+		Regex("""\bnew\s+KeyEvent\s*\(\s*(-?\d|'')"""),
 	)
 	private val MARKER = Regex("""//\s*input-literal:\s*\S""")
 
@@ -50,14 +52,17 @@ object InputLiteralGate {
 
 tasks.register("checkInputLiteralGate") {
 	group = "verification"
-	description = "Fails on a literal mouse button or key code compared in client code."
+	description = "Fails on a literal mouse button or key code in client or client test code."
 	@Suppress("UNCHECKED_CAST")
 	val blankLiterals = project.extra["blankLiterals"] as (String) -> String
 	@Suppress("UNCHECKED_CAST")
 	val codeLines = project.extra["codeLines"] as (List<String>) -> List<String>
 	@Suppress("UNCHECKED_CAST")
 	val markedNear = project.extra["markedNear"] as (List<String>, Int, (String) -> Boolean) -> Boolean
-	val clientSources = fileTree(file("src/client/java")) { include("**/*.java") }
+	val clientSources = files(
+		fileTree(file("src/client/java")) { include("**/*.java") },
+		fileTree(file("src/gametest/java")) { include("**/*.java") },
+	)
 	val fixtureDir = file("config/input-literal-gate")
 	val root = projectDir
 	inputs.files(clientSources).withPropertyName("clientSources")
@@ -86,8 +91,8 @@ tasks.register("checkInputLiteralGate") {
 		}
 		if (problems.isNotEmpty()) {
 			throw GradleException(
-				"Literal mouse button or key code in client code. SDL numbers mouse buttons from 1: compare with " +
-					"InputConstants.MOUSE_BUTTON_LEFT / MOUSE_BUTTON_RIGHT / KEY_*; a line that must keep one ends with " +
+				"Literal mouse button or key code in client or client test code. SDL numbers mouse buttons from 1: compare with " +
+					"InputConstants.MOUSE_BUTTON_LEFT / MOUSE_BUTTON_RIGHT / KEY_* (a test types text with RealInput.type); a line that must keep one ends with " +
 					"'// input-literal: <reason>'.\n  " + problems.joinToString("\n  "),
 			)
 		}
