@@ -293,6 +293,7 @@ apply(from = "gradle/gametest-preset.gradle.kts")
 apply(from = "gradle/colour-gate.gradle.kts")
 apply(from = "gradle/input-literal-gate.gradle.kts")
 apply(from = "gradle/test-only-gate.gradle.kts")
+apply(from = "gradle/enum-switch-gate.gradle.kts")
 apply(from = "gradle/clientlock.gradle.kts")
 apply(from = "gradle/lambdynamiclights.gradle.kts")
 apply(from = "gradle/resolve-client-runtime.gradle.kts")
@@ -323,7 +324,7 @@ tasks.withType<Checkstyle>().configureEach {
 // Python, not files, so no target here touches them.
 spotless {
 	java {
-		target("src/**/*.java", "gradle/OomProbe.java", "tools/TestOnlyGate.java")
+		target("src/**/*.java", "gradle/OomProbe.java", "tools/TestOnlyGate.java", "tools/EnumSwitchGate.java")
 		palantirJavaFormat(libs.versions.palantirJavaFormat.get())
 		removeUnusedImports()
 	}
@@ -350,6 +351,10 @@ tasks.withType<JavaCompile>().configureEach {
 		disable("EnumOrdinal")
 		// RELAXED: enums hold Minecraft types (SoundEvent, Identifier, MapCodec) that cannot carry @Immutable
 		disable("ImmutableEnumChecker")
+		// A switch over an enum names every constant: adding a member must fail at each switch that forgot it. These two cover a switch with no
+		// default and an unreachable default; checkEnumSwitchGate (gradle/enum-switch-gate.gradle.kts) covers a default that hides a constant.
+		check("MissingCasesInEnumSwitch", CheckSeverity.ERROR)
+		check("UnnecessaryDefaultInEnumSwitch", CheckSeverity.ERROR)
 		// Only @NullMarked packages are checked: a feature package opts in with a package-info.java (deepcharter-conventions)
 		check("NullAway", CheckSeverity.ERROR)
 		option("NullAway:OnlyNullMarked", "true")

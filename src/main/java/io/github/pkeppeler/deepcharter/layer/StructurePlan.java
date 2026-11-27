@@ -218,7 +218,7 @@ final class StructurePlan {
             case SOUTH -> Direction.EAST;
             case WEST -> Direction.NORTH;
             case NORTH -> Direction.WEST;
-            default -> local;
+            case UP, DOWN -> local;
         };
     }
 }
