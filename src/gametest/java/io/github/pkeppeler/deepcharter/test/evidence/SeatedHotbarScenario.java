@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
@@ -169,7 +168,7 @@ public class SeatedHotbarScenario extends EvidenceScenario {
     }
 
     /**
-     * A pod in a bad way, so its plate has more lines than a 320 x 240 GUI has room for above the hotbar: limp with soot, stranded with the Company's winch on its way,
+     * A pod in a bad way, so its plate has more lines than a 320 x 240 GUI has room for above the hotbar: limp with soot, stranded,
      * burning in lava, out of lining brick, with a spoil hopper and a liner. The still is taken on a 640 x 480 window at GUI scale 2, and the window is put back.
      */
     private static void longPlateOnANarrowGui(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
@@ -185,9 +184,6 @@ public class SeatedHotbarScenario extends EvidenceScenario {
                     Versioned.of(new EngineSoot.State(FuelTuning.DEFAULT.soot().limpLitres(), 0f, 0f)));
             pod.setAttached(PodLining.STATE, Versioned.of(new PodLining.State(3, 6, 0, false, true)));
             pod.setStranded(true);
-            pod.setAttached(
-                    CompanyRecovery.STATE,
-                    Versioned.of(new CompanyRecovery.State(pod.level().getGameTime())));
             BlockPos feet = pod.blockPosition();
             RoomCarver.carve(
                     (ServerLevel) pod.level(),

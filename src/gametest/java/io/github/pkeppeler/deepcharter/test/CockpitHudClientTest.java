@@ -254,7 +254,6 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "burning",
                         "overloaded",
                         "stranded",
-                        "recovery",
                         "crust_ahead",
                         "crust_in",
                         "crust_ahead_drop",
@@ -278,9 +277,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         if (!alerts.equals(expected)) {
             throw new AssertionError(
                     "The warnings that light the fourth lamp are the burning hull, overloaded, the glaze that holds or"
-                            + " is spent, stranded and the Company winch's countdown, the crust, the brace that cannot"
-                            + " work, the seepage, no brick, a hard landing, lava in or above the shaft and the hollows'"
-                            + " alarm: got "
+                            + " is spent, stranded, the crust, the brace that cannot work, the seepage, no brick, a hard"
+                            + " landing, lava in or above the shaft and the hollows' alarm: got "
                             + alerts);
         }
         PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
@@ -1292,10 +1290,6 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         for (PodStatusHud.Line note : notes) {
             cases.add(rowsOf(head, List.of(note)));
         }
-        // The stranded pod's own pair, as the readout builds it: the warning, then the Company winch's countdown (a
-        // minute, the fee of layer 8).
-        cases.add(rowsOf(head, List.of(line("stranded"), line("recovery", 60, 240))));
-
         cases.add(rowsOf(
                 head,
                 Stream.concat(

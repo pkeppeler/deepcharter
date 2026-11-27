@@ -18,7 +18,6 @@ import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodSprint;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +46,7 @@ public final class PodStatusHud {
     }
 
     /**
-     * The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has, and whether the pod is stranded and how long until the Company's winch crew hauls it home (#963). The hull is shown as points out of
+     * The pod's own lines: the four of {@link Kind#BASE}, then the slag the lining has, and whether the pod is stranded (#963). The hull is shown as points out of
      * the most the pod's parts allow: the client works the maximum out itself, from the synced component state
      * ({@link io.github.pkeppeler.deepcharter.pod.PodComponents#STATE}).
      */
@@ -88,11 +87,6 @@ public final class PodStatusHud {
         }
         if (pod.stranded()) {
             lines.add(new Line(Component.translatable("hud.deepcharter.pod.stranded"), look.podStatusColor()));
-            CompanyRecovery.secondsLeft(pod)
-                    .ifPresent(seconds -> lines.add(new Line(
-                            Component.translatable(
-                                    "hud.deepcharter.pod.recovery", seconds, CompanyRecovery.feeFor(pod)),
-                            look.podStatusColor())));
         }
         return lines;
     }
@@ -285,7 +279,6 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_spent", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT),
-            Map.entry("hud.deepcharter.pod.recovery", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.crust_ahead", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.crust_in", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.crust_ahead_drop", Kind.ALERT),

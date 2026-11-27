@@ -74,9 +74,9 @@ public class PodAttachmentTest {
     }
 
     /**
-     * The real load path. Fabric reads all of an entity's attachments as one map and drops the whole
-     * map if it fails to decode, so a bad entry must not fail: it must load as Unreadable, leave the
-     * valid attachment intact, fail loud when a feature reads it, and be written back unchanged.
+     * The real load path. Fabric skips a saved attachment entry that fails to decode, and the next save
+     * omits it, so a bad entry must not fail: it must load as Unreadable, leave the valid attachment
+     * intact, fail loud when a feature reads it, and be written back unchanged.
      */
     @GameTest
     public void anUnreadableVersionLoadsKeepsItsDataAndCostsOtherAttachmentsNothing(GameTestHelper helper) {
@@ -127,17 +127,54 @@ public class PodAttachmentTest {
                 // Expected.
             }
 
-            TagValueOutput output = TagValueOutput.createWithContext(
-                    ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
-            loaded.saveWithoutId(output);
-            CompoundTag saved = output.buildResult()
-                    .getCompound(ATTACHMENTS_KEY)
-                    .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
+            CompoundTag saved = savedAttachments(helper, loaded);
             if (!future.equals(Objects.requireNonNull(saved.get(exampleKey), "saved.get(exampleKey) is absent"))) {
                 throw failure(helper, "the unreadable data was not written back unchanged: %s", saved.get(exampleKey));
             }
             if (!other.equals(Objects.requireNonNull(saved.get(otherKey), "saved.get(otherKey) is absent"))) {
                 throw failure(helper, "the valid attachment was not saved intact: %s", saved.get(otherKey));
+            }
+            helper.succeed();
+        } finally {
+            loaded.discard();
+        }
+    }
+
+    /**
+     * A removed attachment type (ADR 0104): a pod saved with the Company recovery's clock, {@code
+     * deepcharter:company_recovery}, loads, keeps its other attachments, and is saved without the clock. Fabric skips an
+     * entry whose type is not registered and keeps the rest of the map, so the retired id needs no reader.
+     */
+    @GameTest
+    public void aRetiredCompanyRecoveryClockLoadsAndIsDroppedOnSave(GameTestHelper helper) {
+        String retiredKey = "deepcharter:company_recovery";
+        String otherKey = TestAttachments.OTHER.identifier().toString();
+        // The clock exactly as version 1 saved it: the game time the wait began.
+        CompoundTag clock = new CompoundTag();
+        clock.putInt("version", 1);
+        clock.putLong("since", 123_456L);
+        CompoundTag other = new CompoundTag();
+        other.putInt("version", TestAttachments.VERSION);
+        other.putString("text", "kept");
+        CompoundTag attachments = new CompoundTag();
+        attachments.put(retiredKey, clock);
+        attachments.put(otherKey, other);
+
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+        Entity loaded = reload(helper, pod, attachments);
+        try {
+            if (!new Other("kept").equals(Versioned.orThrow(loaded, TestAttachments.OTHER))) {
+                throw failure(
+                        helper,
+                        "the retired clock cost the pod its other attachment: %s",
+                        loaded.getAttached(TestAttachments.OTHER));
+            }
+            CompoundTag saved = savedAttachments(helper, loaded);
+            if (saved.contains(retiredKey)) {
+                throw failure(helper, "the retired clock was written back: %s", saved.get(retiredKey));
+            }
+            if (!other.equals(Objects.requireNonNull(saved.get(otherKey), "saved.get(otherKey) is absent"))) {
+                throw failure(helper, "the other attachment was not saved intact: %s", saved.get(otherKey));
             }
             helper.succeed();
         } finally {
@@ -244,6 +281,16 @@ public class PodAttachmentTest {
                         arrived.getAttached(TestAttachments.EXAMPLE));
             }
         });
+    }
+
+    /** The attachments {@code entity} writes when it is saved. */
+    private static CompoundTag savedAttachments(GameTestHelper helper, Entity entity) {
+        TagValueOutput output = TagValueOutput.createWithContext(
+                ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
+        entity.saveWithoutId(output);
+        return output.buildResult()
+                .getCompound(ATTACHMENTS_KEY)
+                .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
     }
 
     /** Saves {@code pod} (replacing its attachments with {@code attachments} if given), discards it and loads a new pod from the data. */

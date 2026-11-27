@@ -19,11 +19,11 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-/** What the charge tests share: using a charge in the main hand, packing rock round a seated pilot's pod, and checking a block after the blast. */
+/** What the consumable tests share: using a consumable in the main hand, packing rock round a seated pilot's pod, and checking a block after a charge's blast. */
 public final class ChargeUse {
     private ChargeUse() {}
 
-    /** Puts one {@code charge} in the player's hand, clears its cooldown and uses it. */
+    /** Puts one {@code charge} (any consumable) in the player's hand, clears its cooldown and uses it. */
     public static InteractionResult use(ServerPlayer player, Consumable charge) {
         player.getInventory()
                 .setItem(player.getInventory().getSelectedSlot(), new ItemStack(RepairRegistry.item(charge)));

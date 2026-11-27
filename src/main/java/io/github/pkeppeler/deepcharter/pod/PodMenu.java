@@ -457,7 +457,7 @@ public final class PodMenu extends SlottedMenu {
 
     /**
      * A fitted part stays for good, and ore leaves the hold only for a terminal or the ground: in the pack it would
-     * ride weightless and past the bay's size, and skip the spill of a Company recovery.
+     * ride weightless and past the bay's size, and skip the spill of a teleport.
      */
     @Override
     protected Optional<Component> keeps(RuleSlot slot) {

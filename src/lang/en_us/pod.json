@@ -61,7 +61,6 @@
   "hud.deepcharter.pod.sprint": "SPRINT  +%s%% SPEED",
   "hud.deepcharter.pod.stranded": "STRANDED",
   "key.deepcharter.line_slab": "Line the slab with slag brick",
-  "hud.deepcharter.pod.recovery": "WINCH IN %ss  FEE $%s  REFUEL TO CANCEL",
   "deepcharter.pod.dump.done": "Hold dumped under the pod",
   "deepcharter.pod.dump.empty": "The hold is empty",
   "deepcharter.pod.dump.hint": "Too heavy to lift. Dump cargo: hold %s",

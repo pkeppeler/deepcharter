@@ -1,8 +1,10 @@
 ---
-status: accepted
+status: superseded by 0104
 ---
 
 # The Company winches a stranded pod home for a fee, and the hull pays what the account cannot
+
+**Superseded by [ADR 0104](0104-a-stranded-pod-is-the-players-to-get-home-and-the-company-sends-no-crew.md)** (#1430): there is no Company recovery, and a stranded pod is the player's to get home.
 
 Issue [#963](https://github.com/pkeppeler/deepcharter/issues/963), from the third playtest: a pilot who ran dry at the bottom of a shaft, with no fuel item, no reserve tank and no money, had no way out. SPEC section 7 says a stranded pod waits for "rescue or a reserve tank", and nothing rescued it. The Company's recovery crew is the rescue that needs no second pod. It moves a pod and its pilot somewhere the owner did not choose (the colony), so [m2-rules](../../.claude/skills/deepcharter-conventions/m2-rules.md) asks this ADR to name the rule.
 

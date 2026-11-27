@@ -121,8 +121,8 @@ public class FuelWeightSootTest {
                     + 16 * FuelTuning.DEFAULT.weight().charcoal();
             double lift = PodStats.of(pod).enginePower() - PodEvents.extraMass(pod);
             LOGGER.info(
-                    "[fuel-economy] a pilot with 2 stacks of coal and 1 of charcoal: pod extra mass {} of {} engine power, "
-                            + "lift left {}, pilot's carried mass {}",
+                    "[fuel-economy] a pilot with 2 stacks of coal and 1 of charcoal: pod extra mass {} of {} engine"
+                            + " power, lift left {}, pilot's carried mass {}",
                     PodEvents.extraMass(pod),
                     PodStats.of(pod).enginePower(),
                     lift,
@@ -172,7 +172,8 @@ public class FuelWeightSootTest {
             burn(pod, 1f);
             PodStats sooted = PodStats.of(pod);
             LOGGER.info(
-                    "[fuel-economy] charcoal 4 L of soot: output {}, burn x{}, top speed {} of {}, climb {} of {}, service ${}",
+                    "[fuel-economy] charcoal 4 L of soot: output {}, burn x{}, top speed {} of {}, climb {} of {},"
+                            + " service ${}",
                     EngineSoot.output(4f),
                     EngineSoot.burn(4f),
                     sooted.horizontalSpeed(),
@@ -207,7 +208,8 @@ public class FuelWeightSootTest {
             burn(pod, soot.limpLitres() - 4f);
             PodStats limp = PodStats.of(pod);
             LOGGER.info(
-                    "[fuel-economy] charcoal {} L of soot: limp, output {}, burn x{}, top speed {} of {}, climb {} of {}",
+                    "[fuel-economy] charcoal {} L of soot: limp, output {}, burn x{}, top speed {} of {}, climb {} of"
+                            + " {}",
                     EngineSoot.soot(pod),
                     EngineSoot.output(EngineSoot.soot(pod)),
                     EngineSoot.burnMultiplier(pod),
@@ -282,8 +284,7 @@ public class FuelWeightSootTest {
         try {
             player.player().setGameMode(GameType.SURVIVAL);
             fill(pod, player, Items.CHARCOAL, 10);
-            // A reserve tank rescue or a recovery sets the tank to a litre of other fuel: the account says 10 L
-            // of charcoal.
+            // The tank drops to a litre behind the account's back: the account says 10 L of charcoal.
             pod.setFuel(10f);
             burn(pod, 0.5f);
             // Then the pump fills it, and the pod burns a whole tank of pump fuel: none of that is solid.
@@ -295,7 +296,8 @@ public class FuelWeightSootTest {
             expect(
                     helper,
                     EngineSoot.soot(pod) <= 1.5f + 0.001f,
-                    "only the litre that was in the tank (and the 0.5 L burned) is solid: soot should be at most 1.5, got %s",
+                    "only the litre that was in the tank (and the 0.5 L burned) is solid: soot should be at most 1.5,"
+                            + " got %s",
                     EngineSoot.soot(pod));
             helper.succeed();
         } finally {

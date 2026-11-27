@@ -38,25 +38,18 @@ final class Teleports {
      * Where the teleporters take a pod: the colony's respawn point, or the world spawn while the colony is not built or its
      * data is unreadable.
      */
-    static GlobalPos destination(MinecraftServer server) {
-        return Colony.respawnPoint(server).orElseGet(() -> worldSpawn(server));
+    private static GlobalPos destination(MinecraftServer server) {
+        return Colony.respawnPoint(server).orElseGet(() -> {
+            LevelData.RespawnData spawn = server.overworld().getRespawnData();
+            return GlobalPos.of(spawn.dimension(), spawn.pos());
+        });
     }
 
     /** Sends {@code pod}, at most {@code scatter} blocks from the destination. Empty when it went, or the reason it did not. */
     static Optional<Component> send(PodEntity pod, double scatter) {
-        return send(pod, scatter, destination(((ServerLevel) pod.level()).getServer()), SpillLife.VANILLA);
-    }
-
-    /** The world spawn, where a transit goes when the colony's column is blocked. */
-    static GlobalPos worldSpawn(MinecraftServer server) {
-        LevelData.RespawnData spawn = server.overworld().getRespawnData();
-        return GlobalPos.of(spawn.dimension(), spawn.pos());
-    }
-
-    /** As {@link #send(PodEntity, double)}, to {@code target}, with the spilled hold lying for {@code spill}. */
-    static Optional<Component> send(PodEntity pod, double scatter, GlobalPos target, SpillLife spill) {
         ServerLevel from = (ServerLevel) pod.level();
         MinecraftServer server = from.getServer();
+        GlobalPos target = destination(server);
         ServerLevel to = server.getLevel(target.dimension());
         if (to == null || !pod.canUsePortal(true) || !pod.canTeleport(from, to)) {
             return Consumables.refusal("teleport_blocked");
@@ -89,11 +82,7 @@ final class Teleports {
         // The fuel slot is fuel, not cargo, and stays, as the tank's fuel does.
         if (arrived instanceof PodEntity moved) {
             for (ItemStack stack : moved.cargo().takeAll(moved)) {
-                ItemEntity drop = new ItemEntity(from, departure.x, departure.y, departure.z, stack);
-                if (spill == SpillLife.EXTENDED) {
-                    drop.setExtendedLifetime();
-                }
-                from.addFreshEntity(drop);
+                from.addFreshEntity(new ItemEntity(from, departure.x, departure.y, departure.z, stack));
             }
         }
         from.playSound(
