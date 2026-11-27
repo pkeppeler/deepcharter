@@ -118,7 +118,8 @@ public class PodHardLandingTest {
         if (Math.abs(oneOver - 2.5f) > 1e-3f || Math.abs(fiveOver - 12.5f) > 1e-3f || terminal < stats.maxHull()) {
             throw failure(
                     helper,
-                    "1 and 5 blocks a second over the buffer should cost 2.5 and 12.5 hull and terminal speed at least %s, cost %s, %s and %s",
+                    "1 and 5 blocks a second over the buffer should cost 2.5 and 12.5 hull and terminal speed at least"
+                            + " %s, cost %s, %s and %s",
                     stats.maxHull(),
                     oneOver,
                     fiveOver,

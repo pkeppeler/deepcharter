@@ -538,7 +538,8 @@ public class PodHazardCuesTest {
                         || PodLoad.of(rig.pod).cannotClimb() == climbs) {
                     throw failure(
                             helper,
-                            "with a load of %s (%s short of the climb limit) the pod should %s and the cue should %s, rose %s and %s cues",
+                            "with a load of %s (%s short of the climb limit) the pod should %s and the cue should %s,"
+                                    + " rose %s and %s cues",
                             load,
                             under,
                             climbs ? "climb" : "not climb",
