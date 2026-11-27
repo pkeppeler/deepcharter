@@ -17,12 +17,9 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.SuitScenes;
 import io.github.pkeppeler.deepcharter.test.support.SuitScenes.Pocket;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
-import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
-import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -40,7 +37,6 @@ public class AirCanisterScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
     private static final int HOLD_FRAMES = 8;
     private static final int BEFORE_FRAMES = 5;
-    private static final Identifier FIRST_BONUS = Identifier.fromNamespaceAndPath("deepcharter", "t05");
     private static final int OUTSIDE_X = 8000;
     private static final float FACE_NORTH = 180f;
     private static final float LOOK_SLIGHTLY_DOWN = 8f;
@@ -60,13 +56,10 @@ public class AirCanisterScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             Scene scene = singleplayer.getServer().computeOnServer(RepairStationClientTest::setUp);
-            // The layer 2 breach pays the Company's first bonus when the scenario drops into the unbuilt depth. It is
-            // marked fired now,
-            // so the balance the stills show stays the one the scenario leaves.
             singleplayer
                     .getServer()
-                    .runOnServer(server -> TransmissionData.get(server)
-                            .fire(scene.charter().id(), TransmissionCatalog.require(FIRST_BONUS)));
+                    .runOnServer(
+                            server -> markBonusesFired(server, scene.charter().id()));
             ClientWait.until(
                     context,
                     "the charter's balance",
@@ -97,8 +90,8 @@ public class AirCanisterScenario extends EvidenceScenario {
                     client -> SuitGaugeHud.gauge(client)
                             .filter(gauge -> gauge.fraction() > BAR_SPLIT)
                             .isPresent());
-            // The still comes straight after the jump, before the suit drains it away; the frames that follow show it
-            // drain.
+            // The still comes straight after the jump, before the suit drains it away; the frames that follow show
+            // it drain.
             screenshot(context, "air-canister-2-after-the-bar-jumps");
             hold(context);
 

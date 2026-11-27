@@ -138,6 +138,22 @@ public class PodStatsTest {
         }
     }
 
+    @GameTest
+    public void withoutThrustAccelerationZeroesTheLiftAndNothingElse(GameTestHelper helper) {
+        PodStats base = PodStats.base();
+        PodStats cut = base.withoutThrustAcceleration();
+        if (base.thrustAcceleration() <= 0f
+                || cut.thrustAcceleration() != 0f
+                || cut.horizontalSpeed() != base.horizontalSpeed()
+                || cut.enginePower() != base.enginePower()
+                || cut.maxHull() != base.maxHull()
+                || cut.maxClimbSpeed() != base.maxClimbSpeed()) {
+            throw helper.assertionException(
+                    "cutting the lift should zero it and nothing else, got %s from %s", cut, base);
+        }
+        helper.succeed();
+    }
+
     @GameTest(maxTicks = 60)
     public void speedOverrideChangesHowFarTheTreadsDrive(GameTestHelper helper) {
         float speed = PodTuning.DEFAULT.movement().horizontalSpeed() * 2f;
@@ -145,7 +161,8 @@ public class PodStatsTest {
         MockPlayer pilot = seatPilot(helper, pod);
         Vec3 start = pod.position();
         pilot.setInput(FORWARD);
-        int ticks = 10;
+        // Five ticks keep the pod on the small floor at twice the cruise speed.
+        int ticks = 5;
         helper.runAfterDelay(ticks, () -> {
             try {
                 double moved = pod.position().subtract(start).horizontalDistance();
@@ -402,8 +419,9 @@ public class PodStatsTest {
     @GameTest
     public void theBuiltInFuelsAreInTheTableToo(GameTestHelper helper) {
         for (var fuel : List.of(Items.COAL, Items.CHARCOAL)) {
-            if (PodFuelItems.litresOf(new ItemStack(fuel)).orElse(0) != 2.0) {
-                throw helper.assertionException("%s should give 2 litres from the data table", fuel);
+            double expected = fuel == Items.COAL ? 2.0 : 1.0;
+            if (PodFuelItems.litresOf(new ItemStack(fuel)).orElse(0) != expected) {
+                throw helper.assertionException("%s should give %s litres from the data table", fuel, expected);
             }
         }
         if (PodFuelItems.litresOf(new ItemStack(Items.STICK)).isPresent()) {
@@ -414,8 +432,8 @@ public class PodStatsTest {
 
     @GameTest
     public void aTaggedItemWithNoLitresEntryOrABadFileIsLoggedAndNotFuel(GameTestHelper helper) {
-        // This test's data tags the feather (no file) and the flint (a file with negative litres), next to the blaze
-        // rod.
+        // This test's data tags the feather (no file) and the flint (a file with negative litres), next to the
+        // blaze rod.
         List<Item> missing = PodFuelItems.checkLitresFor(
                 List.of(Items.COAL, Items.STICK, Items.FEATHER, Items.FLINT, Items.BLAZE_ROD));
         if (!missing.equals(List.of(Items.STICK, Items.FEATHER, Items.FLINT))) {
@@ -639,8 +657,8 @@ public class PodStatsTest {
 
     @GameTest(maxTicks = FAR_TICKS)
     public void aCrustBoreThatTakesTheLastHullFiresHullDepleted(GameTestHelper helper) {
-        // Since #67 a pod at hull 0 is a wreck: the drill stops with the power and the pilot dies, so the pod does not
-        // cross.
+        // Since #67 a pod at hull 0 is a wreck: the drill stops with the power and the pilot dies, so the pod does
+        // not cross.
         int x = 4128;
         ServerLevel one = TestLayers.level(helper, 1);
         int floor = TestLayers.band(one, 1).minY();

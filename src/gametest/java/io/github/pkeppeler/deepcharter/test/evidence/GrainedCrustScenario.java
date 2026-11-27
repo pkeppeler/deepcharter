@@ -25,6 +25,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -78,6 +79,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 player.teleportTo(one, X - 4, FLOOR_Y, Z + 0.5, Set.of(), EAST, LOOK_DOWN, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X - 4, FLOOR_Y, Z + 0.5);
+                pod.setYRot(EAST);
                 one.addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the player could not mount the pod");
@@ -244,6 +246,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = podOnTheFloor(server);
+            pod.setYRot(EAST);
             player.teleportTo(level(server), pod.getX(), pod.getY(), pod.getZ(), Set.of(), EAST, LOOK_DOWN, true);
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod again");
@@ -288,8 +291,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
                     "a stopped pod should lose " + 2 * squeezeHull + " in two pulses, it lost " + lostStopped);
         }
 
-        // Driven west across the pad (forward, turned to face west) from 20 ticks before a pulse, the same pod takes
-        // nothing.
+        // Driven west across the pad (forward, turned to face west) from 20 ticks before a pulse, the same pod
+        // takes nothing.
         singleplayer.getServer().runOnServer(server -> pod(server).setPos(WALL_X - 3, FLOOR_Y, Z + 0.5));
         int waited = 0;
         while (singleplayer.getServer().computeOnServer(server -> PulseClock.ticksToPulse(level(server))) != 20) {
@@ -301,6 +304,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         float before = podHull(singleplayer);
         double from = podX(singleplayer);
         // Facing west, so that the pod drives away from the camera.
+        singleplayer.getServer().runOnServer(server -> podOnTheFloor(server).setYRot(WEST));
         context.runOnClient(client -> ClientSession.player(client).setYRot(WEST));
         context.getInput().holdKey(options -> options.keyUp);
         for (int i = 0; i < 7; i++) {
@@ -395,9 +399,16 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 : podOnTheFloor(server);
     }
 
-    /** The one pod of the room, when the player is out of it. */
+    /**
+     * The one pod of the room, when the player is out of it. Asked of the room, not of the level: layer 1 is a band of the
+     * overworld, which also holds the colony's derelict Mole, a wreck nobody can mount (#1373).
+     */
     private static PodEntity podOnTheFloor(MinecraftServer server) {
-        return level(server).getEntities(PodRegistry.POD, pod -> true).getFirst();
+        AABB room = new AABB(
+                ROOM_WEST, FLOOR_Y - 1, Z - HALF_WIDTH, ROOM_EAST + 1, FLOOR_Y + HEIGHT + 1, Z + HALF_WIDTH + 1);
+        return level(server).getEntitiesOfClass(PodEntity.class, room).stream()
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no pod in the grained-crust room"));
     }
 
     /** True while the cell against the wall, at the end of the water's channel, holds a fluid. */

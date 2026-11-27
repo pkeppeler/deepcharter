@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -276,15 +277,25 @@ public class LayerDimensionsTest {
     }
 
     /** The motion-blocking heightmap counts the mod's blocks as ground (#350): goto stands the player on one, not inside it. */
-    @GameTest
-    public void gotoStandsOnAModBlock(GameTestHelper helper) throws CommandSyntaxException {
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void gotoStandsOnAModBlock(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper, List.of(new FarChunks.At(TestLayers.level(helper, 2), 300_000 >> 4, 300_000 >> 4)), () -> {
+                    try {
+                        gotoStandsOnAModBlockLoaded(helper);
+                    } catch (CommandSyntaxException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+    }
+
+    private static void gotoStandsOnAModBlockLoaded(GameTestHelper helper) throws CommandSyntaxException {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer mock =
                 MockPlayers.join(server, "layer-goto-block", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
             ServerLevel layer = TestLayers.level(helper, 2);
             mock.teleportTo(layer, TestLayers.vec(1, 300_000.5, 100, 300_000.5), 0, 0);
-            layer.getChunk(300_000 >> 4, 300_000 >> 4);
             BlockPos block = new BlockPos(300_000, TestLayers.band(layer, 2).maxY() - 2, 300_000);
             // The command stands on the highest place with room over it: the band's rock has none here, so two cells
             // are opened over the block.

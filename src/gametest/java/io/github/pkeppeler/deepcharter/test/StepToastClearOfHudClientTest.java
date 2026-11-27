@@ -5,7 +5,6 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
-import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BlockReadoutHud;
 import io.github.pkeppeler.deepcharter.client.layer.BreachHud;
 import io.github.pkeppeler.deepcharter.client.market.AccountHud;
@@ -25,6 +24,7 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionHud;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
@@ -36,6 +36,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -280,19 +281,21 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     }
 
     private static void expectTheSlipIsClearOfATransmission(ClientGameTestContext context) {
-        context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(
-                Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t01"), CHARTER, "Director")));
-        ClientWait.until(context, "a transmission on screen", client -> TransmissionOverlay.active());
-        context.runOnClient(client -> {
-            for (int[] gui : COCKPIT_GUIS) {
-                Map<String, Box> hud = critical(client, gui[0], gui[1]);
-                require(
-                        hud.containsKey("transmission"),
-                        "the transmission is among the HUD on " + gui[0] + " x " + gui[1]);
-                requireClearOrNowhere(client, gui, SHORT_STEP, hud, false);
-            }
-            TransmissionOverlay.reset();
-        });
+        try (var _ = QuietTransmissions.shown()) {
+            context.runOnClient(client -> TransmissionOverlay.enqueue(new TransmissionPayload(
+                    Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t01"), CHARTER, "Director")));
+            ClientWait.until(context, "a transmission on screen", client -> TransmissionOverlay.active());
+            context.runOnClient(client -> {
+                for (int[] gui : COCKPIT_GUIS) {
+                    Map<String, Box> hud = critical(client, gui[0], gui[1]);
+                    require(
+                            hud.containsKey("transmission"),
+                            "the transmission is among the HUD on " + gui[0] + " x " + gui[1]);
+                    requireClearOrNowhere(client, gui, SHORT_STEP, hud, false);
+                }
+                TransmissionOverlay.reset();
+            });
+        }
     }
 
     private static void expectTheSlipIsClearOnFoot(ClientGameTestContext context) {
@@ -475,13 +478,14 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                 widest = Math.max(widest, font.width(readout.hint().get()));
             }
             double scale = look.scale();
+            int boxHeight = (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale);
             hud.put(
                     "block readout",
                     new Box(
                             (width - (int) Math.ceil(widest * scale)) / 2,
-                            height / 2 + look.offsetY(),
+                            look.blockTop(height, font.lineHeight),
                             (int) Math.ceil(widest * scale),
-                            (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale)));
+                            boxHeight));
         });
         if (TransmissionOverlay.active()) {
             TransmissionLook look = TransmissionLook.current();

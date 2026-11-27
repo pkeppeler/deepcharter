@@ -34,6 +34,12 @@ public sealed interface HandbookPage {
     record Contents(int part, int parts, int firstChapter, int count) implements HandbookPage {}
 
     /**
+     * One page of the controls, after the contents: sheet {@code part} of {@code parts}, each counted from 1 ({@link
+     * HandbookControls}).
+     */
+    record Controls(int part, int parts) implements HandbookPage {}
+
+    /**
      * A chapter. {@code number} counts from 1 in handbook order. {@code visibility} says how much of it the player may read: a
      * {@link HandbookVisibility#CLASSIFIED} chapter still has its page, but the screen draws no title and no directive.
      * {@code completed} holds the directives of this chapter that the player's charter has completed.
@@ -57,7 +63,7 @@ public sealed interface HandbookPage {
 
     /**
      * One page of the text of a full chapter, before the chapter's own page of directives. {@code part} counts from 1 of
-     * {@code parts}.
+     * {@code parts}. Text that does not fit one sheet runs on to more ({@link SheetFlow}).
      */
     record ChapterText(int number, Identifier id, HandbookChapter chapter, int part, int parts)
             implements HandbookPage {}
@@ -78,6 +84,9 @@ public sealed interface HandbookPage {
     /** The end page: the end of the official chapters. */
     record Appendix() implements HandbookPage {}
 
-    /** One page of Appendix A, the employment contract, with its redactions. {@code part} counts from 1 of {@code parts}. */
+    /**
+     * One page of Appendix A, the employment contract, with its redactions. {@code part} counts from 1 of {@code
+     * parts}. Clauses that do not fit one sheet run on to more ({@link SheetFlow}).
+     */
     record Contract(int part, int parts) implements HandbookPage {}
 }

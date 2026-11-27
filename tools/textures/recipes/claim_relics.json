@@ -1,0 +1,50 @@
+{
+  "recipes": {
+    "block/lunch_pail": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "fill", "colour": "steel.3"},
+        {"op": "noise", "ramp": ["steel.2", "steel.3", "steel.3", "steel.4"], "seed": 1277, "cell": 4, "octaves": 2, "dither": 0.5},
+        {"op": "fill", "colour": "steel.5", "rect": [0, 0, 16, 1]},
+        {"op": "fill", "colour": "steel.2", "rect": [0, 1, 16, 1]},
+        {"op": "fill", "colour": "steel.4", "rect": [0, 9, 16, 1]},
+        {"op": "fill", "colour": "steel.1", "rect": [0, 10, 16, 1]},
+        {"op": "pixels", "at": [0, 2], "legend": {"r": "rust.2", "R": "rust.3", "d": "steel.1"},
+          "rows": [
+            "....r.......d...",
+            "...rR......dd...",
+            "....r...........",
+            ".........r......",
+            "..d.....rR....r.",
+            ".dd......r...rR.",
+            "...............r"
+          ]},
+        {"op": "speckle", "colours": ["rust.1", "rust.2", "steel.5"], "density": 0.05, "seed": 1278},
+        {"op": "fill", "colour": "steel.2", "rect": [0, 11, 16, 5]},
+        {"op": "noise", "ramp": ["steel.1", "steel.2", "steel.2", "steel.3"], "seed": 1279, "cell": 4, "octaves": 2, "dither": 0.5, "rect": [0, 11, 16, 5]},
+        {"op": "speckle", "colours": ["rust.1", "rust.2"], "density": 0.08, "seed": 1280, "rect": [0, 11, 16, 5]}
+      ]
+    },
+    "block/prayer_card": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "fill", "colour": "paper.2"},
+        {"op": "noise", "ramp": ["paper.2", "paper.3", "paper.3", "paper.4"], "seed": 1281, "cell": 4, "octaves": 2, "dither": 0.6},
+        {"op": "rect", "rect": [4, 3, 8, 10], "colour": "paper.1", "outline": true},
+        {"op": "pixels", "at": [5, 4], "legend": {"f": "sodium.4", "F": "sodium.5", "w": "paper.4", "i": "ink.2", "I": "ink.1"},
+          "rows": [
+            "..fF..",
+            "..Ff..",
+            "..ww..",
+            "..ww..",
+            "......",
+            "iii.ii",
+            ".i.ii.",
+            "ii.ii."
+          ]},
+        {"op": "speckle", "colours": ["paper.1", "dust.2", "dust.1"], "density": 0.08, "seed": 1282, "rect": [4, 3, 8, 10]},
+        {"op": "fill", "colour": "dust.1", "rect": [4, 12, 8, 1]}
+      ]
+    }
+  }
+}

@@ -40,8 +40,8 @@ import net.minecraft.world.phys.Vec3;
  * vehicle with no respawn, carving the pocket first only if the arrival is obstructed. Otherwise it is the teleport
  * above, with its pocket and fade.
  *
- * <p>The crust is pod-only ({@link HandBreak}): drills break it through {@link #breakCrust}, creative players break it
- * as any block, and a hand tool brute-forces it only at the cost ADR 0069 sets.
+ * <p>The breach and grained crusts are pod-only ({@link HandBreak}): drills break them through {@link #breakCrust},
+ * creative players break them as any block, and a hand tool brute-forces them only at the cost ADR 0069 sets.
  */
 public final class BreachService {
     /** How far a crossing looks for a pocket column free of protected blocks. */
@@ -110,7 +110,8 @@ public final class BreachService {
         int arrivalY = descending ? to.getMaxY() - tuning.pocketHeight() : to.getMinY() + tuning.crustThickness();
         BlockPos requested = BlockPos.containing(entity.getX(), arrivalY, entity.getZ());
         ChunkPos requestedChunk = ChunkPos.containing(requested);
-        SeamStreaming.reportCrossing(entity, to, requestedChunk);
+        SeamStreaming.reportCrossing(
+                entity, to, requestedChunk, descending ? SeamStreaming.Direction.DOWN : SeamStreaming.Direction.UP);
         List<ServerPlayer> riders = entity.getSelfAndPassengers()
                 .filter(ServerPlayer.class::isInstance)
                 .map(ServerPlayer.class::cast)
@@ -125,8 +126,8 @@ public final class BreachService {
                 ? requestedPosition
                 : new Vec3(pocket.getX() + 0.5, arrivalY, pocket.getZ() + 0.5);
         if (swap) {
-            // A carved pocket is sent ahead of the swap, so the held level has it; one that cannot be sent is the
-            // fallback's.
+            // A carved pocket is sent ahead of the swap, so the held level has it; one that cannot be sent is
+            // the fallback's.
             swap = free
                     || (SeamSender.resendCarved(riders, to, ChunkPos.containing(pocket))
                             && riders.stream()

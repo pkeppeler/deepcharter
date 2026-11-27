@@ -121,13 +121,15 @@ final class ChassisChecks {
         int x = 9000 + shift;
         int n = 3;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-bore-down");
         PodEntity[] pod = {null};
         // Off the block grid on purpose: the pod must centre itself in its bore.
         Vec3 start = new Vec3(x + 0.3 + middle, FLOOR, Z + 0.8 + middle);
-        pilot.teleportTo(level, start, 0f, 0f);
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, start, 0f, 0f);
             pod[0] = spawn(level, start);
             expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
             pilot.setInput(SPRINT);
@@ -186,16 +188,19 @@ final class ChassisChecks {
     void boresSidewaysTheWholeHeightAndWidth(GameTestHelper helper) {
         int x = 9048 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         // A wall of stone the pod meets: it stops when its east face touches it, then centres on its bore.
         int wallX = x + 4;
-        RoomCarver.carve(level, wallX, wallX + 3, FLOOR, FLOOR + ROOM_HEIGHT, Z - RADIUS, Z + RADIUS, Blocks.STONE);
         MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-bore-side");
         Vec3 start = new Vec3(x + 0.3, FLOOR, Z + 0.3);
-        pilot.teleportTo(level, start, EAST, 0f);
         PodEntity[] pod = {null};
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            RoomCarver.carve(level, wallX, wallX + 3, FLOOR, FLOOR + ROOM_HEIGHT, Z - RADIUS, Z + RADIUS, Blocks.STONE);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, start, EAST, 0f);
             pod[0] = spawn(level, start);
+            pod[0].setYRot(EAST);
             expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
             pilot.setInput(FORWARD);
         });
@@ -203,8 +208,8 @@ final class ChassisChecks {
             if (pod[0] == null) {
                 return;
             }
-            // The slab it bores: the wall's first column, width wide round the pod's middle and height tall from its
-            // feet.
+            // The slab it bores: the wall's first column, width wide round the pod's middle and height tall from
+            // its feet.
             if (count(level, wallX, wallX, FLOOR, FLOOR + height - 1, Z - RADIUS, Z + RADIUS, Blocks.AIR)
                     == width * height) {
                 expect(
@@ -244,16 +249,18 @@ final class ChassisChecks {
     void linesTheRingOfTheWholeFootprintAndBoxHeight(GameTestHelper helper) {
         int x = 9096 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-lining");
         pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 start = new Vec3(x + middle, FLOOR, Z + middle);
-        pilot.teleportTo(level, start, 0f, 0f);
         PodEntity[] pod = {null};
         int ring = 4 * width * height;
         int lowX = x - width / 2;
         int lowZ = Z - width / 2;
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, start, 0f, 0f);
             pod[0] = spawn(level, start);
             expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
             pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), ring));
@@ -310,7 +317,6 @@ final class ChassisChecks {
     void linerLinesTheWholeRingLavaCanReachAndNothingElse(GameTestHelper helper) {
         int x = 9480 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-liner-" + OWNERS.incrementAndGet());
         owner.player().setGameMode(GameType.SURVIVAL);
         int ring = 4 * width * height;
@@ -321,6 +327,8 @@ final class ChassisChecks {
                 PodLiner.STATE,
                 Versioned.of(new PodLiner.State(Optional.of(new PodLiner.Anchor(FLOOR + 4, lowX, lowZ)))));
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
             pod[0] = spawn(level, new Vec3(x + middle, FLOOR, Z + middle));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod[0], ComponentTrack.LINER, 1);
             PodLining.modify(pod[0], state -> new PodLining.State(0, ring + 10, 0, false, false));
@@ -371,13 +379,14 @@ final class ChassisChecks {
     private void sounds(
             GameTestHelper helper, int x, int tier, Consumer<ServerLevel> build, Consumer<PodEntity> check) {
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
-        build.accept(level);
         MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-sounder-" + OWNERS.incrementAndGet());
         owner.player().setGameMode(GameType.SURVIVAL);
         PodEntity[] pod = {null};
         int[] ticks = {0};
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            build.accept(level);
             pod[0] = spawn(level, new Vec3(x + middle, FLOOR, Z + middle));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod[0], ComponentTrack.SOUNDER, tier);
         });
@@ -433,10 +442,11 @@ final class ChassisChecks {
     void scansLavaAMarginBeyondTheWholeBore(GameTestHelper helper) {
         int x = 9240 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-scanner");
         owner.player().setGameMode(GameType.SURVIVAL);
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
             PodEntity pod = spawn(level, new Vec3(x, FLOOR, Z));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, 2);
             // The pod faces south, so the plane is its own X. Its bore reaches width / 2 to one side and width / 2 - 1
@@ -473,10 +483,13 @@ final class ChassisChecks {
     void landsHardBySinkSpeedAndTheHullTakesIt(GameTestHelper helper) {
         int x = 9288 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         Vec3 start = new Vec3(x, FLOOR + 10, Z);
         PodEntity[] pod = {null};
-        FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> pod[0] = spawn(level, start));
+        FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            pod[0] = spawn(level, start);
+        });
         helper.succeedWhen(() -> {
             expect(helper, pod[0] != null && pod[0].onGround() && pod[0].tickCount >= 5, "the pod has not landed");
             // The same fall of 10 blocks costs the Mole 28 to 34 hull (PodHardLandingTest): the cost reads sink speed
@@ -496,15 +509,17 @@ final class ChassisChecks {
     void trailsTowedWithoutTheTwoHullsOverlapping(GameTestHelper helper) {
         int x = 9336 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         Vec3 start = new Vec3(x - 4, FLOOR + 10, Z);
         PodEntity[] pods = {null, null};
-        // The pods hang and swing over the whole room, which spans two chunks: the towed pod ticks only while its chunk
-        // does.
+        // The pods hang and swing over the whole room, which spans two chunks: the towed pod ticks only while its
+        // chunk does.
         List<BlockPos> chunks = List.of(new BlockPos(x - RADIUS, FLOOR, Z), new BlockPos(x + RADIUS, FLOOR, Z));
         int[] ready = {0};
         FarChunks.awaitEntityTicking(helper, level, chunks, index -> {
             if (++ready[0] == chunks.size()) {
+                // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the
+                // server thread.
+                site(level, x);
                 pods[0] = spawn(level, start);
                 pods[1] = spawn(level, start.add(-3, 0, 0));
                 PodTowing.attach(pods[0], pods[1]);
@@ -583,11 +598,12 @@ final class ChassisChecks {
     void wreckKeepsItsBoxAndTheBayParksClearOfIt(GameTestHelper helper) {
         int x = 9432 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         BlockPos anchor = new BlockPos(x, FLOOR, Z);
         MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-wreck");
         pilot.teleportTo(level, Vec3.atBottomCenterOf(anchor), 0f, 0f);
         FarChunks.awaitEntityTicking(helper, level, anchor, () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
             PodEntity wreck = spawn(level, Vec3.atBottomCenterOf(anchor));
             expect(helper, pilot.player().startRiding(wreck, true, false), "the pilot could not board the pod");
             expect(helper, !Wrecks.isWreck(wreck), "a new pod is no wreck");
@@ -628,9 +644,10 @@ final class ChassisChecks {
     void parksInBayPlacesThatFitAndNeverOverlap(GameTestHelper helper) {
         int x = 9384 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         BlockPos anchor = new BlockPos(x, FLOOR, Z);
         FarChunks.awaitEntityTicking(helper, level, anchor, () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
             List<PodEntity> parked = new ArrayList<>();
             for (Optional<Vec3> slot = Hangar.freeSlot(level, anchor, chassis);
                     slot.isPresent() && parked.size() < 40;

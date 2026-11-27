@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.ore;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import java.util.Objects;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
@@ -11,15 +12,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.component.ItemContainerContents;
 
 /**
- * Carried ore slows a player on foot (SPEC section 4), so that the pod is the hauler. Ore in a shulker box or a bundle counts.
+ * Carried ore slows a player on foot (SPEC section 4), so that the pod is the hauler, and so does the solid fuel in a
+ * pack (a {@link CargoWeight}, #1280). Ore in a shulker box or a bundle counts.
  * This class is the one source of the slowdown: the Overburdened status ({@link OreRegistry#OVERBURDENED}) and the one-time line on a
  * player's first ore only show it (#853), and are set here from the same number, on the same tick.
  */
@@ -29,6 +33,10 @@ public final class OreEncumbrance {
     /** The read mark that records the one-time line on a player's first ore (the player's {@code ReadMarks}, which also holds one-time hints). */
     public static final Identifier FIRST_PICKUP_MARK =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_ore");
+
+    /** The read mark of the one-time line on a player's first load of solid fuel with no ore in it. */
+    public static final Identifier FIRST_FUEL_MARK =
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_fuel_load");
 
     /**
      * Mass that weighs on a player that is not ore: a Retained's grip (#916). Summed with the carried ore on the same tick, so the
@@ -53,11 +61,25 @@ public final class OreEncumbrance {
     }
 
     public static void init() {
+        // Every rider's pack rides in a seat, so all it holds weighs on the pod's lift: ore, fuel and containers
+        // (#1446). The bay holds only loose ore, never a pack's items, so nothing is counted twice.
+        PodEvents.EXTRA_MASS.register(pod -> {
+            float mass = 0f;
+            for (Entity rider : pod.getPassengers()) {
+                if (rider instanceof ServerPlayer player) {
+                    mass += carriedMass(player);
+                }
+            }
+            return mass;
+        });
         ServerTickEvents.END_SERVER_TICK.register(
                 server -> server.getPlayerList().getPlayers().forEach(OreEncumbrance::apply));
     }
 
-    /** Total mass of the ore the player carries: every inventory slot, the offhand and armor included, and the contents of containers. */
+    /**
+     * Total mass the player carries, ore and every {@link CargoWeight}: every inventory slot, the offhand and armor included, and the
+     * contents of containers.
+     */
     public static float carriedMass(ServerPlayer player) {
         float mass = 0f;
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
@@ -66,9 +88,10 @@ public final class OreEncumbrance {
         return mass;
     }
 
-    /** The mass of a stack's own ore and of everything inside it. */
+    /** The mass of a stack's own ore and weighted items, and of everything inside it. */
     static float massOf(ItemStack stack) {
-        float mass = OreRegistry.typeOf(stack).map(OreType::mass).orElse(0f) * stack.getCount();
+        float mass = CargoWeight.of(stack)
+                + OreRegistry.typeOf(stack).map(OreType::mass).orElse(0f) * stack.getCount();
         ItemContainerContents container = stack.get(DataComponents.CONTAINER);
         if (container != null) {
             mass += (float) container
@@ -104,7 +127,7 @@ public final class OreEncumbrance {
         // A pod carries its pilot at its own speed, so a rider is not slowed and the status would say otherwise.
         showStatus(player, player.isPassenger() ? 0 : slowdown);
         if (mass > 0) {
-            explainFirstOre(player);
+            explainFirstLoad(player);
         }
     }
 
@@ -129,12 +152,41 @@ public final class OreEncumbrance {
         }
     }
 
-    /** Says once per player, and keeps that as a read mark, why they now move slowly. Says nothing when the marks cannot be read. */
-    private static void explainFirstOre(ServerPlayer player) {
-        if (!ReadMarks.isReadable(player) || ReadMarks.isRead(player, FIRST_PICKUP_MARK)) {
+    /** Whether the player carries any ore, in a slot or inside a container or a bundle. */
+    private static boolean carriesOre(Player player) {
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            if (holdsOre(player.getInventory().getItem(slot))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean holdsOre(ItemStack stack) {
+        if (OreRegistry.typeOf(stack).isPresent()) {
+            return true;
+        }
+        ItemContainerContents container = stack.get(DataComponents.CONTAINER);
+        BundleContents bundle = stack.get(DataComponents.BUNDLE_CONTENTS);
+        return (container != null && container.nonEmptyItemCopyStream().anyMatch(OreEncumbrance::holdsOre))
+                || (bundle != null && bundle.itemCopies().anyMatch(OreEncumbrance::holdsOre));
+    }
+
+    /**
+     * Says once per player, and keeps that as a read mark, why they now move slowly: the ore line for a first ore, the
+     * fuel line for a first load that has no ore in it. Says nothing when the marks cannot be read.
+     */
+    private static void explainFirstLoad(ServerPlayer player) {
+        if (!ReadMarks.isReadable(player)) {
             return;
         }
-        ReadMarks.mark(player, FIRST_PICKUP_MARK);
-        player.sendSystemMessage(Component.translatable("deepcharter.ore.first_pickup"));
+        boolean carriesOre = carriesOre(player);
+        Identifier mark = carriesOre ? FIRST_PICKUP_MARK : FIRST_FUEL_MARK;
+        if (ReadMarks.isRead(player, mark)) {
+            return;
+        }
+        ReadMarks.mark(player, mark);
+        player.sendSystemMessage(
+                Component.translatable(carriesOre ? "deepcharter.ore.first_pickup" : "deepcharter.ore.first_fuel"));
     }
 }

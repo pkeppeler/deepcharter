@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -61,17 +62,19 @@ public class BlastingChargeTest {
     private static void scene(
             GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<PodEntity> afterSet, Verify verify) {
         ServerLevel level = TestLayers.level(helper, 1);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
-        RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         MockPlayer pilot = MockPlayers.join(helper, "charge-" + x);
-        pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 at = new Vec3(x, FLOOR, Z);
-        pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-            // Built once the chunk ticks, so its lava is poured into a ticking chunk (#1089).
+            // Built once the chunk ticks, so its lava is poured into a ticking chunk (#1089) and RoomSeal's read of the
+            // shell loads nothing on the server thread.
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
+            RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
             level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
             build.accept(level);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, at, 0f, 0f);
+            pilot.player().setGameMode(GameType.SURVIVAL);
             pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
@@ -172,7 +175,7 @@ public class BlastingChargeTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void aChargeSparesWhatIsBuiltFluidsBedrockAndVentsNoGas(GameTestHelper helper) {
+    public void aChargeSparesWhatIsBuiltFluidsBedrockCrustAndVentsNoGas(GameTestHelper helper) {
         int x = 3072;
         scene(
                 helper,
@@ -181,6 +184,8 @@ public class BlastingChargeTest {
                     level.setBlock(cell(x - 1, -2, -1), Blocks.OAK_PLANKS.defaultBlockState(), 2);
                     level.setBlock(cell(x - 1, -1, 0), SlagBrick.BLOCK.defaultBlockState(), 2);
                     level.setBlock(cell(x, -1, -1), Blocks.BEDROCK.defaultBlockState(), 2);
+                    level.setBlock(cell(x - 1, -1, -1), LayerBlocks.BREACH_CRUST.defaultBlockState(), 2);
+                    level.setBlock(cell(x - 1, -2, 0), LayerBlocks.GRAINED_CRUST.defaultBlockState(), 2);
                     level.setBlock(cell(x, -2, -1), Blocks.LAVA.defaultBlockState(), 2);
                     level.setBlock(
                             cell(x, -2, 0), HazardBlocks.GAS_POCKET.defaultBlockState(), 2); // a corner of the volume
@@ -192,6 +197,10 @@ public class BlastingChargeTest {
                     ChargeUse.expectBlock(helper2, level, cell(x - 1, -2, -1), Blocks.OAK_PLANKS, "planks");
                     ChargeUse.expectBlock(helper2, level, cell(x - 1, -1, 0), SlagBrick.BLOCK, "a slag brick");
                     ChargeUse.expectBlock(helper2, level, cell(x, -1, -1), Blocks.BEDROCK, "bedrock");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x - 1, -1, -1), LayerBlocks.BREACH_CRUST, "breach crust");
+                    ChargeUse.expectBlock(
+                            helper2, level, cell(x - 1, -2, 0), LayerBlocks.GRAINED_CRUST, "grained crust (#1022)");
                     ChargeUse.expectBlock(helper2, level, cell(x, -2, -1), Blocks.LAVA, "lava");
                     expectAir(helper2, level, cell(x, -2, 0), "the gas pocket goes with the blast");
                     ChargeUse.expectBlock(

@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.ColonyRations;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.fuel.FuelRegistry;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
@@ -61,8 +62,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses, biofuel is
- * crafted from four crops and refuels, and a reserve tank adds 25 litres of capacity and clears Stranded.
+ * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses,
+ * biofuel crafts from three stalk mash and refuels, and a reserve tank adds 25 litres of capacity and clears Stranded.
  */
 public class FuelPumpTest {
     private static final float EPSILON = 0.001f;
@@ -359,8 +360,8 @@ public class FuelPumpTest {
 
     @GameTest
     public void anExactPurchaseBeyondTheRoomIsRefused(GameTestHelper helper) {
-        // 4.2 litres of room: 5.8 of 10 litres is in the tank. BUY n is exact, so it takes whole litres of the room
-        // only.
+        // 4.2 litres of room: 5.8 of 10 litres is in the tank. BUY n is exact, so it takes whole litres of the
+        // room only.
         Scene scene = scene(helper, 50);
         run(helper, scene, s -> {
             s.pod().setFuel(58f);
@@ -403,40 +404,22 @@ public class FuelPumpTest {
     }
 
     @GameTest
-    public void biofuelIsCraftedFromFourCropsAndRefuels(GameTestHelper helper) {
+    public void biofuelIsCraftedFromThreeStalkMashAndRefuels(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        for (Item crop : List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT)) {
-            ItemStack made = craft(
-                    helper,
-                    List.of(new ItemStack(crop), new ItemStack(crop), new ItemStack(crop), new ItemStack(crop)));
-            if (!made.is(FuelRegistry.BIOFUEL) || made.getCount() != 1) {
-                throw helper.assertionException("four %s should craft one biofuel, got %s", crop, made);
-            }
+        Item mash = ColonyRations.STALK_MEAL;
+        ItemStack made = craft(helper, List.of(new ItemStack(mash), new ItemStack(mash), new ItemStack(mash)));
+        if (!made.is(FuelRegistry.BIOFUEL) || made.getCount() != 1) {
+            throw helper.assertionException("three stalk mash should craft one biofuel, got %s", made);
         }
-        ItemStack mixed = craft(
-                helper,
-                List.of(
-                        new ItemStack(Items.WHEAT),
-                        new ItemStack(Items.CARROT),
-                        new ItemStack(Items.POTATO),
-                        new ItemStack(Items.BEETROOT)));
-        if (!mixed.is(FuelRegistry.BIOFUEL)) {
-            throw helper.assertionException("four different crops should craft biofuel, got %s", mixed);
+        ItemStack two = craft(helper, List.of(new ItemStack(mash), new ItemStack(mash)));
+        if (!two.isEmpty()) {
+            throw helper.assertionException("two stalk mash should craft nothing, got %s", two);
         }
-        ItemStack three = craft(
+        ItemStack wheat = craft(
                 helper, List.of(new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT), new ItemStack(Items.WHEAT)));
-        if (!three.isEmpty()) {
-            throw helper.assertionException("three crops should craft nothing, got %s", three);
-        }
-        ItemStack sticks = craft(
-                helper,
-                List.of(
-                        new ItemStack(Items.STICK),
-                        new ItemStack(Items.STICK),
-                        new ItemStack(Items.STICK),
-                        new ItemStack(Items.STICK)));
-        if (!sticks.isEmpty()) {
-            throw helper.assertionException("four sticks are not crops, got %s", sticks);
+        if (!wheat.isEmpty()) {
+            throw helper.assertionException(
+                    "the campaign world has no crops: wheat should craft nothing, got %s", wheat);
         }
 
         var litres = PodFuelItems.litresOf(new ItemStack(FuelRegistry.BIOFUEL));
@@ -609,8 +592,8 @@ public class FuelPumpTest {
             if (!ReserveTank.isInstalled(copy) || PodStats.of(copy).tankLitres() != before) {
                 throw helper.assertionException("the reserve tank did not survive a reload");
             }
-            // Version 1 is the first format of this attachment, so there is no earlier format to load. A new version
-            // must
+            // Version 1 is the first format of this attachment, so there is no earlier format to load. A new
+            // version must
             // add that test here, next to the unknown-version test below.
             helper.succeed();
         } finally {

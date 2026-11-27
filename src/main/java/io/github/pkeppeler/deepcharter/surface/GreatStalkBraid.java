@@ -60,10 +60,9 @@ public final class GreatStalkBraid {
             int[] base = RING[ring[t][0]];
             int[] out = outward(base, 0);
             for (int reach = 1; reach <= 2; reach++) {
-                cells.putOptional(
-                        base[0] + out[0] * reach, 0, base[1] + out[1] * reach, GreatStalkLayout.Part.TRUNK, owner);
+                cells.putOptional(base[0] + out[0] * reach, 0, base[1] + out[1] * reach, owner);
             }
-            cells.putOptional(base[0] + out[0], 1, base[1] + out[1], GreatStalkLayout.Part.TRUNK, owner);
+            cells.putOptional(base[0] + out[0], 1, base[1] + out[1], owner);
             bracket(cells, RING[ring[t][shelf[t]]], shelf[t], t, owner, random);
         }
         return cells.build();

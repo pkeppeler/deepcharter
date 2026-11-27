@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -34,6 +35,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -65,7 +67,7 @@ public class LayerStructuresTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(LayerStructuresTest.class);
     private static final int SPACING = 384;
     /** A spacing cell that is far from the colony's Conduit, so no structure shares its blocks. */
-    private static final int CELL = 3;
+    static final int CELL = 3;
 
     private static final int PAD_REACH = 40;
     private static final int PAD_HEIGHT = 8;
@@ -75,6 +77,10 @@ public class LayerStructuresTest {
     private static final int PROSPECTOR_CELLS = 6;
     /** Far from the layer-2 tests, so nothing makes this chunk full first. */
     private static final int SEAL_CELL = 30;
+    /** The same for layer 1's seal, in a cell of its own. */
+    private static final int LAYER_1_SEAL_CELL = 35;
+    /** Rows either side of a strata contact where the wall may be either rock (the contour noise and the bed). */
+    private static final int CONTACT_REACH = 12;
 
     /** Cells of their own for the punch clock's horn: a roof over it at three distances, and none in reach. */
     private static final int HORN_CEILING_CELL = 31;
@@ -240,9 +246,10 @@ public class LayerStructuresTest {
     }
 
     /**
-     * The chunks of every site are made full on the first tick, then every condition on every site is polled under a
-     * wall-clock {@link FarChunks.Deadline}, because a tick budget is a different wall time under load. A wait that was
-     * needed is logged. See #365; the failure's census says what stands in the site's place.
+     * The chunks of every site are forced on the first tick and load on the worker threads; every tick polls, under a
+     * wall-clock {@link FarChunks.Deadline}, until they are loaded and every condition on every site holds, because a
+     * tick budget is a different wall time under load. A wait that was needed is logged. See #365; the failure's census
+     * says what stands in the site's place.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void eachStructureGeneratesInItsZone(GameTestHelper helper) {
@@ -260,8 +267,9 @@ public class LayerStructuresTest {
                         CELL,
                         conduit);
                 sites.add(site);
+                // Loaded on the worker threads; a synchronous getChunk here would hold the server thread (#1016).
                 for (ChunkPos chunk : chunksOf(site)) {
-                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                    FarChunks.force(helper, level, chunk.x(), chunk.z());
                 }
             }
         }
@@ -274,6 +282,10 @@ public class LayerStructuresTest {
                 ServerLevel level = TestLayers.level(helper, site.kind().layer());
                 // The chunk states are read first and without loading: reading a block loads an unloaded chunk.
                 String chunks = chunkStates(level, site);
+                if (!loaded(level, site)) {
+                    failing.add(String.format("%s: chunks not loaded yet: %s", site.kind(), chunks));
+                    continue;
+                }
                 Map<Block, Integer> found = census(level, site);
                 List<String> unmet = unmet(level, site, found);
                 if (!unmet.isEmpty()) {
@@ -308,6 +320,25 @@ public class LayerStructuresTest {
         });
     }
 
+    /** The chunk of the site's origin, or a retry of the poll that waits for {@link FarChunks#force} to load it. */
+    private static LevelChunk loadedChunk(GameTestHelper helper, ServerLevel level, StructureSite site) {
+        LevelChunk chunk = level.getChunkSource()
+                .getChunkNow(site.origin().getX() >> 4, site.origin().getZ() >> 4);
+        if (chunk == null) {
+            throw failure(
+                    helper,
+                    "the chunk of the site at %s is not loaded yet",
+                    site.origin().toShortString());
+        }
+        return chunk;
+    }
+
+    /** Whether every chunk that the site's bounds touch is loaded, so that reading a block of it loads nothing. */
+    static boolean loaded(ServerLevel level, StructureSite site) {
+        return chunksOf(site).stream()
+                .allMatch(chunk -> level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null);
+    }
+
     /** Every chunk that the site's bounds touch. */
     static List<ChunkPos> chunksOf(StructureSite site) {
         BoundingBox box = site.bounds();
@@ -318,6 +349,12 @@ public class LayerStructuresTest {
             }
         }
         return chunks;
+    }
+
+    /** Whether every chunk the site's bounds touch is loaded, read without loading any. */
+    static boolean loaded(ServerLevel level, StructureSite site) {
+        return chunksOf(site).stream()
+                .allMatch(chunk -> level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null);
     }
 
     /** How many of each block the site's bounds hold now. */
@@ -465,19 +502,48 @@ public class LayerStructuresTest {
 
     @GameTest(maxTicks = 600)
     public void aStructureSealsItsShellOfFluidAndGasBeforeTheCarve(GameTestHelper helper) {
-        ServerLevel level = TestLayers.level(helper, 2);
-        LayerChain.Band levelBand = TestLayers.band(level, 2);
+        plantAndSeal(helper, 2, StructureKind.RAILS, SEAL_CELL, (state, pos) -> {});
+    }
+
+    /**
+     * In layer 1 a sealed pocket of the shell is the rock of its stratum (#1277), not the layer's packed shale: the
+     * Deep Claim's shaft is sealed in black shale, so no brown block shows in its wall. Rows near a contact may be
+     * either rock, as the wall round them is.
+     */
+    @GameTest(maxTicks = 600)
+    public void aLayerOneStructureSealsItsShellInItsStratumsRock(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        LayerChain.Band band = TestLayers.band(level, 1);
+        plantAndSeal(helper, 1, StructureKind.DEEP_SHAFT, LAYER_1_SEAL_CELL, (state, pos) -> {
+            Block rock = LayerBlocks.stratum(band, pos.getY());
+            boolean nearContact = LayerBlocks.stratum(band, pos.getY() + CONTACT_REACH) != rock
+                    || LayerBlocks.stratum(band, pos.getY() - CONTACT_REACH) != rock;
+            if (!state.is(LayerBlocks.GROUND) || (!nearContact && !state.is(rock))) {
+                throw failure(helper, "the seal at %s is %s, expected %s", pos.toShortString(), state, rock);
+            }
+        });
+    }
+
+    /** What a test asks of a planted block once the structure has sealed it. */
+    private interface SealCheck {
+        void check(BlockState state, BlockPos pos);
+    }
+
+    /**
+     * Plants lava in the wall beside a {@code kind} structure's hollow (its shell) and gas in its roof, in the chunk of
+     * the site's centre before the structure is drawn, then makes the chunk full: every planted block must be sealed,
+     * and {@code sealed} judges what each in the shell became.
+     */
+    private static void plantAndSeal(GameTestHelper helper, int layer, StructureKind kind, int cell, SealCheck sealed) {
+        ServerLevel level = TestLayers.level(helper, layer);
+        LayerChain.Band levelBand = TestLayers.band(level, layer);
         StructureSite site = StructureSite.in(
-                level.getSeed(),
-                StructureKind.RAILS,
-                levelBand.minY(),
-                levelBand.height(),
-                SEAL_CELL,
-                SEAL_CELL,
-                conduit(helper));
+                level.getSeed(), kind, levelBand.minY(), levelBand.height(), cell, cell, conduit(helper));
         // The chunk of the site's centre, stopped before it is full: the zone fill has run, and the structure is not
         // drawn yet.
         ChunkPos chunkPos = ChunkPos.containing(site.origin());
+        // sync-load: the case needs a proto chunk stopped before FULL, which only a synchronous request for that
+        // status gives
         ChunkAccess proto = level.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FEATURES);
         if (proto instanceof ImposterProtoChunk) {
             throw failure(
@@ -504,6 +570,7 @@ public class LayerStructuresTest {
         }
         BlockPos control = columnClearOf(site, chunkPos);
         proto.setBlockState(control, lava, 0);
+        // sync-load: the case completes the proto chunk above in the same tick as its planted blocks
         level.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FULL);
         helper.succeedWhen(() -> {
             for (BlockPos pos : planted) {
@@ -521,10 +588,16 @@ public class LayerStructuresTest {
                         level.getBlockState(control));
             }
             requireNoFluidOrGas(helper, level, site, chunkPos);
+            // The shell only: inside the bounds the draw may set a block of its own over a sealed one.
+            for (BlockPos pos : planted) {
+                if (!site.bounds().isInside(pos)) {
+                    sealed.check(level.getBlockState(pos), pos);
+                }
+            }
         });
     }
 
-    @GameTest(maxTicks = 600)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aChunkLoadedFromDiskIsNotDrawnInto(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 2);
         LayerChain.Band levelBand = TestLayers.band(level, 2);
@@ -536,10 +609,10 @@ public class LayerStructuresTest {
                 DISK_CELL,
                 DISK_CELL,
                 conduit(helper));
-        LevelChunk chunk =
-                level.getChunk(site.origin().getX() >> 4, site.origin().getZ() >> 4);
+        FarChunks.force(helper, level, site.origin().getX() >> 4, site.origin().getZ() >> 4);
         BlockPos floor = site.origin().below();
         helper.succeedWhen(() -> {
+            LevelChunk chunk = loadedChunk(helper, level, site);
             if (level.getBlockState(floor).isAir()) {
                 throw failure(helper, "the floor of the wreck bay at %s was not drawn", floor.toShortString());
             }
@@ -592,11 +665,21 @@ public class LayerStructuresTest {
         return String.format("the beam over the horn at %s has no post to a floor", horn.toShortString());
     }
 
+    /** A punch clock's chunk, drawn once {@link #requireFull} stops throwing. */
+    private record PunchClockDraw(StructureSite site, ServerLevel level, ChunkPos chunk, AtomicBoolean edited) {
+        void requireFull(GameTestHelper helper) {
+            if (!edited.get() || level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) == null) {
+                throw failure(helper, "the chunk %s is not drawn yet", chunk);
+            }
+        }
+    }
+
     /**
      * The punch clock of {@code cell}, its chunk stopped before it is full, with the column over the horn cleared to air up to
      * {@code clearTo} above the floor and, when {@code ceiling} is given, stone at that height; then the chunk fills, which draws it.
+     * Both steps run on the worker threads: poll {@link PunchClockDraw#requireFull} before reading the draw.
      */
-    private static StructureSite drawPunchClock(
+    private static PunchClockDraw drawPunchClock(
             GameTestHelper helper, int cell, int clearTo, @Nullable Integer ceiling) {
         ServerLevel level = TestLayers.level(helper, 2);
         LayerChain.Band band = TestLayers.band(level, 2);
@@ -606,27 +689,34 @@ public class LayerStructuresTest {
             throw failure(helper, "the band tops out at %d, too low to test a horn's reach", band.maxY());
         }
         ChunkPos chunkPos = ChunkPos.containing(site.origin());
-        ChunkAccess proto = level.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FEATURES);
-        if (proto instanceof ImposterProtoChunk) {
-            throw failure(helper, "%s: chunk already FULL, another test loaded it", chunkPos);
-        }
-        for (int y = StructureKind.HORN_HEIGHT + 1; y <= clearTo; y++) {
-            proto.setBlockState(at(site, 0, y, 0), Blocks.AIR.defaultBlockState(), 0);
-        }
-        if (ceiling != null) {
-            proto.setBlockState(at(site, 0, ceiling, 0), Blocks.STONE.defaultBlockState(), 0);
-        }
-        level.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FULL);
-        return site;
+        AtomicBoolean edited = new AtomicBoolean();
+        FarChunks.whenReachedStatus(
+                helper, List.of(new FarChunks.At(level, chunkPos.x(), chunkPos.z())), ChunkStatus.FEATURES, reached -> {
+                    ChunkAccess proto = reached.get(0);
+                    if (proto instanceof ImposterProtoChunk) {
+                        throw failure(helper, "%s: chunk already FULL, another test loaded it", chunkPos);
+                    }
+                    for (int y = StructureKind.HORN_HEIGHT + 1; y <= clearTo; y++) {
+                        proto.setBlockState(at(site, 0, y, 0), Blocks.AIR.defaultBlockState(), 0);
+                    }
+                    if (ceiling != null) {
+                        proto.setBlockState(at(site, 0, ceiling, 0), Blocks.STONE.defaultBlockState(), 0);
+                    }
+                    FarChunks.force(helper, level, chunkPos.x(), chunkPos.z());
+                    edited.set(true);
+                });
+        return new PunchClockDraw(site, level, chunkPos, edited);
     }
 
     /** A roof {@code over} blocks above the horn: a chain of {@code over - 1} between, which is none when the roof is right over it. */
     private void hornHangsFromRoof(GameTestHelper helper, int cell, int over) {
         ServerLevel level = TestLayers.level(helper, 2);
         int ceiling = StructureKind.HORN_HEIGHT + over;
-        StructureSite site = drawPunchClock(helper, cell, ceiling + 3, ceiling);
+        PunchClockDraw draw = drawPunchClock(helper, cell, ceiling + 3, ceiling);
+        StructureSite site = draw.site();
         BlockPos horn = at(site, 0, StructureKind.HORN_HEIGHT, 0);
         helper.succeedWhen(() -> {
+            draw.requireFull(helper);
             expect(helper, level, horn, AmbienceRegistry.COMPANY_HORN);
             for (int y = StructureKind.HORN_HEIGHT + 1; y < ceiling; y++) {
                 expect(helper, level, at(site, 0, y, 0), Blocks.IRON_CHAIN);
@@ -644,28 +734,29 @@ public class LayerStructuresTest {
         }
     }
 
-    @GameTest(maxTicks = 600)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aHornUnderADistantRoofHangsOnAChainFromIt(GameTestHelper helper) {
         hornHangsFromRoof(helper, HORN_CEILING_CELL, 10);
     }
 
-    @GameTest(maxTicks = 600)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aHornWithTheRoofRightOverItKeepsTheRoofAndHasNoChain(GameTestHelper helper) {
         hornHangsFromRoof(helper, HORN_ADJACENT_CELL, 1);
     }
 
-    @GameTest(maxTicks = 600)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aHornWithTheRoofTwoOverItHangsOnOneChain(GameTestHelper helper) {
         hornHangsFromRoof(helper, HORN_ONE_CHAIN_CELL, 2);
     }
 
-    @GameTest(maxTicks = 600)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aHornWithNoRoofInReachHangsFromABeamOnAPost(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 2);
-        StructureSite site =
+        PunchClockDraw draw =
                 drawPunchClock(helper, HORN_OPEN_CELL, StructureKind.HORN_HEIGHT + StructureKind.HORN_REACH + 1, null);
-        BlockPos horn = at(site, 0, StructureKind.HORN_HEIGHT, 0);
+        BlockPos horn = at(draw.site(), 0, StructureKind.HORN_HEIGHT, 0);
         helper.succeedWhen(() -> {
+            draw.requireFull(helper);
             expect(helper, level, horn, AmbienceRegistry.COMPANY_HORN);
             expect(helper, level, horn.above(), Blocks.IRON_BLOCK);
             expect(helper, level, horn.above(2), Blocks.AIR);
@@ -674,38 +765,39 @@ public class LayerStructuresTest {
         });
     }
 
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void theSupportCheckSeesAFloatingHornAndASupportedOne(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos at = new BlockPos(44_008, OPEN_AIR_Y, 44_008);
-        FarChunks.force(helper, level, at.getX() >> 4, at.getZ() >> 4);
-        level.getChunk(at.getX() >> 4, at.getZ() >> 4, ChunkStatus.FULL);
-        BlockState horn = AmbienceRegistry.COMPANY_HORN.defaultBlockState();
-        BlockState chain = Blocks.IRON_CHAIN.defaultBlockState();
-        BlockState iron = Blocks.IRON_BLOCK.defaultBlockState();
-        BlockState stone = Blocks.STONE.defaultBlockState();
-        BlockState air = Blocks.AIR.defaultBlockState();
-        level.setBlock(at, horn, Block.UPDATE_CLIENTS);
-        expectFloating(helper, level, at, "a horn in open air");
-        level.setBlock(at.above(), chain, Block.UPDATE_CLIENTS);
-        expectFloating(helper, level, at, "a horn on a chain that ends in air");
-        level.setBlock(at.above(2), stone, Block.UPDATE_CLIENTS);
-        requireSupported(helper, level, at);
-        level.setBlock(at.above(), air, Block.UPDATE_CLIENTS);
-        expectFloating(helper, level, at, "a horn with a dent in the roof right over it");
-        level.setBlock(at.above(), stone, Block.UPDATE_CLIENTS);
-        requireSupported(helper, level, at);
-        level.setBlock(at.above(2), air, Block.UPDATE_CLIENTS);
-        level.setBlock(at.above(), iron, Block.UPDATE_CLIENTS);
-        expectFloating(helper, level, at, "a beam with no post");
-        level.setBlock(at.above().east(), iron, Block.UPDATE_CLIENTS);
-        expectFloating(helper, level, at, "a beam on a post that ends in air");
-        for (int down = 0; down <= 2; down++) {
-            level.setBlock(at.above().east().below(down), iron, Block.UPDATE_CLIENTS);
-        }
-        level.setBlock(at.above().east().below(3), stone, Block.UPDATE_CLIENTS);
-        requireSupported(helper, level, at);
-        helper.succeed();
+        FarChunks.whenBlocksLoaded(
+                helper, FarChunks.overBlocks(level, at.getX(), at.getZ(), at.getX(), at.getZ()), () -> {
+                    BlockState horn = AmbienceRegistry.COMPANY_HORN.defaultBlockState();
+                    BlockState chain = Blocks.IRON_CHAIN.defaultBlockState();
+                    BlockState iron = Blocks.IRON_BLOCK.defaultBlockState();
+                    BlockState stone = Blocks.STONE.defaultBlockState();
+                    BlockState air = Blocks.AIR.defaultBlockState();
+                    level.setBlock(at, horn, Block.UPDATE_CLIENTS);
+                    expectFloating(helper, level, at, "a horn in open air");
+                    level.setBlock(at.above(), chain, Block.UPDATE_CLIENTS);
+                    expectFloating(helper, level, at, "a horn on a chain that ends in air");
+                    level.setBlock(at.above(2), stone, Block.UPDATE_CLIENTS);
+                    requireSupported(helper, level, at);
+                    level.setBlock(at.above(), air, Block.UPDATE_CLIENTS);
+                    expectFloating(helper, level, at, "a horn with a dent in the roof right over it");
+                    level.setBlock(at.above(), stone, Block.UPDATE_CLIENTS);
+                    requireSupported(helper, level, at);
+                    level.setBlock(at.above(2), air, Block.UPDATE_CLIENTS);
+                    level.setBlock(at.above(), iron, Block.UPDATE_CLIENTS);
+                    expectFloating(helper, level, at, "a beam with no post");
+                    level.setBlock(at.above().east(), iron, Block.UPDATE_CLIENTS);
+                    expectFloating(helper, level, at, "a beam on a post that ends in air");
+                    for (int down = 0; down <= 2; down++) {
+                        level.setBlock(at.above().east().below(down), iron, Block.UPDATE_CLIENTS);
+                    }
+                    level.setBlock(at.above().east().below(3), stone, Block.UPDATE_CLIENTS);
+                    requireSupported(helper, level, at);
+                    helper.succeed();
+                });
     }
 
     private static void expectFloating(GameTestHelper helper, ServerLevel level, BlockPos horn, String what) {
@@ -717,7 +809,7 @@ public class LayerStructuresTest {
     /** A cell of its own for the wreck bay's locker, which no other test draws. */
     private static final int LOCKER_CELL = 10;
 
-    @GameTest(maxTicks = 600)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aWreckBayHoldsTheCrewsLockerInItsCornerClearOfThePodAndTheRail(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 2);
         LayerChain.Band levelBand = TestLayers.band(level, 2);
@@ -751,31 +843,33 @@ public class LayerStructuresTest {
         if (locker.equals(pod) || rail.contains(locker) || locker.distSqr(pod) < 9) {
             throw failure(helper, "the locker at %s is on the pod's spot %s or the rail %s", locker, pod, rail);
         }
-        level.getChunk(locker.getX() >> 4, locker.getZ() >> 4);
-        helper.succeedWhen(() -> {
-            BlockState state = level.getBlockState(locker);
-            if (!state.is(Blocks.BARREL)) {
-                throw failure(helper, "the corner of the wreck bay at %s holds %s, not the locker", locker, state);
-            }
-            if (!(level.getBlockEntity(locker) instanceof RandomizableContainerBlockEntity barrel)
-                    || barrel.getLootTable() == null
-                    || !barrel.getLootTable().identifier().getPath().equals("chests/wreck_locker")) {
-                throw failure(helper, "the locker at %s has no loot table of the wreck locker", locker);
-            }
-            if (barrel.getLootTableSeed() != site.seed()) {
-                throw failure(
-                        helper,
-                        "the locker's loot seed is %s, the site's is %s",
-                        barrel.getLootTableSeed(),
-                        site.seed());
-            }
-        });
+        FarChunks.whenBlocksLoaded(
+                helper, FarChunks.overBlocks(level, locker.getX(), locker.getZ(), locker.getX(), locker.getZ()), () -> {
+                    BlockState state = level.getBlockState(locker);
+                    if (!state.is(Blocks.BARREL)) {
+                        throw failure(
+                                helper, "the corner of the wreck bay at %s holds %s, not the locker", locker, state);
+                    }
+                    if (!(level.getBlockEntity(locker) instanceof RandomizableContainerBlockEntity barrel)
+                            || barrel.getLootTable() == null
+                            || !barrel.getLootTable().identifier().getPath().equals("chests/wreck_locker")) {
+                        throw failure(helper, "the locker at %s has no loot table of the wreck locker", locker);
+                    }
+                    if (barrel.getLootTableSeed() != site.seed()) {
+                        throw failure(
+                                helper,
+                                "the locker's loot seed is %s, the site's is %s",
+                                barrel.getLootTableSeed(),
+                                site.seed());
+                    }
+                    helper.succeed();
+                });
     }
 
     /** A cell of its own for an ordinary wreck bay, which has no phonograph. */
     private static final int WRECK_PHONOGRAPH_CELL = 11;
 
-    @GameTest(maxTicks = 600)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void anOrdinaryWreckBayHasNoCabinPhonographThatIsPROSPECTOR0002sAlone(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 2);
         LayerChain.Band levelBand = TestLayers.band(level, 2);
@@ -793,20 +887,25 @@ public class LayerStructuresTest {
         // The story bay's phonograph is at u 5, v 5, the same offset whichever way the bay turns (CampaignContentTest
         // counts it).
         BlockPos corner = site.origin().offset(5, 0, 5);
-        level.getChunk(corner.getX() >> 4, corner.getZ() >> 4);
-        helper.succeedWhen(() -> {
-            if (level.getBlockState(site.origin().offset(0, -1, 0)).isAir()) {
-                throw failure(
-                        helper, "the bay at %s was not drawn yet", site.origin().toShortString());
-            }
-            BlockState state = level.getBlockState(corner);
-            if (state.is(PhonographRegistry.WRECK_PHONOGRAPH)) {
-                throw failure(helper, "an ordinary wreck bay at %s holds a cabin phonograph", corner);
-            }
-        });
+        FarChunks.whenBlocksLoaded(
+                helper,
+                FarChunks.overBlocks(level, site.origin().getX(), site.origin().getZ(), corner.getX(), corner.getZ()),
+                () -> {
+                    if (level.getBlockState(site.origin().offset(0, -1, 0)).isAir()) {
+                        throw failure(
+                                helper,
+                                "the bay at %s was not drawn yet",
+                                site.origin().toShortString());
+                    }
+                    BlockState state = level.getBlockState(corner);
+                    if (state.is(PhonographRegistry.WRECK_PHONOGRAPH)) {
+                        throw failure(helper, "an ordinary wreck bay at %s holds a cabin phonograph", corner);
+                    }
+                    helper.succeed();
+                });
     }
 
-    @GameTest(maxTicks = 600)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theConduitCasingInsideASiteSurvivesTheDraw(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 2);
         LayerChain.Band levelBand = TestLayers.band(level, 2);
@@ -818,9 +917,9 @@ public class LayerStructuresTest {
                 CASING_CELL,
                 CASING_CELL,
                 conduit(helper));
-        LevelChunk chunk =
-                level.getChunk(site.origin().getX() >> 4, site.origin().getZ() >> 4);
+        FarChunks.force(helper, level, site.origin().getX() >> 4, site.origin().getZ() >> 4);
         helper.succeedWhen(() -> {
+            LevelChunk chunk = loadedChunk(helper, level, site);
             // A casing block where the draw carves air.
             chunk.setBlockState(site.origin(), ColonyBlocks.CONDUIT.defaultBlockState(), 0);
             ServerChunkEvents.CHUNK_LOAD.invoker().onChunkLoad(level, chunk, true);
@@ -837,20 +936,23 @@ public class LayerStructuresTest {
         });
     }
 
-    @GameTest(maxTicks = 1200)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
     public void thePiecesOfAStructureAcrossChunkBordersMeet(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 2);
         LayerChain.Band levelBand = TestLayers.band(level, 2);
         StructureKind kind = StructureKind.RAILS;
         StructureSite site = StructureSite.in(
                 level.getSeed(), kind, levelBand.minY(), levelBand.height(), SEAM_CELL, SEAM_CELL, conduit(helper));
-        BoundingBox box = site.bounds();
-        for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
-            for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {
-                level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
-            }
+        for (ChunkPos chunk : chunksOf(site)) {
+            FarChunks.force(helper, level, chunk.x(), chunk.z());
         }
         helper.succeedWhen(() -> {
+            if (!loaded(level, site)) {
+                throw failure(
+                        helper,
+                        "the chunks of the rail line at %s are not loaded yet",
+                        site.origin().toShortString());
+            }
             int seams = 0;
             for (int u = -RAILS_HALF_U; u <= RAILS_HALF_U; u++) {
                 if (u > -RAILS_HALF_U
@@ -934,11 +1036,15 @@ public class LayerStructuresTest {
         }
         for (StructureSite site : List.of(rails, shaft)) {
             for (ChunkPos chunk : chunksOf(site)) {
-                level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                FarChunks.force(helper, level, chunk.x(), chunk.z());
             }
         }
         FarChunks.Deadline deadline = FarChunks.deadline();
         TestTicks.each(helper, () -> {
+            if (!loaded(level, rails) || !loaded(level, shaft)) {
+                deadline.await(helper, level, false, () -> "the chunks of the Kells' shaft and its rails did not load");
+                return;
+            }
             List<String> unmet = kellsUnmet(level, rails, shaft);
             if (!unmet.isEmpty()) {
                 deadline.await(
@@ -1184,17 +1290,26 @@ public class LayerStructuresTest {
         helper.succeed();
     }
 
-    @GameTest(maxTicks = 600)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theColonyHoldsNotesOneToFourAtTheirBuildings(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ColonySite.Placed colony = Colony.placed(server).orElseThrow(() -> failure(helper, "the colony was not built"));
+        BlockPos around = colony.center();
+        FarChunks.whenBlocksLoaded(
+                helper,
+                FarChunks.overBlocks(
+                        server.overworld(),
+                        around.getX() - PAD_REACH,
+                        around.getZ() - PAD_REACH,
+                        around.getX() + PAD_REACH,
+                        around.getZ() + PAD_REACH),
+                () -> theColonyHoldsNotesOneToFour(helper, server, colony));
+    }
+
+    private static void theColonyHoldsNotesOneToFour(
+            GameTestHelper helper, MinecraftServer server, ColonySite.Placed colony) {
         ServerLevel overworld = server.overworld();
         BlockPos centre = colony.center();
-        for (int x = centre.getX() - PAD_REACH; x <= centre.getX() + PAD_REACH; x += 16) {
-            for (int z = centre.getZ() - PAD_REACH; z <= centre.getZ() + PAD_REACH; z += 16) {
-                overworld.getChunk(x >> 4, z >> 4, ChunkStatus.FULL);
-            }
-        }
         Map<Integer, BlockPos> notes = new HashMap<>();
         for (BlockPos pos : BlockPos.betweenClosed(
                 centre.getX() - PAD_REACH,

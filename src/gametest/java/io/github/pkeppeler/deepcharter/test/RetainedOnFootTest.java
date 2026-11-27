@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.creature.FootGrips;
+import io.github.pkeppeler.deepcharter.creature.HandLights;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
@@ -125,8 +126,8 @@ public class RetainedOnFootTest {
                     for (int y = -1; y <= ROOM_HEIGHT; y++) {
                         boolean shell =
                                 y == -1 || y == ROOM_HEIGHT || Math.abs(u) == HALF + 1 || Math.abs(v) == HALF + 1;
-                        // room-carver: a closed room of its own stone shell in the overworld test structure, not layer
-                        // rock
+                        // room-carver: a closed room of its own stone shell in the overworld test structure, not
+                        // layer rock
                         level.setBlock(
                                 origin.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
                     }
@@ -874,7 +875,7 @@ public class RetainedOnFootTest {
                     + 200)
     public void aSameLevelWinchKeepsTheGripButTheFigureOnlyTrailsWhereItsChunkTicks(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        BlockPos origin = slot(13);
+        BlockPos origin = slot(15);
         Room[] made = {null};
         PodEntity[] pod = {null};
         float[] speedFree = {0};
@@ -1067,15 +1068,14 @@ public class RetainedOnFootTest {
             if (item instanceof BlockItem block
                     && block.getBlock().defaultBlockState().getLightEmission() >= TUNING.litBlockLight()
                     && !NOT_CARRIED_LIGHTS.contains(id)
-                    && !new ItemStack(item).is(FootGrips.HAND_LIGHTS)) {
+                    && !new ItemStack(item).is(HandLights.TAG)) {
                 missing.add(id);
             }
         }
         if (!missing.isEmpty()) {
             throw failure(helper, "hand_lights lacks %s", missing);
         }
-        if (!new ItemStack(Items.TORCH).is(FootGrips.HAND_LIGHTS)
-                || new ItemStack(Items.STONE).is(FootGrips.HAND_LIGHTS)) {
+        if (!new ItemStack(Items.TORCH).is(HandLights.TAG) || new ItemStack(Items.STONE).is(HandLights.TAG)) {
             throw failure(helper, "hand_lights must hold a torch and not a stone");
         }
         helper.succeed();

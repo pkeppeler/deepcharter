@@ -285,8 +285,8 @@ public class KellsShaftScenario extends EvidenceScenario {
                 eye = at(site, -8.5, 0, -1.0).with(Direction.Axis.Y, floor + 1.6);
                 target = pod.position().add(0, 1, 0);
             } else {
-                // While the pod is lifted out of a wall still, the camera works from where it rested and the gap chosen
-                // then.
+                // While the pod is lifted out of a wall still, the camera works from where it rested and the gap
+                // chosen then.
                 int[] gap = restedAt != null && stillGap != null ? stillGap : nearestGap(pod);
                 double baseY = restedAt != null ? restedAt.y : pod.getY();
                 double du = gap == null ? 1 : gap[0] + 0.5;

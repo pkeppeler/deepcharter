@@ -33,6 +33,12 @@ public class Drifter extends Mob {
     /** Whether the drifter is drawn to a noise now. Synced, for the client's pulse. */
     private static final EntityDataAccessor<Boolean> DRAWN =
             SynchedEntityData.defineId(Drifter.class, EntityDataSerializers.BOOLEAN);
+    /**
+     * Which of the three forms it is drawn as ({@link DrifterVariant#ordinal()}). Synced, so every client draws the
+     * same one.
+     */
+    private static final EntityDataAccessor<Integer> VARIANT =
+            SynchedEntityData.defineId(Drifter.class, EntityDataSerializers.INT);
     /** How much of the gap between its drift and the one it wants it closes each tick: it eases into a turn, it does not snap. */
     private static final double EASE = 0.1;
     /** Ticks between two new wander headings. */
@@ -78,12 +84,23 @@ public class Drifter extends Mob {
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(DRAWN, false);
+        builder.define(VARIANT, DrifterVariant.JELLYFISH.ordinal());
     }
 
     /** Makes it drawn to {@code place} as it appears, so a drifter the spawner places comes to the drill. */
     void hunt(Vec3 place) {
         memory = place;
         lastHeard = level().getGameTime();
+    }
+
+    /** The form it is drawn as; a drifter made by {@code /summon} is a jellyfish. */
+    public DrifterVariant variant() {
+        return DrifterVariant.byOrdinal(entityData.get(VARIANT));
+    }
+
+    /** Makes it a {@code variant}, as it appears. */
+    public void setVariant(DrifterVariant variant) {
+        entityData.set(VARIANT, variant.ordinal());
     }
 
     /** Whether the drifter is drawn to a noise now. */

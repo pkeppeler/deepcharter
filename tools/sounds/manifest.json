@@ -31,6 +31,14 @@
     "ogg_sha256": "d990d0a403c128fc6219aa3b71d4aa50b76c5a180d8be0c2c99d1417f449a4f0",
     "pcm_sha256": "50828ccfcb42f8738b36da6e0b80d6904eb35b00294bbe588e6b4a7eba92b44e"
   },
+  "continuity/lamp_out": {
+    "ogg_sha256": "580a5d9067715734979b30c5bb4e1824e2cdd47e27a95efa1747433552b8fd95",
+    "pcm_sha256": "b89bb812983872431c5f635d15e93d399f85f2f360dd9809ff9ff8508a02b19d"
+  },
+  "continuity/needle": {
+    "ogg_sha256": "8c099e50f00b575ca4b47acb0187381d5c37ee2797692a849ef10272897a221b",
+    "pcm_sha256": "f8d85fa56167ce63c18fd101d1ef1884bce8e3d42327eb9af8f4bfcfcf3e4f24"
+  },
   "drill/blocked": {
     "ogg_sha256": "e5f7226dc08b5da5ed91695f7ecc0dbdf4914c97a4a34c3bf9d3b17aca764553",
     "pcm_sha256": "61a2da2ee2cb107a2936482fa55176c8f3117cd272871abe26a843bc509b2f5a"
@@ -46,6 +54,10 @@
   "drill/dig_3": {
     "ogg_sha256": "4769b8d799fd675940ebd73f02ab8b9ef5b0bccf8259f706939803b13f5f9fb0",
     "pcm_sha256": "389f3b2cb78421e548beffb352f8b9f53157e4ef55bae647b88e3f79d433b39f"
+  },
+  "hymn/chapter": {
+    "ogg_sha256": "3c547d76919a1512c06bf0d1160bfcfb81c951bb78c462be05f221fde00d477f",
+    "pcm_sha256": "42adab6df3709098e8533c4c75e6dc3fabb385676ce29b35ad89a30ca91201e6"
   },
   "hymn/colony": {
     "ogg_sha256": "8675848775f37414c46e1ec2413919dbb20b49ccef657177a5ec0ffff727cc02",
@@ -86,6 +98,10 @@
   "terminal/hum_loop": {
     "ogg_sha256": "64c6c38d093760581afedf6b9fce716348da71cbff195020304bc09dfd89f465",
     "pcm_sha256": "21b0470b9051f93f7fb0fc76d90e6946aa3127ab98dbb245fddf46b24f9c609f"
+  },
+  "terminal/online": {
+    "ogg_sha256": "d2acb40493d52bf624212e08f54d2114a204fd20cd85c8fa29b936f7923b61ec",
+    "pcm_sha256": "14606975155d7eec061c212cad485906c48e64dab10fb5c162b5534f5bc2de45"
   },
   "terminal/power_on": {
     "ogg_sha256": "229cfc972da246771e4ca98dfc230ce619e165ff51a7abc9dc76e9622bf00610",
