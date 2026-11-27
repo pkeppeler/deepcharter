@@ -21,6 +21,8 @@ def generated_docs():
     listed = re.search(r"^GENERATED_PATHS=\((.*)\)$", text, re.MULTILINE)
     assert listed, "tools/lib/generated-paths.sh has no GENERATED_PATHS list"
     return {name for name in listed.group(1).split() if name.endswith(".md")}
+
+
 HEADING = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$")
 FENCE = re.compile(r"^[ \t]{0,3}(```|~~~)")
 
@@ -240,8 +242,9 @@ class DocVersions(unittest.TestCase):
 class DocHeadings(unittest.TestCase):
     def test_no_doc_repeats_a_heading_under_the_same_parent(self):
         problems = []
+        generated = generated_docs()
         for path in sorted((ROOT / "docs").rglob("*.md")):
-            if path.relative_to(ROOT).as_posix() in generated_docs():
+            if path.relative_to(ROOT).as_posix() in generated:
                 continue
             for line, first, title in duplicates(path.read_text(encoding="utf-8")):
                 problems.append(f"{path.relative_to(ROOT)}: '{title}' at line {line} repeats line {first}")
