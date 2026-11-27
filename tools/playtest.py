@@ -674,32 +674,39 @@ def _label_fields(labels: list[str]) -> list[str]:
     return [item for label in labels for item in ("-f", f"labels[]={label}")]
 
 
-def file_issue(env: Env, title: str, body_file: Path, *, bug: bool, duplicate_of: str | None) -> tuple[str, str]:
-    """File a new issue, or comment on the duplicate, always labelled `playtest-feedback` (plus `bug`). Returns (url, title).
+def _no_mentions(text: str) -> str:
+    """Put a zero-width joiner after each `@` before a word character, so GitHub pings nobody; `#N` links stay."""
+    return re.sub(r"@(?=\w)", "@\u200d", text)
 
-    Refuses before writing anything when title or body is bad, and after writing when GitHub did not apply every label.
-    """
-    shown = _issue_title(title)
-    body = _issue_body(body_file)
-    wanted = [FEEDBACK_LABEL, *([BUG_LABEL] if bug else [])]
-    if duplicate_of is None:
-        issue = _gh_json(env, f"repos/{REPO_SLUG}/issues", "-f", f"title={shown}", "-f", f"body={body}",
-                         *_label_fields(wanted), method="POST")
-        missing = [label for label in wanted if label not in _label_names(issue.get("labels"))]
-        if missing:
-            raise Fail(f"issue {issue.get('html_url')} was filed without the label {', '.join(missing)}: add it by hand")
-        return issue["html_url"], shown
-    if not ISSUE.fullmatch(duplicate_of):
-        raise Fail(f"not an issue number: {duplicate_of!r}")
-    existing = _gh_json(env, f"repos/{REPO_SLUG}/issues/{duplicate_of}")
-    if "pull_request" in existing:
-        raise Fail(f"#{duplicate_of} is a pull request, not an issue")
-    labelled = _gh_json(env, f"repos/{REPO_SLUG}/issues/{duplicate_of}/labels", *_label_fields(wanted), method="POST")
-    missing = [label for label in wanted if label not in _label_names(labelled)]
+
+def _require_labels(env: Env, number: object, labels: object, wanted: list[str]) -> None:
+    missing = [label for label in wanted if label not in _label_names(labels)]
     if missing:
-        raise Fail(f"cannot apply the label {', '.join(missing)} to #{duplicate_of}: nothing commented")
-    _gh_json(env, f"repos/{REPO_SLUG}/issues/{duplicate_of}/comments", "-f", f"body={body}", method="POST")
-    return existing["html_url"], _clean(str(existing.get("title", "")), ISSUE_TITLE_MAX)
+        labels = _gh_json(env, f"repos/{REPO_SLUG}/issues/{number}/labels", *_label_fields(missing), method="POST")
+        missing = [label for label in wanted if label not in _label_names(labels)]
+    if missing:
+        raise Fail(f"cannot apply the label {', '.join(missing)} to #{number}")
+
+
+def file_issue(env: Env, title: str, body_file: Path, *, bug: bool, duplicate_of: str | None) -> tuple[str, str]:
+    """File a labelled issue, or comment on an open duplicate; a closed duplicate gets a new issue linking it."""
+    shown = _no_mentions(_issue_title(title))
+    body = _no_mentions(_issue_body(body_file))
+    wanted = [FEEDBACK_LABEL, *([BUG_LABEL] if bug else [])]
+    if duplicate_of is not None:
+        if not ISSUE.fullmatch(duplicate_of):
+            raise Fail(f"not an issue number: {duplicate_of!r}")
+        existing = _gh_json(env, f"repos/{REPO_SLUG}/issues/{duplicate_of}")
+        if "pull_request" in existing:
+            raise Fail(f"#{duplicate_of} is a pull request, not an issue")
+        if existing.get("state") != "closed":
+            _require_labels(env, duplicate_of, _gh_json(env, f"repos/{REPO_SLUG}/issues/{duplicate_of}/labels", *_label_fields(wanted), method="POST"), wanted)
+            _gh_json(env, f"repos/{REPO_SLUG}/issues/{duplicate_of}/comments", "-f", f"body={body}", method="POST")
+            return existing["html_url"], _clean(str(existing.get("title", "")), ISSUE_TITLE_MAX)
+        body += f"\n\nSeen again after #{duplicate_of} was closed."
+    issue = _gh_json(env, f"repos/{REPO_SLUG}/issues", "-f", f"title={shown}", "-f", f"body={body}", *_label_fields(wanted), method="POST")
+    _require_labels(env, issue["number"], issue.get("labels"), wanted)
+    return issue["html_url"], shown
 
 
 def _reply_lines(text: str) -> list[str]:

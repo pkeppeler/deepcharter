@@ -765,11 +765,11 @@ class FileIssue(PlaytestTestCase):
         labels = [argv[i + 1].removeprefix("labels[]=") for i, a in enumerate(argv) if a == "-f" and argv[i + 1].startswith("labels[]=")]
         shown = [{"name": name} for name in labels] if self.applied["labels"] else []
         if endpoint.endswith("/labels"):
-            return json.dumps(shown), 0
+            return json.dumps([{"name": name} for name in labels] if self.applied["labels"] else []), 0
         if endpoint.endswith("/comments"):
             return json.dumps({"html_url": self.URL + "#issuecomment-1"}), 0
         if endpoint.endswith("/issues") and "POST" in argv:
-            return json.dumps({"html_url": self.URL, "labels": shown}), 0
+            return json.dumps({"html_url": self.URL, "number": 99, "labels": [] if self.applied.get("create_bare") else shown}), 0
         return json.dumps(self.existing), 0
 
     def file(self, title="Pod feels slow", **kw):
@@ -816,6 +816,29 @@ class FileIssue(PlaytestTestCase):
         for number in ("0", "x", "7 8", "-1"):
             with self.subTest(number=number), self.assertRaises(p.Fail):
                 self.file(duplicate_of=number)
+
+    def test_closed_duplicate_gets_a_new_labelled_issue_linking_it(self):
+        self.existing["state"] = "closed"
+        self.assertEqual(self.file(duplicate_of="77"), (self.URL, "Pod feels slow"))
+        [call] = self.gh_calls[1:]
+        self.assertEqual(call[call.index("api") + 3], "repos/pkeppeler/deepcharter/issues")
+        self.assertEqual(self.posted_labels(call), ["labels[]=playtest-feedback"])
+        self.assertTrue(any(a.startswith("body=") and a.endswith("Seen again after #77 was closed.") for a in call))
+
+    def test_an_issue_created_without_the_label_is_repaired_not_left_for_a_retry(self):
+        self.applied["create_bare"] = True
+        self.assertEqual(self.file(), (self.URL, "Pod feels slow"))
+        self.assertEqual(self.gh_calls[1][self.gh_calls[1].index("api") + 3], "repos/pkeppeler/deepcharter/issues/99/labels")
+        self.applied["labels"] = False
+        with self.assertRaises(p.Fail):
+            self.file()
+
+    def test_mentions_are_neutralised_and_issue_links_kept(self):
+        self.body.write_text("ping @someone and @org/team, see #12\n")
+        self.file("Hey @someone")
+        call = self.gh_calls[0]
+        self.assertIn("title=Hey @\u200dsomeone", call)
+        self.assertIn("body=ping @\u200dsomeone and @\u200dorg/team, see #12\n", call)
 
     def test_bad_title_or_body_is_refused_before_gh_runs(self):
         for title in ("", "  ", "two\nlines", "bell\x07", "x" * (p.ISSUE_TITLE_MAX + 1)):
