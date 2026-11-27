@@ -144,10 +144,29 @@ check "a conflict fetches once" "$(cat "$work/fetches")" 1
 check "a conflict never sleeps" "$([[ -e $work/sleeps ]] && echo slept || echo none)" none
 has "a conflict says so" "::error::Merge conflict"
 
+# A pinned main (#1571): main moved after the setup job picked it, and the merge still uses the picked commit.
+fresh
+: >"$work/output"
+commit_in "$work/pr" a.txt feature
+commit_in "$work/origin" b.txt main-picked
+picked=$(git -C "$work/origin" rev-parse HEAD)
+commit_in "$work/origin" b.txt main-moved-again
+head=$(git -C "$work/pr" rev-parse HEAD)
+rc=0
+out=$(cd "$work/pr" && GITHUB_OUTPUT="$work/output" bash "$script" "$head" "$picked" 2>&1) || rc=$?
+check "a pinned merge exits 0" "$rc" 0
+check "a pinned merge's parents are the head and the pinned main" \
+  "$(git -C "$work/pr" rev-list --parents -n 1 HEAD | cut -d' ' -f2-)" "$head $picked"
+check "a pinned merge outputs the pinned sha" "$(cat "$work/output")" "main-sha=$picked"
+has "a pinned merge's annotation carries the pinned sha" "::notice title=merged-main::$picked"
+
 # Usage errors.
 rc=0
 bash "$script" nonsense >/dev/null 2>&1 || rc=$?
 check "a non-sha argument is a usage error" "$rc" 2
+rc=0
+bash "$script" "$(printf '%040d' 0)" nonsense >/dev/null 2>&1 || rc=$?
+check "a non-sha pinned main is a usage error" "$rc" 2
 
 echo "$cases cases, $failures failed"
 [[ $failures -eq 0 ]]
