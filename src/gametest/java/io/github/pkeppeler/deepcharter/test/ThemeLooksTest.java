@@ -481,7 +481,8 @@ public class ThemeLooksTest {
             if (topLeft != expected || bottomRight != expected) {
                 throw failure(
                         helper,
-                        "the porthole's row %s is %s in at the top left and %s at the bottom right, but glassRadius %s says %s",
+                        "the porthole's row %s is %s in at the top left and %s at the bottom right, but glassRadius %s"
+                                + " says %s",
                         row,
                         topLeft,
                         bottomRight,
@@ -505,8 +506,9 @@ public class ThemeLooksTest {
     @GameTest
     public void aPackRestylesThePanelKeyByKeyAndAnchorsDecals(GameTestHelper helper) {
         PanelLook look = PanelLook.of(area("panel", """
-				{ "enabled": 1, "insetTop": 18, "nameplateW": 70, "nameplateH": 14, "nameplateAnchorX": 2, "nameplateAnchorY": 0, "nameplateX": 6, "nameplateY": 0,
-				  "dressAW": 30, "dressAH": 20, "dressAAnchorX": 1, "dressAAnchorY": 2, "dressAX": -10, "dressAY": 3 }"""));
+            { "enabled": 1, "insetTop": 18, "nameplateW": 70, "nameplateH": 14, "nameplateAnchorX": 2, "nameplateAnchorY": 0, "nameplateX": 6, "nameplateY": 0,
+              "dressAW": 30, "dressAH": 20, "dressAAnchorX": 1, "dressAAnchorY": 2, "dressAX": -10, "dressAY": 3 }\
+            """));
         if (!look.enabled() || look.content().top() != 18 || look.content().left() != 52) {
             throw failure(helper, "a pack names a key and keeps the rest, got %s", look);
         }

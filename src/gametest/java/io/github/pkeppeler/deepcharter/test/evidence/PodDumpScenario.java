@@ -140,7 +140,8 @@ public class PodDumpScenario extends EvidenceScenario {
         pod.setPos(player.position().add(2, 0, 0));
         player.level().addFreshEntity(pod);
         PodComponents.register(pod, charter);
-        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), PodLoad.of(pod).climbLimit());
+        pod.cargo()
+                .tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), PodLoad.of(pod).climbLimit());
         for (int i = 0; i < GOLDIUM; i++) {
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
         }
