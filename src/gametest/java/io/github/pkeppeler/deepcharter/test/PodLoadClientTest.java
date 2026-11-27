@@ -84,13 +84,15 @@ public class PodLoadClientTest implements FabricClientGameTest {
             expectGauge(near, 8, false, "two einsteinium in the bay");
             // Over it, with no key held: a third.
             State over = load(context, singleplayer, 3, 0, true);
-            expectGauge(over, 12, true, "three einsteinium in the bay");
+            int overSegments = 12;
+            expectGauge(over, overSegments, true, "three einsteinium in the bay");
             // A dump takes ore out of the bay: back under, and the lamp goes out.
             State dumped = load(context, singleplayer, 2, 0, false);
             expectGauge(dumped, 8, false, "a dump of one einsteinium");
-            // The pilot's pack weighs on the client too: two ironium on top of the bay reach the limit.
+            // The pilot's pack weighs on the client too, double as loose ore: two ironium weigh what the third
+            // einsteinium does, so the gauge reads as it did over the limit.
             State pack = load(context, singleplayer, 2, 2, true);
-            expectGauge(pack, 10, true, "two einsteinium in the bay and two ironium in the pack");
+            expectGauge(pack, overSegments, true, "two einsteinium in the bay and two ironium in the pack");
             load(context, singleplayer, 0, 0, false);
         }
     }
