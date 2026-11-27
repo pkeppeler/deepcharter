@@ -126,8 +126,8 @@ public final class BreachService {
                 ? requestedPosition
                 : new Vec3(pocket.getX() + 0.5, arrivalY, pocket.getZ() + 0.5);
         if (swap) {
-            // A carved pocket is sent ahead of the swap, so the held level has it; one that cannot be sent is the
-            // fallback's.
+            // A carved pocket is sent ahead of the swap, so the held level has it; one that cannot be sent is
+            // the fallback's.
             swap = free
                     || (SeamSender.resendCarved(riders, to, ChunkPos.containing(pocket))
                             && riders.stream()

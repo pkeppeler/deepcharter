@@ -238,13 +238,13 @@ public final class ScannerHud {
                 ? pod.chassis().boreHeight() - 1
                 : 0;
         for (int up = 0; up <= podCellsUp; up++) {
-            fillCell(graphics, area, cell, left, top, 0, up, look.podColor());
+            fillCell(graphics, area, cell, left, top, up, look.podColor());
         }
     }
 
     private static void fillCell(
-            GuiGraphicsExtractor graphics, ScanArea area, int cell, int left, int top, int ahead, int up, int colour) {
-        int x = left + (ahead + area.halfWidth()) * cell;
+            GuiGraphicsExtractor graphics, ScanArea area, int cell, int left, int top, int up, int colour) {
+        int x = left + area.halfWidth() * cell;
         int y = top + (area.up() - up) * cell;
         graphics.fill(x, y, x + cell, y + cell, colour);
     }

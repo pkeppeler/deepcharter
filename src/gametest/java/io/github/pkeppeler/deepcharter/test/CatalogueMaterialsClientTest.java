@@ -132,8 +132,7 @@ public class CatalogueMaterialsClientTest implements FabricClientGameTest {
         requireDrawn(drawn, "TOTAL MATERIALS", "the heading stands where the station did");
         require(find(drawn, "CRAFTING TABLE").isEmpty(), "the recipe is not drawn under the materials");
         // Six iron, a redstone and a copper. Two iron are held; the other four are smelted from four raw iron, which
-        // the
-        // player lacks. What is short comes first.
+        // the player lacks. What is short comes first.
         List<String> rows = List.of("0/4", "0/1", "2/2", "2/1");
         int lastY = Integer.MIN_VALUE;
         for (String row : rows) {

@@ -47,8 +47,8 @@ public final class WorldFormat extends SavedData {
     /** The codec of the saved data, which never fails to decode. */
     public static final Codec<WorldFormat> CODEC = VERSIONED_CODEC.xmap(WorldFormat::new, WorldFormat::versioned);
 
-    // Datafixer type: as for ColonySite, vanilla's fixers find nothing of theirs in a file that carries our own
-    // version.
+    // Datafixer type: as for ColonySite, vanilla's fixers find nothing of theirs in a file that carries our
+    // own version.
     public static final SavedDataType<WorldFormat> TYPE =
             new SavedDataType<>(ID, WorldFormat::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 

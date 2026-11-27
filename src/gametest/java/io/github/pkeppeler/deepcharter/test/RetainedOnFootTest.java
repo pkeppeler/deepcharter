@@ -126,8 +126,8 @@ public class RetainedOnFootTest {
                     for (int y = -1; y <= ROOM_HEIGHT; y++) {
                         boolean shell =
                                 y == -1 || y == ROOM_HEIGHT || Math.abs(u) == HALF + 1 || Math.abs(v) == HALF + 1;
-                        // room-carver: a closed room of its own stone shell in the overworld test structure, not layer
-                        // rock
+                        // room-carver: a closed room of its own stone shell in the overworld test structure, not
+                        // layer rock
                         level.setBlock(
                                 origin.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
                     }

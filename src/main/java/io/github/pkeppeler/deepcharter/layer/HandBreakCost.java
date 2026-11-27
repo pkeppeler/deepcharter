@@ -81,8 +81,8 @@ public final class HandBreakCost {
     }
 
     private static boolean tryBreak(ServerPlayer player, ServerLevel level, BlockPos pos, int mined, boolean timed) {
-        // Vanilla's own refusals in destroyBlock, which this replaces for a pod-only block: adventure mode and the
-        // like.
+        // Vanilla's own refusals in destroyBlock, which this replaces for a pod-only block: adventure mode and
+        // the like.
         if (player.blockActionRestricted(level, pos, player.gameMode.getGameModeForPlayer())) {
             return false;
         }

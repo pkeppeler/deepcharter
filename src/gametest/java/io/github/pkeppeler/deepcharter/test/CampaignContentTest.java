@@ -49,7 +49,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -199,7 +198,7 @@ public class CampaignContentTest {
                         StructureSite.in(level.getSeed(), kind, band.minY(), band.height(), CELL, CELL, conduit);
                 sites.put(site, band);
                 for (ChunkPos chunk : LayerStructuresTest.chunksOf(site)) {
-                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                    FarChunks.force(helper, level, chunk.x(), chunk.z());
                 }
             }
         }
@@ -209,6 +208,12 @@ public class CampaignContentTest {
             sites.forEach((site, band) -> {
                 // The chunk states are read first and without loading: reading a block loads an unloaded chunk.
                 String chunks = LayerStructuresTest.chunkStates(level, site);
+                if (!LayerStructuresTest.loaded(level, site)) {
+                    failing.add(String.format(
+                            "%s at %s: chunks not loaded yet: %s",
+                            site.kind(), site.origin().toShortString(), chunks));
+                    return;
+                }
                 List<String> unmet = LayerStructuresTest.unmet(
                         level, band.minY(), band.height(), site, LayerStructuresTest.census(level, site));
                 if (!unmet.isEmpty()) {
@@ -251,11 +256,15 @@ public class CampaignContentTest {
                 famous.origin().toShortString());
         for (StructureSite site : List.of(famous, ordinary)) {
             for (ChunkPos chunk : LayerStructuresTest.chunksOf(site)) {
-                level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                FarChunks.force(helper, level, chunk.x(), chunk.z());
             }
         }
         FarChunks.Deadline deadline = FarChunks.deadline();
         TestTicks.each(helper, () -> {
+            if (!LayerStructuresTest.loaded(level, famous) || !LayerStructuresTest.loaded(level, ordinary)) {
+                deadline.await(helper, level, false, () -> "the chunks of the wrecks did not load");
+                return;
+            }
             List<String> unmet = new ArrayList<>();
             wreckUnmet(level, famous, true, unmet);
             wreckUnmet(level, ordinary, false, unmet);
@@ -321,13 +330,21 @@ public class CampaignContentTest {
                 Colony.placed(level.getServer()).orElseThrow(() -> failure(helper, "the colony was not built"));
         BlockPos centre = ColonyAnchor.CONDUIT.in(colony.anchors());
         int radius = ColonyTuning.DEFAULT.conduitRadius();
+        FarChunks.whenBlocksLoaded(
+                helper,
+                FarChunks.overBlocks(
+                        level,
+                        centre.getX() - radius,
+                        centre.getZ() - radius,
+                        centre.getX() + radius,
+                        centre.getZ() + radius),
+                () -> theConduitIsContinuous(helper, level, colony, centre, radius));
+    }
+
+    private static void theConduitIsContinuous(
+            GameTestHelper helper, ServerLevel level, ColonySite.Placed colony, BlockPos centre, int radius) {
         int bottom = CampaignBands.layer(CampaignBands.lastLayer()).minY();
         int top = colony.groundY() + ColonyTuning.DEFAULT.conduitStack();
-        for (int x = centre.getX() - radius; x <= centre.getX() + radius; x += radius) {
-            for (int z = centre.getZ() - radius; z <= centre.getZ() + radius; z += radius) {
-                level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL);
-            }
-        }
         List<String> gaps = new ArrayList<>();
         for (int x = centre.getX() - radius; x <= centre.getX() + radius; x++) {
             for (int z = centre.getZ() - radius; z <= centre.getZ() + radius; z++) {

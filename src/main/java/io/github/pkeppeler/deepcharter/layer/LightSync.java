@@ -371,8 +371,8 @@ public final class LightSync {
                 continue;
             }
             if (!hold.trackedThroughout.contains(player.getUUID())) {
-                // A rider swapped in with this chunk was sent it at the swap, after the light settled: it holds it
-                // already.
+                // A rider swapped in with this chunk was sent it at the swap, after the light settled: it holds
+                // it already.
                 if (!SeamSender.skippedAtCrossing(player, key.level, key.chunk)) {
                     player.connection.chunkSender.markChunkPendingToSend(chunk);
                 }
