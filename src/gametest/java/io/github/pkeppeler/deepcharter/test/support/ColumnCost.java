@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.test.mixin.MinecraftServerAccess;
+import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -41,6 +42,15 @@ public final class ColumnCost {
     private static final int UNLOADED_CHUNKS = 30;
 
     /**
+     * Set to {@code 1} to start a measured run with the last world of the list instead of the first, so that
+     * {@code tools/cost-run.sh} can alternate the order between runs as the rounds already alternate it inside one.
+     * Unset is the order of the list.
+     */
+    public static final String REVERSE_ENV = "DEEPCHARTER_COST_REVERSE";
+
+    private static final boolean REVERSE = "1".equals(System.getenv(REVERSE_ENV));
+
+    /**
      * The tests whose measured run holds the autosave off, by their bounds, and the countdown from before the first of them. The hold
      * ends with the last of them, on any exit of the test, through {@link #release} from {@code GameTestInfoMixin}'s {@code finish}.
      * Server thread only.
@@ -51,8 +61,19 @@ public final class ColumnCost {
 
     private ColumnCost() {}
 
-    /** One run's reading, per column, and the blocks of height of the world it was taken in. */
-    public record Measurement(double cpuMsPerColumn, double heapMb, double wallMsPerColumn, int height) {
+    /**
+     * One run's reading, per column, and the blocks of height of the world it was taken in. {@code gcMsPerColumn} and
+     * {@code gcCount} are the JVM's garbage collection time and count over the same window as the CPU reading (the heap
+     * readings' own forced collections are outside it), which tells a cost that grows with the world's age from a
+     * collector working on the chunks the world keeps.
+     */
+    public record Measurement(
+            double cpuMsPerColumn,
+            double heapMb,
+            double wallMsPerColumn,
+            int height,
+            double gcMsPerColumn,
+            int gcCount) {
         /** CPU per block of the column's height: what a taller world costs apart from being taller. */
         public double cpuMsPerBlock() {
             return cpuMsPerColumn / height;
@@ -62,7 +83,8 @@ public final class ColumnCost {
     /**
      * Generates the columns of {@code worlds} and, for {@code rounds} above 0, hands the readings of each world (one per round) to
      * {@code report} and succeeds. With 0 rounds it is the smoke case: a few columns of each world, no heap readings, no waits. A measured
-     * run first warms every world up, then runs each round over {@code worlds} (reversed on even rounds), and waits for every world in
+     * run first warms every world up, then runs each round over {@code worlds} (reversed on even rounds, or on odd ones
+     * with {@value #REVERSE_ENV}=1), and waits for every world in
      * {@code allWorlds} to hold nothing of the last region before it starts the next, because heap is read with the one before it gone.
      * Call it from the test method.
      */
@@ -92,7 +114,7 @@ public final class ColumnCost {
         } else {
             worlds.forEach(world -> queue.add(new Run(world, WARM_UP_RADIUS, 0, false, false)));
             for (int round = 1; round <= rounds; round++) {
-                for (String world : round % 2 == 1 ? worlds : worlds.reversed()) {
+                for (String world : (round % 2 == 1) != REVERSE ? worlds : worlds.reversed()) {
                     queue.add(new Run(world, MEASURED_RADIUS, round, true, false));
                 }
             }
@@ -169,7 +191,10 @@ public final class ColumnCost {
                 medianOf(all.stream().mapToDouble(m -> m.cpuMsPerColumn).toArray()),
                 medianOf(all.stream().mapToDouble(m -> m.heapMb).toArray()),
                 medianOf(all.stream().mapToDouble(m -> m.wallMsPerColumn).toArray()),
-                all.getFirst().height);
+                all.getFirst().height,
+                medianOf(all.stream().mapToDouble(m -> m.gcMsPerColumn).toArray()),
+                (int) Math.round(
+                        medianOf(all.stream().mapToDouble(m -> m.gcCount).toArray())));
     }
 
     public static String format(double value) {
@@ -214,6 +239,18 @@ public final class ColumnCost {
         return sorted.length % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
     }
 
+    private static long gcMillis() {
+        return ManagementFactory.getGarbageCollectorMXBeans().stream()
+                .mapToLong(GarbageCollectorMXBean::getCollectionTime)
+                .sum();
+    }
+
+    private static long gcCollections() {
+        return ManagementFactory.getGarbageCollectorMXBeans().stream()
+                .mapToLong(GarbageCollectorMXBean::getCollectionCount)
+                .sum();
+    }
+
     private static int columnsOf(int radius) {
         return (2 * radius + 1) * (2 * radius + 1);
     }
@@ -251,6 +288,8 @@ public final class ColumnCost {
         private long heapBefore;
         private long cpuBefore;
         private long wallBefore;
+        private long gcMsBefore;
+        private long gcCountBefore;
 
         Run(String world, int radius, int round, boolean measured, boolean smoke) {
             this.world = world;
@@ -272,6 +311,8 @@ public final class ColumnCost {
             heapBefore = smoke ? 0 : usedHeap();
             cpuBefore = processCpuNanos();
             wallBefore = System.nanoTime();
+            gcMsBefore = gcMillis();
+            gcCountBefore = gcCollections();
             forEachChunk(chunk -> FarChunks.force(helper, found, chunk[0], chunk[1]));
         }
 
@@ -285,11 +326,13 @@ public final class ColumnCost {
             double columns = columnsOf(radius);
             double cpuMs = (processCpuNanos() - cpuBefore) / 1e6;
             double wallMs = (System.nanoTime() - wallBefore) / 1e6;
+            double gcMs = gcMillis() - gcMsBefore;
+            int gcCount = (int) (gcCollections() - gcCountBefore);
             double heapMb = smoke ? 0 : (usedHeap() - heapBefore) / (1024.0 * 1024.0);
             forEachChunk(chunk -> FarChunks.release(helper, level.get(), chunk[0], chunk[1]));
             return new Measurement(
                     // level-height: the cost is per block of the whole test world, which is no layer
-                    cpuMs / columns, heapMb, wallMs / columns, level.get().getHeight());
+                    cpuMs / columns, heapMb, wallMs / columns, level.get().getHeight(), gcMs / columns, gcCount);
         }
 
         private void forEachChunk(Consumer<int[]> action) {

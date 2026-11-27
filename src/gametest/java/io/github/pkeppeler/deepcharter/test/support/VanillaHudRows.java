@@ -47,6 +47,19 @@ public final class VanillaHudRows {
                 centredRow("subtitle", guiWidth, middle + 2 * 5, 2));
     }
 
+    /**
+     * The rows of vanilla's HUD that a box of the mod's HUD, drawn above the hotbar, overlaps on a GUI {@code guiWidth}
+     * x {@code guiHeight}: the hotbar, the status rows, the held item's name and the action bar. The title and subtitle
+     * are left out: they sit mid-screen and show for a moment.
+     */
+    public static List<String> clashes(HudKeepClear.Rect box, int guiWidth, int guiHeight) {
+        List<String> rows = List.of("hotbar", "status rows", "held item name", "action bar");
+        return rects(guiWidth, guiHeight).stream()
+                .filter(row -> rows.contains(row.what()) && row.overlaps(box))
+                .map(HudKeepClear.Rect::what)
+                .toList();
+    }
+
     private static HudKeepClear.Rect centredRow(String what, int guiWidth, int textTop, int scale) {
         return new HudKeepClear.Rect(what, 0, textTop - scale * BACKDROP, guiWidth, scale * (LINE + 2 * BACKDROP));
     }

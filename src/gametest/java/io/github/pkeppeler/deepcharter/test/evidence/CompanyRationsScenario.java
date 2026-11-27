@@ -27,7 +27,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Evidence scenario "company-rations" for #838: a new player's food. At the ore cars on the track in front of the Works, the first use
  * finds the last shift's tins (the action bar says so and the hotbar fills) and the second finds the car empty. In the Lamp and Pick
- * the canteen dispenser gives today's ration, and the second use the same day is refused. The HUD stays on, because the action bar
+ * the canteen dispenser gives a ration, and a second use gives another (#1439). The HUD stays on, because the action bar
  * line and the hotbar are the evidence. The ore car and the canteen are found in the placed colony, and the player stands in front of each along its facing.
  */
 public class CompanyRationsScenario extends EvidenceScenario {
@@ -91,7 +91,7 @@ public class CompanyRationsScenario extends EvidenceScenario {
             use(singleplayer, canteen);
             showMessage(context, "canteen-ration");
             use(singleplayer, canteen);
-            showMessage(context, "canteen-refused");
+            showMessage(context, "canteen-second-ration");
         }
     }
 

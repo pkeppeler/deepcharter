@@ -109,11 +109,26 @@ public record StrataRule(
         return new Evaluator(context, context.getNoiseSampler(noise, false));
     }
 
-    /** The rule in one chunk: the contacts of the column last asked about. */
+    /**
+     * The rock at {@code y} in a column whose contacts are moved by {@code shift} rows: the upper rock of the first
+     * contact at or under {@code y}, or its bed in the bed's rows, and {@link #bottom} under every contact.
+     */
+    public BlockState rockAt(int y, int shift) {
+        for (int i = 0; i < contacts.size(); i++) {
+            Contact contact = contacts.get(i);
+            int above = y - (contact.y() + shift);
+            if (above >= 0) {
+                return above >= ON_CONTACT && above < ON_CONTACT + BED_ROWS ? contact.bed() : contact.upper();
+            }
+        }
+        return bottom;
+    }
+
+    /** The rule in one chunk: the shift of the column last asked about. */
     private final class Evaluator implements RuleEvaluator {
         private final MaterialRuleContext context;
         private final DoubleSupplier sampler;
-        private final int[] contactY = new int[contacts.size()];
+        private int shift;
         private int lastX = Integer.MIN_VALUE;
         private int lastZ = Integer.MIN_VALUE;
 
@@ -127,20 +142,10 @@ public record StrataRule(
             if (x != lastX || z != lastZ) {
                 lastX = x;
                 lastZ = z;
-                int shift = (int) Math.round(amplitude * sampler.getAsDouble());
-                shift = Math.clamp(shift, -MAX_SHIFT, MAX_SHIFT) + context.surfaceDepth() * surfaceDepthMultiplier;
-                for (int i = 0; i < contactY.length; i++) {
-                    contactY[i] = contacts.get(i).y() + shift;
-                }
+                int moved = (int) Math.round(amplitude * sampler.getAsDouble());
+                shift = Math.clamp(moved, -MAX_SHIFT, MAX_SHIFT) + context.surfaceDepth() * surfaceDepthMultiplier;
             }
-            for (int i = 0; i < contactY.length; i++) {
-                int above = y - contactY[i];
-                if (above >= 0) {
-                    Contact contact = contacts.get(i);
-                    return above >= ON_CONTACT && above < ON_CONTACT + BED_ROWS ? contact.bed() : contact.upper();
-                }
-            }
-            return bottom;
+            return rockAt(y, shift);
         }
     }
 }

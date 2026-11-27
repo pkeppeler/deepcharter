@@ -1,6 +1,6 @@
 """The build's shard matrix in .github/workflows/ci.yml must cover shards 1..N of the N the jobs pass to -PgametestShard, or a server
 GameTest class in a missing shard would never run, and the aggregate must keep the one `build` name the merge gate requires (#1327,
-ADR 0106). The selection itself is tested in server_shard_gate_check.py; this checks the workflow that calls it."""
+ADR 0111). The selection itself is tested in server_shard_gate_check.py; this checks the workflow that calls it."""
 import re
 import unittest
 from pathlib import Path

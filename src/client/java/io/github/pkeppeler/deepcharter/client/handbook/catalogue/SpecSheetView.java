@@ -74,8 +74,8 @@ final class SpecSheetView {
 
     /** Places {@code sheet} on a screen {@code width} by {@code height}: a console as tall as the text needs, centred. */
     static Placed place(SpecSheet sheet, int width, int height, CatalogueLook look, CrtTuning crt, Font font) {
-        // The text is planned once in the tallest console to see how much room it takes, then again in the console that
-        // size.
+        // The text is planned once in the tallest console to see how much room it takes, then again in the console
+        // that size.
         SpecSheetLayout tallest = SpecSheetLayout.of(width, height, look, crt, font.lineHeight, Integer.MAX_VALUE / 2);
         Plan measured = plan(sheet, tallest, look, font);
         int needed = measured.usedBottom() - tallest.glass().y() + look.pad();

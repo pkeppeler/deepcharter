@@ -56,7 +56,7 @@ A pod is a vehicle with seats. It drives on treads, lifts on a rotor and drills 
 
 ![A pod drills down through three slabs of stone](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/drilling.gif?raw=true)
 
-Sprint to drill down, or drive into a wall (W) to drill sideways. Ore goes into the cargo bay and the stone is gone, unless you fit a spoil hopper (stop 10). Fuel drains all the time, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the colony pump, or feed the pod coal. (This picture uses night vision, so you can see the bore.)
+Sprint to drill down, or drive into a wall (W) to drill sideways. Ore goes into the cargo bay and the stone is gone, unless you fit a spoil hopper (stop 10). Fuel drains while anyone is aboard, and faster when you drill. A pod with no fuel is stranded and dark. Buy fuel at the colony pump, or feed the pod coal. (This picture uses night vision, so you can see the bore.)
 
 ### 4. The scanner
 
@@ -66,7 +66,7 @@ The scanner is a side-view map of the rock around your pod, drawn cell by cell, 
 
 ### 5. Ore and selling
 
-![A pod's cargo screen, loaded with ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
+![The pod screen, its hold loaded with ore](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/ore-cargo.png?raw=true)
 
 Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park by the ore processor in the colony and sell it, and the money goes to your charter's account.
 

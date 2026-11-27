@@ -87,8 +87,8 @@ public final class HeapHistogram {
             String histogram = gcClassHistogram();
             List<String> lines = histogram.lines().toList();
             List<String> kept = new ArrayList<>();
-            // A header line and a rule, then one row per class (its module in brackets after the name), then a "Total"
-            // row.
+            // A header line and a rule, then one row per class (its module in brackets after the name), then a
+            // "Total" row.
             for (int index = 0; index < lines.size(); index++) {
                 String line = lines.get(index);
                 if (index < TOP + 2

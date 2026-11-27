@@ -2,11 +2,14 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.QuietTransmissions;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
@@ -28,10 +31,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -206,6 +211,39 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
                 }
             }
         }
+    }
+
+    /**
+     * Right-clicks {@code target} as a player does: looks at its middle, waits for the crosshair to rest on it, then
+     * presses the use key, so the game's own path ({@code Minecraft.startUseItem}) picks the entity and sends the
+     * interaction.
+     */
+    protected static void rightClick(ClientGameTestContext context, Entity target) {
+        context.getInput().lookAt(BlockPos.containing(target.getBoundingBox().getCenter()));
+        ClientWait.until(
+                context,
+                "the crosshair on " + target,
+                client -> client.hitResult instanceof EntityHitResult hit && hit.getEntity() == target);
+        context.getInput().pressKey(options -> options.keyUse);
+    }
+
+    /**
+     * The client's copy of the server entity with network id {@code id}, waited for until the client holds it. The
+     * integrated server and its client share ids, so this finds a scenario's own entity where another of its type
+     * shares the level (the colony's pod does).
+     */
+    protected static <T extends Entity> T clientEntity(ClientGameTestContext context, int id, Class<T> type) {
+        ClientWait.until(
+                context,
+                type.getSimpleName() + " " + id + " in the client's world",
+                client -> type.isInstance(ClientLight.clientLevel(client).getEntity(id)));
+        return context.computeOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), id, type));
+    }
+
+    /** The first player's level's copy of the pod with network id {@code podId}. */
+    protected static PodEntity podOnServer(MinecraftServer server, int podId) {
+        return TestEntities.require(
+                server.getPlayerList().getPlayers().getFirst().level(), podId, PodEntity.class);
     }
 
     /**

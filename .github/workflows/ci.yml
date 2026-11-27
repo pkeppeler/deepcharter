@@ -20,7 +20,7 @@ env:
   BUILD_SHARDS: 4
 
 jobs:
-  # The server GameTest suite runs as BUILD_SHARDS parallel jobs (#1327, ADR 0106). Each takes the shard `i/n` of the server
+  # The server GameTest suite runs as BUILD_SHARDS parallel jobs (#1327, ADR 0111). Each takes the shard `i/n` of the server
   # classes that gradle/gametest.gradle.kts picks by weight (-PgametestShard; gradle/server-test-weights.txt), so every class runs
   # in exactly one shard, and classes that share a campaign environment share a shard. The matrix and BUILD_SHARDS must agree:
   # tools/tests/test_build_shards.py checks it. The job id stays `build` for the Gradle cache (cache-seed.yml says why).

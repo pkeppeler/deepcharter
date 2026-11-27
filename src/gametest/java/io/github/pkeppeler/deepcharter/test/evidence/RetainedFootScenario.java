@@ -211,8 +211,8 @@ public class RetainedFootScenario extends EvidenceScenario {
                     server -> person(server).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_SWORD)));
             record(4);
             int blows = 0;
-            // One frame at a time between blows, and a death that is already gone ends the loop too: a figure dissolves
-            // in
+            // One frame at a time between blows, and a death that is already gone ends the loop too: a figure
+            // dissolves in
             // 20 ticks, and a slow frame in CI can span that, after which it is no longer there to be found dying.
             while (!deadOrGone()) {
                 strike();

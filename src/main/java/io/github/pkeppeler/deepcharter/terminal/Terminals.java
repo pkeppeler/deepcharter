@@ -24,7 +24,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The server-side API of terminals, and the one place a player's request reaches one. Every request is checked first, in this
- * order: the player is within {@link TerminalTuning#maxDistance()} blocks, the block is a terminal, the charter data
+ * order: the player is within reach ({@link #inReach}), the block is a terminal, the charter data
  * and (for a terminal that needs repair) the repair data are readable, the player is on a charter (for a charter-only
  * terminal), and then what the request needs of the repair state. Unreadable saved data is refused as
  * {@code STATE_UNREADABLE}, never thrown.
@@ -122,10 +122,20 @@ public final class Terminals {
                 && pod.position().distanceToSqr(Vec3.atCenterOf(pos)) <= radius * radius;
     }
 
-    /** Whether {@code player} is within reach of the terminal at {@code pos}: the distance a request is served from. */
+    /**
+     * Whether {@code player} is within reach of the terminal at {@code pos}: the distance a request is served from. A
+     * player on foot reaches from their eyes. A player seated in a pod, in any seat (#1447), reaches from the pod's
+     * box, and only while the pod stands within {@link TerminalTuning#parkedRadius()} of the terminal, as a parked pod
+     * does: a wide pod's corner alone does not reach a terminal that would not serve it.
+     */
     public static boolean inReach(ServerPlayer player, BlockPos pos) {
         double range = TerminalTuning.DEFAULT.maxDistance();
-        return player.getEyePosition().distanceToSqr(Vec3.atCenterOf(pos)) <= range * range;
+        double parked = TerminalTuning.DEFAULT.parkedRadius();
+        Vec3 centre = Vec3.atCenterOf(pos);
+        return SeatedTerminals.seat(player)
+                .map(pod -> pod.getBoundingBox().distanceToSqr(centre) <= range * range
+                        && pod.position().distanceToSqr(centre) <= parked * parked)
+                .orElseGet(() -> player.getEyePosition().distanceToSqr(centre) <= range * range);
     }
 
     /**
@@ -264,7 +274,7 @@ public final class Terminals {
         return Optional.empty();
     }
 
-    private static Optional<TerminalRefusal> refuse(ServerPlayer player, TerminalRefusal refusal) {
+    static Optional<TerminalRefusal> refuse(ServerPlayer player, TerminalRefusal refusal) {
         // An action refused by its own handler has told the player already.
         if (refusal != TerminalRefusal.ACTION_REFUSED) {
             player.sendOverlayMessage(refusal.message());
