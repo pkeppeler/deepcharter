@@ -32,7 +32,7 @@ jobs:
           for attempt in 1 2 3 4; do
             sha=$(git ls-remote "https://github.com/$REPO" refs/heads/main | cut -f1) || sha=
             [[ $sha =~ ^[0-9a-f]{40}$ ]] && break
-            sleep $((attempt * 5))
+            [[ $attempt -lt 4 ]] && sleep $((attempt * 5))
           done
           [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo "::error::could not read the sha of origin/main"; exit 1; }
           echo "main-sha=$sha" >> "$GITHUB_OUTPUT"

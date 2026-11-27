@@ -11,6 +11,11 @@ ACTION = (REPO / ".github/actions/client-gametest/action.yml").read_text()
 
 
 class ClientShardWorkflowTest(unittest.TestCase):
+    def changes_job(self) -> str:
+        match = re.search(r"^  changes:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)
+        self.assertIsNotNone(match, "client-tests.yml has no changes job")
+        return match[1]
+
     def shard_job(self) -> str:
         match = re.search(r"^  client-shard:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)
         self.assertIsNotNone(match, "client-tests.yml has no client-shard job")
@@ -52,7 +57,7 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIn("overwrite: true", job)
 
     def test_every_shard_merges_the_main_the_changes_job_merged(self):
-        self.assertIn("main-sha: ${{ steps.merge.outputs.main-sha }}", WORKFLOW.split("client-shard:")[0])
+        self.assertIn("main-sha: ${{ steps.merge.outputs.main-sha }}", self.changes_job())
         self.assertIn("main-sha: ${{ needs.changes.outputs.main-sha }}", self.shard_job())
 
     def test_the_aggregate_records_the_shards_agreed_main_sha_without_merging(self):
