@@ -106,9 +106,11 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
         }
     }
 
-    @Override
-    public final void runTest(ClientGameTestContext context) {
-        ClientTestLog.start(this);
+    /**
+     * What each concrete class's {@code runTest} runs after {@code ClientTestLog.start(this)}: the call stays in the concrete class, which the
+     * log lint reads, and this base is a client test in the scan's eyes (so its code is judged by the client gates, not the server ones).
+     */
+    final void runCases(ClientGameTestContext context) {
         // Long by design: a tall campaign level. A loaded runner stretches a class past what it takes alone.
         ClientTestWatchdog.shared().arm(getClass().getSimpleName(), Duration.ofSeconds(LIMIT_SECONDS));
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {

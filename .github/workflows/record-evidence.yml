@@ -56,6 +56,8 @@ jobs:
         with:
           cache-read-only: false
       - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses resolveClientGameTestRuntime
+      # Both jobs build the merge ref, so its sha stands where the other workflows record the main they merged.
+      - run: git rev-parse HEAD > build/ci-compiled-main
       - uses: ./.github/actions/upload-compiled
         with:
           name: compiled-evidence
@@ -79,6 +81,8 @@ jobs:
         with:
           ref: ${{ format('refs/pull/{0}/merge', github.event.pull_request.number || inputs.pr) }}
           persist-credentials: false
+      - id: head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Resolve the PR and scenario
         id: resolve
         env:
@@ -119,11 +123,14 @@ jobs:
           if [[ $EVENT == pull_request ]]; then
             gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label record
           fi
-      - uses: ./.github/actions/download-compiled
+      - id: compiled
+        uses: ./.github/actions/download-compiled
         with:
           name: compiled-evidence
+          main-sha: ${{ steps.head.outputs.sha }}
       - uses: ./.github/actions/client-gametest
         with:
+          skip-compile: ${{ steps.compiled.outputs.skip }}
           evidence-scenario: ${{ steps.resolve.outputs.scenario }}
           client-tests: ${{ steps.resolve.outputs.class }}
           gradle-cache-read-only: "true"

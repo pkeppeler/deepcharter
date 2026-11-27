@@ -44,9 +44,11 @@ abstract class HandBreakCases implements FabricClientGameTest {
     static final int MIDWAY_TICKS = 600;
     static final int SETTLE_TICKS = 40;
 
-    @Override
-    public final void runTest(ClientGameTestContext context) {
-        ClientTestLog.start(this);
+    /**
+     * What each concrete class's {@code runTest} runs after {@code ClientTestLog.start(this)}: the call stays in the concrete class, which the
+     * log lint reads, and this base is a client test in the scan's eyes (so its code is judged by the client gates, not the server ones).
+     */
+    final void runCases(ClientGameTestContext context) {
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             try {
                 cases(context, two);
@@ -90,8 +92,7 @@ abstract class HandBreakCases implements FabricClientGameTest {
      * only miner, nothing steps the game mode here). Returns the ticks until the client saw the block gone, or {@code
      * limit} when it never did; when {@code expectBreak} the block must go.
      */
-    static int mine(
-            ClientGameTestContext context, BlockPos target, int limit, boolean bites, boolean expectBreak) {
+    static int mine(ClientGameTestContext context, BlockPos target, int limit, boolean bites, boolean expectBreak) {
         float start = HandBreakChecks.clientProgress(context);
         for (int tick = 0; tick < limit; tick++) {
             if (bites && tick == PROGRESS_TICKS) {

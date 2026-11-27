@@ -14,6 +14,12 @@ import net.minecraft.world.item.Items;
 /** A bare hand and a diamond pick on the crust of layer 1 ({@link HandBreakCases}). */
 public class HandBreakClientTest extends HandBreakCases implements FabricClientGameTest {
     @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        runCases(context);
+    }
+
+    @Override
     void cases(ClientGameTestContext context, TwoPlayerServer two) {
         BlockPos target = prepare(two, 1, X);
         awaitCrust(context, target);

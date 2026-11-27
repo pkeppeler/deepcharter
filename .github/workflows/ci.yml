@@ -39,7 +39,8 @@ jobs:
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
-      - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
@@ -52,6 +53,10 @@ jobs:
       # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
       # if a repository fails to answer (#1358).
       - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses
+      # The jobs that download this output skip their compile tasks only if they merged this main (tools/ci-reuse-compiled.sh).
+      - env:
+          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
+        run: echo "$MAIN_SHA" > build/ci-compiled-main
       - uses: ./.github/actions/upload-compiled
         with:
           name: compiled-ci
@@ -86,9 +91,11 @@ jobs:
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: ${{ matrix.shard }}
-      - uses: ./.github/actions/download-compiled
+      - id: compiled
+        uses: ./.github/actions/download-compiled
         with:
           name: compiled-ci
+          main-sha: ${{ steps.merge.outputs.main-sha }}
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
@@ -99,7 +106,7 @@ jobs:
           cache-read-only: true
       # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
       # if a repository fails to answer (#1358).
-      - run: tools/ci-gradle-resolve.sh runGameTest "-PgametestShard=${{ matrix.shard }}/${{ env.BUILD_SHARDS }}"
+      - run: tools/ci-gradle-resolve.sh runGameTest "-PgametestShard=${{ matrix.shard }}/${{ env.BUILD_SHARDS }}" ${{ steps.compiled.outputs.skip }}
 
   # Everything `./gradlew build` does but the server GameTests (jars, check and its gates) and the client run tasks' dry run: one
   # job, beside the shards. Its job id is not the seeded `build`, so setup-gradle restores cache-seed.yml's entry through its
@@ -123,9 +130,11 @@ jobs:
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: checks
-      - uses: ./.github/actions/download-compiled
+      - id: compiled
+        uses: ./.github/actions/download-compiled
         with:
           name: compiled-ci
+          main-sha: ${{ steps.merge.outputs.main-sha }}
       - uses: ./.github/actions/setup-python-uv
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
@@ -134,7 +143,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: true
-      - run: tools/ci-gradle-resolve.sh build -x runGameTest
+      - run: tools/ci-gradle-resolve.sh build -x runGameTest ${{ steps.compiled.outputs.skip }}
       # The client run tasks never run on Linux. A dry run with the lock forced on still checks that
       # they serialize into the configuration cache (gradle/clientlock.gradle.kts).
       - run: ./gradlew runClient runClientGameTest runPlay --dry-run --configuration-cache
@@ -185,7 +194,7 @@ jobs:
           SHARD_KIND: build
 
   # The tool tests run as parallel jobs: the Python unit tests in three parts, the shell tests in four, and the gate checks
-  # on fixtures (Gradle) in one. tools/ci_tool_parts.py picks each part's files by weight (tools/tests/ci-tool-test-weights.txt).
+  # on fixtures (Gradle, tool-gates below) in one. tools/ci_tool_parts.py picks each part's files by weight (tools/tests/ci-tool-test-weights.txt).
   # The matrix and the aggregate's part count must agree: tools/tests/test_tool_test_parts.py checks it. `tool-tests` below is their aggregate.
   tool-part:
     name: tool-tests-part ${{ matrix.part }}
@@ -203,7 +212,6 @@ jobs:
           - { part: 5, kind: shell, slice: 2/4 }
           - { part: 6, kind: shell, slice: 3/4 }
           - { part: 7, kind: shell, slice: 4/4 }
-          - { part: 8, kind: gates, slice: 1/1 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -235,24 +243,49 @@ jobs:
           export PATH="$RUNNER_TEMP/shellcheck:$PATH"
           shellcheck --version
           tools/shellcheck.sh
+
+  # The gate checks on fixtures (gate_checks.py): hundreds of fixture trees through one Gradle run, which needs the compiled
+  # build like the shards do. The eighth tool-test part (artifact tool-8); `tool-tests` below waits for it with the others.
+  tool-gates:
+    name: tool-tests-gates
+    needs: compile
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: tool-8
+      - id: compiled
+        uses: ./.github/actions/download-compiled
+        with:
+          name: compiled-ci
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+      - uses: ./.github/actions/setup-python-uv
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
-        if: matrix.kind == 'gates'
         with:
           distribution: temurin
           java-version: 25
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
-        if: matrix.kind == 'gates'
         with:
           cache-read-only: true
       - name: gate checks on fixtures
-        if: matrix.kind == 'gates'
         run: tools/ci-gradle-resolve.sh help && tools/py tools/tests/gate_checks.py
 
   # The one name tools/merge-pr.sh requires for the tool tests. Succeeds only when every part did and they merged one main; then it
   # records that main in its own `merged-main` notice (tools/ci-shard-main.sh, main's copy). It never merges main itself.
   tool-tests:
     name: tool-tests
-    needs: tool-part
+    needs: [tool-part, tool-gates]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

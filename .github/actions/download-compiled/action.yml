@@ -1,12 +1,21 @@
 # The other half of upload-compiled (#1574): puts build/ and .gradle/ from the compile job into the workspace, after the checkout
-# and before the first Gradle call.
+# and before the first Gradle call, and says whether the job may skip the compile tasks (tools/ci-reuse-compiled.sh): only when the
+# compile job merged the same main as this job. The job then adds the `skip` output to its Gradle calls.
 name: Download the compile output
-description: Download the artifact `name` (see upload-compiled) into the workspace.
+description: Download the artifact `name` (see upload-compiled) into the workspace and output the Gradle arguments that skip the compile tasks.
 
 inputs:
   name:
     description: The artifact name the compile job uploaded.
     required: true
+  main-sha:
+    description: The main sha this job merged (merge-main's main-sha output).
+    required: true
+
+outputs:
+  skip:
+    description: "`-x compileJava -x compileClientJava -x compileGametestJava` when the classes were compiled from the same main, else empty."
+    value: ${{ steps.reuse.outputs.skip }}
 
 runs:
   using: composite
@@ -15,3 +24,8 @@ runs:
       with:
         name: ${{ inputs.name }}
         path: ${{ github.workspace }}
+    - id: reuse
+      shell: bash
+      env:
+        MAIN_SHA: ${{ inputs.main-sha }}
+      run: tools/ci-reuse-compiled.sh "$MAIN_SHA"

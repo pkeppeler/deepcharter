@@ -41,9 +41,9 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("tools/ci-gradle-resolve.sh build -x runGameTest", checks)
         self.assertIn("--dry-run --configuration-cache", checks)
 
-    def test_the_gate_checks_run_once_in_a_tool_test_part(self):
+    def test_the_gate_checks_run_once_in_the_tool_gates_job(self):
         self.assertEqual(WORKFLOW.count("tools/tests/gate_checks.py"), 1)
-        self.assertIn("tools/tests/gate_checks.py", job("tool-part"))
+        self.assertIn("tools/tests/gate_checks.py", job("tool-gates"))
 
     def test_the_shards_and_the_checks_job_download_what_the_compile_job_built(self):
         self.assertIn("name: compile\n", job("compile"))

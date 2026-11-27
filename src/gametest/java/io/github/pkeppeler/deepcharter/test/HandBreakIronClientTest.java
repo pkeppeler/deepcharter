@@ -13,6 +13,12 @@ import net.minecraft.world.item.Items;
 /** An iron pick on the crust of layer 2, which the block destroys ({@link HandBreakCases}). */
 public class HandBreakIronClientTest extends HandBreakCases implements FabricClientGameTest {
     @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        runCases(context);
+    }
+
+    @Override
     void cases(ClientGameTestContext context, TwoPlayerServer two) {
         // An iron pick is destroyed by the block, but not before it: the client goes on mining while the server
         // wears it, predicts the break at the end, and both sides agree the block is gone and the pick with it.

@@ -7,6 +7,12 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 /** Layer-structure trials, part 2 of 3 ({@link StaleClientLightCases}). */
 public class StaleClientLightTrialsBClientTest extends StaleClientLightCases implements FabricClientGameTest {
     @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        runCases(context);
+    }
+
+    @Override
     void cases(ClientGameTestContext context, TestServerContext server) {
         layerTrials(context, server, 1);
     }

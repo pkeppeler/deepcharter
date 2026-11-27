@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Lint (#983): every CI job that merges main (compile, the build shards, build-checks, the tool-test parts, client-changes, client-compile, client-shard) runs main's copy of
+# Lint (#983): every CI job that merges main (compile, the build shards, build-checks, the tool-test parts and gates, client-changes, client-compile, client-shard) runs main's copy of
 # merge-main through the remote ref, so a PR head cannot swap the action or tools/ci-merge-main.sh. A job that lacks
 # the step, or uses a local ./.github/actions/merge-main or a .ci-main checkout, fails.
 set -euo pipefail
@@ -45,7 +45,7 @@ check "mutated: missing step is flagged" "tool-part: missing '$remote'" "$(probl
 check "mutated: absent job is flagged" "nope: job not found in $ci" "$(problems "$ci" nope)"
 
 # --- the repo ---
-for spec in ci.yml:compile ci.yml:build ci.yml:checks ci.yml:tool-part client-tests.yml:changes client-tests.yml:compile client-tests.yml:client-shard; do
+for spec in ci.yml:compile ci.yml:build ci.yml:checks ci.yml:tool-part ci.yml:tool-gates client-tests.yml:changes client-tests.yml:compile client-tests.yml:client-shard; do
   out=$(problems "$root/.github/workflows/${spec%%:*}" "${spec##*:}")
   if [[ -n $out ]]; then echo "FAIL repo: $out"; fail=1; else echo "ok   repo: ${spec#*:} uses the remote merge-main"; fi
 done

@@ -32,12 +32,18 @@ class ToolTestPartsTest(unittest.TestCase):
                 self.assertEqual(1, len(counts), f"the {kind} parts disagree on their count: {entries}")
                 self.assertEqual(list(range(1, counts.pop() + 1)), sorted(i for i, _ in entries))
 
-    def test_the_gate_checks_are_one_part_of_their_own(self):
-        self.assertEqual([(1, 1)], [(i, n) for _, k, i, n in matrix() if k == "gates"])
+    def test_the_gate_checks_are_the_last_part_in_a_job_of_their_own_with_the_compiled_build(self):
+        gates = re.search(r"^  tool-gates:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)
+        self.assertIsNotNone(gates, "ci.yml has no tool-gates job")
+        self.assertIn("needs: compile\n", gates[1])
+        self.assertIn("name: compiled-ci", gates[1])
+        self.assertIn(f"name: tool-{len(matrix()) + 1}\n", gates[1])
+        self.assertIn("tools/tests/gate_checks.py", gates[1])
+        self.assertEqual(WORKFLOW.count("tools/tests/gate_checks.py"), 1)
 
-    def test_the_aggregate_waits_for_every_part(self):
-        self.assertIn(f'ci-shard-main.sh "$RUNNER_TEMP/shard-main" {len(matrix())}', WORKFLOW)
-        self.assertIn("needs: tool-part", WORKFLOW)
+    def test_the_aggregate_waits_for_every_part_and_the_gate_checks(self):
+        self.assertIn(f'ci-shard-main.sh "$RUNNER_TEMP/shard-main" {len(matrix()) + 1}', WORKFLOW)
+        self.assertIn("needs: [tool-part, tool-gates]", WORKFLOW)
 
     def test_every_test_file_is_in_exactly_one_part_and_no_part_is_empty(self):
         for kind, pattern in parts.KINDS.items():

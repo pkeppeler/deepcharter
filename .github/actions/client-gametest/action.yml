@@ -18,6 +18,10 @@ inputs:
     description: Shard i/n of the client classes (-PclientShard, balanced by gradle/client-test-weights.txt), so parallel jobs split the suite. Empty runs them all.
     required: false
     default: ""
+  skip-compile:
+    description: Gradle arguments that skip the compile tasks when the classes were downloaded from the compile job (download-compiled's skip output); empty compiles here.
+    required: false
+    default: ""
   gradle-cache-read-only:
     description: "'true' to restore the Gradle cache without saving it (a shard: the compile job saves it, and a save costs seconds of the job's five minutes)."
     required: false
@@ -46,7 +50,11 @@ runs:
     # work the client run would do anyway, moved ahead of it, so a healthy run costs about nothing.
     - name: Resolve dependencies
       shell: bash
-      run: tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime
+      env:
+        SKIP_COMPILE: ${{ inputs.skip-compile }}
+      # SKIP_COMPILE is word-split on purpose: `-x compileJava -x ...`.
+      # shellcheck disable=SC2086
+      run: tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime $SKIP_COMPILE
     - shell: bash
       run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri
     # One backend, not a matrix, to save minutes. `version` is the data version that
@@ -75,6 +83,7 @@ runs:
         DEEPCHARTER_EVIDENCE_DIR: ${{ github.workspace }}/build/evidence
         CLIENT_TESTS: ${{ inputs.client-tests }}
         CLIENT_SHARD: ${{ inputs.client-shard }}
+        SKIP_COMPILE: ${{ inputs.skip-compile }}
         # The live heap by class at the start of each test class (HeapHistogram): the leak shows as the type that grows.
         DEEPCHARTER_CLIENT_HEAP_HISTOGRAM: ${{ github.workspace }}/build/client-heap
       run: |
@@ -86,7 +95,9 @@ runs:
         if [ -n "$CLIENT_SHARD" ]; then
           filter+=("-PclientShard=$CLIENT_SHARD")
         fi
-        ./gradlew runClientGameTest -x deleteGameTestRunDir "${filter[@]}" > "$log" 2>&1 &
+        # SKIP_COMPILE is word-split on purpose: `-x compileJava -x ...`.
+        # shellcheck disable=SC2086
+        ./gradlew runClientGameTest -x deleteGameTestRunDir $SKIP_COMPILE "${filter[@]}" > "$log" 2>&1 &
         gradle_pid=$!
         tail -n +1 -f "$log" --pid="$gradle_pid" &
         tail_pid=$!
