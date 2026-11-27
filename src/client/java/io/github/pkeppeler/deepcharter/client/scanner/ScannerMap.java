@@ -174,8 +174,8 @@ final class ScannerMap {
                     fillTile(image, x, y, pixels, oreMark(look, ore));
                 } else {
                     // The scanner draws a rock as the world does: the neutral texture times the colour of its depth.
-                    int tint =
-                            RockTint.of(slice.state(ahead, up), slice.origin().getY() + up);
+                    int tint = quantise(
+                            RockTint.of(slice.state(ahead, up), slice.origin().getY() + up));
                     Optional<int[]> tile =
                             tile(ScannerSprites.of(slice, found, ahead, up), pixels, look.airColor(), tint);
                     if (tile.isEmpty()) {
