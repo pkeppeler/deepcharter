@@ -1094,12 +1094,13 @@ px_first=$(sed -n 's/^PX_REVIEW_FIRST_PR=\([0-9][0-9]*\)$/\1/p' "$tools/lib/pr-b
 [[ -n $px_first ]] || { echo "cannot read PX_REVIEW_FIRST_PR from tools/lib/pr-body-checks.sh" >&2; exit 1; }
 # px_run <script> <pr> [VAR=value ...]
 px_run() {
-  local s=$1 n=$2
+  local s=$1 n=$2 flag=(--direct)
   shift 2
   reset
   rc=0
+  [[ $s == "$script" ]] || flag=() # the merge is the direct one (#1567); mark takes no flag
   out=$(env STUB_BODY="Closes #12
-No map change: test" "$@" PATH="$work/bin:$PATH" bash "$s" "$n" 2>&1) || rc=$?
+No map change: test" "$@" PATH="$work/bin:$PATH" bash "$s" ${flag[@]+"${flag[@]}"} "$n" 2>&1) || rc=$?
 }
 gpl="STUB_LABELS=gameplay
 demo
