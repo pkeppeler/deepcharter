@@ -71,6 +71,7 @@ public class PodSprintScenario extends EvidenceScenario {
                     context,
                     "the player in layer 1",
                     client -> client.player != null && TestLayers.clientIsIn(client, 1));
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z + LENGTH / 2, LENGTH / 2);
             int podId = singleplayer.getServer().computeOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
