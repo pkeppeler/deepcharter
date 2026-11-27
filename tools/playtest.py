@@ -36,6 +36,11 @@ INSTANCE_ID = "deepcharter"
 SESSION = "deepcharter-server"
 PLAYER = re.compile(r"[A-Za-z0-9_]{3,16}")
 ISSUE = re.compile(r"[1-9][0-9]*")
+REPO_SLUG = "pkeppeler/deepcharter"
+FEEDBACK_LABEL = "playtest-feedback"
+BUG_LABEL = "bug"
+ISSUE_TITLE_MAX = 120
+ISSUE_BODY_MAX = 10000
 TAILSCALE = ("tailscale", "/Applications/Tailscale.app/Contents/MacOS/Tailscale")
 CHAT_CAP = 300
 REPLY_LINE = 100
@@ -624,6 +629,79 @@ def ack(env: Env, player: str, issue: str, title: str, existing: bool) -> None:
     _send(env, f"tellraw {player} {json.dumps(text)}")
 
 
+# ---------------------------------------------------------------- issues
+
+
+def _issue_title(title: str) -> str:
+    title = title.strip()
+    if not title:
+        raise Fail("the issue title is empty")
+    if any(unicodedata.category(c).startswith("C") for c in title):
+        raise Fail("refusing an issue title with control characters")
+    if len(title) > ISSUE_TITLE_MAX:
+        raise Fail(f"the issue title is over {ISSUE_TITLE_MAX} characters: shorten it")
+    return title
+
+
+def _issue_body(path: Path) -> str:
+    try:
+        body = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        raise Fail(f"cannot read the body file {path}: {error}") from None
+    if not body.strip():
+        raise Fail("the issue body is empty")
+    if any(unicodedata.category(c).startswith("C") and c not in "\n\t" for c in body.replace("\r\n", "\n")):
+        raise Fail("refusing an issue body with control characters")
+    if len(body) > ISSUE_BODY_MAX:
+        raise Fail(f"the issue body is over {ISSUE_BODY_MAX} characters: trim it")
+    return body
+
+
+def _gh_json(env: Env, endpoint: str, *fields: str, method: str = "GET") -> dict | list:
+    """`gh api` over REST (`gh issue` and GraphQL are blocked); field values reach it as argv items, never through a shell."""
+    argv = ["gh", "api", "--method", method, endpoint, *fields]
+    try:
+        return json.loads(_run(env, argv))
+    except json.JSONDecodeError:
+        raise Fail(f"gh api {endpoint} did not return JSON") from None
+
+
+def _label_names(labels: object) -> set[str]:
+    return {label.get("name") for label in labels if isinstance(label, dict)} if isinstance(labels, list) else set()
+
+
+def _label_fields(labels: list[str]) -> list[str]:
+    return [item for label in labels for item in ("-f", f"labels[]={label}")]
+
+
+def file_issue(env: Env, title: str, body_file: Path, *, bug: bool, duplicate_of: str | None) -> tuple[str, str]:
+    """File a new issue, or comment on the duplicate, always labelled `playtest-feedback` (plus `bug`). Returns (url, title).
+
+    Refuses before writing anything when title or body is bad, and after writing when GitHub did not apply every label.
+    """
+    shown = _issue_title(title)
+    body = _issue_body(body_file)
+    wanted = [FEEDBACK_LABEL, *([BUG_LABEL] if bug else [])]
+    if duplicate_of is None:
+        issue = _gh_json(env, f"repos/{REPO_SLUG}/issues", "-f", f"title={shown}", "-f", f"body={body}",
+                         *_label_fields(wanted), method="POST")
+        missing = [label for label in wanted if label not in _label_names(issue.get("labels"))]
+        if missing:
+            raise Fail(f"issue {issue.get('html_url')} was filed without the label {', '.join(missing)}: add it by hand")
+        return issue["html_url"], shown
+    if not ISSUE.fullmatch(duplicate_of):
+        raise Fail(f"not an issue number: {duplicate_of!r}")
+    existing = _gh_json(env, f"repos/{REPO_SLUG}/issues/{duplicate_of}")
+    if "pull_request" in existing:
+        raise Fail(f"#{duplicate_of} is a pull request, not an issue")
+    labelled = _gh_json(env, f"repos/{REPO_SLUG}/issues/{duplicate_of}/labels", *_label_fields(wanted), method="POST")
+    missing = [label for label in wanted if label not in _label_names(labelled)]
+    if missing:
+        raise Fail(f"cannot apply the label {', '.join(missing)} to #{duplicate_of}: nothing commented")
+    _gh_json(env, f"repos/{REPO_SLUG}/issues/{duplicate_of}/comments", "-f", f"body={body}", method="POST")
+    return existing["html_url"], _clean(str(existing.get("title", "")), ISSUE_TITLE_MAX)
+
+
 def _reply_lines(text: str) -> list[str]:
     """The reply cleaned of control characters and `§` (legacy colour codes), wrapped at word boundaries, at most REPLY_LINES lines of REPLY_LINE characters."""
     words = _clean(text.replace("§", ""), REPLY_LINE * REPLY_LINES).split()
@@ -795,6 +873,11 @@ def main(argv: list[str], env: Env) -> int:
     ack_parser.add_argument("issue")
     ack_parser.add_argument("title", help="the issue's title, shown in the ack so the player can tell their notes apart")
     ack_parser.add_argument("--existing", action="store_true")
+    file_parser = sub.add_parser("file-issue", help="file an issue (or comment on a duplicate), always labelled playtest-feedback")
+    file_parser.add_argument("title", help="your own words, never pasted chat or a player name")
+    file_parser.add_argument("body_file", type=Path)
+    file_parser.add_argument("--bug", action="store_true", help="also label it bug")
+    file_parser.add_argument("--duplicate-of", metavar="N", help="comment on open issue N instead of filing a new one")
     args = parser.parse_args(argv)
     try:
         run_command(args, env)
@@ -834,6 +917,9 @@ def run_command(args: argparse.Namespace, env: Env) -> None:
         case "ack":
             ack(env, args.player, args.issue, args.title, args.existing)
             print("acknowledged")
+        case "file-issue":
+            url, title = file_issue(env, args.title, args.body_file, bug=args.bug, duplicate_of=args.duplicate_of)
+            print(f"{url}\n{title}")
 
 
 if __name__ == "__main__":
