@@ -411,7 +411,8 @@ public final class PodCargo {
             slots.clear();
             unreadable = new Unreadable(version, raw);
             DeepCharter.LOGGER.error(
-                    "Pod {} has cargo this build cannot read (version {}, {} entries): kept unchanged, and the cargo refuses changes",
+                    "Pod {} has cargo this build cannot read (version {}, {} entries): kept unchanged, and the cargo"
+                            + " refuses changes",
                     pod.getUUID(),
                     version.get(),
                     raw.size());

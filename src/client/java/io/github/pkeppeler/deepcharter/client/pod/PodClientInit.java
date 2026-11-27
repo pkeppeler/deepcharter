@@ -20,6 +20,7 @@ public final class PodClientInit {
         LiningKeys.register();
         SonarKeys.register();
         PodScreenKeys.register();
+        PodDumpKeys.register();
         SonarHud.init();
         SonarMarksHud.init();
     }
