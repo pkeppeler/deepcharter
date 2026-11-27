@@ -38,7 +38,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Server GameTests for pod spawn, mount, dismount, seats and save/load. */
 public class PodShellTest {
-    private static final int EXPECTED_DATA_FIELDS = 11;
+    private static final int EXPECTED_DATA_FIELDS = 12;
 
     @GameTest
     public void podSpawnsWithMoleHitboxAndFullGauges(GameTestHelper helper) {

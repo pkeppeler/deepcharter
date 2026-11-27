@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.theme.BeamLook;
 import io.github.pkeppeler.deepcharter.client.theme.BeamStyle;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
-import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.ContinuityLook;
@@ -214,7 +213,6 @@ public class ThemeLooksTest {
                 new TransmissionLook(0xEA050A06, 0xFF7CFC9A, 0xFF7CFC9A, 0xFFFFC857, 0xFFFF5A4F, 320, 16, 0.4, 6, 100),
                 TransmissionLook.of(area("transmission", null)));
         expect(helper, "breach", new BreachLook(20, 8, 4, 10, 3, 0xFF000000), BreachLook.of(area("breach", null)));
-        expect(helper, "cargo", new CargoLook(0xFF404040), CargoLook.of(area("cargo", null)));
         expect(helper, "tow", new TowChainLook(0.28, 0.2, 1.35, 0xFFFFFFFF, 7), TowChainLook.of(area("tow", null)));
         expect(
                 helper,
@@ -303,51 +301,6 @@ public class ThemeLooksTest {
                         10.0),
                 ContinuityLook.of(area("continuity", null)));
         helper.succeed();
-    }
-
-    @GameTest
-    public void theCargoSpritesAreTheOldPanelAndSlot(GameTestHelper helper) throws IOException {
-        sprite(helper, "panel", 0xFF373737, 0xFFC6C6C6);
-        sprite(helper, "slot", 0xFF373737, 0xFF8B8B8B);
-        helper.succeed();
-    }
-
-    private static void sprite(GameTestHelper helper, String name, int edge, int fill) throws IOException {
-        String base = "/assets/deepcharter/textures/gui/sprites/cargo/" + name + ".png";
-        BufferedImage image;
-        try (InputStream stream = ThemeLooksTest.class.getResourceAsStream(base)) {
-            image = ImageIO.read(stream);
-        }
-        if (image.getWidth() != 3 || image.getHeight() != 3) {
-            throw failure(helper, "%s sprite should be 3 x 3, is %s x %s", name, image.getWidth(), image.getHeight());
-        }
-        for (int y = 0; y < 3; y++) {
-            for (int x = 0; x < 3; x++) {
-                int expected = x == 1 && y == 1 ? fill : edge;
-                if (image.getRGB(x, y) != expected) {
-                    throw failure(
-                            helper,
-                            "%s sprite pixel %d,%d should be 0x%08X, is 0x%08X",
-                            name,
-                            x,
-                            y,
-                            expected,
-                            image.getRGB(x, y));
-                }
-            }
-        }
-        try (InputStream stream = ThemeLooksTest.class.getResourceAsStream(base + ".mcmeta")) {
-            JsonObject scaling = JsonParser.parseString(new String(stream.readAllBytes(), StandardCharsets.UTF_8))
-                    .getAsJsonObject()
-                    .getAsJsonObject("gui")
-                    .getAsJsonObject("scaling");
-            if (!scaling.get("type").getAsString().equals("nine_slice")
-                    || scaling.get("border").getAsInt() != 1
-                    || scaling.get("width").getAsInt() != 3
-                    || scaling.get("height").getAsInt() != 3) {
-                throw failure(helper, "%s sprite should be a 3 x 3 nine-slice with border 1, is %s", name, scaling);
-            }
-        }
     }
 
     @GameTest
@@ -708,7 +661,6 @@ public class ThemeLooksTest {
                 "hud",
                 "transmission",
                 "breach",
-                "cargo",
                 "pod",
                 "panel",
                 "cockpit",

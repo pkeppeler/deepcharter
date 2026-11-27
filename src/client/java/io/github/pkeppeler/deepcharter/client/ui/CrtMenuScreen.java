@@ -96,6 +96,9 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
         }
         CrtTuning tuning = CrtTuning.current();
         for (Slot slot : menu.slots) {
+            if (!slot.isActive()) {
+                continue;
+            }
             int x = leftPos + slot.x;
             int y = topPos + slot.y;
             CrtDraw.border(graphics, x - 1, y - 1, x + SLOT - 1, y + SLOT - 1, tuning.dimColor());
@@ -122,14 +125,14 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
         for (SlottedMenu.RuleSlot slot : menu.ruleSlots()) {
             below = Math.max(below, slot.y + SLOT);
             SlotRule rule = slot.rule();
-            if (rule.ghost().isPresent()) {
+            if (labelsBeside() && rule.ghost().isPresent()) {
                 String name = rule.ghost().get().label().getString().toUpperCase(Locale.ROOT);
                 int color = slot.hasItem() ? tuning.phosphorColor() : tuning.dimColor();
                 int y = topPos + slot.y + (SLOT - font.lineHeight) / 2;
                 CrtDraw.glowText(graphics, font, name, leftPos + slot.x + LABEL_X, y, color);
             }
         }
-        int refusalY = topPos + below + 1;
+        int refusalY = topPos + refusalTop(below);
         menu.refusal()
                 .ifPresent(reason -> CrtDraw.glowText(
                         graphics,
@@ -138,6 +141,22 @@ public abstract class CrtMenuScreen<M extends SlottedMenu> extends AbstractConta
                         leftPos,
                         refusalY,
                         tuning.refusalColor()));
+    }
+
+    /**
+     * Whether each typed slot with a ghost has its name drawn beside it. A screen whose slots sit side by side, with no
+     * room for a name, turns this off and names them another way.
+     */
+    protected boolean labelsBeside() {
+        return true;
+    }
+
+    /**
+     * The y of the refusal line, from the content's top, given {@code below}, the bottom of the lowest typed slot: by
+     * default just under it. A screen with typed slots under its refusal line puts it higher.
+     */
+    protected int refusalTop(int below) {
+        return below + 1;
     }
 
     /** The panel draws its own title and labels, so nothing is left for the default ones. */

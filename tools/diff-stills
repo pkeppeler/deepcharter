@@ -42,8 +42,6 @@ DEFAULT_TOLERANCE = 2
 NOISE_FAMILIES = [
     # Terrain at the far edge of the loaded chunks: 1.86% of the pixels, up to 60 levels, in one run of three (cause not found).
     ("colony-aerial-northwest", DEFAULT_TOLERANCE, 2.0),
-    # Four pixels of one row, up to 5 levels, in one run of three (cause not found).
-    ("screen-pod-cargo", 5, 0.0),
 ]
 
 

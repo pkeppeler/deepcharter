@@ -129,7 +129,7 @@ public final class PodBrace {
         if (crust.isEmpty() || pod.hull() >= crust.get().cost() + PodBraceTuning.DEFAULT.reserveHull()) {
             return Patching.IDLE;
         }
-        if (pod.cargoUsed() == 0) {
+        if (!pod.holdsOre()) {
             return Patching.NO_ORE;
         }
         if (!pod.braceOre()) {
@@ -177,6 +177,10 @@ public final class PodBrace {
         boolean cheap = hasCheapOre(pod);
         if (pod.braceOre() != cheap) {
             pod.setBraceOre(cheap);
+        }
+        boolean anyOre = pod.cargo().isReadable() && !pod.cargo().entries().isEmpty();
+        if (pod.holdsOre() != anyOre) {
+            pod.setHoldsOre(anyOre);
         }
         if (!pod.onGround() || !pilotIdle(pod)) {
             LAST_ACTIVE.put(pod, pod.tickCount);
