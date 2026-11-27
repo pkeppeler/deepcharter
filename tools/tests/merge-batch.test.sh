@@ -102,7 +102,8 @@ STUB
 
 # Gate stub. `--preflight N` refuses when $ST/pre_fail.N exists. `--ci B` reads call K from $ST/ci.K (first line the exit
 # code, the rest its output), else is red when a commit on the batch's branch is for a PR listed in $ST/bad, else green.
-# `N` (the single-PR fallback) refuses when $ST/single_fail.N exists, else marks N merged.
+# When $ST/ci_moves_main exists, the first `--ci` first lands a commit on the origin's main that touches the path it names
+# (main moves while CI runs). Every PR now merges as a batch (#1567), so any other call is an error.
 cat >"$work/gate" <<'STUB'
 #!/usr/bin/env bash
 echo "merge-pr $*" >>"$LOG"
@@ -113,6 +114,16 @@ case $1 in
   --ci)
     k=$(($(cat "$ST/ci_calls" 2>/dev/null || echo 0) + 1))
     echo "$k" >"$ST/ci_calls"
+    if [[ -e $ST/ci_moves_main ]]; then
+      tmpc=$(mktemp -d)
+      git clone -q "$ORIGIN" "$tmpc/c" 2>/dev/null
+      mkdir -p "$tmpc/c/$(dirname "$(cat "$ST/ci_moves_main")")"
+      echo "moved $k" >"$tmpc/c/$(cat "$ST/ci_moves_main")"
+      git -C "$tmpc/c" add -A
+      git -C "$tmpc/c" commit -q -m "main moved by $(cat "$ST/ci_moves_main")"
+      git -C "$tmpc/c" push -q origin HEAD:main 2>/dev/null
+      rm -rf "$tmpc" "$ST/ci_moves_main"
+    fi
     if [[ -e $ST/ci.$k ]]; then
       read -r rc <"$ST/ci.$k"
       tail -n +2 "$ST/ci.$k"
@@ -127,14 +138,8 @@ case $1 in
     done
     echo "CI OK: PR #$2" ;;
   *)
-    if [[ -e $ST/single_stale.$1 ]]; then
-      rm "$ST/single_stale.$1"
-      echo "REFUSED: PR #$1 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run [stale-base] (the head sha is unchanged)"
-      exit 1
-    fi
-    if [[ -e $ST/single_fail.$1 ]]; then echo "REFUSED: PR #$1 is not mergeable"; exit 1; fi
-    echo MERGED >"$ST/state.$1"
-    echo "Merged PR #$1" ;;
+    echo "REFUSED: unexpected gate call (a PR must merge as a batch): $*"
+    exit 1 ;;
 esac
 STUB
 chmod +x "$work/bin/"* "$work/gate"
@@ -153,6 +158,18 @@ git -C "$work/repo" checkout -q -b main
 mkdir -p "$work/repo/tools" "$work/repo/docs/adr"
 cp "$tools/merge-batch.sh" "$work/repo/tools/"
 cp -R "$tools/lib" "$work/repo/tools/lib"
+# The roadmap generator is a stand-in that writes the arguments it got, so a test sees what the landing asked for.
+cat >"$work/repo/tools/py" <<'PY'
+#!/usr/bin/env bash
+exec bash "$@"
+PY
+chmod +x "$work/repo/tools/py"
+cat >"$work/repo/tools/roadmap.py" <<'RM'
+#!/usr/bin/env bash
+[[ ! -e $ST/roadmap_fail ]] || exit 1
+echo "roadmap $*" >docs/ROADMAP.md
+RM
+echo "roadmap" >"$work/repo/docs/ROADMAP.md"
 printf 'one\ntwo\nthree\n' >"$work/repo/shared.txt"
 echo adr >"$work/repo/docs/adr/0001-first.md"
 git -C "$work/repo" add -A
@@ -229,7 +246,9 @@ count() { # <name> <fixed string> <expected count>
   if [[ $n -eq $3 ]]; then pass "$1"; else fail "$1 (got $n of '$2', wanted $3)"; fi
 }
 # main_subjects: the subjects on origin's main above the base, oldest first.
-main_subjects() { git --git-dir="$ORIGIN" log --reverse --format=%s "$base..refs/heads/main" | tr '\n' '|'; }
+# The roadmap commit that each landing adds is left out; the cases that look at it say so.
+main_subjects() { git --git-dir="$ORIGIN" log --reverse --invert-grep --grep='^Regenerate roadmap' --format=%s "$base..refs/heads/main" | tr '\n' '|'; }
+roadmap_on_main() { git --git-dir="$ORIGIN" show refs/heads/main:docs/ROADMAP.md; }
 
 # --- green: three PRs, one CI run, one commit per PR ---
 reset
@@ -239,7 +258,7 @@ exited "green: exit 0" 0
 printed "green: summary lists the PRs as merged" "merged:  #1 #2 #3"
 printed "green: nothing dropped, refused or stopped" "dropped: none"
 if [[ $(main_subjects) == "Title 1 (#1)|Title 2 (#2)|Title 3 (#3)|" ]]; then pass "green: main holds one squash commit per PR, in order"; else fail "green: main subjects: $(main_subjects)"; fi
-body=$(git --git-dir="$ORIGIN" log --format=%B -n 1 refs/heads/main)
+body=$(git --git-dir="$ORIGIN" log --invert-grep --grep='^Regenerate roadmap' --format=%B -n 1 refs/heads/main)
 if [[ $body == *"Closes #3"* && $body == *"Co-Authored-By: Claude"* ]]; then pass "green: a commit body carries Closes and the trailer"; else fail "green: commit body: $body"; fi
 count "green: one batch PR opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
 logged_part "green: the batch PR is labelled gameplay and no-demo" "labels[]=gameplay -f labels[]=no-demo"
@@ -292,41 +311,98 @@ run_b 1 2 3
 printed "adr clash: PR 2 is dropped" "dropped: #2 (its ADR number (0002) is already taken on the batch)"
 printed "adr clash: the others merged" "merged:  #1 #3"
 
-# --- red CI: split in halves and recurse; a single PR falls back to merge-pr ---
+# --- red CI: split in halves and recurse; a PR alone is a batch of one, refused when its own batch is red ---
 reset
 mkpr 1; mkpr 2; mkpr 3; mkpr 4
 echo 3 >"$ST/bad"
-: >"$ST/single_fail.3"
 run_b 1 2 3 4
 exited "red: exit 1 because PR 3 was not merged" 1
 printed "red: PRs 1, 2 and 4 merged" "merged:  #1 #2 #4"
-printed "red: PR 3 is refused by the single gate" "refused: #3 (REFUSED: PR #3 is not mergeable)"
+printed "red: PR 3 is refused as a batch of one with the CI reason" "refused: #3 (CI is red on its batch of one: REFUSED: PR #"
 logged "red: the first batch PR is closed" "gh api -X $close_verb repos/pkeppeler/deepcharter/pulls/100 -f $close_arg"
 logged_part "red: the closing comment says it splits" "CI is red: splitting this batch in two."
-count "red: batch PRs opened (all four, then each half)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 3
-logged "red: PR 3 alone goes to merge-pr" "merge-pr 3"
-logged "red: PR 4 alone goes to merge-pr" "merge-pr 4"
-not_logged "red: PR 1 never goes to merge-pr alone" "merge-pr 1"
+logged_part "red: the batch of one is retired with its reason" "CI is red: this batch holds one PR, so it is not merged."
+count "red: batch PRs opened (all four, {1,2}, {3,4}, then 3 and 4 alone)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 5
+not_logged "red: no PR goes through the gate on its own" "merge-pr 3"
 printed "red: the second half got a fresh branch name" "batch/S-3"
-if [[ $(main_subjects) == "Title 1 (#1)|Title 2 (#2)|" ]]; then pass "red: only the green half is on main (singles go through the gate)"; else fail "red: $(main_subjects)"; fi
+if [[ $(main_subjects) == "Title 1 (#1)|Title 2 (#2)|Title 4 (#4)|" ]]; then pass "red: the green PRs are on main"; else fail "red: $(main_subjects)"; fi
 if [[ $(grep -c . "$ST/state.100") -eq 1 && $(cat "$ST/state.100") == CLOSED ]]; then pass "red: the red batch ends closed, not merged"; else fail "red: state of 100: $(cat "$ST/state.100")"; fi
 
-# --- a batch of one falls back to merge-pr ---
+# --- a batch of one: CI on the merged tree, a fast-forward push, the roadmap folded into it (#1567) ---
 reset
 mkpr 1
 run_b 1
 exited "single: exit 0" 0
-logged "single: merge-pr runs on the PR" "merge-pr 1"
-count "single: no batch PR opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 0
 printed "single: merged" "merged:  #1"
+count "single: a batch PR is opened for it" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
+count "single: CI ran once on the batch PR" "merge-pr --ci 100" 1
+not_logged "single: the PR never goes through the gate alone" "merge-pr 1"
+not_logged "single: no merge request" "/merge"
+if [[ $(main_subjects) == "Title 1 (#1)|" ]]; then pass "single: main holds the PR's squash commit"; else fail "single: $(main_subjects)"; fi
+if [[ $(git --git-dir="$ORIGIN" log -1 --format=%s refs/heads/main) == "Regenerate roadmap after batch #100" ]]; then pass "single: the roadmap commit is part of the landing, on top of the squash"; else fail "single: head of main: $(git --git-dir="$ORIGIN" log -1 --format=%s refs/heads/main)"; fi
+if [[ $(roadmap_on_main) == "roadmap --landing 1:1 --hide 100" ]]; then pass "single: the roadmap is rendered as landed, without the batch PR in flight"; else fail "single: roadmap args: $(roadmap_on_main)"; fi
+count "single: one push to main for the landing, none after it" "git push --no-verify origin " 1
+not_logged "single: no roadmap push from a separate worktree" "HEAD:main"
 
-# --- a group that shrinks to one after a drop falls back too ---
+# --- the roadmap folded into a batch names every PR and its issue ---
+reset
+mkpr 1; mkpr 2
+run_b 1 2
+if [[ $(roadmap_on_main) == "roadmap --landing 1:1 --landing 2:2 --hide 100" ]]; then pass "roadmap: every landed PR and its issue is named"; else fail "roadmap args: $(roadmap_on_main)"; fi
+count "roadmap: one roadmap commit for the batch" "git push --no-verify origin " 1
+if [[ $(git --git-dir="$ORIGIN" log --format=%s "$base..refs/heads/main" | grep -c '^Regenerate roadmap') -eq 1 ]]; then pass "roadmap: one commit, not one per PR"; else fail "roadmap: commits"; fi
+
+# --- a roadmap that cannot be generated does not stop the landing ---
+reset
+mkpr 1
+: >"$ST/roadmap_fail"
+run_b 1
+exited "roadmap failure: the batch still lands" 0
+printed "roadmap failure: warns" "WARNING: the roadmap could not be generated; landing batch PR #100 without it"
+if [[ $(main_subjects) == "Title 1 (#1)|" && $(git --git-dir="$ORIGIN" log -1 --format=%s refs/heads/main) == "Title 1 (#1)" ]]; then pass "roadmap failure: main has the squash commit and no roadmap commit"; else fail "roadmap failure: $(git --git-dir="$ORIGIN" log --format=%s "$base..refs/heads/main")"; fi
+
+# --- a group that shrinks to one after a drop is a batch of one too ---
 reset
 mkpr 1 shared.txt "ONE"; mkpr 2 shared.txt "TWO"
 run_b 1 2
 exited "shrunk: exit 1 for the dropped PR" 1
-logged "shrunk: the remaining PR goes to merge-pr" "merge-pr 1"
-count "shrunk: no batch PR opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 0
+printed "shrunk: the remaining PR merged" "merged:  #1"
+count "shrunk: one batch PR opened for it" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
+not_logged "shrunk: never through the gate alone" "merge-pr 1"
+
+# --- main moved while CI ran: only by a generated file, the batch is replayed on it and lands without a rebuild ---
+for gen in docs/ROADMAP.md .papercuts.jsonl; do
+  reset
+  mkpr 1; mkpr 2
+  echo "$gen" >"$ST/ci_moves_main"
+  run_b 1 2
+  exited "generated move ($gen): exit 0" 0
+  printed "generated move ($gen): merged" "merged:  #1 #2"
+  printed "generated move ($gen): the replay is announced" "moved only by generated files since the batch was built; replaying"
+  count "generated move ($gen): no rebuild, one batch PR" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
+  count "generated move ($gen): CI ran once" "merge-pr --ci" 1
+  if [[ $(main_subjects) == "main moved by $gen|Title 1 (#1)|Title 2 (#2)|" ]]; then pass "generated move ($gen): the squash commits sit on the moved main"; else fail "generated move ($gen): $(main_subjects)"; fi
+  if git --git-dir="$ORIGIN" merge-base --is-ancestor "$(git --git-dir="$ORIGIN" rev-parse refs/heads/main~1)" refs/heads/main; then pass "generated move ($gen): fast-forward, nothing rewritten"; else fail "generated move ($gen): history"; fi
+done
+
+# --- main moved while CI ran by code: the base is stale, the batch is rebuilt and CI runs again ---
+reset
+mkpr 1; mkpr 2
+echo src/Other.java >"$ST/ci_moves_main"
+run_b 1 2
+exited "code move: exit 0 after a rebuild" 0
+printed "code move: the stale base is reported" "origin/main moved"
+count "code move: two batch PRs (the build and the rebuild)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 2
+count "code move: CI ran twice" "merge-pr --ci" 2
+if [[ $(main_subjects) == "main moved by src/Other.java|Title 1 (#1)|Title 2 (#2)|" ]]; then pass "code move: the rebuilt batch is on the moved main"; else fail "code move: $(main_subjects)"; fi
+
+# --- the generated move and a code move together are a code move ---
+reset
+mkpr 1; mkpr 2
+echo src/Other.java >"$ST/ci_moves_main"
+BENV=MERGE_BATCH_STALE_RETRIES=0 run_b 1 2
+exited "code move, no retries: stops" 1
+printed "code move, no retries: the report says stale" "base still stale after 0 rebuilds (origin/main moved)"
 
 # --- CI not finished yet (queued, in progress) waits; only a completed failure bisects ---
 reset
@@ -346,7 +422,7 @@ printf '1\nREFUSED: PR #100 has a check that is not passing: build (newest non-s
 run_b 1 2
 logged_part "in progress then red: bisects after the completed failure" "CI is red: splitting this batch in two."
 count "in progress then red: the CI gate ran twice on the first batch" "merge-pr --ci 100" 2
-logged "in progress then red: PR 1 goes to merge-pr alone" "merge-pr 1"
+count "in progress then red: PR 1 and PR 2 are each a batch of one after the split" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 3
 
 # --- a stale base rebuilds on the new main and runs CI again ---
 reset
@@ -384,47 +460,30 @@ logged "push error: the exit trap closes the open batch PR" "gh api -X $close_ve
 logged "push error: the exit trap deletes the batch branch" "gh api -X DELETE repos/pkeppeler/deepcharter/git/refs/heads/batch/S"
 printed "push error: nothing merged" "merged:  none"
 
-# --- a group of one retries a stale base through the queue's re-run ---
+# --- a batch of one retries a stale base by rebuilding, up to the limit ---
 reset
 mkpr 1
-: >"$ST/single_stale.1"
-printf '10\tCI\tcompleted\tsuccess\n' >"$ST/wfruns"
-printf '1\tbuild\tcompleted\tsuccess\n2\ttool-tests\tcompleted\tsuccess\n' >"$ST/jobs.10"
+printf '1\nREFUSED: PR #100 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run [stale-base] (the head sha is unchanged)\n' >"$ST/ci.1"
 run_b 1
-exited "single stale: exit 0 after a re-run" 0
+exited "single stale: exit 0 after a rebuild" 0
 printed "single stale: merged" "merged:  #1"
-logged "single stale: the whole CI run is re-run" "gh api -X POST repos/pkeppeler/deepcharter/actions/runs/10/rerun"
-count "single stale: the gate ran twice" "merge-pr 1" 2
-# Still stale after the limit: refused, not retried forever.
+count "single stale: two batch PRs" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 2
+count "single stale: CI ran twice" "merge-pr --ci" 2
 reset
 mkpr 1
-printf '10\tCI\tcompleted\tsuccess\n' >"$ST/wfruns"
-printf '1\tbuild\tcompleted\tsuccess\n2\ttool-tests\tcompleted\tsuccess\n' >"$ST/jobs.10"
-cat >"$work/gate_always_stale" <<'GATE'
-#!/usr/bin/env bash
-echo "merge-pr $*" >>"$LOG"
-if [[ $1 == --preflight ]]; then echo "PREFLIGHT OK"; exit 0; fi
-echo "REFUSED: PR #$1 x [stale-base] y"
-exit 1
-GATE
-chmod +x "$work/gate_always_stale"
-rc=0
-out=$(cd "$work/repo" && env MERGE_BATCH_STALE_RETRIES=2 PATH="$work/bin:$PATH" MERGE_PR="$work/gate_always_stale" MERGE_QUEUE_LOCK="$work/lock" \
-  MERGE_BATCH_STAMP=S MERGE_BATCH_CI_POLL=5 MERGE_BATCH_STALE_SLEEP=9 bash tools/merge-batch.sh 1 2>&1) || rc=$?
+stale_line='REFUSED: PR #100 x [stale-base] y'
+for k in 1 2 3; do printf '1\n%s\n' "$stale_line" >"$ST/ci.$k"; done
+BENV=MERGE_BATCH_STALE_RETRIES=2 run_b 1
 exited "single stale: exit 1 when it stays stale" 1
-printed "single stale: refused after the limit" "still stale after 2 reruns"
-count "single stale: the gate ran three times (one try and two re-runs)" "merge-pr 1" 3
+printed "single stale: stopped after the limit" "base still stale after 2 rebuilds"
+count "single stale: CI ran three times (one try and two rebuilds)" "merge-pr --ci" 3
 
-# --- a bisected second half: the single's stale base is re-run, not refused ---
+# --- a bisected half of one: its red batch is refused, the others land ---
 reset
 mkpr 1; mkpr 2; mkpr 3
 echo 2 >"$ST/bad"
-: >"$ST/single_stale.3"
-printf '10\tCI\tcompleted\tsuccess\n' >"$ST/wfruns"
-printf '1\tbuild\tcompleted\tsuccess\n2\ttool-tests\tcompleted\tsuccess\n' >"$ST/jobs.10"
-: >"$ST/single_fail.2"
 run_b 1 2 3
-printed "bisect: PRs 1 and 3 merged, 2 refused" "merged:  #1 #3"
+printed "bisect: PRs 1 and 3 merged" "merged:  #1 #3"
 printed "bisect: PR 2 is refused" "refused: #2"
 
 # --- stacked PRs are retargeted to main before an original's branch goes ---
@@ -451,7 +510,8 @@ printed "heal: PR 1 is reported merged because it is already on main" "merged:  
 logged_part "heal: PR 1 gets the merged comment" "issues/1/comments -f body=Merged in batch (already on main as"
 logged "heal: PR 1 is closed" "gh api -X $close_verb repos/pkeppeler/deepcharter/pulls/1 -f $close_arg"
 logged "heal: PR 1's branch is deleted" "gh api -X DELETE repos/pkeppeler/deepcharter/git/refs/heads/1-slug"
-logged "heal: PR 2 alone goes to merge-pr" "merge-pr 2"
+printed "heal: PR 2 lands as a batch of one" "merged:  #1 (already on main) #2"
+count "heal: one batch PR for PR 2" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
 
 # --- chains: a chain of three lands as three increments; an unchained PR in the batch is unaffected ---
 reset
@@ -466,7 +526,7 @@ if [[ $files == *"@Title 2 (#2) shared.txt @Title 3 (#3) shared.txt"* ]]; then p
 printed "chain: the chain is announced" "PR #2 is chained to PR #1"
 printed "chain: link 3 is chained to link 2, not to link 1" "PR #3 is chained to PR #2"
 count "chain: one batch PR for all four" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
-body=$(git --git-dir="$ORIGIN" log --format=%B -n 1 refs/heads/main)
+body=$(git --git-dir="$ORIGIN" log --invert-grep --grep='^Regenerate roadmap' --format=%B -n 1 refs/heads/main)
 if [[ $body == *"Closes #3"* ]]; then pass "chain: a chained commit carries Closes"; else fail "chain: commit body: $body"; fi
 
 # --- a chained PR that conflicts is dropped with every later link; unchained PRs go on ---
@@ -493,14 +553,12 @@ not_logged "chain preflight: the successor never reaches the gate" "merge-pr 2"
 reset
 mkpr 1; mkchain 2 1; mkchain 3 2; mkpr 4
 echo 2 >"$ST/bad"
-: >"$ST/single_fail.2"
 run_b 1 2 3 4
 printed "chain red: the prefix landed" "merged:  #1 #4"
-printed "chain red: the refused link is reported" "refused: #2 (REFUSED: PR #2 is not mergeable)"
+printed "chain red: the refused link is reported" "refused: #2 (CI is red on its batch of one"
 printed "chain red: the link behind it is dropped" "dropped: #3 (chained to #2, which did not land)"
-logged "chain red: the bad link goes to the single gate" "merge-pr 2"
-logged "chain red: the prefix, a group of one, goes through the gate and merges" "merge-pr 1"
-count "chain red: batch PRs opened (all four, then each half)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 2
+count "chain red: batch PRs opened (all four, {1,2}, 1, 2, then 4 alone)" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 5
+not_logged "chain red: no PR reaches the gate alone" "merge-pr 1"
 not_logged "chain red: the dropped link never reaches the gate" "merge-pr 3"
 
 # --- red CI on the tail of a chain whose prefix landed: the tail is built as increments on top of the prefix ---
@@ -517,9 +575,8 @@ if [[ $(git --git-dir="$ORIGIN" show refs/heads/main:shared.txt | head -n 1) == 
 reset
 mkpr 1; mkchain 2 1; mkchain 3 2
 echo 1 >"$ST/bad"
-: >"$ST/single_fail.1"
 run_b 1 2 3
-printed "chain refused prefix: #1 is refused" "refused: #1 (REFUSED: PR #1 is not mergeable)"
+printed "chain refused prefix: #1 is refused" "refused: #1 (CI is red on its batch of one"
 printed "chain refused prefix: #2 is dropped" "#2 (chained to #1, which did not land)"
 printed "chain refused prefix: #3 is dropped" "#3 (chained to #2, which did not land)"
 not_logged "chain refused prefix: #2 never reaches the gate" "merge-pr 2"
