@@ -11,7 +11,7 @@ Issue #1574, a hard rule from the user. Over four days of runs, a client shard t
 - Every job of every workflow has `timeout-minutes: 5`. `tools/tests/test_ci_budget.py` fails a job without it or with a longer one, so the rule cannot lapse, and says to cut the job into parallel jobs instead.
 - `gradle/ci-budget.txt` holds the arithmetic: a job is setup, the program's start-up and its shard's tests, all slower by 1.3 on a slow runner, and must stay under 300 s. The budgets are the seconds of tests (by the weights files) one shard may hold: 125 for a client shard, 120 for a server shard, 100 for a tool-test part. The same test fails a class heavier than its budget, and a shard count in a workflow too small for the weights, and one larger than needed.
 - Setup is cut so that tests have room. A `compile` job compiles every source set once and uploads `build/` and `.gradle/` (`.github/actions/upload-compiled`); each shard downloads them (`download-compiled`), so every compile task is up to date, where each shard compiled for a minute and a half. Checkouts are blobless (`filter: blob:none`), which fetches history and trees but only the blobs the merge and the build need. Shards restore the Gradle cache read-only; the compile job saves it.
-- The client suite is 25 shards (`CLIENT_SHARDS`), the server suite 13 (`BUILD_SHARDS`), and the tool tests eight parts: three of Python unit tests, four of shell tests, and the gate checks on fixtures. `tools/ci_tool_parts.py` partitions the test files by `tools/tests/ci-tool-test-weights.txt`; `tools/ci-tool-tests.sh` runs a part.
+- The client suite is 30 shards (`CLIENT_SHARDS`), the server suite 13 (`BUILD_SHARDS`), and the tool tests eight parts: three of Python unit tests, four of shell tests, and the gate checks on fixtures. `tools/ci_tool_parts.py` partitions the test files by `tools/tests/ci-tool-test-weights.txt`; `tools/ci-tool-tests.sh` runs a part.
 - A class over the client budget is split, not sped up: `StaleClientLightClientTest` (286 s) became four classes and `HandBreakClientTest` (163 s) two, each in a world of its own, sharing an abstract base. The cases are the same; the cost is a world's start-up per class.
 - A group of server classes sharing a campaign environment that outweighs an even shard is broken into its classes (`shardOf`). The group of environments A, B, C and the default weighs 427 s, a third of the suite.
 - A class named `...Scenario` and not in the weights counts 1 s, not 10: an evidence scenario returns at once without `DEEPCHARTER_EVIDENCE`, and 170 of them counted 1700 s of load that does not exist.
@@ -21,7 +21,7 @@ Issue #1574, a hard rule from the user. Over four days of runs, a client shard t
 
 ## Concurrency
 
-GitHub's table of usage limits for standard runners allows 20 concurrent jobs on the Free plan, 40 on Pro, 60 on Team and 500 on Enterprise, per account, with queueing beyond. The account's plan cannot be read from here, but the 6,936 job records of the last five days show the cap: on 2026-11-27 the count of running jobs sat at exactly 40 for 10,550 s, which a 20 or 60 cap would not do, so the plan is Pro with 40. A full run is 1 compile, 25 client shards in waves of 10, 13 server shards in waves of 6, `build-checks` and eight tool-test parts: it holds at most 24 jobs. Two PR runs beside it (about 8 jobs each: compile, checks, the parts and the aggregates) still fit under 40. Were the plan Free (20), the same limits queue the extra jobs and nothing fails.
+GitHub's table of usage limits for standard runners allows 20 concurrent jobs on the Free plan, 40 on Pro, 60 on Team and 500 on Enterprise, per account, with queueing beyond. The account's plan cannot be read from here, but the 6,936 job records of the last five days show the cap: on 2026-11-27 the count of running jobs sat at exactly 40 for 10,550 s, which a 20 or 60 cap would not do, so the plan is Pro with 40. A full run is two workflows: `CI` is a compile job, then 13 server shards in waves of 6 beside `build-checks`, with eight tool-test parts at the start, and `Client tests` is a compile job, then 30 client shards in waves of 10: it holds at most 20 jobs. Until PRs stop running the full suites, every PR run is one, so two concurrent runs fill the 40 and a third queues; the matrix caps keep a run from taking more than half. Were the plan Free (20), one run fills it and the rest queue; nothing fails.
 
 ## Per-job time budget
 
@@ -34,7 +34,7 @@ Times are seconds on the measured runners; the second figure is at 1.3 times slo
 | build-checks | 1 | about 50 | about 110 | about 160 | about 208 |
 | tool-tests-part | 8 | 40 | at most 100 | at most 140 | at most 182 |
 | client-compile | 1 | about 40 | compile 120 and upload 15 | about 175 | about 228 |
-| client-gametest-shard | 25 | 100 | at most 124 | at most 224 | at most 291 |
+| client-gametest-shard | 30 | 100 | at most 124 | at most 224 | at most 291 |
 | aggregates, client-changes | 3 | about 20 | none | about 30 | about 40 |
 
 ## Why

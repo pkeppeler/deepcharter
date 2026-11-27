@@ -157,9 +157,22 @@ class ClientShardTest(unittest.TestCase):
     def test_the_real_shards_are_balanced_by_weight(self):
         weights = real_weights()
         for count in (2, 3, 4):
-            loads = [sum(weights.get(name.rsplit(".", 1)[1], 10) for name in shard) for shard in self.shards("real shard ", count)]
+            # A class not listed counts 10 s, an evidence scenario (named ...Scenario) 1 s.
+            loads = [
+                sum(weights.get(simple := name.rsplit(".", 1)[1], 1 if simple.endswith("Scenario") else 10) for name in shard)
+                for shard in self.shards("real shard ", count)
+            ]
             with self.subTest(count):
                 self.assertLessEqual(max(loads) - min(loads), max(weights.values()))
+
+    def test_the_python_mirror_of_the_partition_is_the_scans(self):
+        # ci_shards.py is what tools/tests/test_ci_budget.py sizes the CI shard counts with: it must pick the scan's shards.
+        import ci_shards
+
+        _server, client, _environments = ci_shards.scan()
+        weights = real_weights()
+        mirror = ci_shards.shards([[name] for name in client], 3, weights, 10)
+        self.assertEqual(sorted(sorted(part) for part in mirror), sorted(sorted(part) for part in self.shards("real shard ", 3)))
 
     def test_a_heavy_class_gets_a_shard_to_itself(self):
         heavy, rest = (outcome(f"weighted shard {i}/2").client for i in (1, 2))
