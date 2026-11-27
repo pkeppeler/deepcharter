@@ -129,6 +129,8 @@ final class ScannerRuler {
      * span {@link ScannerLook#rulerLabelGapPixels()} and a line of text, so that small cells do not stack the labels
      * over the map.
      */
+    // const-param: the caller passes font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font);
+    // the parameter keeps the label spacing tied to the font
     private static int labelBlocks(ScannerLook look, int cell, int lineHeight) {
         int step = look.rulerLabelBlocks();
         int gap = Math.max(look.rulerLabelGapPixels(), lineHeight + 1);
