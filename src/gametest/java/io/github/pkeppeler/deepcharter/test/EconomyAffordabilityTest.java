@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.suit.SuitTrack;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Run;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
@@ -101,7 +102,10 @@ public class EconomyAffordabilityTest {
             Map.entry(Consumable.TETHER, new Target(false, 0.25, 1)),
             // On foot (#987): the driver is about two fifths of a layer 2 run, a pack of bolts a twentieth.
             Map.entry(Consumable.BOLT_DRIVER, new Target(true, 0.25, 1)),
-            Map.entry(Consumable.BOLT, new Target(true, 0.02, 0.25)));
+            Map.entry(Consumable.BOLT, new Target(true, 0.02, 0.25)),
+            // A layer 3 item (#1194), about a third of a Mole layer 2 run: a minute of suit that a trip below layer
+            // 2 buys.
+            Map.entry(Consumable.AIR_CANISTER, new Target(true, 0.25, 0.5)));
 
     private static Run stockRunInLayerOne() {
         return EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);
@@ -239,6 +243,95 @@ public class EconomyAffordabilityTest {
                     prospector.toAfford(tierThree),
                     prospector.net(),
                     HEAT_SHIELD_TIER_THREE_RUNS);
+        }
+        helper.succeed();
+    }
+
+    /** The suit tracks' tiers 1 and 2 are bought in at most this many layer 2 runs of a Mole with tier 2 parts, as the runs that fund them. */
+    private static final int SUIT_TIER_ONE_RUNS = 2;
+
+    private static final int SUIT_TIER_TWO_RUNS = 4;
+    /** Tier 3 of heat and pressure is a Prospector's buy in at most this many layer 2 runs, and the air track's, which also raises capacity, in one more. */
+    private static final int SUIT_TIER_THREE_RUNS = 2;
+
+    private static final int SUIT_AIR_TIER_THREE_RUNS = 3;
+
+    /**
+     * The suit tracks (#1064, A) matter from layer 3 down and are bought in layer 2 or below, so they are banded against the layer 2 runs
+     * that fund them: tier 1 in at most {@value #SUIT_TIER_ONE_RUNS} runs of a Mole with tier 2 parts, tier 2 in at most
+     * {@value #SUIT_TIER_TWO_RUNS}, tier 3 in at most {@value #SUIT_TIER_THREE_RUNS} runs of a Prospector with tier 3 parts
+     * ({@value #SUIT_AIR_TIER_THREE_RUNS} for the air track). The prices are written out so that the code cannot move them.
+     */
+    @GameTest
+    public void theSuitTracksAreAffordableForTheDepthTheyAnswer(GameTestHelper helper) {
+        Run mole = upgradedRunInLayerTwo();
+        Run prospector = EarlyRunModel.run(
+                Chassis.PROSPECTOR,
+                Zone.load("upper_levels"),
+                EarlyRunModel.mole(3, 3, 3),
+                EarlyRunModel.layerOneBlocks(),
+                0f);
+        long[][] prices = {{450, 1_100, 2_500}, {450, 1_100, 2_500}, {550, 1_400, 3_000}};
+        for (SuitTrack track : SuitTrack.values()) {
+            for (int tier = 1; tier <= track.maxTier(); tier++) {
+                long price = track.price(tier);
+                Run funder = tier == 3 ? prospector : mole;
+                int runs = funder.toAfford(price);
+                int allowed = tier == 1
+                        ? SUIT_TIER_ONE_RUNS
+                        : tier == 2
+                                ? SUIT_TIER_TWO_RUNS
+                                : track == SuitTrack.AIR ? SUIT_AIR_TIER_THREE_RUNS : SUIT_TIER_THREE_RUNS;
+                LOGGER.info(
+                        "[economy] suit {} tier {} ${}: {} {} layer 2 runs of {}",
+                        track,
+                        tier,
+                        price,
+                        runs,
+                        tier == 3 ? "Prospector" : "Mole",
+                        funder);
+                if (price != prices[track.ordinal()][tier - 1]) {
+                    throw failure(
+                            helper,
+                            "suit %s tier %d costs $%d, expected $%d",
+                            track,
+                            tier,
+                            price,
+                            prices[track.ordinal()][tier - 1]);
+                }
+                if (runs > allowed) {
+                    throw failure(
+                            helper,
+                            "suit %s tier %d costs $%d, which is %d %s layer 2 runs of $%.0f; at most %d are allowed",
+                            track,
+                            tier,
+                            price,
+                            runs,
+                            tier == 3 ? "Prospector" : "Mole",
+                            funder.net(),
+                            allowed);
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /** A track's tiers climb in price: each tier costs more than the one below it, so the order they are bought in is the order they are priced in. */
+    @GameTest
+    public void everySuitTierCostsMoreThanTheOneBelow(GameTestHelper helper) {
+        for (SuitTrack track : SuitTrack.values()) {
+            for (int tier = 2; tier <= track.maxTier(); tier++) {
+                if (track.price(tier) <= track.price(tier - 1)) {
+                    throw failure(
+                            helper,
+                            "suit %s tier %d costs $%d, not more than tier %d's $%d",
+                            track,
+                            tier,
+                            track.price(tier),
+                            tier - 1,
+                            track.price(tier - 1));
+                }
+            }
         }
         helper.succeed();
     }

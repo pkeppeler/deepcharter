@@ -47,7 +47,9 @@
     "minecraft:visual/sky_light_factor": 0.0,
     "minecraft:visual/star_brightness": 0.0,
     "minecraft:visual/sun_angle": 180.0,
-    "minecraft:visual/sunrise_sunset_color": "#00000000"
+    "minecraft:visual/sunrise_sunset_color": "#00000000",
+    "minecraft:visual/water_fog_color": "#000c16",
+    "minecraft:visual/water_fog_end_distance": 40.0
   },
   "carvers": [],
   "downfall": 0.0,
@@ -69,7 +71,10 @@
     ],
     [
       "deepcharter:fungal_stalks_hollows",
-      "deepcharter:glowcaps_garden"
+      "deepcharter:glowcaps_garden",
+      "deepcharter:giant_fungi_quiet",
+      "deepcharter:giant_fungi_spore_fields",
+      "deepcharter:giant_fungi_garden"
     ],
     [],
     []

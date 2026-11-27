@@ -174,8 +174,8 @@ public class SpecSheetsTest {
     public void whatAPlayerCraftedBeforeTheyJoinedShowsNothing(GameTestHelper helper) {
         MockPlayer veteran = MockPlayers.join(helper, "SpecVeteran");
         ServerPlayer player = veteran.player();
-        // The crafted count is already above zero when the server first looks at the player: that is history, not a
-        // craft.
+        // The crafted count is already above zero when the server first looks at the player: that is history, not
+        // a craft.
         player.getStats().setValue(player, net.minecraft.stats.Stats.ITEM_CRAFTED.get(item("stalk_planks")), 5);
         veteran.announceChannel(SpecSheetPayload.TYPE);
         helper.startSequence()
@@ -517,6 +517,15 @@ public class SpecSheetsTest {
                                 .value())
                         .equals(List.of("5 x 5 x 5")),
                 "plastic explosives clear 5 x 5 x 5");
+        SpecSheet canister = SpecSheets.of(RepairRegistry.item(Consumable.AIR_CANISTER));
+        SpecSheet.Rating adds = row(helper, canister, "rating.adds");
+        expect(
+                helper,
+                keyOf(adds.value()).equals("deepcharter.spec.unit.seconds")
+                        && argsOf(adds.value()).equals(List.of("60"))
+                        && argsOf(row(helper, canister, "rating.price").value()).equals(List.of("150")),
+                "the air canister adds 60 S and costs $150, got %s",
+                canister.ratings());
         SpecSheet ore = SpecSheets.of(item(OreType.GOLDIUM.itemId().getPath()));
         expect(
                 helper,
@@ -568,8 +577,8 @@ public class SpecSheetsTest {
                 stock);
         expect(
                 helper,
-                argsOf(row(helper, stock, "rating.stack").value()).equals(List.of("64")),
-                "coal stacks to 64, got %s",
+                argsOf(row(helper, stock, "rating.stack").value()).equals(List.of("16")),
+                "coal stacks to 16 (#1280), got %s",
                 stock.ratings());
         expect(
                 helper,

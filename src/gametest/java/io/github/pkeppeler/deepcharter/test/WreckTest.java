@@ -13,12 +13,12 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -879,6 +879,36 @@ public class WreckTest {
     }
 
     @GameTest
+    public void salvageTakesEverythingInTheHold(GameTestHelper helper) {
+        PodEntity pod = spawnOnFloor(helper);
+        MockPlayer mock = joinLoaded(helper, "wreck-gear", pod.position().add(2, 0, 0));
+        try {
+            pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+            pod.cargo().setAt(pod, 1, new ItemStack(Items.TORCH, 10));
+            wreck(pod);
+            int moved = Wrecks.salvage(mock.player(), pod);
+            int torches = mock.player().getInventory().countItem(Items.TORCH);
+            if (moved != 2
+                    || oreInInventory(mock) != 1
+                    || torches != 10
+                    || pod.cargo().occupied() != 0) {
+                throw failure(
+                        helper,
+                        "salvage takes the ore and the torches: moved %d, %d ore and %d torches held, %d slots left",
+                        moved,
+                        oreInInventory(mock),
+                        torches,
+                        pod.cargo().occupied());
+            }
+            helper.succeed();
+        } finally {
+            mock.leave();
+            pod.discard();
+            clearFloor(helper);
+        }
+    }
+
+    @GameTest
     public void salvageOfAnEmptyBayDoesNothing(GameTestHelper helper) {
         PodEntity pod = spawnOnFloor(helper);
         MockPlayer mock = joinLoaded(helper, "wreck-empty", pod.position().add(2, 0, 0));
@@ -891,7 +921,8 @@ public class WreckTest {
                     .consumesAction()) {
                 throw failure(
                         helper,
-                        "using an empty wreck is still handled, so that the player is not seated or refuelled by accident");
+                        "using an empty wreck is still handled, so that the player is not seated or refuelled by"
+                                + " accident");
             }
             helper.succeed();
         } finally {
@@ -928,7 +959,7 @@ public class WreckTest {
     }
 
     @GameTest
-    public void sneakingOnAWreckStillOnlyOpensTheCargoView(GameTestHelper helper) {
+    public void sneakingOnAWreckStillOnlyOpensThePodScreen(GameTestHelper helper) {
         PodEntity pod = spawnOnFloor(helper);
         MockPlayer mock = joinLoaded(helper, "wreck-sneak", pod.position().add(2, 0, 0));
         try {
@@ -937,10 +968,10 @@ public class WreckTest {
             wreck(pod);
             mock.setInput(SNEAK);
             InteractionResult result = UseEntity.on(mock.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-            if (!result.consumesAction() || !(mock.player().containerMenu instanceof OreCargoMenu)) {
+            if (!result.consumesAction() || !(mock.player().containerMenu instanceof PodMenu)) {
                 throw failure(
                         helper,
-                        "sneak-use should open the cargo view, got %s with %s",
+                        "sneak-use should open the pod screen, got %s with %s",
                         result,
                         mock.player().containerMenu);
             }
@@ -1096,7 +1127,8 @@ public class WreckTest {
                 if (!bed.equals(respawned[0].getRespawnConfig())) {
                     throw failure(
                             helper,
-                            "the redirect changes no player data: the bed should still be set, but the respawn point is %s",
+                            "the redirect changes no player data: the bed should still be set, but the respawn point"
+                                    + " is %s",
                             respawned[0].getRespawnConfig());
                 }
             });

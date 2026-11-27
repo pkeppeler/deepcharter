@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_SPRINT;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
@@ -8,6 +11,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterSyncPayload;
 import io.github.pkeppeler.deepcharter.charter.CharterView;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.ColonyDisplays;
+import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
 import io.github.pkeppeler.deepcharter.fuel.ReserveTank;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
@@ -21,6 +25,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSprint;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.test.support.HangarPods;
@@ -50,7 +55,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -74,14 +78,14 @@ public class UnreadableAccessTest {
         PodEntity other = helper.spawn(PodRegistry.POD, 4, 2, 2);
         try {
             if (!Optional.of(Example.DEFAULT).equals(Versioned.readable(pod, TestAttachments.EXAMPLE))) {
-                throw helper.assertionException("an unset attachment reads as its initial value");
+                throw failure(helper, "an unset attachment reads as its initial value");
             }
             if (pod.getAttached(TestAttachments.EXAMPLE) != null) {
-                throw helper.assertionException("reading must not create the attachment");
+                throw failure(helper, "reading must not create the attachment");
             }
             pod.setAttached(TestAttachments.EXAMPLE, Versioned.of(new Example(3)));
             if (!Optional.of(new Example(3)).equals(Versioned.readable(pod, TestAttachments.EXAMPLE))) {
-                throw helper.assertionException("a readable attachment reads as its value");
+                throw failure(helper, "a readable attachment reads as its value");
             }
 
             UnreadableChecks.makeUnreadable(pod, TestAttachments.EXAMPLE);
@@ -90,20 +94,18 @@ public class UnreadableAccessTest {
             LogCapture second = LogCapture.start(other.getUUID().toString());
             for (int i = 0; i < 5; i++) {
                 if (Versioned.readable(pod, TestAttachments.EXAMPLE).isPresent()) {
-                    throw helper.assertionException("an unreadable attachment reads as nothing");
+                    throw failure(helper, "an unreadable attachment reads as nothing");
                 }
             }
             Versioned.readable(other, TestAttachments.EXAMPLE);
             if (first.errors().size() != 1 || second.errors().size() != 1) {
-                throw helper.assertionException(
-                        "each owner is logged once, got %s and %s", first.errors(), second.errors());
+                throw failure(helper, "each owner is logged once, got %s and %s", first.errors(), second.errors());
             }
             if (!first.errors()
                             .getFirst()
                             .contains(TestAttachments.EXAMPLE.identifier().toString())
                     || !first.errors().getFirst().contains(String.valueOf(UnreadableChecks.FUTURE_VERSION))) {
-                throw helper.assertionException(
-                        "the log names the attachment and the saved version: %s", first.errors());
+                throw failure(helper, "the log names the attachment and the saved version: %s", first.errors());
             }
             helper.succeed();
         } finally {
@@ -121,6 +123,8 @@ public class UnreadableAccessTest {
             UnreadableChecks.makeUnreadable(pod, PodTowing.STATE);
             UnreadableChecks.makeUnreadable(pod, WreckRegistry.STATE);
             UnreadableChecks.makeUnreadable(pod, ReserveTank.STATE);
+            UnreadableChecks.makeUnreadable(pod, EngineSoot.STATE);
+            UnreadableChecks.makeUnreadable(pod, PodSprint.STATE);
             Map<String, Runnable> paths = new LinkedHashMap<>();
             paths.put("stats", () -> PodStats.of(pod));
             paths.put("components", () -> {
@@ -139,9 +143,59 @@ public class UnreadableAccessTest {
             });
             paths.put("wreck", () -> Wrecks.isWreck(pod));
             paths.put("reserve tank", () -> ReserveTank.isInstalled(pod));
-            paths.put("tick", pod::tick);
+            paths.put("engine soot", () -> {
+                EngineSoot.soot(pod);
+                EngineSoot.burnMultiplier(pod);
+                EngineSoot.output(EngineSoot.soot(pod));
+                EngineSoot.launchRefused(pod);
+                EngineSoot.refuelled(pod, 1f, 1f);
+                EngineSoot.burned(pod, 1f);
+                EngineSoot.flush(pod);
+            });
+            paths.put("tick with fuel in the tank", () -> {
+                pod.setFuel(60f);
+                for (int i = 0; i < 20; i++) {
+                    pod.tick();
+                }
+            });
             paths.put("hull break", () -> pod.setHull(0f));
             UnreadableChecks.assertNoThrow(helper, "pod attachments", paths);
+            helper.succeed();
+        } finally {
+            mock.leave();
+            pod.discard();
+        }
+    }
+
+    /** A pilot sprinting with W in a pod whose sprint state is unreadable: no throw, no boost, nothing written. */
+    @GameTest
+    public void anUnreadableSprintStateNeverThrowsFromASprintingPilotAndIsKept(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+        MockPlayer mock = MockPlayers.join(helper, "unreadable-sprint");
+        try {
+            UnreadableChecks.makeUnreadable(pod, PodSprint.STATE);
+            if (!mock.player().startRiding(pod)) {
+                throw failure(helper, "the pilot could not mount the pod");
+            }
+            mock.setInput(FORWARD_SPRINT);
+            Map<String, Runnable> paths = new LinkedHashMap<>();
+            paths.put("ticks with sprint and W held", () -> {
+                pod.setFuel(60f);
+                for (int i = 0; i < 5; i++) {
+                    pod.tick();
+                }
+            });
+            paths.put("stats", () -> PodStats.of(pod));
+            paths.put("boosting", () -> PodSprint.boosting(pod));
+            paths.put("hull break", () -> pod.setHull(0f));
+            UnreadableChecks.assertNoThrow(helper, "pod sprint", paths);
+            if (PodSprint.boosting(pod)) {
+                throw failure(helper, "an unreadable sprint state reads as a boost");
+            }
+            if (!(pod.getAttached(PodSprint.STATE) instanceof Versioned.Unreadable<?>)) {
+                throw failure(
+                        helper, "the sprint wrote over its unreadable state: %s", pod.getAttached(PodSprint.STATE));
+            }
             helper.succeed();
         } finally {
             mock.leave();
@@ -158,8 +212,7 @@ public class UnreadableAccessTest {
             UnreadableChecks.assertNoThrow(
                     helper, "pod lore", Map.of("famous prospector", () -> PodComponents.isFamousProspector(pod)));
             if (PodComponents.isFamousProspector(pod)) {
-                throw helper.assertionException(
-                        Component.literal("unreadable lore should read as not the famous Prospector"));
+                throw failure(helper, "unreadable lore should read as not the famous Prospector");
             }
             helper.succeed();
         } finally {
@@ -188,7 +241,7 @@ public class UnreadableAccessTest {
             });
             UnreadableChecks.assertNoThrow(helper, "read marks", paths);
             if (logged.errors().size() != 1) {
-                throw helper.assertionException("the unreadable marks are logged once, got %s", logged.errors());
+                throw failure(helper, "the unreadable marks are logged once, got %s", logged.errors());
             }
             helper.succeed();
         } finally {
@@ -265,16 +318,16 @@ public class UnreadableAccessTest {
         try {
             Optional<CharterSyncPayload> none = CharterSyncPayload.payloadFor(server, id);
             if (none.isEmpty() || none.get().charter().isPresent()) {
-                throw helper.assertionException("a player on no charter is sent the no-charter view, got %s", none);
+                throw failure(helper, "a player on no charter is sent the no-charter view, got %s", none);
             }
             if (Charters.found(server, id, "Sync " + id.toString().substring(0, 8))
                     .isPresent()) {
-                throw helper.assertionException("founding should succeed");
+                throw failure(helper, "founding should succeed");
             }
             Charter charter = Charters.charterOfOrThrow(server, id).orElseThrow();
             Optional<CharterSyncPayload> on = CharterSyncPayload.payloadFor(server, id);
             if (!on.equals(Optional.of(new CharterSyncPayload(Optional.of(CharterView.of(charter, id)))))) {
-                throw helper.assertionException("a player on a charter is sent that charter's view, got %s", on);
+                throw failure(helper, "a player on a charter is sent that charter's view, got %s", on);
             }
             Map<String, Runnable> paths = new LinkedHashMap<>();
             paths.put("payload", () -> {
@@ -345,7 +398,7 @@ public class UnreadableAccessTest {
         paths.put("display load", () -> ServerEntityEvents.ENTITY_LOAD.invoker().onLoad(display, helper.getLevel()));
         UnreadableChecks.assertSavedDataNoThrow(helper, "colony displays", server, ColonyDisplays.TYPE, paths);
         if (display.isRemoved()) {
-            throw helper.assertionException("a display must be left alone while the build numbers cannot be read");
+            throw failure(helper, "a display must be left alone while the build numbers cannot be read");
         }
         helper.succeed();
     }

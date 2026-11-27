@@ -133,11 +133,11 @@ public final class PodLining {
         LiningPayload.register();
         PodEvents.AFTER_TICK.register(PodLining::afterTick);
         PodEvents.EXTRA_MASS.register(PodLining::mass);
-        // A pilot at the arm holds the pod still: no drive, no climb. Read on both sides, so it answers from the synced
-        // state.
+        // A pilot at the arm holds the pod still: no drive, no climb. Read on both sides, so it answers from the
+        // synced state.
         PodStats.MODIFY.register(
                 PodStats.CAP,
-                (pod, stats) -> working(pod) ? stats.withHorizontalSpeed(0f).withThrustAcceleration(0f) : stats);
+                (pod, stats) -> working(pod) ? stats.withHorizontalSpeed(0f).withoutThrustAcceleration() : stats);
     }
 
     /** The pod's lining state, or empty when it is unreadable (logged once). Never throws. */

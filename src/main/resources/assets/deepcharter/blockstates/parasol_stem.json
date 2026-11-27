@@ -1,0 +1,1054 @@
+{
+  "variants": {
+    "arm=none,facing=east,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight"
+    },
+    "arm=none,facing=east,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight"
+    },
+    "arm=none,facing=east,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo"
+    },
+    "arm=none,facing=east,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi"
+    },
+    "arm=none,facing=east,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0"
+    },
+    "arm=none,facing=east,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo"
+    },
+    "arm=none,facing=east,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi"
+    },
+    "arm=none,facing=east,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2"
+    },
+    "arm=none,facing=east,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0"
+    },
+    "arm=none,facing=east,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1"
+    },
+    "arm=none,facing=east,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo"
+    },
+    "arm=none,facing=east,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi"
+    },
+    "arm=none,facing=east,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3"
+    },
+    "arm=none,facing=east,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4"
+    },
+    "arm=none,facing=south,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3",
+      "y": 90
+    },
+    "arm=none,facing=south,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4",
+      "y": 90
+    },
+    "arm=none,facing=west,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3",
+      "y": 180
+    },
+    "arm=none,facing=west,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4",
+      "y": 180
+    },
+    "arm=none,facing=north,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3",
+      "y": 270
+    },
+    "arm=none,facing=north,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4",
+      "y": 270
+    },
+    "arm=front,facing=east,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_front"
+    },
+    "arm=front,facing=east,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_front"
+    },
+    "arm=front,facing=east,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_front"
+    },
+    "arm=front,facing=east,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_front"
+    },
+    "arm=front,facing=east,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_front"
+    },
+    "arm=front,facing=east,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_front"
+    },
+    "arm=front,facing=east,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_front"
+    },
+    "arm=front,facing=east,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_front"
+    },
+    "arm=front,facing=east,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_front"
+    },
+    "arm=front,facing=east,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_front"
+    },
+    "arm=front,facing=east,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_front"
+    },
+    "arm=front,facing=east,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_front"
+    },
+    "arm=front,facing=east,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_front"
+    },
+    "arm=front,facing=east,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_front"
+    },
+    "arm=front,facing=south,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_front",
+      "y": 90
+    },
+    "arm=front,facing=south,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_front",
+      "y": 90
+    },
+    "arm=front,facing=west,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_front",
+      "y": 180
+    },
+    "arm=front,facing=west,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_front",
+      "y": 180
+    },
+    "arm=front,facing=north,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_front",
+      "y": 270
+    },
+    "arm=front,facing=north,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_front",
+      "y": 270
+    },
+    "arm=back,facing=east,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_back"
+    },
+    "arm=back,facing=east,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_back"
+    },
+    "arm=back,facing=east,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_back"
+    },
+    "arm=back,facing=east,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_back"
+    },
+    "arm=back,facing=east,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_back"
+    },
+    "arm=back,facing=east,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_back"
+    },
+    "arm=back,facing=east,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_back"
+    },
+    "arm=back,facing=east,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_back"
+    },
+    "arm=back,facing=east,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_back"
+    },
+    "arm=back,facing=east,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_back"
+    },
+    "arm=back,facing=east,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_back"
+    },
+    "arm=back,facing=east,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_back"
+    },
+    "arm=back,facing=east,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_back"
+    },
+    "arm=back,facing=east,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_back"
+    },
+    "arm=back,facing=south,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_back",
+      "y": 90
+    },
+    "arm=back,facing=south,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_back",
+      "y": 90
+    },
+    "arm=back,facing=west,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_back",
+      "y": 180
+    },
+    "arm=back,facing=west,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_back",
+      "y": 180
+    },
+    "arm=back,facing=north,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_back",
+      "y": 270
+    },
+    "arm=back,facing=north,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_back",
+      "y": 270
+    },
+    "arm=left,facing=east,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_left"
+    },
+    "arm=left,facing=east,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_left"
+    },
+    "arm=left,facing=east,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_left"
+    },
+    "arm=left,facing=east,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_left"
+    },
+    "arm=left,facing=east,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_left"
+    },
+    "arm=left,facing=east,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_left"
+    },
+    "arm=left,facing=east,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_left"
+    },
+    "arm=left,facing=east,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_left"
+    },
+    "arm=left,facing=east,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_left"
+    },
+    "arm=left,facing=east,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_left"
+    },
+    "arm=left,facing=east,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_left"
+    },
+    "arm=left,facing=east,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_left"
+    },
+    "arm=left,facing=east,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_left"
+    },
+    "arm=left,facing=east,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_left"
+    },
+    "arm=left,facing=south,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_left",
+      "y": 90
+    },
+    "arm=left,facing=south,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_left",
+      "y": 90
+    },
+    "arm=left,facing=west,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_left",
+      "y": 180
+    },
+    "arm=left,facing=west,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_left",
+      "y": 180
+    },
+    "arm=left,facing=north,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_left",
+      "y": 270
+    },
+    "arm=left,facing=north,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_left",
+      "y": 270
+    },
+    "arm=right,facing=east,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_right"
+    },
+    "arm=right,facing=east,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_right"
+    },
+    "arm=right,facing=east,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_right"
+    },
+    "arm=right,facing=east,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_right"
+    },
+    "arm=right,facing=east,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_right"
+    },
+    "arm=right,facing=east,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_right"
+    },
+    "arm=right,facing=east,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_right"
+    },
+    "arm=right,facing=east,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_right"
+    },
+    "arm=right,facing=east,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_right"
+    },
+    "arm=right,facing=east,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_right"
+    },
+    "arm=right,facing=east,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_right"
+    },
+    "arm=right,facing=east,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_right"
+    },
+    "arm=right,facing=east,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_right"
+    },
+    "arm=right,facing=east,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_right"
+    },
+    "arm=right,facing=south,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_right",
+      "y": 90
+    },
+    "arm=right,facing=south,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_right",
+      "y": 90
+    },
+    "arm=right,facing=west,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_right",
+      "y": 180
+    },
+    "arm=right,facing=west,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_right",
+      "y": 180
+    },
+    "arm=right,facing=north,piece=straight": {
+      "model": "deepcharter:block/giant/stem_straight_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=fork": {
+      "model": "deepcharter:block/giant/stem_straight_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s1_0lo": {
+      "model": "deepcharter:block/giant/stem_s1_0lo_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s1_0hi": {
+      "model": "deepcharter:block/giant/stem_s1_0hi_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s3_0": {
+      "model": "deepcharter:block/giant/stem_s3_0_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s3_1lo": {
+      "model": "deepcharter:block/giant/stem_s3_1lo_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s3_1hi": {
+      "model": "deepcharter:block/giant/stem_s3_1hi_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s3_2": {
+      "model": "deepcharter:block/giant/stem_s3_2_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s5_0": {
+      "model": "deepcharter:block/giant/stem_s5_0_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s5_1": {
+      "model": "deepcharter:block/giant/stem_s5_1_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s5_2lo": {
+      "model": "deepcharter:block/giant/stem_s5_2lo_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s5_2hi": {
+      "model": "deepcharter:block/giant/stem_s5_2hi_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s5_3": {
+      "model": "deepcharter:block/giant/stem_s5_3_right",
+      "y": 270
+    },
+    "arm=right,facing=north,piece=s5_4": {
+      "model": "deepcharter:block/giant/stem_s5_4_right",
+      "y": 270
+    }
+  }
+}

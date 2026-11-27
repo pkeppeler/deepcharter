@@ -11,6 +11,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -120,6 +121,15 @@ public final class LayerChain {
     /** {@link #bandAt} for a layer; empty on the surface too. */
     public static Optional<Band> layerAt(Level level, int y) {
         return bandAt(level, y).filter(Band::isLayer);
+    }
+
+    /** The loaded level of layer {@code layer} of the chain; fails when the registry holds the layer but its level is not loaded. */
+    public static ServerLevel levelOf(MinecraftServer server, int layer) {
+        ServerLevel level = server.getLevel(dimension(layer));
+        if (level == null) {
+            throw new IllegalStateException("Layer " + layer + " is in the registry but its level is not loaded");
+        }
+        return level;
     }
 
     public static ResourceKey<Level> dimension(int layer) {

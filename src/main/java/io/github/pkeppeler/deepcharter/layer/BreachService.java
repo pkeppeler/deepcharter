@@ -3,17 +3,20 @@ package io.github.pkeppeler.deepcharter.layer;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -29,8 +32,16 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>In the campaign world the layers are bands of one level, so nobody moves: {@link BandCrossing} fires the same event in place.
  *
- * <p>Survival and adventure players cannot break {@code breach_crust} by hand; creative players can.
- * Drills do it through {@link #breakCrust}.
+ * <p>{@link SeamStreaming} loads the arrival area of the level below ahead of a descent (#1159, ADR 0089), so the crossing finds the chunks
+ * it carves in loaded; one that does not logs how many were missing. {@link SeamSender} has sent the riders that area ahead (#1185), and the
+ * teleport runs as its crossing scope: what a rider holds of it is not sent again.
+ *
+ * <p>A crossing whose riders all hold the arrival area and accepted it is a swap (#1229): {@link SeamSwap} moves the
+ * vehicle with no respawn, carving the pocket first only if the arrival is obstructed. Otherwise it is the teleport
+ * above, with its pocket and fade.
+ *
+ * <p>The breach and grained crusts are pod-only ({@link HandBreak}): drills break them through {@link #breakCrust},
+ * creative players break them as any block, and a hand tool brute-forces them only at the cost ADR 0069 sets.
  */
 public final class BreachService {
     /** How far a crossing looks for a pocket column free of protected blocks. */
@@ -41,13 +52,11 @@ public final class BreachService {
     public static void init() {
         BandCrossing.init();
         ServerTickEvents.END_LEVEL_TICK.register(BreachService::crossEntities);
-        PlayerBlockBreakEvents.BEFORE.register(
-                (level, player, pos, state, blockEntity) -> player.isCreative() || !state.is(LayerBlocks.BREACH_CRUST));
     }
 
     /**
-     * The drill's way through the crust. Hand-breaking is refused by the player block-break event;
-     * this removes the block directly, so it is not subject to that guard. Returns false when
+     * The drill's way through the crust. A hand tool brute-forces it only through {@link HandBreak};
+     * this removes the block directly, so it is not subject to that rule. Returns false when
      * {@code pos} holds no crust.
      */
     public static boolean breakCrust(ServerLevel level, BlockPos pos) {
@@ -91,10 +100,7 @@ public final class BreachService {
     }
 
     private static void cross(Entity entity, ServerLevel from, int fromLayer, int toLayer) {
-        ServerLevel to = from.getServer().getLevel(LayerChain.dimension(toLayer));
-        if (to == null) {
-            throw new IllegalStateException("Layer " + toLayer + " is in the registry but its level is not loaded");
-        }
+        ServerLevel to = LayerChain.levelOf(from.getServer(), toLayer);
         // An entity that cannot change dimension stays put, and nothing is carved for it.
         if (!entity.canUsePortal(true) || !entity.canTeleport(from, to)) {
             return;
@@ -103,21 +109,83 @@ public final class BreachService {
         boolean descending = toLayer > fromLayer;
         int arrivalY = descending ? to.getMaxY() - tuning.pocketHeight() : to.getMinY() + tuning.crustThickness();
         BlockPos requested = BlockPos.containing(entity.getX(), arrivalY, entity.getZ());
-        BlockPos pocket = preparePocket(to, requested, tuning);
-
+        ChunkPos requestedChunk = ChunkPos.containing(requested);
+        SeamStreaming.reportCrossing(
+                entity, to, requestedChunk, descending ? SeamStreaming.Direction.DOWN : SeamStreaming.Direction.UP);
+        List<ServerPlayer> riders = entity.getSelfAndPassengers()
+                .filter(ServerPlayer.class::isInstance)
+                .map(ServerPlayer.class::cast)
+                .toList();
+        // The swap is all or nothing for a vehicle: one rider that cannot take it sends everyone through the teleport.
+        boolean swap = !riders.isEmpty()
+                && riders.stream().allMatch(rider -> SeamSender.readyToSwap(rider, to, requestedChunk));
+        Vec3 requestedPosition = new Vec3(entity.getX(), arrivalY, entity.getZ());
+        boolean free = swap && arrivalIsFree(entity, to, requestedPosition);
+        BlockPos pocket = free ? requested : preparePocket(to, requested, tuning);
         Vec3 position = pocket.equals(requested)
-                ? new Vec3(entity.getX(), arrivalY, entity.getZ())
+                ? requestedPosition
                 : new Vec3(pocket.getX() + 0.5, arrivalY, pocket.getZ() + 0.5);
-        Entity arrived = entity.teleport(new TeleportTransition(
-                to, position, Vec3.ZERO, entity.getYRot(), entity.getXRot(), TeleportTransition.DO_NOTHING));
+        if (swap) {
+            // A carved pocket is sent ahead of the swap, so the held level has it; one that cannot be sent is
+            // the fallback's.
+            swap = free
+                    || (SeamSender.resendCarved(riders, to, ChunkPos.containing(pocket))
+                            && riders.stream()
+                                    .allMatch(rider -> SeamSender.readyToSwap(rider, to, ChunkPos.containing(pocket))));
+        }
+        boolean swapped = swap;
+        Entity arrived = SeamSender.crossing(
+                to,
+                entity,
+                () -> swapped
+                        ? SeamSwap.move(entity, from, to, position)
+                        : entity.teleport(new TeleportTransition(
+                                to,
+                                position,
+                                Vec3.ZERO,
+                                entity.getYRot(),
+                                entity.getXRot(),
+                                TeleportTransition.DO_NOTHING)));
         if (arrived == null) {
             throw new IllegalStateException(
                     "Vanilla refused to teleport " + entity + " from layer " + fromLayer + " to layer " + toLayer);
         }
-        arrived.getPassengersAndSelf().forEach(crossed -> {
-            crossed.resetFallDistance();
-            BreachEvents.CROSSED.invoker().onCrossed(crossed, from, to, fromLayer, toLayer);
+        SeamSwap.announce(
+                swapped,
+                () -> arrived.getPassengersAndSelf().forEach(crossed -> {
+                    crossed.resetFallDistance();
+                    BreachEvents.CROSSED.invoker().onCrossed(crossed, from, to, fromLayer, toLayer);
+                }));
+    }
+
+    /**
+     * Whether {@code vehicle} and everything it carries would stand clear of blocks, liquid and entities in {@code to}
+     * with its root at {@code at}, over a floor under the root: otherwise the arrival is carved, as {@link #carve}
+     * lays its floor over air and liquid, so the vehicle is not dropped into lava or a cavern.
+     */
+    private static boolean arrivalIsFree(Entity vehicle, ServerLevel to, Vec3 at) {
+        Vec3 shift = at.subtract(vehicle.position());
+        boolean clear = vehicle.getSelfAndPassengers().allMatch(e -> {
+            AABB box = e.getBoundingBox().move(shift);
+            return to.noCollision(e, box) && !to.containsAnyLiquid(box);
         });
+        return clear && hasFloor(to, vehicle.getBoundingBox().move(shift));
+    }
+
+    /** Whether every block directly under {@code box} is one to stand on: it has a collision shape and holds no fluid. */
+    private static boolean hasFloor(ServerLevel level, AABB box) {
+        int y = Mth.floor(box.minY) - 1;
+        for (int x = Mth.floor(box.minX); x <= Mth.floor(box.maxX); x++) {
+            for (int z = Mth.floor(box.minZ); z <= Mth.floor(box.maxZ); z++) {
+                BlockPos pos = new BlockPos(x, y, z);
+                BlockState state = level.getBlockState(pos);
+                if (state.getCollisionShape(level, pos).isEmpty()
+                        || !state.getFluidState().isEmpty()) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**

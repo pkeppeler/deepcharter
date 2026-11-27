@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "deepcharter:block/giant/spire_base"
+    }
+  }
+}

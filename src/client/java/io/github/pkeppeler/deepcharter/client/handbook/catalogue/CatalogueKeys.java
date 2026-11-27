@@ -7,12 +7,18 @@ import net.minecraft.client.KeyMapping;
 
 /**
  * The catalogue's keys, rebindable, in the mod's key category ({@link HandbookKeys}): R on an item shows its recipes, U its uses and A stars
- * it. R is also the pilot's lining key, which is used only in a pod with no screen open, so the two never meet.
+ * it, Backspace goes back to the recipe shown before (EMI's keys), M switches the recipe console to the recipe's total materials and back,
+ * and O shows or hides the panels. R is also the pilot's lining key, which is used only in a pod with no screen open, so the two never meet.
+ * J opens the latest spec sheet the server offered.
  */
 public final class CatalogueKeys {
     public static final KeyMapping RECIPES = key("recipes", InputConstants.KEY_R);
     public static final KeyMapping USES = key("uses", InputConstants.KEY_U);
     public static final KeyMapping FAVOURITE = key("favourite", InputConstants.KEY_A);
+    public static final KeyMapping SPEC_SHEET = key("spec_sheet", InputConstants.KEY_J);
+    public static final KeyMapping TOGGLE = key("toggle", InputConstants.KEY_O);
+    public static final KeyMapping BACK = key("back", InputConstants.KEY_BACKSPACE);
+    public static final KeyMapping MATERIALS = key("materials", InputConstants.KEY_M);
 
     private CatalogueKeys() {}
 
@@ -28,5 +34,9 @@ public final class CatalogueKeys {
         KeyMappingHelper.registerKeyMapping(RECIPES);
         KeyMappingHelper.registerKeyMapping(USES);
         KeyMappingHelper.registerKeyMapping(FAVOURITE);
+        KeyMappingHelper.registerKeyMapping(SPEC_SHEET);
+        KeyMappingHelper.registerKeyMapping(TOGGLE);
+        KeyMappingHelper.registerKeyMapping(BACK);
+        KeyMappingHelper.registerKeyMapping(MATERIALS);
     }
 }

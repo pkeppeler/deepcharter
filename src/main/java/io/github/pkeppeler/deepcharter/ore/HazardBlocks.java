@@ -11,6 +11,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
@@ -20,15 +21,20 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 public final class HazardBlocks {
     /** What a gas blast may clear: ordinary rock, ore and gas, and nothing a player built. */
     public static final TagKey<Block> NATURAL_ROCK = tag("natural_rock");
-    /** What a pod drill refuses to bore, whatever its hardness. */
+    /**
+     * What a pod drill refuses to bore, whatever its hardness. It is pod-only for a hand tool too ({@code HandBreak}).
+     */
     public static final TagKey<Block> UNDIGGABLE = tag("undiggable");
 
-    /** Unbreakable by hand (hardness -1) and, through {@link #UNDIGGABLE}, by a drill. Its look follows its layer and a blast ({@link CompanyRockBlock}). */
+    /**
+     * Hardness -1, so a hand makes no progress but through the pod-only rule ({@code HandBreak}), and a drill refuses
+     * it through {@link #UNDIGGABLE}. Its look follows its layer and a blast ({@link CompanyRockBlock}).
+     */
     public static final Block COMPANY_ROCK = registerBlock(
             id("company_rock"),
             key -> new CompanyRockBlock(BlockBehaviour.Properties.of()
                     .setId(key)
-                    .strength(-1.0F, 3600000.0F)
+                    .strength(-1.0F, Blocks.BEDROCK.getExplosionResistance())
                     .sound(SoundType.STONE)
                     .noLootTable()));
 

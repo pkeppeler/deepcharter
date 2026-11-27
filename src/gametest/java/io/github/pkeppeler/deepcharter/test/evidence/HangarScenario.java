@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -98,10 +99,12 @@ public class HangarScenario extends EvidenceScenario {
             screenshot(context, "hangar-console");
 
             HangarTuning tuning = HangarTuning.DEFAULT;
+            // Read now, not from the deposit: repairing the console fired T06 and paid its bonus.
+            long beforeBuying = singleplayer.getServer().computeOnServer(HangarScenario::balance);
             context.clickScreenButton("BUY REFURBISHED MOLE: $" + tuning.refurbishedMole() + " + $"
                     + tuning.registrationFee() + " PER POD");
             long price = tuning.refurbishedPrice(1);
-            await(context, singleplayer, server -> balance(server) == ACCOUNT - price);
+            await(context, singleplayer, server -> balance(server) == beforeBuying - price);
             hold(context);
             screenshot(context, "bought-a-refurbished-mole");
             context.setScreen(() -> null);
@@ -140,7 +143,11 @@ public class HangarScenario extends EvidenceScenario {
             long restorePrice = tuning.restoreCost(Chassis.PROSPECTOR).money();
             long before = singleplayer.getServer().computeOnServer(HangarScenario::balance);
             context.clickScreenButton("RESTORE NEAREST WRECK");
-            await(context, singleplayer, server -> balance(server) == before - restorePrice);
+            // Restoring the Prospector fires T17, which pays B3.
+            await(
+                    context,
+                    singleplayer,
+                    server -> balance(server) == before - restorePrice + Transmission.Bonus.B3.amount());
             // The server's answer is a new view, which the screen takes in place: close it after that.
             context.waitTicks(20);
             context.setScreen(() -> null);

@@ -107,10 +107,17 @@ public class OutpostTest {
         return TestLayers.level(helper, 1);
     }
 
-    /** The floor of layer 1: the top block of the breach crust, in a column of solid stone with a 2 by 2 shaft up from it. */
-    private static BlockPos stageFloor(GameTestHelper helper, ServerLevel level, int x) {
-        BlockPos floor =
-                new BlockPos(x, TestLayers.band(level, 1).minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
+    /** The floor of layer 1 at {@code x}: the top block of the breach crust. */
+    private static BlockPos floorAt(ServerLevel level, int x) {
+        return new BlockPos(x, TestLayers.band(level, 1).minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
+    }
+
+    /**
+     * Makes {@code floor} a column of solid stone with a 2 by 2 shaft up from it. Its chunks must be loaded: carving
+     * seals the shell, which would load them on the server thread.
+     */
+    private static void carveFloor(GameTestHelper helper, ServerLevel level, BlockPos floor) {
+        int x = floor.getX();
         RoomCarver.carve(level, x - 8, x + 8, floor.getY() + 1, floor.getY() + 16, Z - 8, Z + 8, Blocks.STONE);
         RoomCarver.carve(
                 level,
@@ -124,12 +131,11 @@ public class OutpostTest {
                     floor,
                     level.getBlockState(floor));
         }
-        return floor;
     }
 
     private static Stage stage(GameTestHelper helper, int x, boolean onCharter) {
         ServerLevel level = layerOne(helper);
-        BlockPos floor = stageFloor(helper, level, x);
+        BlockPos floor = floorAt(level, x);
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer mock = MockPlayers.join(helper, "outposter-" + x);
         mock.player().setGameMode(GameType.SURVIVAL);
@@ -146,7 +152,6 @@ public class OutpostTest {
                     .orElseThrow()
                     .id();
         }
-        mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
         return new Stage(level, floor, mock, charter == null ? new CharterId(new UUID(0, 0)) : charter);
     }
 
@@ -164,6 +169,15 @@ public class OutpostTest {
                         .with(RepairState.TYPE, repaired)
                         .with(OutpostData.TYPE, new OutpostData())
                         .run(() -> {
+                            // Carved once the chunks are loaded, and the player arrives after it, not into the cave
+                            // that was there.
+                            carveFloor(helper, stage.level(), stage.floor());
+                            stage.mock()
+                                    .teleportTo(
+                                            stage.level(),
+                                            Vec3.atBottomCenterOf(stage.floor().above()),
+                                            0f,
+                                            0f);
                             body.run();
                             helper.succeed();
                         }));
@@ -916,7 +930,7 @@ public class OutpostTest {
     public void aMobInTheHallRefusesTheKitAndTheRefusalNamesIt(GameTestHelper helper) {
         Stage stage = stage(helper, 9900, true);
         whenReady(helper, stage, () -> {
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, stage.level());
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, stage.level());
             tally.setPos(Vec3.atBottomCenterOf(stage.floor().offset(2, 2, 2)));
             stage.level().addFreshEntity(tally);
             ItemEntity stack = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
@@ -949,6 +963,10 @@ public class OutpostTest {
         Stage first = stage(helper, 9000, true);
         Stage second = stage(helper, 9010, true);
         whenReady(helper, first, () -> {
+            carveFloor(helper, second.level(), second.floor());
+            second.mock()
+                    .teleportTo(
+                            second.level(), Vec3.atBottomCenterOf(second.floor().above()), 0f, 0f);
             if (!useKit(first, first.floor(), Direction.UP).consumesAction()) {
                 throw failure(helper, "the first kit should build");
             }
@@ -964,8 +982,9 @@ public class OutpostTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aCharterHasOneOutpostInALayer(GameTestHelper helper) {
         Stage stage = stage(helper, 8300, true);
-        BlockPos second = stageFloor(helper, stage.level(), 8340);
+        BlockPos second = floorAt(stage.level(), 8340);
         whenReady(helper, stage, () -> {
+            carveFloor(helper, stage.level(), second);
             if (!useKit(stage, stage.floor(), Direction.UP).consumesAction()) {
                 throw failure(helper, "the first kit should build");
             }
@@ -1104,6 +1123,13 @@ public class OutpostTest {
                     .with(RepairState.TYPE, repaired)
                     .with(OutpostData.TYPE, new OutpostData())
                     .run(() -> {
+                        carveFloor(helper, stage.level(), stage.floor());
+                        stage.mock()
+                                .teleportTo(
+                                        stage.level(),
+                                        Vec3.atBottomCenterOf(stage.floor().above()),
+                                        0f,
+                                        0f);
                         if (!useKit(stage, stage.floor(), Direction.UP).consumesAction()) {
                             throw failure(helper, "the kit should build");
                         }

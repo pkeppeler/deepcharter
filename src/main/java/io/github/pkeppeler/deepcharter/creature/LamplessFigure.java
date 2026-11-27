@@ -190,8 +190,8 @@ public class LamplessFigure extends PathfinderMob {
 
     private void approachPerson(ServerPlayer person, CreatureTuning tuning, boolean checking) {
         if (person.getBoundingBox().inflate(tuning.foot().reachBlocks()).intersects(getBoundingBox())) {
-            // The person was picked up to a look ago: they may have lit a light, boarded a pod or been taken by another
-            // figure.
+            // The person was picked up to a look ago: they may have lit a light, boarded a pod or been taken by
+            // another figure.
             if (!FootGrips.draws(person)) {
                 quarry = null;
                 return;
@@ -370,8 +370,8 @@ public class LamplessFigure extends PathfinderMob {
     /** The nearest pod in sense that this figure would grab, or null. */
     private @Nullable PodEntity nearestDarkPod(ServerLevel level, CreatureTuning.Cling cling) {
         double sense = cling.senseBlocks();
-        // entity-query: round a ticking figure, for a pod with a pilot; a pod it does not see only goes undrawn this
-        // check
+        // entity-query: round a ticking figure, for a pod with a pilot; a pod it does not see only goes undrawn
+        // this check
         return level
                 .getEntitiesOfClass(
                         PodEntity.class,
@@ -440,9 +440,24 @@ public class LamplessFigure extends PathfinderMob {
             held.sendOverlayMessage(Component.translatable("creature.deepcharter.foot_dead"));
         }
         release();
-        level.sendParticles(ParticleTypes.LARGE_SMOKE, getX(), getY() + 1.0, getZ(), DEATH_SMOKE, 0.3, 0.8, 0.3, 0.02);
-        level.sendParticles(ParticleTypes.ASH, getX(), getY() + 1.0, getZ(), DEATH_ASH, 0.4, 0.9, 0.4, 0.02);
+        dissolve(level, this);
         LamplessFigures.killed(level, natural, getBlockY());
+    }
+
+    /** The smoke and ash a dead body goes up in: a Retained's, and a person's at a Continuity Event (#1337). */
+    public static void dissolve(ServerLevel level, Entity body) {
+        level.sendParticles(
+                ParticleTypes.LARGE_SMOKE,
+                body.getX(),
+                body.getY() + 1.0,
+                body.getZ(),
+                DEATH_SMOKE,
+                0.3,
+                0.8,
+                0.3,
+                0.02);
+        level.sendParticles(
+                ParticleTypes.ASH, body.getX(), body.getY() + 1.0, body.getZ(), DEATH_ASH, 0.4, 0.9, 0.4, 0.02);
     }
 
     @Override
@@ -505,6 +520,8 @@ public class LamplessFigure extends PathfinderMob {
         return entityData.get(LAMP);
     }
 
+    // const-param: the lamp state is a creature-design knob the creatures session owns; some Retained carry a lamp per
+    // LORE section 11
     public void setLamp(boolean lamp) {
         entityData.set(LAMP, lamp);
     }

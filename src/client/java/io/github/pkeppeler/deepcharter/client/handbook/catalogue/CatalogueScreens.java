@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import java.util.HashMap;
 import java.util.Map;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -13,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -31,6 +33,8 @@ import org.jspecify.annotations.Nullable;
  */
 public final class CatalogueScreens {
     private static final Map<Screen, CataloguePanel> PANELS = new HashMap<>();
+    /** What every panel is set to: the client's, so it carries across a close and a reopen, and from the inventory to the table. */
+    private static volatile CatalogueState state = new CatalogueState();
     /** An item {@link #open} was asked for before the inventory it needs was open, looked up as soon as the panel exists. */
     private static @Nullable Item pending;
     /** The screen each inventory {@link #open} made over another screen goes back to when it closes. */
@@ -44,32 +48,56 @@ public final class CatalogueScreens {
         CatalogueKeys.register();
         SpecSheetOpener.register();
         ClientTickEvents.END_CLIENT_TICK.register(CatalogueScreens::reopenReturnScreen);
+        // A world is where the recipes were taught, so leaving it puts the catalogue back as a new client has it.
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> resetState());
         ScreenEvents.BEFORE_INIT.register((client, screen, width, height) -> {
-            if (hasCatalogue(screen) && fits(width, height)) {
+            if (hasCatalogue(screen) && fits(width, height, screen instanceof InventoryScreen)) {
                 closeVanillaBook(client);
             }
         });
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof AbstractRecipeBookScreen<?> book) {
                 attach(book, width, height);
+            } else if (screen instanceof AbstractContainerScreen<?> container) {
+                SlotLookup.attach(container);
             }
         });
     }
 
-    /** Whether a screen {@code width} by {@code height} has room for the panels, which is when they take the place of the vanilla recipe book. */
-    private static boolean fits(int width, int height) {
+    /** What every panel and the recipe console's own screen are set to. */
+    static CatalogueState state() {
+        return state;
+    }
+
+    /** Puts the catalogue back as a new client has it: the next panel opens on an empty search, the switch off and nothing looked up. */
+    public static void resetState() {
+        state = new CatalogueState();
+    }
+
+    /**
+     * Whether a screen {@code width} by {@code height} has room for the panels, which is when they take the place of
+     * the vanilla recipe book. The inventory ({@code wantsEffects}) also needs room for its row of effects.
+     */
+    private static boolean fits(int width, int height, boolean wantsEffects) {
         return CatalogueLayout.of(
                         width,
                         height,
                         CatalogueLook.current(),
                         CrtTuning.current(),
-                        Minecraft.getInstance().font.lineHeight)
+                        Minecraft.getInstance().font.lineHeight,
+                        wantsEffects)
                 != null;
     }
 
     /** Whether the catalogue stands beside {@code screen}: it is a vanilla screen with a recipe book. */
     public static boolean hasCatalogue(Screen screen) {
         return screen instanceof AbstractRecipeBookScreen<?>;
+    }
+
+    /** Whether the window has room for the catalogue beside the inventory, which is when {@link #open} shows anything. */
+    static boolean canOpen() {
+        Minecraft client = Minecraft.getInstance();
+        return fits(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight(), true);
     }
 
     /** The catalogue beside {@code screen}, or null when it has none. */
@@ -88,10 +116,7 @@ public final class CatalogueScreens {
     public static void open(Item item) {
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
-        if (player == null
-                || !fits(
-                        client.getWindow().getGuiScaledWidth(),
-                        client.getWindow().getGuiScaledHeight())) {
+        if (player == null || !canOpen()) {
             return;
         }
         Screen open = client.gui.screen();
@@ -101,8 +126,8 @@ public final class CatalogueScreens {
             return;
         }
         pending = item;
-        // A vanilla screen, so it is not one of the mod's screens the layout gate asks to be covered by
-        // ScreenLayoutClientTest.
+        // A vanilla screen, so it is not one of the mod's screens the layout gate asks to be covered
+        // by ScreenLayoutClientTest.
         InventoryScreen inventory = new InventoryScreen(player);
         if (open != null) {
             RETURN_TO.put(inventory, open);
@@ -127,20 +152,20 @@ public final class CatalogueScreens {
     }
 
     private static void attach(AbstractRecipeBookScreen<?> screen, int width, int height) {
-        CataloguePanel panel = PANELS.computeIfAbsent(screen, ignored -> new CataloguePanel(screen));
+        CataloguePanel panel = PANELS.computeIfAbsent(screen, ignored -> new CataloguePanel(screen, state));
         panel.resize(width, height);
         // The panels replace the recipe book, so its button goes only while they are drawn: a window too small for them
         // keeps the book.
         if (panel.layout() != null) {
-            hideBookButton(screen);
+            addToggleButton(screen, panel, hideBookButton(screen));
         }
         Item wanted = pending;
         if (wanted != null) {
             pending = null;
             panel.lookUp(wanted, CatalogueState.Mode.RECIPES);
         }
-        // Fabric clears a screen's events when it is initialised again (a resize), so they are registered on every
-        // init.
+        // Fabric clears a screen's events when it is initialised again (a resize), so they are registered on
+        // every init.
         // After the screen's contents and before its carried item and tooltips, so a stack on the cursor is over the
         // panels and a tooltip set
         // here (the hovered item's) is shown by the screen's own deferred tooltip step; AFTER_EXTRACT comes after that
@@ -168,15 +193,29 @@ public final class CatalogueScreens {
 
     private static final int BOOK_BUTTON_HEIGHT = 18;
 
-    /** Hides the vanilla recipe-book button: it stays in the screen's lists and can neither be seen, hovered nor pressed. */
-    private static void hideBookButton(Screen screen) {
+    /**
+     * Hides the vanilla recipe-book button: it stays in the screen's lists and can neither be seen, hovered nor pressed. Returns the
+     * button, or null when the screen has none.
+     */
+    private static @Nullable AbstractWidget hideBookButton(Screen screen) {
+        AbstractWidget hidden = null;
         for (AbstractWidget widget : Screens.getWidgets(screen)) {
             if (widget instanceof ImageButton
                     && widget.getWidth() == BOOK_BUTTON_WIDTH
                     && widget.getHeight() == BOOK_BUTTON_HEIGHT) {
                 widget.visible = false;
                 widget.active = false;
+                hidden = widget;
             }
+        }
+        return hidden;
+    }
+
+    /** Puts the catalogue's show/hide button where the hidden recipe-book button stands, which vanilla keeps clear of the slots. */
+    private static void addToggleButton(Screen screen, CataloguePanel panel, @Nullable AbstractWidget book) {
+        if (book != null) {
+            Screens.getWidgets(screen)
+                    .add(new CatalogueToggleButton(book.getX(), book.getY(), panel.state(), b -> panel.toggleHidden()));
         }
     }
 

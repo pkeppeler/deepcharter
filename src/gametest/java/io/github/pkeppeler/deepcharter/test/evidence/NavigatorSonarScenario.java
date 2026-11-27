@@ -4,6 +4,9 @@ import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
 import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
 import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
+import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
+import io.github.pkeppeler.deepcharter.creature.Tally;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -16,6 +19,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
 import java.util.Set;
@@ -34,10 +38,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "navigator-sonar" (#988): a mock player pilots a Prospector in a block of stone and the real client rides second, as the navigator.
- * Before the ping the scope is empty. One press of the ping key returns the contacts round the pod: ore (filled squares), a gas pocket close by (a hollow
- * square) and one far off that reads as an empty cave (a dot), a cave (dots), and a body standing in a hollow (an ore echo, since it stands still). The
- * navigator then turns toward the ore echo ahead and marks it, and the mark shows on the HUD. The echoes dim over their ten seconds, and the bar under the scope fills as the sonar clears for the next ping. The stills zoom on the scope. At the end a long step popup slides in on the right, beside the scope (#1075).
+ * Evidence scenario "navigator-sonar" (#988, #924): a mock player pilots a Prospector in a block of stone and the real client rides second, as the
+ * navigator. Before the ping the scope is empty. One press of the ping key returns the contacts round the pod: ore (filled squares), a gas pocket close
+ * by (a hollow square) and one far off that reads as an empty cave (a dot), a cave (dots), and three bodies in hollows of their own. A body standing
+ * still is an ore echo; so is a Tally far west, a Company machine. A Retained far east is hollow: its room is an open cave on the scope, and the
+ * figure in it returns nothing. The navigator then turns toward the ore echo ahead and marks it, and the mark shows on the HUD. The echoes dim over
+ * their ten seconds, and the bar under the scope fills as the sonar clears for the next ping. The stills zoom on the scope. At the end a long step popup slides in on the right, beside the scope (#1075).
  */
 public class NavigatorSonarScenario extends EvidenceScenario {
     private static final int X = 1600;
@@ -51,8 +57,8 @@ public class NavigatorSonarScenario extends EvidenceScenario {
     private static final int ZOOM_MARGIN = 12;
     private static final int TOAST_SETTLE_TICKS = 30;
     private static final String LONG_STEP =
-            "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
-                    + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
+            "Carry the whole of a very long instruction through the hatch, past the second sump pump and the old tally"
+                    + " board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
 
     @Override
     protected String name() {
@@ -64,6 +70,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             two.server().runOnServer(server -> buildSite(server.overworld(), two));
             ClientWait.chunksAround(context, X, Z, REACH);
+            ClientWait.lightSettled(context, two.server(), TestLayers.SURFACE, X, Z, REACH);
             two.server().runOnServer(server -> board(server.overworld(), two));
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ClientWait.until(
@@ -206,13 +213,25 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         }
         put(level, new BlockPos(X + 8, FLOOR_Y + 1, Z - 9), HazardBlocks.GAS_POCKET);
         put(level, new BlockPos(X - 18, FLOOR_Y + 1, Z + 6), HazardBlocks.GAS_POCKET);
-        // A body standing in a hollow of its own, east: it is in the echo tag the test mod adds, so it returns an ore
-        // echo.
+        // A body standing in a hollow of its own, east: it is in the echo tag the test mod adds, so it returns an
+        // ore echo.
         room(level, X + 4 * CELL, FLOOR_Y, Z - 2 * CELL, 1, 1);
         ArmorStand body = TestEntities.create(EntityTypes.ARMOR_STAND, level);
         body.setNoGravity(true);
         body.setPos(X + 4 * CELL + 2, FLOOR_Y + 1, Z - 2 * CELL + 2);
         level.addFreshEntity(body);
+        // Far west, a Tally (a Company machine) in a hollow of its own: it echoes as ore. Far east, a Retained in
+        // another: the hollow returns an open cave and the figure in it returns nothing.
+        room(level, X - 5 * CELL, FLOOR_Y, Z - 3 * CELL, 1, 1);
+        Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
+        tally.setNoAi(true);
+        tally.setPos(X - 5 * CELL + 2, FLOOR_Y + 1, Z - 3 * CELL + 2);
+        level.addFreshEntity(tally);
+        room(level, X + 4 * CELL, FLOOR_Y, Z + CELL, 1, 1);
+        LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
+        figure.setNoAi(true);
+        figure.setPos(X + 4 * CELL + 2, FLOOR_Y, Z + CELL + 2);
+        level.addFreshEntity(figure);
         ServerPlayer real = real(level, two);
         real.teleportTo(level, X, FLOOR_Y, Z, Set.of(), 0f, 0f, true);
         two.mock().teleportTo(level, new Vec3(X, FLOOR_Y, Z), 0f, 0f);

@@ -378,12 +378,41 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
         Vec3 away = new Vec3(office.getX() + 150.5, 150, office.getZ() + 150.5);
         server.runOnServer(s -> {
             ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
-            player.setGameMode(GameType.SURVIVAL);
+            // Creative while the chunk loads: a survival player falls the 150 blocks to the ground and dies
+            player.setGameMode(GameType.CREATIVE);
             player.teleportTo(s.overworld(), away.x, away.y, away.z, Set.of(), 0f, 0f, true);
+        });
+        // The arrival chunk is loaded before it ticks entities, and a pod added to it then is not in the level: the
+        // wreck would have no crew to kill.
+        BlockPos awayPos = BlockPos.containing(away);
+        ClientWait.until(
+                context,
+                "the arrival chunk entity-ticking on the server",
+                () -> server.computeOnServer(s -> s.overworld().isPositionEntityTicking(awayPos)),
+                () -> server.computeOnServer(s -> {
+                    ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+                    return "the chunk at " + awayPos.toShortString() + " is entity-ticking "
+                            + s.overworld().isPositionEntityTicking(awayPos) + ", loaded "
+                            + s.overworld().getChunkSource().hasChunk(awayPos.getX() >> 4, awayPos.getZ() >> 4)
+                            + "; the player is at " + player.blockPosition().toShortString() + " in "
+                            + player.gameMode();
+                }));
+        server.runOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            player.setGameMode(GameType.SURVIVAL);
             PodEntity pod = TestEntities.create(PodRegistry.POD, s.overworld());
             pod.setPos(away);
-            s.overworld().addFreshEntity(pod);
+            boolean added = s.overworld().addFreshEntity(pod);
             player.startRiding(pod, true, false);
+            boolean held = s.overworld().getEntity(pod.getUUID()) == pod;
+            if (!added || !held) {
+                throw new AssertionError("the pod should be in the level before the wreck: addFreshEntity returned "
+                        + added + ", the level holds it " + held);
+            }
+            if (player.getVehicle() != pod) {
+                throw new AssertionError(
+                        "the pilot should ride the pod before the wreck, rides " + player.getVehicle());
+            }
             pod.damageHull(pod.maxHull());
             if (!player.isDeadOrDying()) {
                 throw new AssertionError("a wreck should have killed the pilot");

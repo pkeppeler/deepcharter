@@ -66,8 +66,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
                             && podIfPresent(client, scene.mole()) != null
                             && podIfPresent(client, scene.prospector()) != null);
 
-            // Both chassis draw with the GeckoLib renderer, and GeckoLib baked the model the game measures, bone for
-            // bone.
+            // Both chassis draw with the GeckoLib renderer, and GeckoLib baked the model the game measures, bone
+            // for bone.
             context.runOnClient(client -> {
                 for (int id : List.of(scene.mole(), scene.prospector())) {
                     PodGeoRenderer renderer = renderer(client, id);
@@ -118,8 +118,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
                     "the spin rates should be in the ratio of the drill spin scales, " + expected + ": "
                             + prospectorRate / moleRate);
 
-            // Installing a drill swaps the cutter at once: tier 1 is the stacked rings. Only the stacked bones are
-            // drawn.
+            // Installing a drill swaps the cutter at once: tier 1 is the stacked rings. Only the stacked bones
+            // are drawn.
             singleplayer.getServer().runOnServer(server -> install(server, scene, scene.mole(), 1));
             cutterIs(context, scene.mole(), "stacked");
             context.runOnClient(client -> {
@@ -298,8 +298,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
             after.ageInTicks = 1f;
             pod.setDrilling(true);
             try {
-                motion.advance(pod, before, 0f, scale);
-                motion.advance(pod, after, 0f, scale);
+                motion.advance(pod, before, 0f, scale, 1f);
+                motion.advance(pod, after, 0f, scale, 1f);
                 require(
                         before.drillSpin == 0f,
                         "the first frame of a motion turns nothing, turned " + before.drillSpin);

@@ -5,19 +5,18 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
-import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -323,7 +322,7 @@ public class OreCargoTest {
     }
 
     @GameTest
-    public void sneakUseOnThePodOpensTheCargoScreen(GameTestHelper helper) {
+    public void sneakUseOnThePodOpensThePodScreenWithItsOre(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "ore-sneaker");
         try {
@@ -332,18 +331,19 @@ public class OreCargoTest {
             player.teleportTo(helper.getLevel(), pod.position().add(2, 0, 0), 0f, 0f);
             player.setInput(SNEAK);
             InteractionResult result = UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-            if (!result.consumesAction() || !(player.player().containerMenu instanceof OreCargoMenu menu)) {
+            if (!result.consumesAction() || !(player.player().containerMenu instanceof PodMenu menu)) {
                 throw failure(
                         helper,
-                        "sneak-use should open the cargo menu, got %s with %s",
+                        "sneak-use should open the pod screen, got %s with %s",
                         result,
                         player.player().containerMenu);
             }
-            List<ItemStack> shown = OreCargoSlots.shown(menu);
-            if (shown.size() != 2
-                    || !shown.get(0).is(OreRegistry.item(OreType.SILVERIUM))
-                    || !shown.get(1).is(OreRegistry.item(OreType.PLATINIUM))) {
-                throw failure(helper, "the menu should show the Silverium and the Platinium, it shows %s", shown);
+            menu.broadcastChanges();
+            ItemStack first = menu.holdSlot(0).getItem();
+            ItemStack second = menu.holdSlot(1).getItem();
+            if (!first.is(OreRegistry.item(OreType.SILVERIUM)) || !second.is(OreRegistry.item(OreType.PLATINIUM))) {
+                throw failure(
+                        helper, "the hold should show the Silverium and the Platinium, it shows %s, %s", first, second);
             }
             if (pod.getPassengers().contains(player.player())) {
                 throw failure(helper, "sneak-use must not board the pod");
@@ -606,7 +606,7 @@ public class OreCargoTest {
     }
 
     @GameTest
-    public void clickingTheCargoScreenChangesNothing(GameTestHelper helper) {
+    public void clickingTheHoldsOreMovesNoOre(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MockPlayer player = MockPlayers.join(helper, "ore-clicker");
         try {
@@ -614,20 +614,22 @@ public class OreCargoTest {
             player.teleportTo(helper.getLevel(), pod.position().add(2, 0, 0), 0f, 0f);
             player.setInput(SNEAK);
             UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-            OreCargoMenu menu = (OreCargoMenu) player.player().containerMenu;
-            menu.clicked(0, 0, ContainerInput.PICKUP, player.player());
+            PodMenu menu = (PodMenu) player.player().containerMenu;
+            int ore = menu.holdSlot(0).index;
+            menu.clicked(ore, 0, ContainerInput.PICKUP, player.player());
             if (!menu.getCarried().isEmpty()) {
-                throw failure(helper, "picking up from a read-only slot must give nothing, got %s", menu.getCarried());
+                throw failure(helper, "picking up the hold's ore must give nothing, got %s", menu.getCarried());
             }
             menu.setCarried(new ItemStack(Items.DIAMOND));
-            menu.clicked(3, 0, ContainerInput.PICKUP, player.player());
-            menu.clicked(0, 0, ContainerInput.QUICK_MOVE, player.player());
+            menu.clicked(ore, 0, ContainerInput.PICKUP, player.player());
+            menu.clicked(ore, 0, ContainerInput.QUICK_MOVE, player.player());
+            menu.clicked(ore, 0, ContainerInput.THROW, player.player());
             if (!menu.getCarried().is(Items.DIAMOND)
                     || pod.cargo().entries().size() != 1
-                    || OreCargoSlots.shown(menu).size() != 1) {
+                    || !menu.holdSlot(0).getItem().is(OreRegistry.item(OreType.SILVERIUM))) {
                 throw failure(
                         helper,
-                        "clicks must not move ore, carried %s, bay %s",
+                        "clicks must not move ore, carried %s, hold %s",
                         menu.getCarried(),
                         pod.cargo().entries());
             }

@@ -31,15 +31,19 @@ public final class SuitDrain {
         return wet ? rate + tuning.flooding() * shortBy(depth, suit, RatingAxis.FLOODING) : rate;
     }
 
-    /** The axes that cost something, a bit for each {@link RatingAxis} ordinal: the bits {@link SuitState#axes} carries. */
-    public static int axes(Ratings depth, Ratings suit, boolean wet) {
-        int mask = 0;
+    /**
+     * How far each axis is short, four bits an axis at {@code axis.ordinal() * 4} (a level is at most 15): the wire's picture of why the
+     * suit drains. Flooding counts only while {@code wet}, as it costs only then.
+     */
+    public static int shortfall(Ratings depth, Ratings suit, boolean wet) {
+        int packed = 0;
         for (RatingAxis axis : OutpostHabitability.AXES) {
-            if (shortBy(depth, suit, axis) > 0 && (wet || axis != RatingAxis.FLOODING)) {
-                mask |= SuitState.bit(axis);
+            if (wet || axis != RatingAxis.FLOODING) {
+                packed |= Math.min(shortBy(depth, suit, axis), SuitState.SHORT_MAX)
+                        << (axis.ordinal() * SuitState.SHORT_BITS);
             }
         }
-        return mask;
+        return packed;
     }
 
     private static int shortBy(Ratings depth, Ratings suit, RatingAxis axis) {

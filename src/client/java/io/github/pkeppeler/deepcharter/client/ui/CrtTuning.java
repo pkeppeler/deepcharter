@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param dimColor idle borders and disabled text
  * @param hoverFillColor button fill under the mouse or focus
  * @param refusalColor the contract terminal's refusal line
+ * @param ghostVeilColor what fades the item an empty typed slot shows ({@link CrtMenuScreen}), translucent background
  * @param padding space between a frame and what it holds
  * @param lineSpacing space between wrapped text lines, on top of the font height
  * @param buttonLabelOffset pixels the button label sits below the centre, which looks level with the glow
@@ -38,6 +39,7 @@ public record CrtTuning(
         int dimColor,
         int hoverFillColor,
         int refusalColor,
+        int ghostVeilColor,
         int padding,
         int lineSpacing,
         int buttonLabelOffset,
@@ -61,6 +63,7 @@ public record CrtTuning(
                 d.color("dimColor"),
                 d.color("hoverFillColor"),
                 d.color("refusalColor"),
+                d.color("ghostVeilColor"),
                 d.integer("padding", 0),
                 d.integer("lineSpacing", 0),
                 d.integer("buttonLabelOffset", 0),

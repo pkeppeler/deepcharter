@@ -7,7 +7,5 @@ package io.github.pkeppeler.deepcharter.client.ore;
 public final class OreClientInit {
     private OreClientInit() {}
 
-    public static void init() {
-        OreClientRegistry.register();
-    }
+    public static void init() {}
 }

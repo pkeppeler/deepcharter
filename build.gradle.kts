@@ -51,6 +51,8 @@ group = providers.gradleProperty("maven_group").get()
 
 loom {
 	splitEnvironmentSourceSets()
+	// Widened vanilla members, each with its reason in the file.
+	accessWidenerPath = file("src/main/resources/deepcharter.classtweaker")
 
 	mods {
 		register("deepcharter") {
@@ -113,11 +115,15 @@ repositories {
 	}
 }
 
-// Stands in for FAIL_ON_PROJECT_REPOS (see settings.gradle.kts): only Loom's repositories and GeckoLib's may exist.
+// Stands in for FAIL_ON_PROJECT_REPOS (see settings.gradle.kts): only Loom's repositories and GeckoLib's may exist. On GitHub
+// Actions, gradle/ci-central-mirror.init.gradle.kts gives Central's repository the URL of Google's mirror of it (ADR 0101),
+// so there Central itself is refused and only the mirror is allowed: a rewrite that stops matching fails here, not silently.
+// Elsewhere the mirror is refused, so the init script reaching a dev machine fails here too.
+val onGitHubActions = providers.environmentVariable("GITHUB_ACTIONS").orNull == "true"
 val allowedRepositoryUrls = setOf(
 	"https://maven.fabricmc.net/",
 	"https://libraries.minecraft.net/",
-	"https://repo.maven.apache.org/maven2/",
+	if (onGitHubActions) "https://maven-central.storage-download.googleapis.com/maven2/" else "https://repo.maven.apache.org/maven2/",
 	"https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/",
 )
 gradle.projectsEvaluated {
@@ -127,7 +133,8 @@ gradle.projectsEvaluated {
 	}
 	check(unexpected.isEmpty()) {
 		"Project repositories outside Loom's own and GeckoLib's: ${unexpected.map { it.name }}. " +
-			"Declare dependencies from Fabric's, Mojang's or Maven Central only, or audit the new repository and list it here."
+			"Declare dependencies from Fabric's, Mojang's or Maven Central only, or audit the new repository and list it here. " +
+			"On GitHub Actions, Central must be the mirror ADR 0101 names."
 	}
 }
 
@@ -143,10 +150,10 @@ val fabricApiModules = mapOf(
 		"fabric-registry-sync-v0", "fabric-resource-loader-v1",
 	),
 	"clientImplementation" to listOf(
-		"fabric-api-base", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0", "fabric-item-api-v1",
-		"fabric-key-mapping-api-v1", "fabric-lifecycle-events-v1", "fabric-menu-api-v1", "fabric-model-loading-api-v1",
-		"fabric-networking-api-v1", "fabric-particles-v1", "fabric-renderer-api-v1", "fabric-rendering-v1",
-		"fabric-resource-loader-v1", "fabric-screen-api-v1",
+		"fabric-api-base", "fabric-creative-tab-api-v1", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0",
+		"fabric-item-api-v1", "fabric-key-mapping-api-v1", "fabric-lifecycle-events-v1", "fabric-menu-api-v1",
+		"fabric-model-loading-api-v1", "fabric-networking-api-v1", "fabric-particles-v1", "fabric-renderer-api-v1",
+		"fabric-rendering-v1", "fabric-resource-loader-v1", "fabric-screen-api-v1",
 	),
 	"gametestImplementation" to listOf(
 		"fabric-api-base", "fabric-client-gametest-api-v1", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0",
@@ -234,6 +241,12 @@ val checkGeckoLib = tasks.register<CheckGeckoLib>("checkGeckoLib") {
 }
 tasks.named("jar") { dependsOn(checkGeckoLib) }
 
+// CREDITS.md ships in the jar as CREDITS_<archive name>, the way Loom names a LICENSE: the recordings' licence asks for their credit to travel with them.
+tasks.jar {
+	val credits = "CREDITS_${project.base.archivesName.get()}"
+	from("CREDITS.md") { rename { credits } }
+}
+
 // The same check on the copy that ships: the jar nested in our mod jar must be the one jar there, with the pinned sha512 (audit
 // condition 4: Loom's include must not add a second jar or a different one).
 abstract class CheckNestedGeckoLib : DefaultTask() {
@@ -273,11 +286,15 @@ apply(from = "gradle/entity-query-gate.gradle.kts")
 apply(from = "gradle/fixed-pos-gate.gradle.kts")
 apply(from = "gradle/record-holder-gate.gradle.kts")
 apply(from = "gradle/keep-clear-gate.gradle.kts")
+apply(from = "gradle/orphan-comment-gate.gradle.kts")
 apply(from = "gradle/null-marked-gate.gradle.kts")
 apply(from = "gradle/gametest.gradle.kts")
 apply(from = "gradle/gametest-preset.gradle.kts")
 apply(from = "gradle/colour-gate.gradle.kts")
+apply(from = "gradle/input-literal-gate.gradle.kts")
 apply(from = "gradle/test-only-gate.gradle.kts")
+apply(from = "gradle/constant-param-gate.gradle.kts")
+apply(from = "gradle/enum-switch-gate.gradle.kts")
 apply(from = "gradle/clientlock.gradle.kts")
 apply(from = "gradle/lambdynamiclights.gradle.kts")
 apply(from = "gradle/resolve-client-runtime.gradle.kts")
@@ -308,7 +325,7 @@ tasks.withType<Checkstyle>().configureEach {
 // Python, not files, so no target here touches them.
 spotless {
 	java {
-		target("src/**/*.java", "gradle/OomProbe.java", "tools/TestOnlyGate.java")
+		target("src/**/*.java", "gradle/OomProbe.java", "tools/TestOnlyGate.java", "tools/ConstantParamGate.java", "tools/EnumSwitchGate.java")
 		palantirJavaFormat(libs.versions.palantirJavaFormat.get())
 		removeUnusedImports()
 	}
@@ -316,7 +333,7 @@ spotless {
 
 // RELAXED: Error Prone's unused checks would flag every injector method and its Mixin-supplied parameters; any other unused code is still reported.
 val mixinHandlers = (listOf("Inject", "Redirect", "ModifyArg", "ModifyArgs", "ModifyVariable", "ModifyConstant")
-	.map { "org.spongepowered.asm.mixin.injection.$it" } + "com.llamalad7.mixinextras.injector.ModifyExpressionValue")
+	.map { "org.spongepowered.asm.mixin.injection.$it" } + listOf("ModifyExpressionValue", "wrapoperation.WrapOperation").map { "com.llamalad7.mixinextras.injector.$it" })
 	.joinToString(",")
 
 // Error Prone runs on every source set; -Werror fails on any warning.
@@ -335,6 +352,10 @@ tasks.withType<JavaCompile>().configureEach {
 		disable("EnumOrdinal")
 		// RELAXED: enums hold Minecraft types (SoundEvent, Identifier, MapCodec) that cannot carry @Immutable
 		disable("ImmutableEnumChecker")
+		// A switch over an enum names every constant: adding a member must fail at each switch that forgot it. These two cover a switch with no
+		// default and an unreachable default; checkEnumSwitchGate (gradle/enum-switch-gate.gradle.kts) covers a default that hides a constant.
+		check("MissingCasesInEnumSwitch", CheckSeverity.ERROR)
+		check("UnnecessaryDefaultInEnumSwitch", CheckSeverity.ERROR)
 		// Only @NullMarked packages are checked: a feature package opts in with a package-info.java (deepcharter-conventions)
 		check("NullAway", CheckSeverity.ERROR)
 		option("NullAway:OnlyNullMarked", "true")

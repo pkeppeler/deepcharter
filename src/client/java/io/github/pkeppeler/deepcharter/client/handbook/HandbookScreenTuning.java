@@ -34,7 +34,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param stampColor     rubber stamps
  * @param redactionColor the black bar over a redacted word
  * @param faintInkColor  page numbers and other quiet print
- * @param hoverFillColor a tab or button under the mouse or focus
+ * @param hoverFillColor a tab, button or anything else a click opens, under the mouse or focus
  * @param disabledInkColor the label of a button that cannot be pressed
  */
 public record HandbookScreenTuning(

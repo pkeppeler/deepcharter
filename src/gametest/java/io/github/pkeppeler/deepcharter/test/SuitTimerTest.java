@@ -35,6 +35,8 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -51,7 +53,8 @@ public class SuitTimerTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 600;
     private static final float EPSILON = 0.001f;
-    private static final float CAPACITY = SuitTuning.DEFAULT.capacity();
+    private static final float CAPACITY = SuitTuning.DEFAULT.capacities().getFirst();
+    private static final float MAX_CAPACITY = SuitTuning.DEFAULT.maxCapacity();
     /** What a stock suit pays each second in the unbuilt depth, dry: 0.5 + 0.5 * 5 + 0.5 * 5. */
     private static final float DRY_RATE = 5.5f;
     /** As above while wet: the flooding term adds 1.0 * 5. */
@@ -435,9 +438,10 @@ public class SuitTimerTest {
     /** What is saved, and what goes to the client, is pinned by literal values. */
     @GameTest
     public void theSuitsSavedAndSentFormsArePinned(GameTestHelper helper) {
-        Codec<Versioned<SuitState>> disk = Versioned.codec(SuitState.VERSION, SuitState.BODY);
-        expect(helper, SuitState.VERSION == 1, "the first version is 1");
+        Codec<Versioned<SuitState>> disk = SuitState.DISK;
+        expect(helper, SuitState.VERSION == 2, "the wire grew a shortfall in version 2");
 
+        // A v1 save, from before the wire carried a shortfall, still loads: the saved body did not change.
         CompoundTag saved = new CompoundTag();
         saved.putInt("version", 1);
         saved.putFloat("reserve", 42.5f);
@@ -445,22 +449,33 @@ public class SuitTimerTest {
         Versioned<SuitState> loaded = disk.parse(NbtOps.INSTANCE, saved).getOrThrow();
         expect(
                 helper,
-                loaded.equals(Versioned.of(new SuitState(42.5f, true, Mode.INERT, 0, 0f))),
-                "the saved form should load as a reserve and a flag, it loaded %s",
+                loaded.equals(Versioned.of(new SuitState(42.5f, true, Mode.INERT, 0f, 0))),
+                "a v1 save should load as a reserve and a flag, it loaded %s",
                 loaded);
+        CompoundTag savedV2 = saved.copy();
+        savedV2.putInt("version", 2);
+        expect(
+                helper,
+                disk.parse(NbtOps.INSTANCE, savedV2).getOrThrow().equals(loaded),
+                "a v2 save of the same body should load the same");
+        expect(
+                helper,
+                disk.encodeStart(NbtOps.INSTANCE, loaded).getOrThrow().equals(savedV2),
+                "a loaded v1 save is written back as v2, the same body");
 
-        Tag written = disk.encodeStart(NbtOps.INSTANCE, Versioned.of(new SuitState(10f, false, Mode.LEAKING, 3, 2.75f)))
+        Tag written = disk.encodeStart(
+                        NbtOps.INSTANCE, Versioned.of(new SuitState(10f, false, Mode.LEAKING, 2.75f, 0x11)))
                 .getOrThrow();
         CompoundTag expected = new CompoundTag();
         expected.putFloat("reserve", 10f);
-        expected.putInt("version", 1);
+        expected.putInt("version", 2);
         expect(
                 helper,
                 written.equals(expected),
                 "a mode, axes and rate are never saved, only the reserve and, once set, the flag, it wrote %s",
                 written);
         Tag explainedWritten = disk.encodeStart(
-                        NbtOps.INSTANCE, Versioned.of(new SuitState(10f, true, Mode.INERT, 0, 0f)))
+                        NbtOps.INSTANCE, Versioned.of(new SuitState(10f, true, Mode.INERT, 0f, 0)))
                 .getOrThrow();
         expected.putBoolean("explained", true);
         expect(
@@ -469,15 +484,22 @@ public class SuitTimerTest {
                 "the flag is written once set, it wrote %s",
                 explainedWritten);
 
-        // A reserve out of range, or not a number, reads as a sane one: NaN as a full suit, the rest clamped.
+        // A reserve out of range, or not a number, reads as a sane one: NaN as a full suit, the rest clamped to
+        // the largest
+        // capacity any suit has (the suit's own capacity clamps it further each second). 300 s, an air tier 2 suit's,
+        // is no
+        // longer cut to a stock suit's 180.
         Map<Float, Float> sane = new LinkedHashMap<>();
-        sane.put(Float.NaN, CAPACITY);
+        sane.put(Float.NaN, MAX_CAPACITY);
         sane.put(-5f, 0f);
-        sane.put(Float.POSITIVE_INFINITY, CAPACITY);
-        sane.put(CAPACITY + 1f, CAPACITY);
+        sane.put(Float.POSITIVE_INFINITY, MAX_CAPACITY);
+        sane.put(CAPACITY + 1f, CAPACITY + 1f);
+        sane.put(300f, 300f);
+        sane.put(MAX_CAPACITY, MAX_CAPACITY);
+        sane.put(MAX_CAPACITY + 1f, MAX_CAPACITY);
         for (Map.Entry<Float, Float> entry : sane.entrySet()) {
             CompoundTag odd = new CompoundTag();
-            odd.putInt("version", 1);
+            odd.putInt("version", 2);
             odd.putFloat("reserve", entry.getKey());
             Versioned<SuitState> read = disk.parse(NbtOps.INSTANCE, odd).getOrThrow();
             expect(
@@ -510,41 +532,79 @@ public class SuitTimerTest {
                 "the modes are on the wire in this order, add at the end only");
 
         ByteBuf wire = Unpooled.buffer();
-        SuitState sent = new SuitState(100.25f, true, Mode.SHELTERED, 5, 0f);
+        // heat short by 2 (bits 0 to 3), pressure by 3 (bits 4 to 7): 0x32
+        SuitState sent = new SuitState(100.25f, true, Mode.EXPOSED, 0.5f, 0x32);
         SuitState.STREAM.encode(wire, sent);
-        // reserve (float), explained (boolean), mode (var int), axes (var int), rate (float)
+        // reserve (float), explained (boolean), mode (var int), rate (float), shortfall (var int); the axes are derived
+        // from it
         byte[] bytes = new byte[wire.readableBytes()];
         wire.getBytes(0, bytes);
         expect(
                 helper,
-                bytes.length == 4 + 1 + 1 + 1 + 4
+                bytes.length == 4 + 1 + 1 + 4 + 1
                         && bytes[4] == 1
-                        && bytes[5] == (byte) Mode.SHELTERED.ordinal()
-                        && bytes[6] == 5,
-                "the wire body is reserve, flag, mode, axes, rate, it was %s bytes: %s",
+                        && bytes[5] == (byte) Mode.EXPOSED.ordinal()
+                        && bytes[10] == 0x32,
+                "the wire body is reserve, flag, mode, rate, shortfall, it was %s bytes: %s",
                 bytes.length,
                 java.util.Arrays.toString(bytes));
-        expect(helper, SuitState.STREAM.decode(wire).equals(sent), "the wire body should round-trip");
+        SuitState received = SuitState.STREAM.decode(wire);
+        expect(helper, received.equals(sent), "the wire body should round-trip");
+        expect(
+                helper,
+                received.axes() == mask(RatingAxis.HEAT, RatingAxis.PRESSURE),
+                "the axes are derived from the shortfall, heat and pressure, they read %s",
+                received.axes());
+
+        // The attachment's wire form: the version, then the body. A build that reads another version throws,
+        // which disconnects
+        // its client (the rule of m2-rules.md), and an unreadable value goes as a marker.
+        StreamCodec<ByteBuf, Versioned<SuitState>> sync = Versioned.streamCodec(SuitState.VERSION, SuitState.STREAM);
+        ByteBuf versioned = Unpooled.buffer();
+        sync.encode(versioned, Versioned.of(sent));
+        expect(
+                helper,
+                versioned.getByte(0) == 2,
+                "the wire carries version 2 first, it carried %s",
+                versioned.getByte(0));
+        expect(helper, sync.decode(versioned).equals(Versioned.of(sent)), "the synced suit should round-trip");
+        ByteBuf old = Unpooled.buffer();
+        ByteBufCodecs.VAR_INT.encode(old, 1);
+        SuitState.STREAM.encode(old, new SuitState(100.25f, true, Mode.SHELTERED, 0f, 0));
+        boolean refused;
+        try {
+            sync.decode(old);
+            refused = false;
+        } catch (IllegalStateException mismatch) {
+            refused = true;
+        }
+        expect(helper, refused, "a v1 wire value must throw on a v2 client, not be read as a v2 body");
+        ByteBuf marker = Unpooled.buffer();
+        sync.encode(marker, new Versioned.Unreadable<>(new CompoundTag()));
+        expect(
+                helper,
+                sync.decode(marker) instanceof Versioned.Unreadable<SuitState>,
+                "an unreadable suit goes over as a marker and arrives unreadable");
 
         expect(
                 helper,
-                SuitTuning.DEFAULT.leakShare() == 0.5f && SuitTuning.DEFAULT.capacity() == 180f,
-                "the docs say a hall leaks at half and the suit holds 180 s");
+                SuitTuning.DEFAULT.leakShare() == 0.5f
+                        && SuitTuning.DEFAULT.capacities().equals(List.of(180f, 240f, 300f, 360f)),
+                "the docs say a hall leaks at half and the suit holds 180, 240, 300 or 360 s");
         helper.succeed();
     }
 
     /** The first drain's line names the axes that are short; where none is (a row that asks only flooding, dry), it stands alone. */
     @GameTest
     public void theFirstDrainLineNamesTheShortAxesOrStandsAlone(GameTestHelper helper) {
-        Component named = new SuitState(100f, false, Mode.EXPOSED, mask(RatingAxis.HEAT, RatingAxis.PRESSURE), 1.5f)
-                .exceededLine();
+        Component named = new SuitState(100f, false, Mode.EXPOSED, 1.5f, 0x11).exceededLine();
         expect(
                 helper,
                 key(named).equals("message.deepcharter.suit.exceeded")
                         && ((TranslatableContents) named.getContents()).getArgs().length == 1,
                 "a drain on heat and pressure names them, it said %s",
                 named);
-        Component bare = new SuitState(100f, false, Mode.EXPOSED, 0, 0.5f).exceededLine();
+        Component bare = new SuitState(100f, false, Mode.EXPOSED, 0.5f, 0).exceededLine();
         expect(
                 helper,
                 key(bare).equals("message.deepcharter.suit.draining")

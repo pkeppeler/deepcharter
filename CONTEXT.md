@@ -71,6 +71,10 @@ _Avoid_: void, empty space
 The boundary between two stacked dimensions on the depth axis, such as the campaign world and the first deep dimension, or the join to the uncharted worlds. It is a storage boundary, not a layer boundary: it can fall mid-layer, or coincide with a layer boundary and carry its crust, the seam crust (grained). How seamless it must be is open.
 _Avoid_: portal, loading screen, dimension seam
 
+**Arrival area**:
+The radius-4 patch of the next dimension that the server loads under a vehicle approaching a seam, before it crosses. It is held by a timed `deepcharter:seam_arrival` ticket and lapses on its own once the approach ends.
+_Avoid_: arrival pocket (the pocket is the carved air the fallback crossing lands in)
+
 **Grained crust**:
 A crust with a vertical grain that flexes on a slow pulse. Its rules are in the SPEC. Working name.
 _Avoid_: no-build zone
@@ -154,7 +158,7 @@ The Behemoth parked and unfolded into a small walkable temporary outpost.
 _Avoid_: deploy, camp
 
 **Stranded**:
-A pod that has run out of fuel: powered off and dark until rescued or given a reserve tank.
+A pod that has run out of fuel: powered off and dark until refuelled (a fuel item or a reserve tank) or towed home by a crewmate. Nobody else comes for it.
 _Avoid_: dead, out of fuel
 
 **Wreck**:
@@ -334,11 +338,11 @@ A transmission repeated once a day by a wreck's beacon, carrying a dead crew's l
 _Avoid_: echo, recording
 
 **Controlling Interest**:
-The deed the final boss offers the charter. Signing it or burning it ends the charter's story.
+The deed the final boss offers the charter. The Director alone can sign it; the whole online crew together can burn it. Either ends the charter's story.
 _Avoid_: contract (means the Employment Contract)
 
 **Renunciation**:
-Throwing the Controlling Interest into the Furnace. The true ending: it kills the final boss and costs the charter its whole account.
+Burning the Controlling Interest in the Furnace, which takes it only when every online charter member lets go together. The true ending: it kills the final boss and costs the charter its whole account.
 _Avoid_: good ending, sacrifice
 
 **Unnumbered Lamp**:

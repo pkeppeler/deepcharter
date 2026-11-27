@@ -20,13 +20,17 @@
 			"io.github.pkeppeler.deepcharter.client.DeepCharterClient"
 		]
 	},
+	"accessWidener": "deepcharter.classtweaker",
 	"mixins": [
 		"deepcharter.mixins.json",
 		"deepcharter.pod.mixins.json",
 		"deepcharter.handbook.mixins.json",
 		"deepcharter.handbook.client.mixins.json",
 		"deepcharter.colony.client.mixins.json",
-		"deepcharter.layer.mixins.json"
+		"deepcharter.layer.mixins.json",
+		"deepcharter.layer.client.mixins.json",
+		"deepcharter.continuity.mixins.json",
+		"deepcharter.continuity.client.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.19.5",

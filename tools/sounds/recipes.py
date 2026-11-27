@@ -1,4 +1,4 @@
-"""Every sound the mod ships, as a recipe: a function that makes a stereo Clip from nothing but arithmetic and a fixed seed.
+"""Every sound the mod ships, as a recipe: a function that makes a Clip from nothing but arithmetic and a fixed seed.
 
 soundgen.py renders each recipe, hashes its PCM into manifest.json and encodes it to
 src/main/resources/assets/deepcharter/sounds/<name>.ogg. The names are the paths `sounds.json` points at. The sounds are original: no
@@ -183,19 +183,19 @@ HYMNS = {
 }
 
 
-def _hymn(seed, play):
-    """The motif played on one reed, then bent by how deep it is."""
+def _hymn(seed, play, notes=HYMN):
+    """The motif (or the opening `notes` of it) played on one reed, then bent by how deep it is."""
     rng = random.Random(seed)
     sin = math.sin
     harmonic_weights = [(h, h**1.1) for h in range(1, 9)]
     beat = play["beat"]
-    length = sum(beats for _, beats in HYMN) * beat + 0.5
+    length = sum(beats for _, beats in notes) * beat + 0.5
     count = dsp.seconds(length)
     depth, rate = play["wobble"]
     wobble = [depth * v for v in dsp.sine(count, rate)]
     out = [0.0] * count
     at = 0.0
-    for step, beats in HYMN:
+    for step, beats in notes:
         cents = play["shift"] * 100 + rng.uniform(-1, 1) * play["drift"]
         freq = A3 * 2 ** ((step * 100 + cents) / 1200)
         start = dsp.seconds(at)
@@ -222,6 +222,12 @@ def hymn_layer_1():
 
 def hymn_layer_2():
     return _hymn(2499, HYMNS["layer_2"])
+
+
+def hymn_chapter():
+    """A handbook chapter is done: the hymn's first three notes on the colony reed, rising and held on the step where the whole motif
+    stalls, with a shorter room, so it is over in a little over four seconds."""
+    return _hymn(2520, dict(HYMNS["colony"], tail=1.0), notes=((0, 1.0), (3, 1.0), (5, 1.5)))
 
 
 def _harmonics(count, length, base, top, falloff):
@@ -347,6 +353,25 @@ def power_on():
     return dsp.normalize(dsp.widen(dsp.plus(dsp.scale(click, 1.5), dsp.times(dsp.scale(hum, 0.3), dsp.fade(rise, 0.0, 0.4))), 5), 0.6)
 
 
+def terminal_online():
+    """A machine comes online: soft square tones in the terminal's voice (`_blips`) stack upward, a step apart, into a held G major
+    chord over the cabinet's hum, and ring away. It opens on 0.7 seconds of quiet, the length of `power_on`'s click and hum-up, so the
+    server plays both at once and hears "power on, then chord" without a timer."""
+    notes = (392.0, 493.88, 587.33, 783.99)
+    step, hold = 0.12, 1.1
+    count = dsp.seconds(step * (len(notes) - 1) + hold)
+    out = [0.0] * count
+    for n, freq in enumerate(notes):
+        start = dsp.seconds(step * n)
+        span = count - start
+        tone = [math.tanh(2 * v) for v in dsp.sine(span, freq)]
+        rung = dsp.times(dsp.fade(tone, 0.01, 0.5), dsp.decay(span, 1.5))
+        for i, v in enumerate(rung):
+            out[start + i] += v
+    quiet = [0.0] * dsp.seconds(0.7)
+    return dsp.normalize(dsp.widen(quiet + dsp.filt(out, "lp", 3500, 0.7), 5), 0.5)
+
+
 def terminal_hum():
     """A terminal waiting: a cabinet hum, a thin whine from the tube and the odd relay tick."""
     length = 8.0
@@ -420,6 +445,134 @@ def ui_refused():
     return _blips(((220, 0.1), (165, 0.2)), 8)
 
 
+def _put(out, at, signal, gain=1.0):
+    """Adds `signal` into `out` from `at` seconds, cut off where `out` ends."""
+    start = dsp.seconds(at)
+    for i, v in enumerate(signal[: max(0, len(out) - start)]):
+        out[start + i] += v * gain
+
+
+def _soft(count, attack):
+    """A gain that rises over the first `attack` seconds, so a hit has no click at its start."""
+    head = dsp.seconds(attack)
+    return [min(1.0, i / head) for i in range(count)]
+
+
+def _hit(signal, tau, attack):
+    """`signal` dying away with time constant `tau` after a soft start."""
+    return dsp.times(dsp.times(signal, dsp.decay(len(signal), tau)), _soft(len(signal), attack))
+
+
+def _stone(rng, freq, tau):
+    """One stone: a dull ringing that dies at once, a little grit in it."""
+    count = dsp.seconds(6 * tau)
+    grit = dsp.filt(dsp.noise(rng, count), "lp", 2200, 0.7)
+    body = [a + 0.5 * b for a, b in zip(dsp.sine(count, freq), grit)]
+    return _hit(body, tau, 0.002)
+
+
+def _stones(rng, out, times, band, tau, gain):
+    """Stones at the given times (seconds), each at a pitch drawn between `band` Hz and a loudness drawn up to `gain(at)`."""
+    low, high = band
+    for at in times:
+        freq = low * (high / low) ** rng.random()
+        _put(out, at, _stone(rng, freq, tau * (0.6 + 0.8 * rng.random())), gain(at) * (0.3 + 0.7 * rng.random()))
+
+
+def _sub(count, start, end, tau, attack):
+    """A body blow felt more than heard: a sine sliding from `start` to `end` Hz as it dies, with a soft start."""
+    pitch = [end + (start - end) * math.exp(-i / RATE / 0.25) for i in range(count)]
+    body = [math.sin(p) for p in dsp.phase_of(pitch)]
+    return _hit(body, tau, attack)
+
+
+def breach_rumble():
+    """A crust giving way, in three parts. The rock strains (a low groan that climbs for under a second, dry ticks, creaks), gives (a
+    muffled sub-bass fracture and a dry crackle, nothing bright) and the pod falls through (a dark cave, a trickle of debris, one faint hull
+    ping, a low dissonant tone that swells and dies into near silence)."""
+    rng = random.Random(2520)
+    dry = 4.6
+    mix = [0.0] * dsp.seconds(dry)
+    strain_count = dsp.seconds(1.15)
+    held = dsp.seconds(1.0)
+    wobble = cycles(strain_count, 1.15, 6)
+    freqs = [f * (1 + 0.02 * w) for f, w in zip(dsp.ramp(strain_count, 44, 74), wobble)]
+    saw = [(p / dsp.TAU) % 1.0 * 2 - 1 for p in dsp.phase_of(freqs)]
+    groan = dsp.filt(saw, "bp", dsp.ramp(strain_count, 110, 320), 3.5)
+    load = [(i / held) ** 1.8 if i < held else max(0.0, 1 - (i - held) / dsp.seconds(0.15)) for i in range(strain_count)]
+    _put(mix, 0.0, dsp.times(groan, load), 2.2)
+    _put(mix, 0.1, _creak(2521, 1.0, (260, 150), (30, 12), 10).left, 0.2)
+    for at in (0.18, 0.34, 0.41, 0.62, 0.71, 0.83):
+        tick = dsp.times(dsp.filt(dsp.noise(rng, dsp.seconds(0.04)), "lp", 1800, 0.7), dsp.decay(dsp.seconds(0.04), 0.006))
+        _put(mix, at, tick, 1.6 * (0.5 + rng.random()))
+    give = 1.05
+    _put(mix, give, _sub(dsp.seconds(2.2), 62, 26, 0.45, 0.012), 1.0)
+    thud = dsp.filt(dsp.noise(rng, dsp.seconds(0.9)), "lp", 120, 0.7)
+    _put(mix, give, _hit(thud, 0.18, 0.006), 5.0)
+    _stones(rng, mix, [give + 0.03 + 0.5 * rng.random() ** 1.5 for _ in range(14)], (500, 1400), 0.012, lambda at: 0.28)
+    cave = dsp.seconds(3.4)
+    dark = dsp.filt(dsp.noise(rng, cave), "lp", dsp.ramp(cave, 220, 70), 0.7)
+    _put(mix, 1.15, _hit(dark, 1.3, 0.3), 4.0)
+    _stones(rng, mix, [1.5 + 2.9 * rng.random() ** 1.5 for _ in range(55)], (700, 2600), 0.02, lambda at: 0.14 * (1 - (at - 1.5) / 3.2))
+    for ratio, gain, tau in ((1.0, 1.0, 0.9), (2.76, 0.5, 0.5), (5.4, 0.3, 0.25)):
+        ping = dsp.times(dsp.sine(dsp.seconds(1.8), 640 * ratio), dsp.decay(dsp.seconds(1.8), tau))
+        _put(mix, 2.9, dsp.times(ping, _soft(len(ping), 0.002)), 0.06 * gain)
+    tone_count = dsp.seconds(3.1)
+    tone = dsp.plus(
+        dsp.scale(dsp.sine(tone_count, 55.0), 0.5), dsp.scale(dsp.sine(tone_count, 58.3), 0.4), dsp.scale(dsp.sine(tone_count, 77.8), 0.3)
+    )
+    rise = [math.sin(math.pi * (i / (tone_count - 1)) ** 0.6) ** 2 for i in range(tone_count)]
+    _put(mix, 1.5, dsp.times(tone, rise), 0.35)
+    cavern = dsp.reverb(dsp.filt(mix, "lp", 3000, 0.7), 1.0, 0.4)
+    return dsp.normalize(dsp.widen(dsp.fade(cavern, 0.0, 1.0), 19), 0.8)
+
+
+def cave_in():
+    """Rock coming down on a corridor: a muffled thump, a heavy rockfall of blocks and stones, two lesser thuds as the big ones land and
+    a thin trickle of debris. Dull throughout; no blast."""
+    rng = random.Random(2522)
+    dry = 2.7
+    mix = [0.0] * dsp.seconds(dry)
+    _put(mix, 0.0, _sub(dsp.seconds(1.6), 70, 30, 0.35, 0.01), 1.0)
+    thud = dsp.filt(dsp.noise(rng, dsp.seconds(0.6)), "lp", 200, 0.7)
+    _put(mix, 0.0, _hit(thud, 0.15, 0.008), 4.0)
+    _put(mix, 0.55, _sub(dsp.seconds(1.2), 55, 28, 0.3, 0.01), 0.5)
+    _put(mix, 0.95, _sub(dsp.seconds(1.0), 48, 26, 0.25, 0.01), 0.35)
+    count = dsp.seconds(2.2)
+    rumble = dsp.filt(dsp.noise(rng, count), "lp", dsp.ramp(count, 260, 100), 0.7)
+    _put(mix, 0.05, _hit(rumble, 0.8, 0.1), 3.0)
+    _stones(rng, mix, [0.04 + 1.9 * rng.random() ** 1.6 for _ in range(170)], (180, 1400), 0.03, lambda at: 0.4 * (1 - at / 2.2))
+    _stones(rng, mix, [0.05 + 0.9 * rng.random() for _ in range(10)], (120, 400), 0.08, lambda at: 0.6)
+    _stones(rng, mix, [1.3 + 1.2 * rng.random() for _ in range(40)], (600, 2400), 0.02, lambda at: 0.1 * (1 - (at - 1.3) / 1.3))
+    room = dsp.reverb(dsp.filt(mix, "lp", 3500, 0.7), 1.0, 0.3)
+    faded = dsp.fade(room, 0.0, 0.9)
+    return dsp.normalize(Clip(faded, list(faded)), 0.8)
+
+
+def needle():
+    """The gramophone needle jumping back a groove (#1337): a short bright scrape and a thump, each pass of the skip."""
+    rng = random.Random(1337)
+    count = dsp.seconds(0.25)
+    scrape = dsp.times(dsp.filt(dsp.filt(dsp.noise(rng, count), "hp", 400, 0.7), "lp", 6000, 0.7), dsp.decay(count, 0.004))
+    thump = dsp.times(dsp.filt(dsp.noise(rng, count), "lp", 500, 0.7), dsp.decay(count, 0.012))
+    return dsp.normalize(dsp.widen(dsp.plus(scrape, dsp.scale(thump, 0.6)), 3), 0.7)
+
+
+def lamp_out():
+    """A crewmate's lamp going out (#1337): the switch's two clicks and the filament ticking as it cools."""
+    rng = random.Random(1338)
+    count = dsp.seconds(0.35)
+    out = [0.0] * count
+    for at, level in ((0.0, 1.0), (0.045, 0.55), (0.16, 0.12), (0.27, 0.07)):
+        start = dsp.seconds(at)
+        length = count - start
+        click = dsp.times(dsp.filt(dsp.noise(rng, length), "bp", 3200, 1.4), dsp.decay(length, 0.003))
+        for i, v in enumerate(click):
+            out[start + i] += v * level
+    # Mono (MONO below): the lamp plays where the crewmate fell, and Minecraft attenuates and pans mono sounds only.
+    return dsp.normalize(dsp.Clip(out, list(out)), 0.6)
+
+
 def rest():
     """Three seconds of silence: the placeholder of the layers' music slots, so the drone beds are all a layer plays until a score is dropped in."""
     count = dsp.seconds(3.0)
@@ -438,6 +591,7 @@ RECIPES = {
     "hymn/colony": hymn_colony,
     "hymn/layer_1": hymn_layer_1,
     "hymn/layer_2": hymn_layer_2,
+    "hymn/chapter": hymn_chapter,
     "pod/engine_idle_loop": engine_idle,
     "pod/engine_drive_loop": engine_drive,
     "pod/engine_drill_side_loop": engine_drill_side,
@@ -448,6 +602,7 @@ RECIPES = {
     "drill/dig_3": dig_3,
     "drill/blocked": blocked,
     "terminal/power_on": power_on,
+    "terminal/online": terminal_online,
     "terminal/hum_loop": terminal_hum,
     "ui/typewriter_1": typewriter_1,
     "ui/typewriter_2": typewriter_2,
@@ -458,8 +613,16 @@ RECIPES = {
     "ui/sale": ui_sale,
     "ui/error": ui_error,
     "ui/refused": ui_refused,
+    "breach/rumble": breach_rumble,
+    "layer/cave_in": cave_in,
     "music/rest": rest,
+    "continuity/needle": needle,
+    "continuity/lamp_out": lamp_out,
 }
+
+# Recipes the game plays at a place in the world: written as mono Vorbis, because Minecraft attenuates and pans mono sounds only. Their
+# recipe makes a Clip whose two channels are the same.
+MONO = frozenset({"continuity/lamp_out", "layer/cave_in"})
 
 
 @cache

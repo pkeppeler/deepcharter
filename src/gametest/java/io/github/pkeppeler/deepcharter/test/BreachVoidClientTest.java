@@ -1,11 +1,13 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.ScreenProjection;
 import io.github.pkeppeler.deepcharter.test.support.ShaftViews;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
@@ -20,13 +22,19 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.SectionPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.commands.FillBiomeCommand;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -45,6 +53,12 @@ import org.slf4j.LoggerFactory;
  * of layer 2, and to the bottom of the world, with and without night vision. The client draws nothing past the render distance, and the
  * shaft's walls fade into the fog before they end there, so the open middle of the picture must match the walls' fogged ends in the
  * same frame: no square of black, and no sky, with an edge against them.
+ *
+ * <p>The bottom of the world is the unbuilt depth, whose fog is black since #1192, so the void would read dark there with no cover at
+ * all, and the breach shaft's box would match its walls' black ends trivially. The #333 room and column, and the air round the breach
+ * shaft's eye, are given a layer's biome, whose fog is not black and which night vision lifts. Without {@code BreachVoidCover} the
+ * far-above and night-vision #333 views fail; the breach shaft's view checks the lifted cover's edge against that fog, not whether
+ * the cover is there.
  */
 public class BreachVoidClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(BreachVoidClientTest.class);
@@ -62,12 +76,21 @@ public class BreachVoidClientTest implements FabricClientGameTest {
     private static final int DARK = 0x10;
     /** A lit block shows a pixel brighter than this in some channel. */
     private static final int LIT = 0x40;
+    /**
+     * The biome given round the #333 room and the breach shaft: a zone of layer 1, whose fog ({@code #1e1610}) is over {@link #DARK} on its
+     * red channel, and which night vision lifts to full brightness. Without the cover the void reads in it.
+     */
+    private static final ResourceKey<Biome> NOT_BLACK_FOG =
+            ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "deep_claim"));
+    /** The biome box reaches this far past the blocks a view holds: past the camera's blend of the biomes round it. */
+    private static final int BIOME_MARGIN = 16;
+    /** The biome box is filled this many rows at a time, under {@code fillbiome}'s block limit. */
+    private static final int BIOME_SLAB = 8;
     /** The patch of pixels read at the hole, either side of its middle. */
     private static final int PATCH = 6;
     /** A lamp (glowstone) stands on the room floor this far out from the middle, at the four compass points. */
     private static final int LAMP_OFFSET = 6;
 
-    private static final int EDGE_MARGIN = 20;
     /** How far from its predicted pixel a lit landmark may show. */
     private static final int WINDOW = 30;
 
@@ -121,6 +144,11 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                             .computeOnServer(
                                     server -> TestLayers.level(server, layer).dimension());
                     Vec3 hole = new Vec3(X + 0.5, minY + 0.5, Z + 0.5);
+                    ClientLight.Box room = ClientLight.Box.around(
+                            BlockPos.containing(hole), ROOM_RADIUS, 0, SHAFT_DEPTH + COLUMN_HEIGHT);
+                    singleplayer
+                            .getServer()
+                            .runOnServer(server -> giveAFogThatIsNotBlack(TestLayers.level(server, layer), room));
                     View[] views = {
                         new View(
                                 "far-above", new Vec3(X + 0.5, minY + SHAFT_DEPTH + COLUMN_HEIGHT - 4, Z + 0.5), false),
@@ -137,24 +165,22 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                             String name =
                                     "breach-void-world-bottom-" + view.name() + (nightVision ? "-night-vision" : "");
                             Path shot = lookUntilLit(
-                                    context,
-                                    singleplayer,
-                                    level,
-                                    view.eye(),
-                                    hole,
-                                    ClientLight.Box.around(
-                                            BlockPos.containing(hole), ROOM_RADIUS, 0, SHAFT_DEPTH + COLUMN_HEIGHT),
-                                    landmarks(minY),
-                                    false,
-                                    name);
+                                    context, singleplayer, level, view.eye(), hole, room, landmarks(minY), false, name);
                             holeProblem(read(shot), name).ifPresent(failures::add);
                         }
                     }
                 }
-                List<ShaftViews.Shaft> shafts = singleplayer
-                        .getServer()
-                        .computeOnServer(
-                                server -> ShaftViews.open(TestLayers.level(server, 1), X, Z + DEEP_SHAFTS_SOUTH));
+                List<ShaftViews.Shaft> shafts = singleplayer.getServer().computeOnServer(server -> {
+                    ServerLevel campaign = TestLayers.level(server, 1);
+                    List<ShaftViews.Shaft> opened = ShaftViews.open(campaign, X, Z + DEEP_SHAFTS_SOUTH);
+                    for (ShaftViews.Shaft shaft : opened) {
+                        // level-height: the breach shaft is the one at the bottom of the world
+                        if (shaft.floorY() == campaign.getMinY()) {
+                            giveAFogThatIsNotBlack(campaign, shaft.held());
+                        }
+                    }
+                    return opened;
+                });
                 ClientChecks.withRenderDistance(context, ShaftViews.RENDER_DISTANCE, () -> {
                     for (boolean nightVision : new boolean[] {false, true}) {
                         ShaftViews.nightVision(singleplayer.getServer(), nightVision);
@@ -210,6 +236,41 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         return minY;
     }
 
+    /**
+     * Gives the blocks of {@code held}, and {@link #BIOME_MARGIN} round them, {@link #NOT_BLACK_FOG}'s biome. The bottom of the world is
+     * the unbuilt depth, whose fog and sky are black (#1192), and a void behind a hole reads in the fog colour, so there it would read dark
+     * with the cover gone too. A fog that is not black, and that night vision lifts, is what the cover hides. The camera blends the biomes
+     * round it, hence the margin. Each chunk is loaded first ({@code fillbiome} refuses an unloaded one), and the fill goes in slabs under
+     * the command's block limit.
+     */
+    private static void giveAFogThatIsNotBlack(ServerLevel level, ClientLight.Box held) {
+        Holder<Biome> biome =
+                level.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(NOT_BLACK_FOG);
+        BlockPos low = held.min().offset(-BIOME_MARGIN, -BIOME_MARGIN, -BIOME_MARGIN);
+        BlockPos high = held.max().offset(BIOME_MARGIN, BIOME_MARGIN, BIOME_MARGIN);
+        for (int cx = SectionPos.blockToSectionCoord(low.getX());
+                cx <= SectionPos.blockToSectionCoord(high.getX());
+                cx++) {
+            for (int cz = SectionPos.blockToSectionCoord(low.getZ());
+                    cz <= SectionPos.blockToSectionCoord(high.getZ());
+                    cz++) {
+                level.getChunk(cx, cz);
+            }
+        }
+        // level-height: the box may reach under the bottom of the whole world, where there is no biome to fill
+        for (int y = Math.max(low.getY(), level.getMinY()); y <= high.getY(); y += BIOME_SLAB) {
+            FillBiomeCommand.fill(
+                            level,
+                            new BlockPos(low.getX(), y, low.getZ()),
+                            new BlockPos(high.getX(), Math.min(high.getY(), y + BIOME_SLAB - 1), high.getZ()),
+                            biome)
+                    .right()
+                    .ifPresent(e -> {
+                        throw new AssertionError("could not fill the biome round the view: " + e.getMessage(), e);
+                    });
+        }
+    }
+
     private static List<BlockPos> lamps(int minY) {
         int y = minY + SHAFT_DEPTH;
         return List.of(
@@ -251,8 +312,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
             ClientLight.Box held,
             String name) {
         ShaftViews.stand(context, singleplayer.getServer(), level, eye, target, held, name);
-        // tick-wait: the fog colour is computed per frame, and a few frames must pass after the last chunk section is
-        // built
+        // tick-wait: the fog colour is computed per frame, and a few frames must pass after the last chunk section
+        // is built
         context.waitTicks(10);
         return context.takeScreenshot(name);
     }
@@ -311,7 +372,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         boolean anyLit = false;
         boolean allLit = true;
         for (Vec3 landmark : landmarks) {
-            Optional<int[]> pixel = project(image, eye, angles[0], angles[1], fov, landmark);
+            Optional<int[]> pixel = ScreenProjection.project(image, eye, angles[0], angles[1], fov, landmark);
             if (pixel.isPresent()) {
                 onScreen = true;
                 boolean lit = litNear(image, pixel.get()[0], pixel.get()[1], fog);
@@ -456,32 +517,6 @@ public class BreachVoidClientTest implements FabricClientGameTest {
 
     private static int channel(float value) {
         return Math.round(Mth.clamp(value, 0f, 1f) * 255);
-    }
-
-    /** The pixel where {@code point} shows for a camera at {@code eye}, or empty when it is off the picture or behind the camera. */
-    private static Optional<int[]> project(
-            BufferedImage image, Vec3 eye, float yawDegrees, float pitchDegrees, double fovDegrees, Vec3 point) {
-        double yaw = Math.toRadians(yawDegrees);
-        double pitch = Math.toRadians(pitchDegrees);
-        Vec3 forward = new Vec3(-Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
-        Vec3 right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
-        Vec3 up = right.cross(forward);
-        Vec3 d = point.subtract(eye);
-        double depth = d.dot(forward);
-        if (depth <= 0) {
-            return Optional.empty();
-        }
-        double tan = Math.tan(Math.toRadians(fovDegrees) / 2);
-        double aspect = image.getWidth() / (double) image.getHeight();
-        int x = (int) Math.round(image.getWidth() / 2.0 * (1 + d.dot(right) / depth / (tan * aspect)));
-        int y = (int) Math.round(image.getHeight() / 2.0 * (1 - d.dot(up) / depth / tan));
-        if (x < EDGE_MARGIN
-                || y < EDGE_MARGIN
-                || x >= image.getWidth() - EDGE_MARGIN
-                || y >= image.getHeight() - EDGE_MARGIN) {
-            return Optional.empty();
-        }
-        return Optional.of(new int[] {x, y});
     }
 
     /** The brightest channel of each pixel of the {@link #PATCH} square at the middle of the picture. */

@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.suit.SuitRegistry;
 import io.github.pkeppeler.deepcharter.suit.SuitState;
 import io.github.pkeppeler.deepcharter.suit.SuitState.Mode;
+import io.github.pkeppeler.deepcharter.suit.SuitTracks;
 import io.github.pkeppeler.deepcharter.suit.SuitTuning;
 import java.util.List;
 import java.util.Locale;
@@ -70,28 +71,31 @@ public final class SuitGaugeHud {
             return Optional.empty();
         }
         Versioned<SuitState> held = player.getAttached(SuitRegistry.SUIT);
-        if (held instanceof Versioned.Unreadable<SuitState>) {
+        Optional<SuitTracks> tracks = Versioned.readable(player, SuitRegistry.TRACKS);
+        if (held instanceof Versioned.Unreadable<SuitState> || tracks.isEmpty()) {
             return Optional.of(new Gauge(
                     Component.translatable("hud.deepcharter.suit.unreadable"), Component.empty(), 0f, Tone.RED, false));
         }
         if (!(held instanceof Versioned.Readable<SuitState>(SuitState state))) {
             return Optional.empty();
         }
-        return gauge(state);
+        return gauge(state, tracks.get());
     }
 
     /**
-     * What the gauge shows for a suit in {@code state}, for a person on foot: empty for a suit that is inert, and for a full one that
-     * refills (a sound hall in layer 1 shelters all the time).
+     * What the gauge shows for a suit in {@code state} fitted with {@code tracks}, for a person on foot: empty for a suit that is inert,
+     * and for a full one that refills (a sound hall in layer 1 shelters all the time). The bar is the reserve over the suit's own
+     * capacity.
      */
-    public static Optional<Gauge> gauge(SuitState state) {
+    public static Optional<Gauge> gauge(SuitState state, SuitTracks tracks) {
         SuitTuning tuning = SuitTuning.DEFAULT;
-        if (state.mode() == Mode.INERT || (state.mode().refills() && state.reserve() >= tuning.capacity())) {
+        float capacity = tracks.capacity(tuning);
+        if (state.mode() == Mode.INERT || (state.mode().refills() && state.reserve() >= capacity)) {
             return Optional.empty();
         }
-        float fraction = Math.clamp(state.reserve() / tuning.capacity(), 0f, 1f);
+        float fraction = Math.clamp(state.reserve() / capacity, 0f, 1f);
         float secondsLeft = state.rate() > 0f ? state.reserve() / state.rate() : state.reserve();
-        Component axes = state.axesText(" ");
+        Component axes = state.shortText();
         return Optional.of(
                 switch (state.mode()) {
                     case BREACHED ->

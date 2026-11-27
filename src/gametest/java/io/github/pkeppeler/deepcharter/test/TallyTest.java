@@ -48,7 +48,10 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
@@ -78,6 +81,8 @@ public class TallyTest {
     private static final int FIRST_SLOT_X = 6808;
     private static final int SLOT_Z_SPACING = 64;
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 100);
+    /** (#1237) A column no other test uses, farther than {@link #DESPAWN_BLOCKS} from every arena slot. */
+    private static final BlockPos DESPAWN_SITE = new BlockPos(52_000, FLOOR_Y, 52_000);
     /** The trail (600 ticks), with the flight to the mark (measured up to 83 ticks) and a margin for a loaded runner; an annotation needs a constant, so a test pins it to the tuning. */
     private static final int CLAMP_BUDGET_TICKS = 760;
     /** The hold (60 ticks), the flight away (40) and a margin. */
@@ -124,8 +129,8 @@ public class TallyTest {
                     for (int y = -1; y <= ARENA_HEIGHT; y++) {
                         boolean shell =
                                 y == -1 || y == ARENA_HEIGHT || Math.abs(u) == HALF + 1 || Math.abs(v) == HALF + 1;
-                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not layer
-                        // rock
+                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not
+                        // layer rock
                         level.setBlock(
                                 origin.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
                     }
@@ -158,7 +163,7 @@ public class TallyTest {
                     holder.player().getInventory().add(OreRegistry.stack(OreType.IRONIUM));
                 }
             }
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
             tally.setPos(Vec3.atBottomCenterOf(origin.west(HALF - 1).above(2)));
             level.addFreshEntity(tally);
             return new Arena(level, origin, pod, podRide, holder, tally, survey(level, origin), helper.getTick());
@@ -375,9 +380,8 @@ public class TallyTest {
             for (int u = -HALF; u <= HALF; u++) {
                 for (int v = -HALF; v <= HALF; v++) {
                     for (int y = BORE_DEPTH; y < 0; y++) {
-                        // room-carver: the stone under this test's own arena, in the overworld test structure, not
-                        // layer
-                        // rock
+                        // room-carver: the stone under this test's own arena, in the overworld test structure,
+                        // not layer rock
                         level.setBlock(origin.offset(u, y, v), Blocks.STONE.defaultBlockState(), 3);
                     }
                 }
@@ -495,7 +499,7 @@ public class TallyTest {
         BlockPos origin = slot(4);
         TestTicks.each(helper, () -> {});
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
             tally.setNoAi(true);
             tally.setPos(Vec3.atBottomCenterOf(origin.above(30)));
             level.addFreshEntity(tally);
@@ -730,6 +734,7 @@ public class TallyTest {
                 || TUNING.podSampleTicks() + TUNING.leaveTicks() + 60 > SAMPLE_BUDGET_TICKS) {
             throw failure(helper, "the tests' tick budgets do not cover the tuning %s", TUNING);
         }
+        // Never added to a level, so the game never checks it for despawn.
         var inside = TestEntities.create(CreatureRegistry.TALLY, helper.getLevel());
         inside.setPos(casing.getX() + 0.5 + range, casing.getY(), casing.getZ() + 0.5 - range);
         if (!Tallies.nearCasing(inside, casing)) {
@@ -756,7 +761,7 @@ public class TallyTest {
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(Vec3.atBottomCenterOf(at));
             level.addFreshEntity(pod);
-            Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally tally = TestEntities.mob(CreatureRegistry.TALLY, level);
             tally.setNoAi(true);
             tally.setPos(Vec3.atBottomCenterOf(at.east(2)));
             level.addFreshEntity(tally);
@@ -1044,6 +1049,135 @@ public class TallyTest {
             }
         }
         helper.succeed();
+    }
+
+    /**
+     * (#1009) A light in either hand keeps a Tally off a person on foot, as it keeps off a Retained: the same dark,
+     * ore-carrying person draws one with empty hands, and draws none with a torch in the main hand or the off hand.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SETTLE_TICKS + 60)
+    public void aLightInHandKeepsATallyOffAPersonOnFoot(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(16);
+        Arena[] made = {null};
+        TestTicks.each(helper, () -> {
+            Arena arena = made[0];
+            if (arena == null || arena.age(helper) < SETTLE_TICKS) {
+                return;
+            }
+            ServerPlayer person = arena.holder.player();
+            if (!Tally.draws(person)) {
+                throw failure(helper, "a person with ore in the dark and empty hands draws no Tally");
+            }
+            person.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
+            if (Tally.draws(person)) {
+                throw failure(helper, "a person with a torch in the main hand draws a Tally");
+            }
+            person.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            person.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.TORCH));
+            if (Tally.draws(person)) {
+                throw failure(helper, "a person with a torch in the off hand draws a Tally");
+            }
+            person.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.STONE));
+            if (!Tally.draws(person)) {
+                throw failure(helper, "a stone in the hand keeps a Tally off");
+            }
+            arena.clear();
+            helper.succeed();
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+    }
+
+    /**
+     * (#1009) A light does not free a person a Tally has clamped to: a torch taken in hand at the clamp keeps further
+     * Tallies off, and the clamped one still takes its sample.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CLAMP_BUDGET_TICKS + SAMPLE_BUDGET_TICKS + 60)
+    public void aTorchLitAfterTheClampDoesNotFreeAPersonOnFoot(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(17);
+        Arena[] made = {null};
+        long[] clampedAt = {-1};
+        TestTicks.each(helper, () -> {
+            Arena arena = made[0];
+            if (arena == null) {
+                return;
+            }
+            ServerPlayer person = arena.holder.player();
+            if (clampedAt[0] < 0) {
+                if (arena.tally.isClamped()) {
+                    clampedAt[0] = arena.age(helper);
+                    if (!Tally.draws(person)) {
+                        throw failure(helper, "a dark person with ore and empty hands draws no Tally");
+                    }
+                    person.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
+                    if (Tally.draws(person)) {
+                        throw failure(helper, "a person with a torch in hand draws a Tally");
+                    }
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
+                    throw failure(helper, "the Tally had not clamped to the pack");
+                }
+                return;
+            }
+            if (arena.tally.isRemoved()) {
+                if (arena.ore() != ORES - 1) {
+                    throw failure(
+                            helper,
+                            "the person carries %s cheap ore after a torch came to hand at the clamp, not %s",
+                            arena.ore(),
+                            ORES - 1);
+                }
+                arena.clear();
+                helper.succeed();
+            } else if (arena.ore() == ORES && arena.age(helper) - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
+                throw failure(helper, "the Tally let go of a person with a torch in hand and took nothing");
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+    }
+
+    /**
+     * (#1237) A Tally despawns like any monster ({@code removeWhenFarAway} is true), so a test that leaves one standing
+     * builds it with {@code TestEntities.mob}. The only player is more than 128 blocks off, where
+     * {@code Mob.checkDespawn} removes a mob at once: a plain {@code create} Tally goes, a persistent one stays. The
+     * site is more than 128 blocks from every other test's arena, whose players would otherwise be the nearest.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
+    public void aTallyTheTestBuildsWithMobIsNotDespawnedByTheGame(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = DESPAWN_SITE;
+        TestTicks.each(helper, () -> {});
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            MockPlayer far = MockPlayers.join(helper, "despawn-bystander");
+            // GameTest players are creative, and the despawn check looks past a creative player.
+            far.player().setGameMode(GameType.SURVIVAL);
+            double apart = far.player().position().distanceTo(Vec3.atCenterOf(origin));
+            if (apart <= DESPAWN_BLOCKS) {
+                throw failure(helper, "the only player is %s blocks from the Tally, within %s", apart, DESPAWN_BLOCKS);
+            }
+            Tally plain = TestEntities.create(CreatureRegistry.TALLY, level);
+            Tally persistent = TestEntities.mob(CreatureRegistry.TALLY, level);
+            try {
+                for (Tally tally : List.of(plain, persistent)) {
+                    tally.setPos(Vec3.atBottomCenterOf(origin.above(30)));
+                    level.addFreshEntity(tally);
+                    tally.checkDespawn();
+                }
+                if (!plain.isRemoved()) {
+                    throw failure(helper, "a Tally built with create was not despawned %s blocks from a player", apart);
+                }
+                if (persistent.isRemoved()) {
+                    throw failure(
+                            helper,
+                            "a Tally built with mob was despawned by the game: %s",
+                            persistent.getRemovalReason());
+                }
+            } finally {
+                plain.discard();
+                persistent.discard();
+            }
+            helper.succeed();
+        });
     }
 
     private static final AtomicInteger CHARTERS = new AtomicInteger();

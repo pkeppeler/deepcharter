@@ -12,12 +12,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
@@ -36,6 +38,11 @@ import org.jspecify.annotations.Nullable;
  * <p>A player who already had a chunk of the hold when it began is sent the chunk's settled light when the hold ends (#824): a
  * neighbour's draw changes the light of that chunk, and vanilla drops a light change for a chunk that does not tick (issue 427), so
  * the player's client keeps the old light.
+ *
+ * <p>Each neighbour in the hold also waits for the light tasks queued at the drawn chunk itself (#494): vanilla's wait
+ * covers only the tasks queued at the neighbour's own position, and the engine runs different positions' queues in no
+ * fixed order. The wait relies on light tasks at one position running in the order they were queued, which
+ * {@code ChunkTaskPriorityQueueMixin} guarantees (#1448, ADR 0105).
  *
  * <p>The safety net (#863, ADR 0068): {@code LightSync} records the light each player was sent of a chunk in a hold's 3x3, and for
  * a window that starts when the chunk can be sent sends a player whose chunk's published light differs from it.
@@ -65,6 +72,15 @@ public final class LightSync {
 
     private static final Map<Key, Hold> HOLDS = new ConcurrentHashMap<>();
 
+    /** The light tasks queued at a chunk after its last draw, until they have run. */
+    private static final Map<Key, CompletableFuture<?>> QUEUED = new ConcurrentHashMap<>();
+
+    /** The chunks whose extended send is offered to their trackers when it can be sent, until then. */
+    private static final Map<Key, RingOffer> OFFERS = new ConcurrentHashMap<>();
+
+    /** An armed offer: the holder it follows and the players sent the chunk since. */
+    private record RingOffer(ChunkHolder holder, Set<UUID> sentSince) {}
+
     /** Server ticks a chunk's published light is compared after the chunk can be sent (5 s). */
     private static final int NET_WINDOW_TICKS = 100;
     /** Server ticks between two comparisons. */
@@ -86,9 +102,10 @@ public final class LightSync {
         /** Set once the light engine has been waited for {@value #TIMEOUT_TICKS} ticks. */
         boolean slowReported;
 
-        NetWatch(int nextCheck, int until) {
-            this.nextCheck = nextCheck;
-            this.until = until;
+        /** A watch opened at {@code now}: its first check and the end of its window are counted from then. */
+        NetWatch(int now) {
+            this.nextCheck = now + NET_INTERVAL_TICKS;
+            this.until = now + NET_WINDOW_TICKS;
         }
 
         void keepOpen(int now) {
@@ -104,15 +121,54 @@ public final class LightSync {
     /** The chunks in the 3x3 of a hold, until the window after they can be sent runs out and the light settles. Server thread only. */
     private static final Map<Key, NetWatch> NET = new HashMap<>();
 
+    /**
+     * The chunks whose watch was dropped because they did not tick and no player held them: they cannot be sent until
+     * they tick, and a watch kept open for that would never end (#1297). Each is watched again once it ticks, so its
+     * window runs from when it can be sent, as a kept watch's did (#954), or at its send if that comes first. No key is
+     * in both this and {@link #NET}. Server thread only.
+     */
+    private static final Set<Key> DORMANT = new HashSet<>();
+
     private LightSync() {}
 
     public static void init() {
+        ServerChunkEvents.CHUNK_LOAD.register((level, chunk, newlyGenerated) -> holdLoadedNeighbour(level, chunk));
+        ServerChunkEvents.CHUNK_UNLOAD.register(LightSync::forgetUnloaded);
         ServerTickEvents.END_SERVER_TICK.register(LightSync::sweep);
         ServerTickEvents.END_SERVER_TICK.register(LightSync::compareLight);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             HOLDS.keySet().removeIf(key -> key.level.getServer() == server);
+            QUEUED.keySet().removeIf(key -> key.level.getServer() == server);
+            OFFERS.keySet().removeIf(key -> key.level.getServer() == server);
             NET.keySet().removeIf(key -> key.level.getServer() == server);
+            DORMANT.removeIf(key -> key.level.getServer() == server);
         });
+    }
+
+    /** An unloaded chunk's holder is gone, so its send future may never complete: drop what waits on it. */
+    private static void forgetUnloaded(ServerLevel level, LevelChunk chunk) {
+        Key key = new Key(level, chunk.getPos());
+        QUEUED.remove(key);
+        OFFERS.remove(key);
+        DORMANT.remove(key);
+    }
+
+    /** Whether the chunk has a queued-tasks entry or an armed offer. */
+    // test-seam: the two maps are private and an unload must leave nothing in either.
+    public static boolean hasPending(ServerLevel level, ChunkPos chunk) {
+        Key key = new Key(level, chunk);
+        return QUEUED.containsKey(key) || OFFERS.containsKey(key);
+    }
+
+    /**
+     * Whether the chunk's light is being settled: it is held, it waits on a neighbour's queued light tasks or an
+     * armed offer ({@link #hasPending}), or it is inside the window after a hold in which its published light is
+     * compared with what each player was sent. A seam crossing does not skip the send of such a chunk (#1185): the
+     * ahead send bypasses the ring hold (#494). Server thread only.
+     */
+    public static boolean watching(ServerLevel level, ChunkPos chunk) {
+        Key key = new Key(level, chunk);
+        return HOLDS.containsKey(key) || NET.containsKey(key) || hasPending(level, chunk);
     }
 
     /** Whether a hold of {@code ticksHeld} ticks is stuck. At or past the limit, so a skipped tick count cannot miss it. */
@@ -147,6 +203,7 @@ public final class LightSync {
                 .filter(near -> level.getChunkSource().chunkMap.getChunkToSend(near.pack()) != null)
                 .forEach(sendable::add);
         level.getChunkSource().chunkMap.waitForLightBeforeSending(chunk, 0);
+        holdRingUntilTasksRun(level, chunk, sendable);
         int now = level.getServer().getTickCount();
         ChunkPos.rangeClosed(chunk, 1)
                 .filter(near -> level.getChunkSource().getChunkNow(near.x(), near.z()) != null)
@@ -160,6 +217,92 @@ public final class LightSync {
                 existing.reported = false;
             }
         }
+    }
+
+    /**
+     * Each neighbour also waits for the tasks queued at {@code chunk} by the draw (#494); one that loads later waits
+     * when it loads ({@link #holdLoadedNeighbour}).
+     */
+    private static void holdRingUntilTasksRun(ServerLevel level, ChunkPos chunk, List<ChunkPos> sendable) {
+        CompletableFuture<?> drawn = level.getChunkSource().getLightEngine().waitForPendingTasks(chunk.x(), chunk.z());
+        Key key = new Key(level, chunk);
+        QUEUED.put(key, drawn);
+        var _ = drawn.thenRun(() -> QUEUED.remove(key, drawn));
+        ChunkPos.rangeClosed(chunk, 1).filter(near -> !near.equals(chunk)).forEach(near -> {
+            ChunkHolder holder = dependOn(level, near, drawn);
+            if (holder != null && !sendable.contains(near)) {
+                offerWhenSendable(level, near, holder);
+            }
+        });
+    }
+
+    private static @Nullable ChunkHolder dependOn(ServerLevel level, ChunkPos chunk, CompletableFuture<?> tasks) {
+        ChunkHolder holder = level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(chunk.pack());
+        if (holder != null) {
+            holder.addSendDependency(tasks);
+        }
+        return holder;
+    }
+
+    /**
+     * Offers a chunk that could not be sent when its send was extended to its trackers once it can be: vanilla marks
+     * nothing for a player who starts tracking while {@code getChunkToSend} is null. Players sent the chunk meanwhile,
+     * and those already queued for it, are left out.
+     */
+    private static void offerWhenSendable(ServerLevel level, ChunkPos chunk, ChunkHolder holder) {
+        Key key = new Key(level, chunk);
+        RingOffer open = OFFERS.get(key);
+        if (open != null && open.holder == holder) {
+            return; // armed already: it follows the holder's send future as it is extended
+        }
+        RingOffer offer = new RingOffer(holder, ConcurrentHashMap.newKeySet());
+        OFFERS.put(key, offer);
+        armOffer(key, offer);
+    }
+
+    private static void armOffer(Key key, RingOffer offer) {
+        var _ = offer.holder()
+                .getSendSyncFuture()
+                .thenRun(() -> key.level.getServer().execute(() -> {
+                    ServerLevel level = key.level;
+                    if (OFFERS.get(key) != offer) {
+                        return;
+                    }
+                    if (level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(key.chunk.pack()) != offer.holder()) {
+                        OFFERS.remove(key, offer); // the holder was replaced: its send is not this offer's to make
+                        return;
+                    }
+                    if (!offer.holder().getSendSyncFuture().isDone()) {
+                        armOffer(key, offer); // the send was extended again meanwhile
+                        return;
+                    }
+                    OFFERS.remove(key, offer);
+                    LevelChunk sendable = offer.holder().getChunkToSend();
+                    if (sendable == null) {
+                        return; // it does not tick yet: vanilla offers it when it does, reading the send future then
+                    }
+                    for (ServerPlayer player : level.players()) {
+                        if (player.getChunkTrackingView().contains(key.chunk)
+                                && !offer.sentSince().contains(player.getUUID())
+                                && !player.connection.chunkSender.isPending(key.chunk.pack())) {
+                            player.connection.chunkSender.markChunkPendingToSend(sendable);
+                        }
+                    }
+                }));
+    }
+
+    /** A chunk that loads while a neighbour's draw still has light tasks queued waits for them. */
+    private static void holdLoadedNeighbour(ServerLevel level, LevelChunk chunk) {
+        if (QUEUED.isEmpty()) {
+            return;
+        }
+        ChunkPos loaded = chunk.getPos();
+        ChunkPos.rangeClosed(loaded, 1).filter(near -> !near.equals(loaded)).forEach(near -> {
+            CompletableFuture<?> tasks = QUEUED.get(new Key(level, near));
+            if (tasks != null && !tasks.isDone()) {
+                dependOn(level, loaded, tasks);
+            }
+        });
     }
 
     private static Set<UUID> trackers(ServerLevel level, ChunkPos chunk) {
@@ -228,7 +371,11 @@ public final class LightSync {
                 continue;
             }
             if (!hold.trackedThroughout.contains(player.getUUID())) {
-                player.connection.chunkSender.markChunkPendingToSend(chunk);
+                // A rider swapped in with this chunk was sent it at the swap, after the light settled: it holds
+                // it already.
+                if (!SeamSender.skippedAtCrossing(player, key.level, key.chunk)) {
+                    player.connection.chunkSender.markChunkPendingToSend(chunk);
+                }
             } else if (hold.sentAtStart.contains(player.getUUID())) {
                 // Every section of both layers: which sections the neighbour's light changed is not known here, and a
                 // ticking chunk that vanilla also updates gets a duplicate, which does no harm.
@@ -259,7 +406,8 @@ public final class LightSync {
     /** Starts or extends the watch of a chunk and records the light of the players already sent it; the others are recorded at their send. */
     private static void watchNet(ServerLevel level, ChunkPos chunk, int now) {
         Key key = new Key(level, chunk);
-        NetWatch watch = NET.computeIfAbsent(key, k -> new NetWatch(now + NET_INTERVAL_TICKS, 0));
+        DORMANT.remove(key);
+        NetWatch watch = NET.computeIfAbsent(key, k -> new NetWatch(now));
         watch.keepOpen(now);
         if (level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) == null) {
             return;
@@ -270,13 +418,45 @@ public final class LightSync {
         }
     }
 
+    /**
+     * Called when {@code player} is sent the chunk of {@code level} as a seam chunk, ahead of its swap into {@code
+     * level} (#1229): it holds the light published now, and the watch compares it later like any other.
+     */
+    public static void seamSent(ServerPlayer player, ServerLevel level, ChunkPos chunk) {
+        NetWatch watch = sentWatch(new Key(level, chunk));
+        if (watch != null) {
+            watch.held.put(player.getUUID(), lightPrint(level, chunk));
+            watch.keepOpen(level.getServer().getTickCount());
+        }
+    }
+
     /** Called when a chunk packet is about to be built for a player: the player will hold the light published now. */
     public static void chunkSent(ServerPlayer player, LevelChunk chunk) {
-        NetWatch watch = NET.get(new Key(player.level(), chunk.getPos()));
+        RingOffer offer = OFFERS.get(new Key(player.level(), chunk.getPos()));
+        if (offer != null) {
+            offer.sentSince().add(player.getUUID());
+        }
+        NetWatch watch = sentWatch(new Key(player.level(), chunk.getPos()));
         if (watch != null) {
             watch.held.put(player.getUUID(), lightPrint(player.level(), chunk.getPos()));
             watch.keepOpen(player.level().getServer().getTickCount());
         }
+    }
+
+    /** Whether the chunk's holder has its ticking chunk: until it has, the chunk cannot be sent, whatever its light. */
+    private static boolean ticking(Key key) {
+        ChunkHolder holder = key.level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(key.chunk.pack());
+        return holder != null && holder.getTickingChunk() != null;
+    }
+
+    /** The watch of a chunk being sent, armed again if it was dropped as {@link #DORMANT}; null if it has none. */
+    private static @Nullable NetWatch sentWatch(Key key) {
+        // For a chunk sent in the tick it came to tick, before compareLight re-arms it: no test can stage that order.
+        if (DORMANT.remove(key)) {
+            return NET.computeIfAbsent(
+                    key, k -> new NetWatch(key.level.getServer().getTickCount()));
+        }
+        return NET.get(key);
     }
 
     /**
@@ -285,6 +465,13 @@ public final class LightSync {
      */
     private static void compareLight(MinecraftServer server) {
         int now = server.getTickCount();
+        DORMANT.removeIf(key -> {
+            boolean woke = key.level.getServer() == server && ticking(key);
+            if (woke) {
+                NET.putIfAbsent(key, new NetWatch(now));
+            }
+            return woke;
+        });
         Iterator<Map.Entry<Key, NetWatch>> watches = NET.entrySet().iterator();
         while (watches.hasNext()) {
             Map.Entry<Key, NetWatch> entry = watches.next();
@@ -301,7 +488,15 @@ public final class LightSync {
             if (held || key.level.getChunkSource().chunkMap.getChunkToSend(key.chunk.pack()) == null) {
                 // Not sent yet, so nothing it was sent can be stale: the window starts when it can be sent (#954).
                 watch.keepOpen(now);
-                if (watch.unsentSince < 0) {
+                if (!ticking(key)) {
+                    // It waits to tick, not for light: a chunk on the rim of the loaded area may never tick (#1297).
+                    if (!held && watch.held.isEmpty()) {
+                        watches.remove();
+                        DORMANT.add(key);
+                        continue;
+                    }
+                    watch.unsentSince = -1;
+                } else if (watch.unsentSince < 0) {
                     watch.unsentSince = now;
                 } else if (!watch.reported && timedOut(now - watch.unsentSince)) {
                     watch.reported = true;
