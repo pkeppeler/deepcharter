@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.SeatedHotbar;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodFootprint;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
@@ -38,6 +39,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for the hotbar under the cockpit (#1457): a seated pilot sees vanilla's hotbar and its selection frame (read from pixels: the frame moves to the slot a
@@ -235,56 +237,74 @@ public class SeatedHotbarClientTest implements FabricClientGameTest {
     }
 
     /**
-     * With the dynamite picked, the use key blasts the natural rock round the pod (packed round it for the test, as a blocked shaft would be) and spends the stick, and a
-     * rock just past the blast's reach stays.
+     * With the dynamite picked, the use key blasts the natural rock in its cube (packed round the pod for the test, as a blocked shaft would be) and spends
+     * the stick. The cube sits on the row the pod's feet are in, so the rock above it, over the cab, stays, and so does a rock just past its reach (#1478).
      */
     private static void expectDynamiteFromThePickedSlotBlasts(
             ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         int radius = RepairTuning.DEFAULT.dynamiteRadius();
-        List<BlockPos> packed = singleplayer.getServer().computeOnServer(server -> {
+        List<List<BlockPos>> packed = singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             if (!(player.getVehicle() instanceof PodEntity pod)) {
                 throw new AssertionError("the pilot left the pod before the dynamite");
             }
             List<BlockPos> cells = ChargeUse.packRound(player, pod, radius);
-            BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
-            player.level().setBlock(middle.offset(radius + 1, 0, 0), Blocks.STONE.defaultBlockState(), 3);
-            return cells;
+            // The blast's cube: centred on the feet row and the footprint's middle cell.
+            PodFootprint foot = PodFootprint.of(pod);
+            BlockPos middle = new BlockPos(foot.lowX() + foot.width() / 2, foot.feetY(), foot.lowZ() + foot.width() / 2);
+            AABB cube = new AABB(middle.offset(-radius, -radius, -radius), middle.offset(radius + 1, radius + 1, radius + 1));
+            List<BlockPos> inside = cells.stream()
+                    .filter(cell -> cube.contains(Vec3.atCenterOf(cell)))
+                    .toList();
+            List<BlockPos> outside =
+                    cells.stream().filter(cell -> !inside.contains(cell)).toList();
+            BlockPos reach = BlockPos.containing(pod.getBoundingBox().getCenter()).offset(radius + 1, 0, 0);
+            player.level().setBlock(reach, Blocks.STONE.defaultBlockState(), 3);
+            return List.of(inside, outside, List.of(reach));
         });
-        if (packed.isEmpty()) {
-            throw new AssertionError("no air round the pod to pack with rock");
+        List<BlockPos> inside = packed.get(0);
+        List<BlockPos> outside = packed.get(1);
+        BlockPos reach = packed.get(2).getFirst();
+        if (inside.isEmpty() || outside.isEmpty()) {
+            throw new AssertionError("the packed rock should lie both in the blast's cube (" + inside.size()
+                    + " cells) and above it, over the cab (" + outside.size() + " cells)");
         }
         context.getInput().pressKey(options -> options.keyUse);
         ClientWait.until(
                 context,
-                "the dynamite to blast the rock round the pod and be spent",
+                "the dynamite to blast the rock in its cube and be spent",
                 () -> singleplayer.getServer().computeOnServer(server -> {
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     ServerLevel level = player.level();
                     return player.getInventory().getItem(DYNAMITE_SLOT).isEmpty()
-                            && packed.stream()
+                            && inside.stream()
                                     .allMatch(cell -> level.getBlockState(cell).isAir());
                 }),
                 () -> singleplayer.getServer().computeOnServer(server -> {
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     ServerLevel level = player.level();
                     return player.getInventory().getItem(DYNAMITE_SLOT) + " in the slot, "
-                            + packed.stream()
+                            + inside.stream()
                                     .filter(cell -> !level.getBlockState(cell).isAir())
                                     .count()
-                            + " of " + packed.size() + " packed cells still rock";
+                            + " of " + inside.size() + " cells of the cube still rock";
                 }));
-        boolean kept = singleplayer.getServer().computeOnServer(server -> {
+        String problem = singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = (PodEntity) player.getVehicle();
-            if (pod == null) {
-                return false;
+            ServerLevel level = player.level();
+            if (player.getVehicle() == null) {
+                return "the pilot was thrown from the pod";
             }
-            BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
-            return player.level().getBlockState(middle.offset(radius + 1, 0, 0)).is(Blocks.STONE);
+            if (!level.getBlockState(reach).is(Blocks.STONE)) {
+                return "the rock one past the dynamite's reach went";
+            }
+            long gone = outside.stream()
+                    .filter(cell -> !level.getBlockState(cell).is(Blocks.STONE))
+                    .count();
+            return gone == 0 ? "" : gone + " of " + outside.size() + " cells outside the cube went";
         });
-        if (!kept) {
-            throw new AssertionError("The rock one past the dynamite's reach stays, with the pilot still seated");
+        if (!problem.isEmpty()) {
+            throw new AssertionError("Only the dynamite's cube clears, with the pilot still seated: " + problem);
         }
     }
 
