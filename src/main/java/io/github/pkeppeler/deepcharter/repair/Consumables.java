@@ -96,7 +96,7 @@ final class Consumables {
     private static Optional<Component> blast(PodEntity pod, int radius, DeepSound sound) {
         ServerLevel level = (ServerLevel) pod.level();
         PodFootprint foot = PodFootprint.of(pod);
-        BlockPos middle = new BlockPos(foot.lowX() + foot.width() / 2, foot.feetY(), foot.lowZ() + foot.width() / 2);
+        BlockPos middle = foot.feetMiddle();
         BlockPos low = middle.offset(-radius, -radius, -radius);
         BlockPos high = middle.offset(radius, radius, radius);
         for (BlockPos cell : BlockPos.betweenClosed(low, high)) {

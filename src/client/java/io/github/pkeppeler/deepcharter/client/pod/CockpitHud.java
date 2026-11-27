@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
@@ -38,9 +39,11 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The cockpit HUD (#247, {@link CockpitLook}): while the local player sits in a pod and the GUI is big enough for the Ribbon, the ribbon along the top edge, its gauges and
- * warning lamps, the scanner window hung from its end and the readout plate under that are the HUD, and the vanilla hotbar, hearts and held item name are not drawn. The
- * action bar stays: the game says things there that a pilot must read (a grab on the hull, a refusal), and the Ribbon has no other place for them. On foot, and with a GUI
- * smaller than the Ribbon needs (or a pack that sets {@code enabled} to 0), nothing here draws or hides anything.
+ * warning lamps, the scanner window hung from its end and the readout plate under that are the HUD, and the vanilla hearts, food, armour, air and experience are not drawn.
+ * The vanilla hotbar and the held item's name stay (#1457): the pilot picks dynamite and the other consumables from the seat, so it must see the slot it is on
+ * ({@link SeatedHotbar} lists it for {@link HudKeepClear}, and the plate stops short of it). The action bar stays too: the game says things there that a pilot must read
+ * (a grab on the hull, a refusal), and the Ribbon has no other place for them. On foot, and with a GUI smaller than the Ribbon needs (or a pack that sets {@code enabled}
+ * to 0), nothing here draws or hides anything.
  *
  * <p>Every piece goes through {@link #draw}, so the signal decay near the bottom of a layer (#502, {@link CockpitDecay}) wraps one place and not each gauge. It darkens a
  * gauge or the scanner's window, draws static over the scanner, makes a gauge or the plate's numbers jump, and swaps the plate for a tag. It never touches the hull lamp,
@@ -58,17 +61,18 @@ public final class CockpitHud {
     public static final int LAMPS = 5;
 
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cockpit");
-    /** The vanilla elements a seated pilot does not get: the cluster of hotbar, health, armour, hunger, air, experience and the held item's name. */
+    /**
+     * The vanilla elements a seated pilot does not get: health, armour, hunger, air and experience, which the pod's gauges stand in for. The hotbar and the held item's name
+     * are not here (#1457): the pilot uses consumables from the selected slot.
+     */
     public static final List<Identifier> HIDDEN_WHILE_SEATED = List.of(
-            VanillaHudElements.HOTBAR,
             VanillaHudElements.ARMOR_BAR,
             VanillaHudElements.HEALTH_BAR,
             VanillaHudElements.FOOD_BAR,
             VanillaHudElements.AIR_BAR,
             VanillaHudElements.MOUNT_HEALTH,
             VanillaHudElements.INFO_BAR,
-            VanillaHudElements.EXPERIENCE_LEVEL,
-            VanillaHudElements.HELD_ITEM_TOOLTIP);
+            VanillaHudElements.EXPERIENCE_LEVEL);
 
     /** The pieces of the Ribbon that move or can fail, each drawn through {@link #draw}, and the instrument of the signal decay that fails with it. */
     public enum Part {
@@ -114,6 +118,7 @@ public final class CockpitHud {
         HudElementRegistry.attachElementAfter(VanillaHudElements.MISC_OVERLAYS, ID, CockpitHud::extract);
         ClientTickEvents.END_CLIENT_TICK.register(CockpitHud::tick);
         HudKeepClear.register(CockpitHud::keepClear);
+        SeatedHotbar.init();
     }
 
     /** The layout in force when the local player sits in a pod and the Ribbon fits the GUI; empty on foot, with the cockpit off, or on a GUI too small for it. */
@@ -174,15 +179,18 @@ public final class CockpitHud {
             }
             if (layout.cargo().on()) {
                 Box title = loadTitleBox(client.font, layout, look, guiWidth, guiHeight);
-                into.add(new HudKeepClear.Rect(
-                        "cockpit load title", title.left(), title.top(), title.width(), title.height()));
+                into.add(title.rect("cockpit load title"));
             }
-            List<Row> rows = fitting(
+            List<Row> rows = plateRows(
+                    client.font,
+                    layout,
+                    look,
                     rows(pod, CockpitReading.of(pod, heat), look, PodStatusHud.readout(client.player, pod)),
-                    roomForRows(client.font, layout, look, guiHeight));
-            Box plate = plateBox(client.font, layout, look, rows, guiWidth, guiHeight);
-            into.add(new HudKeepClear.Rect(
-                    "cockpit readout plate", plate.left(), plate.top(), plate.width(), plate.height()));
+                    SeatedHotbar.slots(client, guiWidth, guiHeight),
+                    guiWidth,
+                    guiHeight);
+            into.add(plateBox(client.font, layout, look, rows, guiWidth, guiHeight)
+                    .rect("cockpit readout plate"));
         }
     }
 
@@ -617,7 +625,11 @@ public final class CockpitHud {
     }
 
     /** Where the plate is on the screen. */
-    public record Box(int left, int top, int width, int height) {}
+    public record Box(int left, int top, int width, int height) {
+        public HudKeepClear.Rect rect(String what) {
+            return new HudKeepClear.Rect(what, left, top, width, height);
+        }
+    }
 
     /**
      * The space from the plate's edge to its text: the plate sprite's nine-slice border on each side, which the sprite's own metadata gives (so a pack that draws a
@@ -658,10 +670,33 @@ public final class CockpitHud {
         return new Box(layout.readout().left(guiWidth, width), layout.readout().top(guiHeight, height), width, height);
     }
 
-    /** How many rows the plate has room for under its anchor on a GUI {@code guiHeight} high. */
-    public static int roomForRows(Font font, Layout layout, CockpitLook look, int guiHeight) {
+    /**
+     * The rows of {@code all} the plate shows on a GUI {@code guiWidth} x {@code guiHeight}: as many as fit under its anchor ({@link #fitting}), and fewer when the plate
+     * would then reach down into one of {@code hotbar}, what vanilla draws along the bottom edge ({@link SeatedHotbar#slots}), which a narrow GUI puts under the plate's
+     * columns (#1457). A warning is never dropped, so a pile of warnings can still reach it.
+     */
+    public static List<Row> plateRows(
+            Font font,
+            Layout layout,
+            CockpitLook look,
+            List<Row> all,
+            List<HudKeepClear.Rect> hotbar,
+            int guiWidth,
+            int guiHeight) {
+        List<Row> rows = fitting(all, roomForRows(font, layout, look, guiHeight, guiHeight));
+        HudKeepClear.Rect plate =
+                plateBox(font, layout, look, rows, guiWidth, guiHeight).rect("plate");
+        OptionalInt floor = hotbar.stream()
+                .filter(plate::overlaps)
+                .mapToInt(HudKeepClear.Rect::y)
+                .min();
+        return floor.isEmpty() ? rows : fitting(all, roomForRows(font, layout, look, guiHeight, floor.getAsInt()));
+    }
+
+    /** How many rows the plate has room for between its anchor on a GUI {@code guiHeight} high and {@code bottom}. */
+    private static int roomForRows(Font font, Layout layout, CockpitLook look, int guiHeight, int bottom) {
         GuiSpriteScaling.NineSlice.Border inset = plateInset(layout, look);
-        int room = guiHeight
+        int room = bottom
                 - layout.readout().top(guiHeight, 0)
                 - inset.top()
                 - inset.bottom()
@@ -687,7 +722,16 @@ public final class CockpitHud {
         Font font = client.font;
         List<Row> rows = decay.fault(Part.PLATE) == Fault.DROP
                 ? List.of(tag(decay, look))
-                : jumped(decay, fitting(all, roomForRows(font, layout, look, graphics.guiHeight())));
+                : jumped(
+                        decay,
+                        plateRows(
+                                font,
+                                layout,
+                                look,
+                                all,
+                                SeatedHotbar.slots(client, graphics.guiWidth(), graphics.guiHeight()),
+                                graphics.guiWidth(),
+                                graphics.guiHeight()));
         Box box = plateBox(font, layout, look, rows, graphics.guiWidth(), graphics.guiHeight());
         CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
         GuiSpriteScaling.NineSlice.Border inset = plateInset(layout, look);

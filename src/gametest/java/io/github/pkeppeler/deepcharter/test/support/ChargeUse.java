@@ -2,8 +2,11 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
@@ -12,8 +15,11 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
-/** What the charge tests share: using a charge in the main hand, and checking a block after the blast. */
+/** What the charge tests share: using a charge in the main hand, packing rock round a seated pilot's pod, and checking a block after the blast. */
 public final class ChargeUse {
     private ChargeUse() {}
 
@@ -39,5 +45,24 @@ public final class ChargeUse {
                     expected,
                     level.getBlockState(pos).getBlock());
         }
+    }
+
+    /**
+     * Fills every air cell within {@code radius} of the middle of {@code pilot}'s {@code pod} with stone, as a shaft caved in on it, but the one the pilot's eyes are in,
+     * which would choke it. Returns the cells filled.
+     */
+    public static List<BlockPos> packRound(ServerPlayer pilot, PodEntity pod, int radius) {
+        ServerLevel level = pilot.level();
+        BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
+        Vec3 eye = pilot.getEyePosition();
+        List<BlockPos> cells = new ArrayList<>();
+        for (BlockPos cell : BlockPos.betweenClosed(
+                middle.offset(-radius, -radius, -radius), middle.offset(radius, radius, radius))) {
+            if (level.getBlockState(cell).isAir() && !new AABB(cell).contains(eye)) {
+                level.setBlock(cell, Blocks.STONE.defaultBlockState(), 3);
+                cells.add(cell.immutable());
+            }
+        }
+        return cells;
     }
 }
