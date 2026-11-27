@@ -10,6 +10,6 @@
   ],
   "bottom": "deepcharter:basalt_core",
   "noise": "deepcharter:claim_contact",
-  "amplitude": 4,
+  "amplitude": 0,
   "surface_depth_multiplier": 0
 }

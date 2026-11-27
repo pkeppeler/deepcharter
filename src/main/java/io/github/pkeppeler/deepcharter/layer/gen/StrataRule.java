@@ -201,7 +201,9 @@ public record StrataRule(
 
     @Override
     public RuleEvaluator compile(MaterialRuleContext context) {
-        return evaluator(context.getNoiseSampler(noise, false), context::surfaceDepth);
+        // A rule that does not move its contacts by noise (layer 3's top beds) never builds or reads the sampler.
+        DoubleSupplier sampler = amplitude == 0 ? () -> 0.0 : context.getNoiseSampler(noise, false);
+        return evaluator(sampler, context::surfaceDepth);
     }
 
     /**
@@ -335,19 +337,23 @@ public record StrataRule(
      * bands.
      */
     static int jitter(int x, int y, int z) {
-        int h = x * 0x1B873593 ^ y * 0xCC9E2D51 ^ z * 0x85EBCA6B;
-        h ^= h >>> 16;
-        h *= 0x7FEB352D;
+        int h = x * 0x9E3779B1 + y * 0x85EBCA6B + z * 0xC2B2AE35;
         h ^= h >>> 15;
-        h *= 0x846CA68B;
-        h ^= h >>> 16;
+        h *= 0x2C1B3C6D;
+        h ^= h >>> 12;
+        h *= 0x297A2D39;
+        h ^= h >>> 15;
         return h >>> 1;
     }
 
-    /** The shift of a column's contacts: the noise at the column, in rows, clamped, and the surface depth's rise. */
-    private int shiftOf(double noiseValue, int surfaceDepth) {
-        int moved = (int) Math.round(amplitude * noiseValue);
-        return Math.clamp(moved, -MAX_SHIFT, MAX_SHIFT) + surfaceDepth * surfaceDepthMultiplier;
+    /**
+     * The shift of a column's contacts: the noise at the column, in rows, clamped, and the surface depth's rise. A
+     * rule with no amplitude or no multiplier reads neither the noise nor the depth.
+     */
+    private int shiftOf(DoubleSupplier sampler, IntSupplier surfaceDepth) {
+        int moved = amplitude == 0 ? 0 : (int) Math.round(amplitude * sampler.getAsDouble());
+        int rise = surfaceDepthMultiplier == 0 ? 0 : surfaceDepth.getAsInt() * surfaceDepthMultiplier;
+        return Math.clamp(moved, -MAX_SHIFT, MAX_SHIFT) + rise;
     }
 
     /** The rule in one chunk: the shift of the column last asked about. */
@@ -368,7 +374,7 @@ public record StrataRule(
             if (x != lastX || z != lastZ) {
                 lastX = x;
                 lastZ = z;
-                shift = shiftOf(sampler.getAsDouble(), surfaceDepth.getAsInt());
+                shift = shiftOf(sampler, surfaceDepth);
             }
             return rockAt(x, y, z, shift);
         }

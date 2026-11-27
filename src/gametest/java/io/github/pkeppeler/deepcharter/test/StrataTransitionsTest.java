@@ -207,7 +207,8 @@ public class StrataTransitionsTest {
     public void aColumnReadsItsNoiseOnceWhateverTheStyle(GameTestHelper helper) {
         int columns = 8;
         for (Style style : EnumSet.allOf(Style.class)) {
-            StrataRule rule = rule(style, style.minLength());
+            StrataRule rule = new StrataRule(
+                    List.of(new StrataRule.Contact(0, UPPER, style, style.minLength())), LOWER, NOISE, 4, 1);
             AtomicInteger noiseReads = new AtomicInteger();
             AtomicInteger depthReads = new AtomicInteger();
             RuleEvaluator evaluator = rule.evaluator(
@@ -235,6 +236,32 @@ public class StrataTransitionsTest {
                     depthReads.get(),
                     columns * columns);
         }
+        helper.succeed();
+    }
+
+    /** A rule that moves nothing by noise or surface depth (layer 3's beds) reads neither, and never builds the sampler. */
+    @GameTest
+    public void aRuleWithNoAmplitudeOrRiseReadsNothing(GameTestHelper helper) {
+        AtomicInteger reads = new AtomicInteger();
+        RuleEvaluator evaluator = rule(Style.INTERBEDDED, INTERBEDS)
+                .evaluator(
+                        () -> {
+                            reads.incrementAndGet();
+                            return 1.0;
+                        },
+                        () -> {
+                            reads.incrementAndGet();
+                            return 1;
+                        });
+        for (int y = INTERBEDS; y >= -INTERBEDS; y--) {
+            expect(
+                    helper,
+                    evaluator.tryApply(0, y, 0)
+                            == rule(Style.INTERBEDDED, INTERBEDS).rockAt(0, y, 0, 0),
+                    "an unmoved rule moved its rock at y=%s",
+                    y);
+        }
+        expect(helper, reads.get() == 0, "an unmoved rule read the noise or the surface depth %s times", reads.get());
         helper.succeed();
     }
 

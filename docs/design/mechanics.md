@@ -2787,7 +2787,7 @@ It plays to the pilot only, as the rumble did, from `BreachEffects.begin`: a cro
 | `long_gradient` | 48 to 128 | The same, and the rock's colour drifts with it (below) |
 | `interbedded` | 12 to 64 | Bands of it in the upper rock, one in each cycle of 6 rows, one row thicker each cycle |
 
-A gradient adds one integer hash to a block in its rows and samples no noise: the column's contour noise is still read once a column, and the prefill (ADR 0108) guesses a gradient's block from the same hash. No dither is a band, because the hash has none.
+A gradient adds one integer hash to a block in its rows and samples no noise (a rule with no amplitude, like layer 3's beds, reads neither the noise nor the surface depth): the column's contour noise is still read once a column, and the prefill (ADR 0108) guesses a gradient's block from the same hash. No dither is a band, because the hash has none.
 
 **Mapping.**
 
