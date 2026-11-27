@@ -9,6 +9,7 @@
 # ContinuityPackClientTest: one CI run (#1377, shard 2), from its START line to the next; refresh from CI.
 # RealInputTypingClientTest: one local run (#1385); refresh from CI.
 # CockpitTitlesClientTest: two local runs (#1436), 15 and 16 s, beside CockpitHudClientTest at 48 and 49 s, scaled by its CI weight (36): 12; refresh from CI.
+# StaleClientLightClientTest: 220 (#1553), up from 195: it overran its weight on every run in the four shard-1 timeouts (215-225 s from the logs); refresh from CI.
 AmbienceClientTest 46
 BeamsClientTest 23
 BlockReadoutClientTest 16
@@ -100,7 +101,7 @@ SkyClientTest 20
 SonarHudClientTest 23
 SoundWiringClientTest 45
 SpecSheetClientTest 21
-StaleClientLightClientTest 195
+StaleClientLightClientTest 220
 StepToastClearOfHudClientTest 15
 StepToastClearOfSonarClientTest 27
 StepToastClientTest 11

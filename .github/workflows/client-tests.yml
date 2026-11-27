@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 env:
-  CLIENT_SHARDS: 4
+  CLIENT_SHARDS: 5
 
 jobs:
   changes:
@@ -62,13 +62,13 @@ jobs:
     needs: changes
     if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
-    # One shard is ~1/4 of the suite by measured weight (gradle/client-test-weights.txt): about 11 minutes of tests, with 3 minutes of setup before it.
+    # One shard is ~1/5 of the suite by measured weight (gradle/client-test-weights.txt): about 11 minutes of tests, with 3 minutes of setup before it.
     # The action's own deadline is 20 minutes of test time; this leaves room for setup and the post steps.
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
