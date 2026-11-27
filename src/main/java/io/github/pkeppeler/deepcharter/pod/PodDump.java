@@ -152,25 +152,11 @@ public final class PodDump {
     }
 
     /**
-     * Whether the pod cannot climb and dumping would help: the load ({@link PodEntity#cargoMass} and {@link
-     * PodEvents#extraMass}) reaches {@link #climbLimit}, and without the cargo it would not (which also means the hold
-     * holds something). {@link PodCues} names the dump key only then.
+     * Whether the pod cannot climb and dumping would help: the load ({@link PodLoad}) reaches its climb limit, and without
+     * the cargo it would not (which also means the hold holds something). {@link PodCues} names the dump key only then.
      */
     static boolean overloadedByCargo(PodEntity pod) {
-        double limit = climbLimit(pod);
-        float extra = PodEvents.extraMass(pod);
-        return pod.cargoMass() + extra >= limit && extra < limit;
-    }
-
-    /**
-     * The load at which a held jump no longer climbs. {@link PodMovement#tick} thrusts by {@code thrustAcceleration *
-     * lift / enginePower} against the pod's gravity, with lift the power the load leaves, so from {@code enginePower *
-     * (1 - gravity / thrustAcceleration)} up the thrust cannot beat gravity. {@link PodCues} reads it too. Goes into
-     * #1449's {@code PodLoad} when that lands, as does the tests' {@code PodClimb}.
-     */
-    static double climbLimit(PodEntity pod) {
-        PodStats stats = PodStats.of(pod);
-        double gravity = pod.gravityPull(PodTuning.DEFAULT.movement().gravity());
-        return stats.enginePower() * (1 - gravity / stats.thrustAcceleration());
+        PodLoad load = PodLoad.of(pod);
+        return load.cannotClimb() && load.load() - pod.cargoMass() < load.climbLimit();
     }
 }

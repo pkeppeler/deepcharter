@@ -13,12 +13,12 @@ import io.github.pkeppeler.deepcharter.pod.PodDump;
 import io.github.pkeppeler.deepcharter.pod.PodDumpPayload;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
-import io.github.pkeppeler.deepcharter.test.support.PodClimb;
 import io.github.pkeppeler.deepcharter.test.support.TestCharters;
 import io.github.pkeppeler.deepcharter.test.support.TestCleanups;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
@@ -97,7 +97,7 @@ public class PodDumpTest {
 
     /** Puts one ironium in the hold that weighs as much as the pod can climb with, so a held jump no longer climbs. */
     private static void overload(PodEntity pod) {
-        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), PodClimb.limit(pod));
+        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), PodLoad.of(pod).climbLimit());
     }
 
     private static PodMenu open(GameTestHelper helper, ServerPlayer player, PodEntity pod) {
@@ -440,7 +440,7 @@ public class PodDumpTest {
         light.pod().cargo().tryAdd(light.pod(), OreRegistry.stack(OreType.GOLDIUM));
         Scene empty = seated(helper, 6);
         for (Scene scene : List.of(light, empty)) {
-            TOWING.put(scene.pod().getUUID(), PodClimb.limit(scene.pod()));
+            TOWING.put(scene.pod().getUUID(), PodLoad.of(scene.pod()).climbLimit());
             TestCleanups.onFinish(helper, () -> TOWING.remove(scene.pod().getUUID()));
         }
         helper.runAfterDelay(20, () -> {

@@ -8,10 +8,10 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import io.github.pkeppeler.deepcharter.test.support.PodClimb;
 import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.UUID;
@@ -140,7 +140,7 @@ public class PodDumpScenario extends EvidenceScenario {
         pod.setPos(player.position().add(2, 0, 0));
         player.level().addFreshEntity(pod);
         PodComponents.register(pod, charter);
-        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), PodClimb.limit(pod));
+        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM), PodLoad.of(pod).climbLimit());
         for (int i = 0; i < GOLDIUM; i++) {
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
         }

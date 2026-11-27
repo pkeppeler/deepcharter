@@ -10,13 +10,13 @@ import io.github.pkeppeler.deepcharter.pod.PodCues;
 import io.github.pkeppeler.deepcharter.pod.PodDump;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
-import io.github.pkeppeler.deepcharter.test.support.PodClimb;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -51,6 +51,8 @@ public class PodHazardCuesTest {
 
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
+    /** Blocks a pod one unit under its climb limit rises in 20 ticks of held rotor, with room to spare (about 0.3 by the arithmetic). */
+    private static final double CLIMBED = 0.05;
     /** Layer 1 gas site: a bed of stone under an open room, away from every other test's. */
     private static final int GAS_X = 9800;
 
@@ -300,7 +302,7 @@ public class PodHazardCuesTest {
 
     /** Loads the pod to the load at which a held jump stops climbing. */
     private static void overload(Rig rig) {
-        rig.pod.setCargoMass(PodClimb.limit(rig.pod));
+        rig.pod.setCargoMass(PodLoad.of(rig.pod).climbLimit());
     }
 
     @GameTest(maxTicks = 60)
@@ -507,28 +509,33 @@ public class PodHazardCuesTest {
     }
 
     /**
-     * The cue and the climb read the same load: with a load {@code under} the climb limit ({@link PodClimb#limit},
-     * where the rotor's thrust no longer beats gravity), carried as cargo or as tow mass, a held jump climbs exactly
-     * when the cue stays silent, so a drift of either formula fails here.
+     * The cue and the climb read the same load ({@code PodLoad}): with {@code under} units of load short of the climb limit the pod climbs and the
+     * cue stays silent, and with 0 short (the climb limit itself, where the rotor still thrusts but cannot beat gravity) it does not climb and the
+     * cue fires once, so a drift of either fails here. {@code fromCargo} puts the load in the bay, otherwise on the tow-mass listener.
      */
-    private void cueAgreesWithTheClimb(GameTestHelper helper, boolean asCargo, float under, boolean climbs) {
+    private void cueAgreesWithTheClimb(GameTestHelper helper, boolean fromCargo, float under) {
         Rig rig = Rig.build(helper, 0);
-        float load = PodClimb.limit(rig.pod) - under;
-        rig.pod.setCargoMass(asCargo ? load : 0f);
-        TOWING.put(rig.pod.getUUID(), asCargo ? 0f : load);
+        float load = PodLoad.of(rig.pod).climbLimit() - under;
+        if (fromCargo) {
+            rig.pod.setCargoMass(load);
+        } else {
+            TOWING.put(rig.pod.getUUID(), load);
+        }
+        boolean climbs = under > 0f;
+        double startY = rig.pod.getY();
         rig.pilot.setInput(JUMP);
-        double[] settled = {0};
-        helper.runAfterDelay(10, () -> settled[0] = rig.pod.getY());
-        helper.runAfterDelay(30, () -> {
+        helper.runAfterDelay(20, () -> {
             try {
-                double rose = rig.pod.getY() - settled[0];
+                double rose = rig.pod.getY() - startY;
                 long cues = messages(rig.pilot, OVERLOAD_KEY) + messages(rig.pilot, OVERLOAD_LOAD_KEY);
-                if ((rose > 0.01) != climbs || cues != (climbs ? 0 : 1)) {
+                if ((rose > CLIMBED) != climbs
+                        || cues != (climbs ? 0 : 1)
+                        || PodLoad.of(rig.pod).cannotClimb() == climbs) {
                     throw failure(
                             helper,
-                            "with a load of %s as %s the pod should %s and the cue should %s, rose %s and %s cues",
+                            "with a load of %s (%s short of the climb limit) the pod should %s and the cue should %s, rose %s and %s cues",
                             load,
-                            asCargo ? "cargo" : "tow",
+                            under,
                             climbs ? "climb" : "not climb",
                             climbs ? "stay silent" : "fire once",
                             rose,
@@ -543,22 +550,22 @@ public class PodHazardCuesTest {
     }
 
     @GameTest(maxTicks = 60)
-    public void cargoAtTheClimbLimitStopsTheClimbAndCues(GameTestHelper helper) {
-        cueAgreesWithTheClimb(helper, true, 0f, false);
+    public void cargoAtTheClimbLimitCannotClimbAndCues(GameTestHelper helper) {
+        cueAgreesWithTheClimb(helper, true, 0f);
     }
 
     @GameTest(maxTicks = 60)
-    public void cargoJustUnderTheClimbLimitClimbsAndStaysSilent(GameTestHelper helper) {
-        cueAgreesWithTheClimb(helper, true, 1f, true);
+    public void cargoOneUnitUnderTheClimbLimitClimbsAndStaysSilent(GameTestHelper helper) {
+        cueAgreesWithTheClimb(helper, true, 1f);
     }
 
     @GameTest(maxTicks = 60)
-    public void towMassAtTheClimbLimitStopsTheClimbAndCues(GameTestHelper helper) {
-        cueAgreesWithTheClimb(helper, false, 0f, false);
+    public void towMassAtTheClimbLimitCannotClimbAndCues(GameTestHelper helper) {
+        cueAgreesWithTheClimb(helper, false, 0f);
     }
 
     @GameTest(maxTicks = 60)
-    public void towMassJustUnderTheClimbLimitClimbsAndStaysSilent(GameTestHelper helper) {
-        cueAgreesWithTheClimb(helper, false, 1f, true);
+    public void towMassOneUnitUnderTheClimbLimitClimbsAndStaysSilent(GameTestHelper helper) {
+        cueAgreesWithTheClimb(helper, false, 1f);
     }
 }

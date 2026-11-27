@@ -59,8 +59,9 @@ public final class PodCues {
             return;
         }
         Input input = pilot.getLastClientInput();
-        // The load at which PodMovement.tick's thrust no longer beats gravity, as the dump hint reads it.
-        if (!input.jump() || pod.cargoMass() + PodEvents.extraMass(pod) < PodDump.climbLimit(pod)) {
+        // The same load as PodMovement.tick: a held rotor that cannot climb is a failed lift.
+        PodLoad load = PodLoad.of(pod);
+        if (!input.jump() || !load.cannotClimb()) {
             LAST_CUE.remove(pod);
             return;
         }
