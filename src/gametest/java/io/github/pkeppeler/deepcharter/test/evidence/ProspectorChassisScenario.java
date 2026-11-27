@@ -109,6 +109,10 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                         Z + SLAB_RADIUS,
                         Blocks.AIR);
                 level.setBlock(console, HangarTerminal.TYPE.block().defaultBlockState(), 3);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), TestLayers.SURFACE, X, Z, SLAB_RADIUS);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel level = server.overworld();
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setPermanentlyInvulnerable(true);
                 player.getInventory().clearContent();
