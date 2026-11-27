@@ -45,7 +45,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * A teleporter's arrival (#1353): a pod sent with its pilot to a cold chunk stays loaded and tracked for the pilot,
- * as a seam swap's or a tow's arrival does.
+ * as a seam swap's or a tow's arrival does. The pilot's client never loses the pod, not even for a tick (#1364).
  */
 public class TeleportArrivalTest {
     // The countdown counts down only while its chunk is ready to save (vanilla's timed tickets), and that readiness
@@ -97,6 +97,7 @@ public class TeleportArrivalTest {
         FarChunks.Deadline countdownWait = FarChunks.deadline();
         FarChunks.Deadline releaseWait = FarChunks.deadline();
         long[] sent = {-1};
+        int[] packetsBefore = {-1};
         boolean[] everLoaded = {false};
         boolean[] everHeld = {false};
         long[] countdown = {-1};
@@ -106,6 +107,10 @@ public class TeleportArrivalTest {
             if (sent[0] < 0) {
                 // The pilot's client holds its pod before it teleports, as a pilot's has long done.
                 if (clientHolds(pilot, podId)) {
+                    // The mock reads its packets a tick late, so a packet sent before this mark could be read after
+                    // it. The gate above makes a stray remove unlikely (the client already holds the pod), and one
+                    // would still be a real flicker on the pilot's screen.
+                    packetsBefore[0] = pilot.sequence().size();
                     send(helper, overworld, pilot, x);
                     expect(
                             helper,
@@ -127,6 +132,12 @@ public class TeleportArrivalTest {
                 player.connection.handleMovePlayer(
                         new ServerboundMovePlayerPacket.Rot(player.getYRot(), player.getXRot(), false, false));
             }
+            // A remove-entity, even one followed by an add in the same read, is a flicker on the pilot's screen.
+            expect(
+                    helper,
+                    clientHolds(pilot, podId) && !removedSince(pilot, podId, packetsBefore[0]),
+                    "the pilot's client lost its pod by tick %d",
+                    tick);
             long key = arrival.pack();
             int level = overworld.getChunkSource().chunkMap.getDistanceManager().getChunkLevel(key, false);
             boolean loaded = overworld.areEntitiesLoaded(key);
@@ -189,8 +200,6 @@ public class TeleportArrivalTest {
                         countdown[0],
                         released[0]);
                 expect(helper, !pod.isRemoved(), "the pod was removed: %s", pod.getRemovalReason());
-                // Only at the end: the client still drops the pod for a tick at tick 1 and after the answer (#1364).
-                expect(helper, clientHolds(pilot, podId), "the pilot's client should hold its pod at the end");
                 expect(helper, player.getVehicle() == pod, "the pilot should still ride the pod");
                 helper.succeed();
             }
@@ -223,6 +232,14 @@ public class TeleportArrivalTest {
                 overworld.setRespawnData(original);
             }
         });
+    }
+
+    /** Whether the pilot was sent a remove-entity for the pod among its packets from index {@code from} on. */
+    private static boolean removedSince(MockPlayer pilot, int podId, int from) {
+        List<Object> packets = pilot.sequence();
+        return packets.subList(from, packets.size()).stream()
+                .anyMatch(packet -> packet instanceof ClientboundRemoveEntitiesPacket remove
+                        && remove.entityIds().contains(podId));
     }
 
     /** Whether the pilot's client holds the pod, from the add and remove packets it was sent. */
