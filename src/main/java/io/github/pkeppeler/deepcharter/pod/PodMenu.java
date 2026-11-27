@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.menu.MirrorContainer;
 import io.github.pkeppeler.deepcharter.menu.SlotRule;
 import io.github.pkeppeler.deepcharter.menu.SlottedMenu;
+import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -590,7 +591,7 @@ public final class PodMenu extends SlottedMenu {
                             * PodStats.of(pod).tankLitres()
                             * 10f);
                 case TANK_TENTHS -> Math.round(PodStats.of(pod).tankLitres() * 10f);
-                case MASS -> Math.round(pod.cargoMass());
+                case MASS -> OreEncumbrance.shown(pod.cargoMass());
                 case SPOIL ->
                     PodLining.readable(pod).map(PodLining.State::spoil).orElse(0);
                 case BRICKS ->

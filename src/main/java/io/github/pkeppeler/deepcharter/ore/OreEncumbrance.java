@@ -113,6 +113,14 @@ public final class OreEncumbrance {
         return mass;
     }
 
+    /**
+     * A mass as the player reads it: whole pod units, rounded. The pod screen's Mass line and an ore's tooltip both show this, so
+     * the numbers a player adds up are the ones the pod's load is made of.
+     */
+    public static int shown(float mass) {
+        return Math.round(mass);
+    }
+
     private static void apply(ServerPlayer player) {
         OreTuning tuning = OreTuning.DEFAULT;
         float mass = carriedMass(player);
