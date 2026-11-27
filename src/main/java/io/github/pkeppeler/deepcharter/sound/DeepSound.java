@@ -8,7 +8,7 @@ import net.minecraft.sounds.SoundEvent;
  * Every Deep Charter sound event. The path is also the key in {@code sounds.json} and the id
  * in {@code tools/audio-pack-map.txt}; add a constant, a map line and a sound together
  * ({@code SoundEventsTest} fails if they drift apart). A sound the original game has no counterpart of (the drone beds {@code ambient.*} and the Lamp
- * Hymn {@code hymn.*}, #249, the chord of a machine coming online {@code terminal.online}, #1267, the wax cylinders' recordings {@code phonograph.*}, #864, and the two variants of "Au clair de la lune" {@code song.*}, #861, and the Continuity Event's {@code continuity.*}, #1337) has no map line: the private audio pack leaves
+ * Hymn {@code hymn.*}, #249, the cave-in {@code cave_in.*}, #1293, the chord of a machine coming online {@code terminal.online}, #1267, the wax cylinders' recordings {@code phonograph.*}, #864, and the two variants of "Au clair de la lune" {@code song.*}, #861, and the Continuity Event's {@code continuity.*}, #1337) has no map line: the private audio pack leaves
  * it alone ({@code SoundEventsTest} names those prefixes).
  */
 public enum DeepSound {
@@ -49,6 +49,7 @@ public enum DeepSound {
     REPAIR_NANOBOTS("repair.nanobots"),
     BREACH_RUMBLE("breach.rumble"),
     BREACH_CROSS("breach.cross"),
+    CAVE_IN_COLLAPSE("cave_in.collapse"),
     SCANNER_PING("scanner.ping"),
     SCANNER_SWEEP("scanner.sweep"),
     UI_TYPEWRITER("ui.typewriter"),

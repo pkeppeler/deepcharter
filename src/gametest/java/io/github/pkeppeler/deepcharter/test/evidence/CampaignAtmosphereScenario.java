@@ -208,8 +208,8 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         }
         roomStill(context, server, layer1, false, 0, "unlit-room-wall-today");
         roomStill(context, server, CAMPAIGN, false, 0, "unlit-room-wall-campaign");
-        // A lampless figure, whole, in each dark room: at light 0 it is lit by the dimension type's ambient light
-        // alone.
+        // A lampless figure, whole, in each dark room: at light 0 it is lit by the dimension type's ambient
+        // light alone.
         figureStill(context, server, layer1, "figure-light-0-today");
         figureStill(context, server, CAMPAIGN, "figure-light-0-campaign");
     }
@@ -494,8 +494,8 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
             player.teleportTo(
                     TestLayers.level(s, TestLayers.SURFACE), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
         });
-        // The camera must be where the still says and looking where it says: a camera a block short makes another
-        // picture.
+        // The camera must be where the still says and looking where it says: a camera a block short makes
+        // another picture.
         ClientWait.until(
                 context,
                 "the camera at the eye of " + name,

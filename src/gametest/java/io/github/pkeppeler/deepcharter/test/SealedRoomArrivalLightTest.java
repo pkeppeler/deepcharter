@@ -36,7 +36,7 @@ public class SealedRoomArrivalLightTest {
     /** Ticks after the light engine is idle that the net may still send: its window of 100 ticks, with a margin (restates {@code LightSync}). */
     private static final int SETTLE_TICKS = 100 + 20;
 
-    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.C, maxTicks = 3_000)
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.C, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 3_000)
     public void aRoomSealedInTheTickThePlayerArrivesIsSentItsDarkness(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MockPlayer mock = MockPlayers.join(helper, "sealed-arrival");
@@ -46,18 +46,25 @@ public class SealedRoomArrivalLightTest {
         int[] waited = {0};
         BlockPos[] floor = {null};
         List<ChunkPos> room = new ArrayList<>();
+        for (int cx = (X - 12) >> 4; cx <= (X + 12) >> 4; cx++) {
+            for (int cz = (Z - 12) >> 4; cz <= (Z + 12) >> 4; cz++) {
+                FarChunks.force(helper, level, cx, cz);
+            }
+        }
         TestTicks.each(helper, () -> {
             switch (phase[0]) {
                 case 0 -> {
-                    BlockPos at = new BlockPos(X, 0, Z);
-                    level.getChunk(at);
-                    floor[0] = new BlockPos(X, level.getHeight(Heightmap.Types.MOTION_BLOCKING, X, Z), Z);
+                    boolean loaded = true;
                     for (int cx = (X - 12) >> 4; cx <= (X + 12) >> 4; cx++) {
                         for (int cz = (Z - 12) >> 4; cz <= (Z + 12) >> 4; cz++) {
-                            FarChunks.force(helper, level, cx, cz);
-                            level.getChunk(cx, cz);
+                            loaded &= level.getChunkSource().getChunkNow(cx, cz) != null;
                         }
                     }
+                    deadline.await(helper, level, loaded, () -> "the chunks round the room did not load");
+                    if (!loaded) {
+                        return;
+                    }
+                    floor[0] = new BlockPos(X, level.getHeight(Heightmap.Types.MOTION_BLOCKING, X, Z), Z);
                     ChunkPos.rangeClosed(
                                     ChunkPos.containing(floor[0].offset(-RADIUS, 0, -RADIUS)),
                                     ChunkPos.containing(floor[0].offset(RADIUS, 0, RADIUS)))

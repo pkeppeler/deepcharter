@@ -209,8 +209,8 @@ public final class PodStatusHud {
     public static List<Component> sounderLines(PodEntity pod) {
         PodSounder.State state = PodSounder.reading(pod).orElse(PodSounder.State.EMPTY);
         List<Component> lines = new ArrayList<>();
-        // The drill waits on a pocket in the slab it bores next: the one below, or the one beside in the direction it
-        // bores.
+        // The drill waits on a pocket in the slab it bores next: the one below, or the one beside in the direction
+        // it bores.
         Direction bore = pod.drillDirection();
         boolean bleeding = pod.drilling()
                 && PodSounder.bleedPauseTicks(pod) > 0

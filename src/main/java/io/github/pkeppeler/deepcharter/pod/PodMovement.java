@@ -55,8 +55,8 @@ public final class PodMovement {
         // noPhysics makes Entity.move skip block collision; only this hook sets it on a pod.
         pod.noPhysics = PodEvents.ignoresBlockCollision(pod);
         pod.move(MoverType.SELF, pod.getDeltaMovement());
-        // Entity.move leaves the speed it ran into. Clear it only if it still points into the surface, so a bounce
-        // survives.
+        // Entity.move leaves the speed it ran into. Clear it only if it still points into the surface, so a
+        // bounce survives.
         double after = pod.getDeltaMovement().y;
         if (pod.verticalCollision && (pod.verticalCollisionBelow ? after < 0 : after > 0)) {
             pod.setDeltaMovement(pod.getDeltaMovement().multiply(1, 0, 1));

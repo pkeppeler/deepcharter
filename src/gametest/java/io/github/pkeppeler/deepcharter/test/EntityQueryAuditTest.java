@@ -362,8 +362,8 @@ public class EntityQueryAuditTest {
         int before = server.getPlayerList().getSimulationDistance();
         server.getPlayerList().setSimulationDistance(3);
         MockPlayer mock = MockPlayers.join(helper, "simulation-distance");
-        // The player stands in the last block column of its chunk, so 30 blocks east is the far end of the second chunk
-        // beyond.
+        // The player stands in the last block column of its chunk, so 30 blocks east is the far end of the second
+        // chunk beyond.
         Vec3 at = TestLayers.vec(TestLayers.SURFACE, 17_007.5, 100, 17_000.5);
         BlockPos podPos = BlockPos.containing(at.x + 30, at.y, at.z);
         FarChunks.Deadline deadline = FarChunks.deadline();

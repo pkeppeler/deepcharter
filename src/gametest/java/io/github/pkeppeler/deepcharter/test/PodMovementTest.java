@@ -181,8 +181,8 @@ public class PodMovementTest {
                 return;
             }
             try {
-                // Vanilla's boat adds 1 degree a tick of turn rate and keeps 0.9 of it: it settles at 10 degrees a
-                // tick.
+                // Vanilla's boat adds 1 degree a tick of turn rate and keeps 0.9 of it: it settles at 10 degrees
+                // a tick.
                 if (first[0] > 4f || turned < 8f || turned > 10.5f) {
                     throw failure(
                             helper,
