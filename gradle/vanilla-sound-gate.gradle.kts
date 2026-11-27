@@ -21,8 +21,8 @@
 object VanillaSoundGate {
 	private val MARKER = Regex("""//\s*vanilla-ok:\s*\S""")
 	private val QUOTED = Regex(""""([^"\\\n]+)"""")
-	const val MIN_REASON_WORDS = 3
-	const val ID_PREFIX = "minecraft:"
+	private const val MIN_REASON_WORDS = 3
+	private const val ID_PREFIX = "minecraft:"
 
 	/** The banned tokens of the list text: Java tokens and sound ids, each with its regex, and the problems found reading it ("line message"). */
 	class Banned(val java: List<Pair<String, Regex>>, val ids: List<Pair<String, Regex>>)
@@ -145,14 +145,14 @@ val vanillaSoundAdvice = "A vanilla sound on this list breaks the tone (the expl
 	"'<path>  <id>  <reason>'. The list is gradle/banned-vanilla-sounds.txt: add a line to ban another."
 
 /** The problems over the fixture tree {@code root}: its .java and .json files, the one banned-vanilla-sounds.txt and an optional vanilla-sound-allowlist.txt. */
-val vanillaSoundProblems: (File, File, (String) -> String, (List<String>) -> List<String>, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String> =
-	{ root, base, blankLiterals, codeLines, markedNear ->
+val vanillaSoundProblems: (File, (String) -> String, (List<String>) -> List<String>, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String> =
+	{ root, blankLiterals, codeLines, markedNear ->
 		val files = root.walkTopDown().filter { it.isFile }.toList()
 		val list = files.singleOrNull { it.name == "banned-vanilla-sounds.txt" }
 			?: throw GradleException("the fixture tree needs exactly one banned-vanilla-sounds.txt")
 		VanillaSoundGate.problems(
 			files.filter { it.name.endsWith(".java") }, files.filter { it.name.endsWith(".json") }, list,
-			files.singleOrNull { it.name == "vanilla-sound-allowlist.txt" }, base, blankLiterals, codeLines, markedNear,
+			files.singleOrNull { it.name == "vanilla-sound-allowlist.txt" }, root, blankLiterals, codeLines, markedNear,
 		)
 	}
 // Shared with checkGametestFixtures (gametest.gradle.kts), as keybind-gate.gradle.kts does.

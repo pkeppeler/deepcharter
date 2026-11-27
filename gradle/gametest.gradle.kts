@@ -712,7 +712,7 @@ tasks.register("checkGametestFixtures") {
 	val keybindAdvice = project.extra["keybindAdvice"] as String
 	// The vanilla-sound gate's scan (vanilla-sound-gate.gradle.kts), run the same way.
 	@Suppress("UNCHECKED_CAST")
-	val vanillaSoundProblems = project.extra["vanillaSoundProblems"] as (File, File, (String) -> String, (List<String>) -> List<String>, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
+	val vanillaSoundProblems = project.extra["vanillaSoundProblems"] as (File, (String) -> String, (List<String>) -> List<String>, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
 	@Suppress("UNCHECKED_CAST")
 	val codeLines = project.extra["codeLines"] as (List<String>) -> List<String>
 	val vanillaSoundAdvice = project.extra["vanillaSoundAdvice"] as String
@@ -792,7 +792,7 @@ tasks.register("checkGametestFixtures") {
 				}
 				if (c["gate"] == "vanilla_sound") {
 					val root = File(c["root"] as String)
-					val problems = vanillaSoundProblems(root, root, blankLiterals, codeLines, markedNear)
+					val problems = vanillaSoundProblems(root, blankLiterals, codeLines, markedNear)
 					if (problems.isNotEmpty()) {
 						throw GradleException("Banned vanilla sounds. $vanillaSoundAdvice\n  " + problems.joinToString("\n  "))
 					}
