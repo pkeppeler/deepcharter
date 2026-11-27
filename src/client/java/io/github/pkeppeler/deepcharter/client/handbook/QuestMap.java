@@ -132,7 +132,7 @@ final class QuestMap {
         int columns =
                 Math.max(1, Math.min(q.stepColumns(), (mapWidth + q.stepGap()) / (q.stepMinWidth() + q.stepGap())));
         int boxWidth = (mapWidth - q.stepGap() * (columns - 1)) / columns;
-        List<Rect> main = grid(model.main().chapter().directives().size(), 0, columns, boxWidth);
+        List<Rect> main = grid(model.main().chapter().directives().size(), columns, boxWidth);
         int bottom = main.getLast().bottom();
         int noteY = 0;
         if (beside) {
@@ -165,15 +165,12 @@ final class QuestMap {
         return new Layout(columns, boxWidth, main, List.copyOf(bars), noteY, mapWidth, height);
     }
 
-    private static List<Rect> grid(int count, int top, int columns, int boxWidth) {
+    private static List<Rect> grid(int count, int columns, int boxWidth) {
         QuestMapTuning q = QuestMapTuning.current();
         List<Rect> boxes = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             boxes.add(new Rect(
-                    i % columns * (boxWidth + q.stepGap()),
-                    top + i / columns * q.stepPitch(),
-                    boxWidth,
-                    q.stepHeight()));
+                    i % columns * (boxWidth + q.stepGap()), i / columns * q.stepPitch(), boxWidth, q.stepHeight()));
         }
         return List.copyOf(boxes);
     }

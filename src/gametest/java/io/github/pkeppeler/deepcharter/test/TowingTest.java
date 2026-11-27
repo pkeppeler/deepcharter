@@ -205,7 +205,8 @@ public class TowingTest {
                     if (age == 10 && towed.position().distanceTo(towedStart[0]) > 0.3) {
                         throw failure(
                                 helper,
-                                "the line is slack while the tower is 4 blocks from the pod, which should stay put, it went from %s to %s",
+                                "the line is slack while the tower is 4 blocks from the pod, which should stay put, it"
+                                        + " went from %s to %s",
                                 towedStart[0],
                                 towed.position());
                     }
@@ -290,7 +291,8 @@ public class TowingTest {
                     if (behind < 0.3) {
                         throw failure(
                                 helper,
-                                "the towed pod should hang a little behind a tower flying east, it is %s behind on average",
+                                "the towed pod should hang a little behind a tower flying east, it is %s behind on"
+                                        + " average",
                                 behind);
                     }
                     return true;
@@ -374,7 +376,8 @@ public class TowingTest {
                     if (below < 0.6 * trail) {
                         throw failure(
                                 helper,
-                                "the towed pod should hang from the lip at least %s below its tower, it is %s below at %s",
+                                "the towed pod should hang from the lip at least %s below its tower, it is %s below at"
+                                        + " %s",
                                 0.6 * trail,
                                 below,
                                 towed.position());
@@ -499,7 +502,8 @@ public class TowingTest {
                     if (gap > trail + 0.1 || towed.getY() < base.y + 5) {
                         throw failure(
                                 helper,
-                                "the tower stopped at %s within the line of %s: the pod should be up with it, it is at %s",
+                                "the tower stopped at %s within the line of %s: the pod should be up with it, it is at"
+                                        + " %s",
                                 tower.position(),
                                 trail,
                                 towed.position());
@@ -647,7 +651,8 @@ public class TowingTest {
                     if (tower.getY() < base.y + 20 || gap > trail + 0.1 || tower.getY() - towed.getY() < 0.8 * trail) {
                         throw failure(
                                 helper,
-                                "the tower out of the shaft at %s should hold the pod on a taut line of %s below it, the pod is at %s",
+                                "the tower out of the shaft at %s should hold the pod on a taut line of %s below it,"
+                                        + " the pod is at %s",
                                 tower.position(),
                                 trail,
                                 towed.position());
@@ -730,7 +735,8 @@ public class TowingTest {
                     if (gap > trail + 0.3) {
                         throw failure(
                                 helper,
-                                "the tower left a pod with no path behind it: the line is %s long and the pod is %s away on tick %s",
+                                "the tower left a pod with no path behind it: the line is %s long and the pod is %s"
+                                        + " away on tick %s",
                                 trail,
                                 gap,
                                 age);
@@ -944,7 +950,8 @@ public class TowingTest {
         if (empty <= 0f || loaded - empty != 80f) {
             throw failure(
                     helper,
-                    "the towed pod should weigh something on its own and add its cargo mass, got %s empty and %s loaded",
+                    "the towed pod should weigh something on its own and add its cargo mass, got %s empty and %s"
+                            + " loaded",
                     empty,
                     loaded);
         }

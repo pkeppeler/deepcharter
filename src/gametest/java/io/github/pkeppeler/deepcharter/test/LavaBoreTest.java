@@ -1656,7 +1656,8 @@ public class LavaBoreTest {
                 .count();
         long touched = bores.stream().filter(b -> !b.encounters.isEmpty()).count();
         LOGGER.info(
-                "[lava-bore] {} bores, {} columns of layer 1, stock Mole, tier {} scanner (reach {} ahead, {} up, {} down), in time = {} slabs; {} server ticks, {} s wall clock",
+                "[lava-bore] {} bores, {} columns of layer 1, stock Mole, tier {} scanner (reach {} ahead, {} up, {}"
+                        + " down), in time = {} slabs; {} server ticks, {} s wall clock",
                 n,
                 n,
                 SCANNER_TIER,
@@ -1667,7 +1668,8 @@ public class LavaBoreTest {
                 ticks,
                 String.format("%.1f", wallSeconds));
         LOGGER.info(
-                "[lava-bore] outcome: survived {} of {} ({}), died {} (in lava {}, pilot first {}), stalled {}, turned back {}; bores that touched lava {} ({})",
+                "[lava-bore] outcome: survived {} of {} ({}), died {} (in lava {}, pilot first {}), stalled {}, turned"
+                        + " back {}; bores that touched lava {} ({})",
                 survived,
                 n,
                 percent(survived, n),
@@ -1703,7 +1705,8 @@ public class LavaBoreTest {
         long inTimeForOne =
                 encounters.stream().filter(e -> e.slabsShownAhead() >= 1).count();
         LOGGER.info(
-                "[lava-bore] lava encounters: {} ({} per bore); in the scanner's view at all {} ({}), >= 1 slab ahead {} ({}), >= {} slabs ahead {} ({})",
+                "[lava-bore] lava encounters: {} ({} per bore); in the scanner's view at all {} ({}), >= 1 slab ahead"
+                        + " {} ({}), >= {} slabs ahead {} ({})",
                 encounters.size(),
                 String.format("%.2f", encounters.size() / (double) n),
                 shown,
@@ -1719,7 +1722,8 @@ public class LavaBoreTest {
         long contactShown =
                 encounters.stream().filter(e -> e.contactCellsShownAhead() >= 0).count();
         LOGGER.info(
-                "[lava-bore] strict, the lava blocks actually touched: in view at all {} ({}), >= {} slabs ahead {} ({}). The figures above are for the whole connected body, an upper bound",
+                "[lava-bore] strict, the lava blocks actually touched: in view at all {} ({}), >= {} slabs ahead {}"
+                        + " ({}). The figures above are for the whole connected body, an upper bound",
                 contactShown,
                 percent(contactShown, encounters.size()),
                 IN_TIME_SLABS,
@@ -1736,7 +1740,10 @@ public class LavaBoreTest {
                 .count();
         ScanArea thermalArea = ScannerTuning.DEFAULT.area(THERMAL_TIER);
         LOGGER.info(
-                "[lava-bore] thermal tier {} scanner (reach {} ahead, {} up, {} down) marks lava; tier {} shows it as open space. Strict, the lava blocks actually touched: in view at all {} ({}), >= {} slabs ahead {} ({}) against tier {}'s {} ({}). Whole connected body: >= {} slabs ahead {} ({}) against {} ({})",
+                "[lava-bore] thermal tier {} scanner (reach {} ahead, {} up, {} down) marks lava; tier {} shows it as"
+                        + " open space. Strict, the lava blocks actually touched: in view at all {} ({}), >= {} slabs"
+                        + " ahead {} ({}) against tier {}'s {} ({}). Whole connected body: >= {} slabs ahead {} ({})"
+                        + " against {} ({})",
                 THERMAL_TIER,
                 thermalArea.halfWidth(),
                 thermalArea.up(),
@@ -1779,7 +1786,8 @@ public class LavaBoreTest {
                 .filter(e -> e.thermalContactCellsShownAhead() >= IN_TIME_SLABS)
                 .count();
         LOGGER.info(
-                "[lava-bore] first lava of a bore, thermal tier, the touched blocks: >= {} slabs ahead {} of {} ({}); slabs ahead (-1 = never in view): {}",
+                "[lava-bore] first lava of a bore, thermal tier, the touched blocks: >= {} slabs ahead {} of {} ({});"
+                        + " slabs ahead (-1 = never in view): {}",
                 IN_TIME_SLABS,
                 firstThermalContactInTime,
                 firsts.size(),
@@ -1788,7 +1796,8 @@ public class LavaBoreTest {
                         .mapToDouble(Encounter::thermalContactCellsShownAhead)
                         .toArray()));
         LOGGER.info(
-                "[lava-bore] slabs bored in Deep Claim before the first lava (mean {}; 1 / that is the lava chance per slab, censored by the bores that end first); hull left when a bore ended in lava: {}",
+                "[lava-bore] slabs bored in Deep Claim before the first lava (mean {}; 1 / that is the lava chance per"
+                        + " slab, censored by the bores that end first); hull left when a bore ended in lava: {}",
                 String.format(
                         "%.1f",
                         firsts.stream()
@@ -1807,7 +1816,8 @@ public class LavaBoreTest {
         LOGGER.info("[lava-bore] encounters by zone (the first of each bore is the bulk): {}", byZone);
         for (Cause cause : Cause.values()) {
             LOGGER.info(
-                    "[lava-bore] cause {}: hull lost {} per bore; {} hits over {} hull; {} deaths whose last loss it was; braking {}; gas {}",
+                    "[lava-bore] cause {}: hull lost {} per bore; {} hits over {} hull; {} deaths whose last loss it"
+                            + " was; braking {}; gas {}",
                     cause,
                     String.format(
                             "%.1f",
@@ -1823,10 +1833,11 @@ public class LavaBoreTest {
                     BRAKING ? "on" : "off",
                     gas().name().toLowerCase(Locale.ROOT));
         }
+        LOGGER.info("[lava-bore] causes are priority-ordered (lava, then gas, then charge, then landing, then crust): a"
+                + " tick takes one cause, so a tick with lava contact and a gas blast books all its hull to lava");
         LOGGER.info(
-                "[lava-bore] causes are priority-ordered (lava, then gas, then charge, then landing, then crust): a tick takes one cause, so a tick with lava contact and a gas blast books all its hull to lava");
-        LOGGER.info(
-                "[lava-bore] gas {}: {} steps aside from a pocket per bore, {} ticks lost hull to a gas blast per bore ({} of them while sidestepping); {}",
+                "[lava-bore] gas {}: {} steps aside from a pocket per bore, {} ticks lost hull to a gas blast per bore"
+                        + " ({} of them while sidestepping); {}",
                 gas().name().toLowerCase(Locale.ROOT),
                 String.format(
                         "%.1f",
@@ -1869,7 +1880,9 @@ public class LavaBoreTest {
                 .count();
         long noStall = bores.stream().filter(b -> b.sidestepsForStall == 0).count();
         LOGGER.info(
-                "[lava-bore] straight shafts: {} of {} bores never left their column ({}), {} of them reached layer 2 ({} of all bores); {} never stepped aside from a refused slab ({}), which leaves out the steps a sounder bot takes round gas",
+                "[lava-bore] straight shafts: {} of {} bores never left their column ({}), {} of them reached layer 2"
+                    + " ({} of all bores); {} never stepped aside from a refused slab ({}), which leaves out the steps"
+                    + " a sounder bot takes round gas",
                 straight,
                 n,
                 percent(straight, n),
@@ -1881,7 +1894,9 @@ public class LavaBoreTest {
             long perBoreCost = Math.round(
                     bores.stream().mapToInt(b -> b.charges).average().orElse(0) * Consumable.BLASTING_CHARGE.price());
             LOGGER.info(
-                    "[lava-bore] charges: {} per bore ({}), ${} each, ${} per bore; bores that set none {}; deaths whose last loss was a charge {}; hull lost to charges {} per bore; hull lost to the other causes {} per bore; {} sidesteps per bore left",
+                    "[lava-bore] charges: {} per bore ({}), ${} each, ${} per bore; bores that set none {}; deaths"
+                        + " whose last loss was a charge {}; hull lost to charges {} per bore; hull lost to the other"
+                        + " causes {} per bore; {} sidesteps per bore left",
                     String.format(
                             "%.1f",
                             bores.stream().mapToInt(b -> b.charges).average().orElse(0)),
@@ -1910,7 +1925,8 @@ public class LavaBoreTest {
         }
         for (Bore b : bores) {
             LOGGER.info(
-                    "[lava-bore] bore {}: {} {} lava hull {} pilot {} hull {}/{} hp {} encounters {} start y {} lowest y {} sidesteps {} tanks {} worst non-lava hit {} at y {}",
+                    "[lava-bore] bore {}: {} {} lava hull {} pilot {} hull {}/{} hp {} encounters {} start y {} lowest"
+                            + " y {} sidesteps {} tanks {} worst non-lava hit {} at y {}",
                     b.index,
                     b.outcome,
                     b.cause,
@@ -1952,7 +1968,8 @@ public class LavaBoreTest {
                 .filter(b -> b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST)
                 .toList();
         LOGGER.info(
-                "[lava-bore] crust: the full crust costs {} hull ({} slabs of {}); {} of {} bores lost hull to it; {} died of it as the last loss",
+                "[lava-bore] crust: the full crust costs {} hull ({} slabs of {}); {} of {} bores lost hull to it; {}"
+                        + " died of it as the last loss",
                 full,
                 LayerTuning.DEFAULT.crustThickness(),
                 row,
@@ -1968,21 +1985,24 @@ public class LavaBoreTest {
         }
         long short_ = killed.stream().filter(b -> b.hullAtCrust < full).count();
         LOGGER.info(
-                "[lava-bore] crust deaths: hull brought {}; hull the crust took {}; brought under the full crust cost {} of {}; short by (full cost minus brought, floor 0) {}",
+                "[lava-bore] crust deaths: hull brought {}; hull the crust took {}; brought under the full crust cost"
+                        + " {} of {}; short by (full cost minus brought, floor 0) {}",
                 distribution(killed, b -> b.hullAtCrust),
                 distribution(killed, b -> b.hullBy[Cause.CRUST.ordinal()]),
                 short_,
                 killed.size(),
                 distribution(killed, b -> Math.max(0f, full - b.hullAtCrust)));
         LOGGER.info(
-                "[lava-bore] crust deaths, hull the brought pod had lost before the crust, per death: lava {} gas {} landing {} other {}; start hull {}",
+                "[lava-bore] crust deaths, hull the brought pod had lost before the crust, per death: lava {} gas {}"
+                        + " landing {} other {}; start hull {}",
                 mean(killed, "%.1f", b -> b.broughtBy[Cause.LAVA.ordinal()]),
                 mean(killed, "%.1f", b -> b.broughtBy[Cause.GAS.ordinal()]),
                 mean(killed, "%.1f", b -> b.broughtBy[Cause.LANDING.ordinal()]),
                 mean(killed, "%.1f", b -> b.broughtBy[Cause.OTHER.ordinal()]),
                 mean(killed, "%.0f", b -> b.startHull));
         LOGGER.info(
-                "[lava-bore] crust deaths summary: {} deaths, mean brought {}, mean crust took {}, {} short of the full crust cost",
+                "[lava-bore] crust deaths summary: {} deaths, mean brought {}, mean crust took {}, {} short of the"
+                        + " full crust cost",
                 killed.size(),
                 mean(killed, "%.1f", b -> b.hullAtCrust),
                 mean(killed, "%.1f", b -> b.hullBy[Cause.CRUST.ordinal()]),
@@ -2009,7 +2029,9 @@ public class LavaBoreTest {
                                 .count())
                 .collect(Collectors.joining(", "));
         LOGGER.info(
-                "[lava-bore] summary: reach {} of {}; touched lava {}; contacts per bore {}; ticks in lava per bore {}; hull lost to lava per bore {}; deaths {}; bricks used per bore {} (the glaze's {}); turned back {}; lined out of a trap in {} bores; glaze ran dry in {} bores",
+                "[lava-bore] summary: reach {} of {}; touched lava {}; contacts per bore {}; ticks in lava per bore"
+                    + " {}; hull lost to lava per bore {}; deaths {}; bricks used per bore {} (the glaze's {}); turned"
+                    + " back {}; lined out of a trap in {} bores; glaze ran dry in {} bores",
                 reach,
                 n,
                 touched,
@@ -2034,7 +2056,10 @@ public class LavaBoreTest {
         }
         List<Bore> braced = bores.stream().filter(b -> b.braceTicks > 0).toList();
         LOGGER.info(
-                "[lava-bore] brace: {} of {} bores stopped to burn ore for hull; ore burned per braced bore {} (worth ${} at the terminal), {} pod ticks at rest per braced bore; {} bores found the bay empty when the brace was wanted ({} of them died of the crust), {} found only ore dearer than the nanobots' price a hull ({} died of the crust)",
+                "[lava-bore] brace: {} of {} bores stopped to burn ore for hull; ore burned per braced bore {} (worth"
+                    + " ${} at the terminal), {} pod ticks at rest per braced bore; {} bores found the bay empty when"
+                    + " the brace was wanted ({} of them died of the crust), {} found only ore dearer than the"
+                    + " nanobots' price a hull ({} died of the crust)",
                 braced.size(),
                 bores.size(),
                 mean(braced, "%.1f", b -> b.braceOre),
@@ -2071,7 +2096,9 @@ public class LavaBoreTest {
                         + diedInBand.stream().filter(b -> b.lastCause == cause).count())
                 .collect(Collectors.joining(", "));
         LOGGER.info(
-                "[lava-bore] decay: console tier {} (the decay starts {} slabs over the floor, {} stock), heeds the crust warning {}; {} of {} bores went into the band; died in it {} ({}); turned back {} (read the warning in the band {}); the plate was dark or jumping in {} of {} band ticks ({})",
+                "[lava-bore] decay: console tier {} (the decay starts {} slabs over the floor, {} stock), heeds the"
+                    + " crust warning {}; {} of {} bores went into the band; died in it {} ({}); turned back {} (read"
+                    + " the warning in the band {}); the plate was dark or jumping in {} of {} band ticks ({})",
                 CONSOLE_TIER,
                 onset,
                 SignalDecayTuning.DEFAULT.band(1).onset(),
@@ -2086,7 +2113,8 @@ public class LavaBoreTest {
                 band,
                 percent(dark, band));
         LOGGER.info(
-                "[lava-bore] decay depth: lowest feet Y over all bores, mean {} (the floor is {}); reached layer 2 {} of {}; died anywhere {}",
+                "[lava-bore] decay depth: lowest feet Y over all bores, mean {} (the floor is {}); reached layer 2 {}"
+                        + " of {}; died anywhere {}",
                 mean(bores, "%.1f", b -> b.lowestFeetY - minY),
                 0,
                 bores.stream().filter(b -> b.outcome == Outcome.SURVIVED).count(),
@@ -2103,7 +2131,8 @@ public class LavaBoreTest {
         }
         Bore first = lining.getFirst();
         LOGGER.info(
-                "[lava-bore] lining: on for {} bores, the bot lines when the thermal tier marks lava within {} slabs below and {} blocks across; the rack starts with {} bricks",
+                "[lava-bore] lining: on for {} bores, the bot lines when the thermal tier marks lava within {} slabs"
+                        + " below and {} blocks across; the rack starts with {} bricks",
                 lining.size(),
                 first.lookahead,
                 LINING_REACH,
@@ -2119,7 +2148,9 @@ public class LavaBoreTest {
                         "%.0f",
                         lining.stream().mapToInt(b -> b.pilotTicks).average().orElse(0)));
         LOGGER.info(
-                "[lava-bore] lining, lava encounters: {} began with a lining asked for and not done (the pod was falling, and the bot lines only at rest), {} within {} slabs below a lining, {} with none asked for",
+                "[lava-bore] lining, lava encounters: {} began with a lining asked for and not done (the pod was"
+                        + " falling, and the bot lines only at rest), {} within {} slabs below a lining, {} with none"
+                        + " asked for",
                 lining.stream().mapToInt(b -> b.unservedTouches).sum(),
                 lining.stream().mapToInt(b -> b.linedTouches).sum(),
                 RECENT_PRESS_SLABS,
@@ -2140,7 +2171,8 @@ public class LavaBoreTest {
         }
         Bore first = liner.getFirst();
         LOGGER.info(
-                "[lava-bore] liner: tier {} on {} bores, rings every {} slabs, {} cells a brick, {}% of the drill's speed, {}; the rack starts with {} bricks and the pack with {}",
+                "[lava-bore] liner: tier {} on {} bores, rings every {} slabs, {} cells a brick, {}% of the drill's"
+                        + " speed, {}; the rack starts with {} bricks and the pack with {}",
                 first.linerTier,
                 liner.size(),
                 PodLinerTuning.DEFAULT.tier(first.linerTier).ringEverySlabs(),
@@ -2238,10 +2270,9 @@ public class LavaBoreTest {
             // open space.
             if (bore.encounters.stream()
                     .anyMatch(e -> e.thermalContactCellsShownAhead() < e.contactCellsShownAhead())) {
-                throw helper.assertionException(
-                        Component.literal(
-                                "bore " + bore.index
-                                        + ": the thermal scanner showed the touched lava later than tier 1 did, so the thermal reading is wrong"));
+                throw helper.assertionException(Component.literal("bore " + bore.index
+                        + ": the thermal scanner showed the touched lava later than tier 1 did, so the"
+                        + " thermal reading is wrong"));
             }
         }
         if (!smoke) {
@@ -2260,7 +2291,8 @@ public class LavaBoreTest {
                 || lavaBore.encounters.getFirst().contactCellsShownAhead() < 1
                 || lavaBore.encounters.getFirst().thermalContactCellsShownAhead() < 1) {
             throw helper.assertionException(Component.literal(
-                    "the smoke bore meets a lava block that was placed in its path and in the scan plane, so it must record an encounter that the scanner had in view ahead of contact: "
+                    "the smoke bore meets a lava block that was placed in its path and in the scan plane, so it must"
+                            + " record an encounter that the scanner had in view ahead of contact: "
                             + lavaBore.encounters.stream()
                                     .map(e -> e.zone() + "@" + e.contactY() + " body +" + e.slabsShownAhead()
                                             + " contact +" + e.contactCellsShownAhead())
@@ -2280,7 +2312,8 @@ public class LavaBoreTest {
                 || liner.bricksPlaced < 1
                 || liner.encounters.stream().anyMatch(e -> Math.abs(e.contactY() - SMOKE_LAVA_BLOCK_Y) <= 2)) {
             throw helper.assertionException(Component.literal(
-                    "the lining bore meets the same lava block as the bore before it, and must line over it and pass it dry: "
+                    "the lining bore meets the same lava block as the bore before it, and must line over it and pass"
+                            + " it dry: "
                             + liner.liningSessions + " sessions, " + liner.bricksPlaced + " bricks, encounters "
                             + liner.encounters.stream()
                                     .map(e -> e.zone() + "@" + e.contactY())

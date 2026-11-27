@@ -346,7 +346,8 @@ public class HandbookChaptersOneToFiveTest {
             throw helper.assertionException("an entry without targets should target nothing, got %s", entry.targets());
         }
         JsonObject zero = JsonParser.parseString(
-                        "{\"id\": \"deepcharter:x\", \"text\": \"x\", \"targets\": [{\"item\": \"minecraft:stick\", \"count\": 0}]}")
+                        "{\"id\": \"deepcharter:x\", \"text\": \"x\", \"targets\": [{\"item\": \"minecraft:stick\","
+                                + " \"count\": 0}]}")
                 .getAsJsonObject();
         if (HandbookChapter.Entry.CODEC
                 .parse(com.mojang.serialization.JsonOps.INSTANCE, zero)

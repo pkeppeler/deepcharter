@@ -206,7 +206,8 @@ public class FuelTripEconomyTest {
                 Result coalScraped = trips(pod, "coal, scrape only", run, seconds, Items.COAL, coal, waiting, true);
                 for (Result r : List.of(pump, bio, coalR, charR, coalScraped)) {
                     LOGGER.info(
-                            "[fuel-economy] {} ({}): {}: {} trips, {} services, {} L burned, ${} cash = ${} a litre, net ${} a trip, ${} a minute",
+                            "[fuel-economy] {} ({}): {}: {} trips, {} services, {} L burned, ${} cash = ${} a litre,"
+                                    + " net ${} a trip, ${} a minute",
                             label,
                             bound,
                             r.fuel(),
@@ -219,7 +220,8 @@ public class FuelTripEconomyTest {
                             r.perMinute());
                 }
                 String line = String.format(
-                        "%s (%s): a minute pump %.2f, biofuel %.2f, coal %.2f, charcoal %.2f; cash a litre pump %.2f, biofuel %.2f, coal %.2f, charcoal %.2f",
+                        "%s (%s): a minute pump %.2f, biofuel %.2f, coal %.2f, charcoal %.2f; cash a litre pump %.2f,"
+                                + " biofuel %.2f, coal %.2f, charcoal %.2f",
                         label,
                         bound,
                         pump.perMinute(),
@@ -234,7 +236,8 @@ public class FuelTripEconomyTest {
                 expect(
                         helper,
                         pump.cashPerLitre() < coalR.cashPerLitre() && coalR.cashPerLitre() < charR.cashPerLitre(),
-                        "pump fuel should cost less cash a litre than coal and coal less than charcoal, with the services: %s",
+                        "pump fuel should cost less cash a litre than coal and coal less than charcoal, with the"
+                                + " services: %s",
                         line);
                 // A pump trip out-earns every solid-fuel trip a minute, biofuel included.
                 for (Result solid : List.of(bio, coalR, charR)) {
@@ -289,7 +292,8 @@ public class FuelTripEconomyTest {
             Result bioFree = trips(pod, "biofuel", run, seconds, FuelRegistry.BIOFUEL, new Prep(0, 0), false, false);
             double breakEven = breakEvenPrep(pumpTrip, bioFree, FuelRegistry.BIOFUEL);
             LOGGER.info(
-                    "[fuel-economy] {}: biofuel matches pump a minute only if an item takes {} s or less to prepare; derived hands-on {} s, waiting {} s",
+                    "[fuel-economy] {}: biofuel matches pump a minute only if an item takes {} s or less to prepare;"
+                            + " derived hands-on {} s, waiting {} s",
                     label,
                     breakEven,
                     biofuel.handsOn(),
@@ -297,7 +301,8 @@ public class FuelTripEconomyTest {
             expect(
                     helper,
                     breakEven < biofuel.handsOn() / 2,
-                    "biofuel should stay below pump a minute even if felling were twice as fast: break-even %s s, hands-on %s s",
+                    "biofuel should stay below pump a minute even if felling were twice as fast: break-even %s s,"
+                            + " hands-on %s s",
                     breakEven,
                     biofuel.handsOn());
         } finally {
@@ -333,7 +338,8 @@ public class FuelTripEconomyTest {
             int campfire = cookTicks(helper, RecipeType.CAMPFIRE_COOKING, stalkItem);
             int mash = 3;
             LOGGER.info(
-                    "[fuel-economy] derived effort: fell a stalk {} s bare-handed, mine a coal block {} s with a stone pickaxe for {} coal, furnace {} ticks, smoker {} ticks, campfire {} ticks",
+                    "[fuel-economy] derived effort: fell a stalk {} s bare-handed, mine a coal block {} s with a stone"
+                            + " pickaxe for {} coal, furnace {} ticks, smoker {} ticks, campfire {} ticks",
                     fell,
                     mine,
                     perBlock,
