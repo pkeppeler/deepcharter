@@ -227,8 +227,7 @@ public final class PodDrill {
                         return false;
                     }
                 } else if (breakable(state)
-                        && (state.getDestroySpeed(level, pos) < 0
-                                || (state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn(pos)))) {
+                        && (state.getDestroySpeed(level, pos) < 0 || (isCrust(state) && !crustLeadsOn(pos)))) {
                     return false;
                 }
             }
@@ -292,13 +291,19 @@ public final class PodDrill {
             return new LoadedBlocks(level);
         }
 
+        /** The breach crust, or the grained crust that takes its place at a seam or a decoy: a floor either way. */
+        private static boolean isCrust(BlockState state) {
+            return state.is(LayerBlocks.BREACH_CRUST) || state.is(LayerBlocks.GRAINED_CRUST);
+        }
+
         private static boolean breakable(BlockState state) {
             return !state.isAir() && !(state.getBlock() instanceof LiquidBlock);
         }
 
         /**
-         * The last layer's crust has nothing under it: a hole would only drop the pod into the void. The layer is the band at the crust's Y,
-         * so layer 2's floor crust in the campaign world is refused too, with unbuilt depth below it.
+         * The last layer's crust, grained or not, has nothing under it: a hole would only drop the pod into the void,
+         * so the last floor's layer data never decides it. The layer is the band at the crust's Y, so the floor crust
+         * of the last built layer in the campaign world is refused, with unbuilt depth below it.
          */
         private boolean crustLeadsOn(BlockPos crust) {
             Optional<Band> band = LayerChain.layerAt(level, crust.getY());

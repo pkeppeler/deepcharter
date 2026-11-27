@@ -7,6 +7,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.pod.PodCues;
+import io.github.pkeppeler.deepcharter.pod.PodDump;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLoad;
@@ -20,6 +21,7 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -302,8 +304,9 @@ public class PodHazardCuesTest {
         });
     }
 
+    /** Loads the pod to the load at which a held jump stops climbing. */
     private static void overload(Rig rig) {
-        rig.pod.setCargoMass(PodTuning.DEFAULT.movement().enginePower());
+        rig.pod.setCargoMass(PodLoad.of(rig.pod).climbLimit());
     }
 
     @GameTest(maxTicks = 60)
@@ -321,6 +324,18 @@ public class PodHazardCuesTest {
                         OVERLOAD_SOUND,
                         1,
                         "after one press held for 20 ticks");
+                Object[] args = rig.pilot.actionBarMessages().stream()
+                        .map(Component::getContents)
+                        .filter(contents -> contents instanceof TranslatableContents translatable
+                                && translatable.getKey().equals(OVERLOAD_KEY))
+                        .map(contents -> ((TranslatableContents) contents).getArgs())
+                        .findFirst()
+                        .orElseThrow();
+                expect(
+                        helper,
+                        args.length == 1 && args[0].equals(Component.keybind(PodDump.KEY)),
+                        "the overload line names the dump key as the pilot binds it, args %s",
+                        List.of(args));
                 helper.succeed();
             } finally {
                 rig.finish();
