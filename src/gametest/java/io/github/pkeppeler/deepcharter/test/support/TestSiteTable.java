@@ -78,6 +78,7 @@ final class TestSiteTable {
         claim("CampaignCrossingTest", 2, 21395, 21404, 21395, 21404);
 
         claim("ColonyTest", 0, 9484, 9516, 9484, 9516);
+        claim("ColonyTest", 0, 8910, 9090, 8910, 9090);
 
         row("CompanyRecoveryTest", 1, 11997, 12003, 100, 4, 11997, 12003);
         claim("CompanyRecoveryTest", 1, 12347, 12353, 11997, 12003);
@@ -93,6 +94,8 @@ final class TestSiteTable {
         claim("CompanyRockLookTest", 1, 3441, 3471, 5405, 5435);
         claim("CompanyRockLookTest", 1, 3441, 3471, 5525, 5555);
         claim("CompanyRockLookTest", 2, 7499, 7501, 3015, 3017);
+        claim("CompanyRockLookTest", 1, 7520, 7567, 7520, 7567);
+        claim("CompanyRockLookTest", 2, 7520, 7567, 7520, 7567);
 
         claim("DeepestPointTest", 1, 9095, 9104, 9095, 9104);
 
@@ -193,8 +196,23 @@ final class TestSiteTable {
         claim("LayerStructuresTest", 2, 1392, 1439, 1200, 1279);
         claim("LayerStructuresTest", 2, 1472, 1487, 1472, 1487);
         claim("LayerStructuresTest", 2, 1504, 1519, 1344, 1359);
+        claim("LayerStructuresTest", 1, 2560, 2575, 2400, 2415);
+        claim("LayerStructuresTest", 1, 2976, 2991, 2752, 2767);
+        claim("LayerStructuresTest", 1, 3328, 3343, 3136, 3151);
+        claim("LayerStructuresTest", 1, 4144, 4159, 4096, 4111);
+        claim("LayerStructuresTest", 1, 4368, 4383, 4352, 4367);
+        claim("LayerStructuresTest", 1, 12032, 12047, 12144, 12159);
+        claim("LayerStructuresTest", 2, 2560, 2575, 2400, 2415);
+        claim("LayerStructuresTest", 2, 2976, 2991, 2752, 2767);
+        claim("LayerStructuresTest", 2, 3328, 3343, 3136, 3151);
+        claim("LayerStructuresTest", 2, 3760, 3775, 3616, 3631);
+        claim("LayerStructuresTest", 2, 4144, 4159, 4096, 4111);
+        claim("LayerStructuresTest", 2, 4368, 4383, 4352, 4367);
+        claim("LayerStructuresTest", 2, 12032, 12047, 12144, 12159);
 
         claim("LayerTerrainTest", 2, 1795, 1804, 1795, 1804);
+        claim("LayerTerrainTest", 1, 896, 975, 896, 975);
+        claim("LayerTerrainTest", 2, 896, 975, 896, 975);
 
         // Chunks only, so the layer is inferred.
         claim("LightSyncRingHoldTest", 1, -36800, -36641, 40000, 40159);
