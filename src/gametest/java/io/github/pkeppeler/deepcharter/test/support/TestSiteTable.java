@@ -505,8 +505,9 @@ final class TestSiteTable {
         claim("RetainedTest", 1, 7204, 7212, 7204, 7212);
         claim("RetainedTest", 2, 7204, 7212, 7204, 7212);
         claim("RetainedTest", 2, 7268, 7276, 7204, 7212);
-        claim("RetainedTest", 1, 6368, 6399, 6592, 6607);
-        claim("RetainedTest", 1, 6368, 6399, 6784, 6799);
+        // The treads drill west through the arena wall into the chunks beyond (#1089).
+        claim("RetainedTest", 0, 6336, 6399, 6592, 6607);
+        claim("RetainedTest", 0, 6336, 6399, 6784, 6799);
 
         claim("RoomCarverSendTest", 1, 26403, 26411, 26403, 26411);
         claim("RoomCarverSendTest", 1, 26803, 26811, 26803, 26811);
