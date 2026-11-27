@@ -32,6 +32,7 @@ import net.minecraft.client.input.CharacterEvent;
  * one colour changes that colour on the next reload (which is what F3+T does) and nothing else, on screen as well as in the record.
  */
 public class UiThemeClientTest implements FabricClientGameTest {
+    // no-world-ok: it opens only the handbook cover, which draws no item stack.
     private static final int GREEN = 0x7CFC9A;
     private static final int AMBER = 0xFFB000;
     /** How far inside the glass the background pixel is sampled with the panel on. */
