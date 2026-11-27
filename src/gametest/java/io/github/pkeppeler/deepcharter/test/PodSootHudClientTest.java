@@ -46,9 +46,13 @@ public class PodSootHudClientTest implements FabricClientGameTest {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
+                RoomCarver.carve(one, -3, 3, FEET_Y - 1, FEET_Y + 6, -3, 3, Blocks.AIR);
+            });
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, 3);
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                RoomCarver.carve(one, -3, 3, FEET_Y - 1, FEET_Y + 6, -3, 3, Blocks.AIR);
                 player.teleportTo(one, 0, FEET_Y, 0, Set.of(), 0f, 0f, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(0, FEET_Y, 0);

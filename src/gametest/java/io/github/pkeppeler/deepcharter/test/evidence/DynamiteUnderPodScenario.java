@@ -65,9 +65,10 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
             spectate(singleplayer);
             ClientWait.until(context, "the spectator in layer 1", client -> TestLayers.clientIsIn(client, 1));
             ClientWait.chunksAround(context, X, Z, 1);
+            singleplayer.getServer().runOnServer(server -> build(TestLayers.level(server, 1)));
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, RADIUS);
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
-                build(one);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 one.addFreshEntity(pod);

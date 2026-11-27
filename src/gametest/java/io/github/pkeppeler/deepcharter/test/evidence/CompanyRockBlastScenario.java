@@ -102,6 +102,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
         }
 
         // Seat the player, set the charge from the seat, climb out and go back to the trench.
+        ClientWait.lightSettled(context, singleplayer.getServer(), layer, X, Z, 13);
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel level = TestLayers.level(server, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();

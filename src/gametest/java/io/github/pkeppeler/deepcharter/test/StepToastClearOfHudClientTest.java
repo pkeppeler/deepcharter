@@ -86,8 +86,8 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
 
     static final String SHORT_STEP = "Reach the Deep Claim.";
     static final String LONG_STEP =
-            "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
-                    + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
+            "Carry the whole of a very long instruction through the hatch, past the second sump pump and the old tally"
+                    + " board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
     private static final String CHARTER = "Toast Charter";
 
     @Override
@@ -127,8 +127,6 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     private static void seatThePilot(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel one = TestLayers.level(server, 1);
-            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.setGameMode(GameType.SURVIVAL);
             RoomCarver.carve(
                     one,
                     -ROOM_RADIUS,
@@ -138,6 +136,12 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                     -ROOM_RADIUS,
                     ROOM_RADIUS,
                     Blocks.AIR);
+        });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(0.5, FEET_Y, 0.5);
