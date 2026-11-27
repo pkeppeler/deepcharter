@@ -81,7 +81,7 @@ case "$method $path" in
     if [[ -n ${STUB_FIXTURE_ANNOTATIONS-} ]]; then gh_fixture_jq "$STUB_FIXTURE_ANNOTATIONS" "$jq"; exit; fi
     id=${path#*check-runs/}
     id=${id%%/*}
-    # The ci-tier notice (ADR 0114): STUB_TIER_<id>, else STUB_TIER, else none (CI from before the tiers).
+    # The ci-tier notice (ADR 0116): STUB_TIER_<id>, else STUB_TIER, else none (CI from before the tiers).
     if [[ $jq == *'"ci-tier"'* ]]; then
       var=STUB_TIER_$id
       recorded=${!var-${STUB_TIER-}}
@@ -756,7 +756,7 @@ refusal "another docs file moving is not neutral" "$stale_hint" "STUB_MERGED_MAI
 refusal "code beside the roadmap is not neutral" "tools/merge-pr.sh" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=docs/ROADMAP.md${nl}tools/merge-pr.sh"
 refusal "nested papercuts lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/.papercuts.jsonl"
 refusal "nested roadmap lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/docs/ROADMAP.md"
-# Two tiers (ADR 0114): the `build` and `client-gametest` aggregates record a `ci-tier` notice. Landing a PR, and a batch PR's CI
+# Two tiers (ADR 0116): the `build` and `client-gametest` aggregates record a `ci-tier` notice. Landing a PR, and a batch PR's CI
 # verdict (--ci), need `full`; --check takes `pr` and says so; no notice is CI from before the tiers, which ran everything.
 tier_hint="[pr-tier] has CI of the PR tier only"
 run_script STUB_TIER=full

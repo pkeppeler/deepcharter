@@ -4,13 +4,13 @@
 # REQUIRED_CHECKS in tools/merge-pr.sh, which also reads `build-shard <i>` and `build-checks`; renaming one means changing both.
 # The weekly dependency audit lives in audit.yml.
 #
-# Two tiers (ADR 0114): a PR push runs the build, the tool tests and the GameTest classes its change can affect (tools/ci_affected.py); a
+# Two tiers (ADR 0116): a PR push runs the build, the tool tests and the GameTest classes its change can affect (tools/ci_affected.py); a
 # batch PR (head ref `batch/*`), a PR labelled `full-ci` and a change that can reach every test run the full suites. The `build` aggregate
 # records which in a `ci-tier` notice, and tools/merge-pr.sh lands only a full-tier head.
 #
 # Every job stops at 5 minutes (timeout-minutes: 5, #1574; tools/tests/test_ci_budget.py enforces it). The server suite and the tool
 # tests are split so that each shard fits it on a runner 1.3 times slower than the measured ones; gradle/ci-budget.txt holds the
-# budgets and ADR 0113 the arithmetic.
+# budgets and ADR 0115 the arithmetic.
 name: CI
 
 on:
@@ -29,7 +29,7 @@ env:
   BUILD_SHARDS: 13
 
 jobs:
-  # Decides the tier and the classes it runs (tools/ci_affected.py, ADR 0114): what the server shards below take. It merges main as the
+  # Decides the tier and the classes it runs (tools/ci_affected.py, ADR 0116): what the server shards below take. It merges main as the
   # other jobs do, so its changed-path list is exactly the PR's.
   plan:
     name: ci-plan
@@ -80,8 +80,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
-      - id: merge
-        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
@@ -94,10 +93,8 @@ jobs:
       # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
       # if a repository fails to answer (#1358).
       - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses
-      # The jobs that download this output skip their compile tasks only if they merged this main (tools/ci-reuse-compiled.sh).
-      - env:
-          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
-        run: echo "$MAIN_SHA" > build/ci-compiled-main
+      # The jobs that download this output skip their compile tasks only if their merged tree has these compile inputs.
+      - run: tools/ci-reuse-compiled.sh record
       - uses: ./.github/actions/upload-compiled
         with:
           name: compiled-ci
@@ -115,7 +112,7 @@ jobs:
     timeout-minutes: 5
     strategy:
       fail-fast: false
-      # At most this many shards at once, so a full run leaves runners for other PRs' runs (ADR 0113).
+      # At most this many shards at once, so a full run leaves runners for other PRs' runs (ADR 0115).
       max-parallel: 6
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.server-matrix) }}
@@ -136,7 +133,6 @@ jobs:
         uses: ./.github/actions/download-compiled
         with:
           name: compiled-ci
-          main-sha: ${{ steps.merge.outputs.main-sha }}
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
@@ -184,7 +180,6 @@ jobs:
         uses: ./.github/actions/download-compiled
         with:
           name: compiled-ci
-          main-sha: ${{ steps.merge.outputs.main-sha }}
       - uses: ./.github/actions/setup-python-uv
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
@@ -236,13 +231,29 @@ jobs:
           pattern: merged-main-*
           merge-multiple: true
           path: ${{ runner.temp }}/shard-main
-      # Every shard that ran, build-checks and the plan job merged one main; the notice records it.
-      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"
-        env:
+      # Every shard that ran, build-checks and the plan job merged one main; the notice records it. Main's tools/ci-shard-main.sh counts
+      # the numbered shards; build-checks and the plan job are compared here, and with no shard the notice is theirs.
+      - env:
           COUNT: ${{ needs.plan.outputs.server-count }}
           SHARD_KIND: build
-          SHARD_ALSO: checks plan
-      # What ran, for tools/merge-pr.sh: it lands only a head whose server suite ran whole (ADR 0114).
+        run: |
+          read -r checks < "$RUNNER_TEMP/shard-main/main-sha-checks" || true
+          read -r plan < "$RUNNER_TEMP/shard-main/main-sha-plan" || true
+          if [ -z "$checks" ] || [ "$checks" != "$plan" ]; then
+            echo "::error::build-checks merged main '$checks' but the plan job merged '$plan'"
+            exit 1
+          fi
+          if [ "$COUNT" = 0 ]; then
+            echo "::notice title=merged-main::$checks"
+          else
+            read -r first < "$RUNNER_TEMP/shard-main/main-sha-1" || true
+            if [ "$checks" != "$first" ]; then
+              echo "::error::build-checks merged main '$checks' but build-shard 1 merged '$first'"
+              exit 1
+            fi
+            .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"
+          fi
+      # What ran, for tools/merge-pr.sh: it lands only a head whose server suite ran whole (ADR 0116).
       - env:
           FULL: ${{ needs.plan.outputs.server-full }}
         run: echo "::notice title=ci-tier::$([ "$FULL" = true ] && echo full || echo pr)"
@@ -279,6 +290,8 @@ jobs:
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: tool-${{ matrix.part }}
+          artifact: tool-main-${{ matrix.part }}
+          file: ${{ matrix.part }}
       - uses: ./.github/actions/setup-python-uv
       # build-audio-pack.test.sh and the Python tests that encode need ffmpeg. They make their own synthetic tones; CI never
       # has, reads or needs the original game audio.
@@ -319,11 +332,12 @@ jobs:
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: tool-8
+          artifact: tool-main-8
+          file: "8"
       - id: compiled
         uses: ./.github/actions/download-compiled
         with:
           name: compiled-ci
-          main-sha: ${{ steps.merge.outputs.main-sha }}
       - uses: ./.github/actions/setup-python-uv
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
@@ -359,10 +373,9 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: merged-main-tool-*
+          pattern: tool-main-*
           merge-multiple: true
           path: ${{ runner.temp }}/shard-main
       - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" 8
         env:
           SHARD_KIND: tool
-          SHARD_PREFIX: tool-

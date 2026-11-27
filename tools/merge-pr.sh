@@ -27,7 +27,7 @@
 # check's state is its newest non-skipped run, so a later skipped run cannot hide
 # a failure.
 # Refuses with [pr-tier] unless the head's CI ran the full suites: a PR push runs only the GameTest classes its change can affect, and a
-# batch PR (head ref batch/*) or a change that can reach every test runs them all (ADR 0114). --check takes either tier and prints which.
+# batch PR (head ref batch/*) or a change that can reach every test runs them all (ADR 0116). --check takes either tier and prints which.
 # Refuses with [stale-base] unless the newest non-skipped build, tool-tests (and each build-shard, build-checks and
 # client-gametest-shard, when they ran) runs each recorded exactly the current origin/main as the main they merged (see the
 # check below; #979), or main differs from it only by docs/ROADMAP.md or .papercuts.jsonl.
@@ -75,7 +75,7 @@ sha=$(pr_field .head.sha) || refuse "could not be read from GitHub"
 state=$(pr_state_of "$pr") || refuse "could not read its state"
 [[ $state == OPEN ]] || refuse "is not open (state: $state)"
 
-# Landing a PR, or reading a batch PR's CI before it lands, needs the full suites; --check (a reviewer) takes the PR tier (ADR 0114).
+# Landing a PR, or reading a batch PR's CI before it lands, needs the full suites; --check (a reviewer) takes the PR tier (ADR 0116).
 require_full_tier=1
 [[ $gate_only -eq 0 ]] || require_full_tier=0
 if [[ $mode == ci ]]; then

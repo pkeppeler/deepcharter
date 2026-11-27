@@ -60,7 +60,7 @@ jobs:
         run: |
           git diff --no-renames --name-only "$MAIN_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
           echo "run=$(tools/ci-client-needed.sh "$GAMEPLAY_LABEL" < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
-      # Which client classes the change can affect, or the whole suite (tools/ci_affected.py, ADR 0114). Unread when `run` is false.
+      # Which client classes the change can affect, or the whole suite (tools/ci_affected.py, ADR 0116). Unread when `run` is false.
       - uses: ./.github/actions/setup-python-uv
       - id: plan
         env:
@@ -85,8 +85,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
-      - id: merge
-        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
@@ -95,10 +94,8 @@ jobs:
         with:
           cache-read-only: false
       - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses resolveClientGameTestRuntime
-      # The shards skip their compile tasks only if they merged this main (tools/ci-reuse-compiled.sh).
-      - env:
-          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
-        run: echo "$MAIN_SHA" > build/ci-compiled-main
+      # The shards skip their compile tasks only if their merged tree has these compile inputs (tools/ci-reuse-compiled.sh).
+      - run: tools/ci-reuse-compiled.sh record
       - uses: ./.github/actions/upload-compiled
         with:
           name: compiled-client
@@ -116,7 +113,7 @@ jobs:
     timeout-minutes: 5
     strategy:
       fail-fast: false
-      # At most this many shards at once, so a full run leaves runners for other PRs' runs (ADR 0113).
+      # At most this many shards at once, so a full run leaves runners for other PRs' runs (ADR 0115).
       max-parallel: 10
       matrix:
         shard: ${{ fromJSON(needs.changes.outputs.client-matrix) }}
@@ -137,7 +134,6 @@ jobs:
         uses: ./.github/actions/download-compiled
         with:
           name: compiled-client
-          main-sha: ${{ steps.merge.outputs.main-sha }}
       - uses: ./.github/actions/client-gametest
         with:
           skip-compile: ${{ steps.compiled.outputs.skip }}
@@ -157,7 +153,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # With no class selected (the PR tier, ADR 0114) the compile job and the shards are skipped, and that is a pass.
+      # With no class selected (the PR tier, ADR 0116) the compile job and the shards are skipped, and that is a pass.
       - env:
           COUNT: ${{ needs.changes.outputs.client-count }}
           COMPILE: ${{ needs.compile.result }}
@@ -201,7 +197,7 @@ jobs:
           else
             .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"
           fi
-      # What ran, for tools/merge-pr.sh: it lands only a head whose client suite ran whole (ADR 0114).
+      # What ran, for tools/merge-pr.sh: it lands only a head whose client suite ran whole (ADR 0116).
       - env:
           FULL: ${{ needs.changes.outputs.client-full }}
         run: echo "::notice title=ci-tier::$([ "$FULL" = true ] && echo full || echo pr)"

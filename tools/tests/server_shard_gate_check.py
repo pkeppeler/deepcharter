@@ -1,5 +1,5 @@
 """Tests -PgametestShard=i/n in gradle/gametest.gradle.kts: the n shards partition the server GameTest list, and classes that share a
-campaign environment share a shard (ADR 0111), unless the group is heavier than a server shard may be (ADR 0113).
+campaign environment share a shard (ADR 0111), unless the group is heavier than a server shard may be (ADR 0115).
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25, like client_filter_gate_check.py.

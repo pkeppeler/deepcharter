@@ -103,7 +103,7 @@ STUB
 # Gate stub. `--preflight N` refuses when $ST/pre_fail.N exists. `--ci B` reads call K from $ST/ci.K (first line the exit
 # code, the rest its output), else is red when a commit on the batch's branch is for a PR listed in $ST/bad, else green.
 # `N` (the single-PR fallback) refuses when $ST/single_fail.N exists, refuses with [pr-tier] when $ST/single_pr_tier.N exists
-# (its own CI ran the PR tier, ADR 0114), else marks N merged.
+# (its own CI ran the PR tier, ADR 0116), else marks N merged.
 cat >"$work/gate" <<'STUB'
 #!/usr/bin/env bash
 echo "merge-pr $*" >>"$LOG"
@@ -134,7 +134,7 @@ case $1 in
       exit 1
     fi
     if [[ -e $ST/single_fail.$1 ]]; then echo "REFUSED: PR #$1 is not mergeable"; exit 1; fi
-    if [[ -e $ST/single_pr_tier.$1 ]]; then echo "REFUSED: PR #$1 [pr-tier] has CI of the PR tier only (ADR 0114)"; exit 1; fi
+    if [[ -e $ST/single_pr_tier.$1 ]]; then echo "REFUSED: PR #$1 [pr-tier] has CI of the PR tier only (ADR 0116)"; exit 1; fi
     echo MERGED >"$ST/state.$1"
     echo "Merged PR #$1" ;;
 esac
@@ -322,7 +322,7 @@ logged "single: merge-pr runs on the PR" "merge-pr 1"
 count "single: no batch PR opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 0
 printed "single: merged" "merged:  #1"
 
-# --- a single PR whose own CI ran the PR tier lands as a batch of one (ADR 0114) ---
+# --- a single PR whose own CI ran the PR tier lands as a batch of one (ADR 0116) ---
 reset
 mkpr 1
 : >"$ST/single_pr_tier.1"

@@ -1,4 +1,4 @@
-"""No CI job runs longer than five minutes (#1574, ADR 0113).
+"""No CI job runs longer than five minutes (#1574, ADR 0115).
 
 The limit is `timeout-minutes` on every job of every workflow; a suite that does not fit is cut into shards, and the shard counts in the
 workflows must keep each shard's weight under the budget in gradle/ci-budget.txt, with no single class heavier than a shard may be. The

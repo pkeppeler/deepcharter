@@ -3,7 +3,7 @@
 # <issue>-<slug> (tools/merge-batch.sh). The caller sets $repo, $pr, $sha and $gate_only (1 prints each state), and
 # sources tools/lib/pr-body-checks.sh (refuse, load_labels, has_label) first. Each failed check calls refuse.
 #
-# Two tiers (ADR 0114): a PR push runs only the GameTest classes its change can affect, a batch PR or a change that can reach every test
+# Two tiers (ADR 0116): a PR push runs only the GameTest classes its change can affect, a batch PR or a change that can reach every test
 # the full suites. Each aggregate (`build`, `client-gametest`) records which in a `ci-tier` notice, `full` or `pr`; one with no notice is
 # from before the tiers and ran everything. The caller sets $require_full_tier to 1 to land a PR or to read a batch PR's CI, and to 0 for
 # --check: a head whose CI ran the PR tier is then refused with the marker [pr-tier], which tools/merge-batch.sh reads.
@@ -177,7 +177,7 @@ check_ci_gate() {
     fi
   done
 
-  # The tier the head's CI ran: only the full suites let a PR land (ADR 0114). A suite that did not run counts as full.
+  # The tier the head's CI ran: only the full suites let a PR land (ADR 0116). A suite that did not run counts as full.
   [[ -n $build_tier ]] || read_ci_tier build build_tier
   if [[ -z $client_tier ]]; then
     if grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then read_ci_tier client-gametest client_tier; else client_tier=full; fi

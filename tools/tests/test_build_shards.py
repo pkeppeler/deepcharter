@@ -71,9 +71,10 @@ class BuildShardWorkflowTest(unittest.TestCase):
 
     def test_the_upload_action_names_the_file_and_artifact_and_survives_a_rerun(self):
         action = (REPO / ".github/actions/upload-merged-main/action.yml").read_text()
-        self.assertIn('"$RUNNER_TEMP/main-sha-$NAME"', action)
-        self.assertIn("name: merged-main-${{ inputs.name }}", action)
-        self.assertIn("path: ${{ runner.temp }}/main-sha-${{ inputs.name }}", action)
+        self.assertIn('"$RUNNER_TEMP/main-sha-$FILE"', action)
+        self.assertIn("FILE: ${{ inputs.file || inputs.name }}", action)
+        self.assertIn("name: ${{ inputs.artifact || format('merged-main-{0}', inputs.name) }}", action)
+        self.assertIn("path: ${{ runner.temp }}/main-sha-${{ inputs.file || inputs.name }}", action)
         # upload-artifact v4+ rejects a name already used in the run, so a re-run job would fail before its tests.
         self.assertIn("overwrite: true", action)
 
@@ -92,7 +93,8 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("pattern: merged-main-*", aggregate)
         self.assertIn("merge-multiple: true", aggregate)
         self.assertIn('.ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"', aggregate)
-        self.assertIn("SHARD_ALSO: checks plan", aggregate)
+        self.assertIn("main-sha-checks", aggregate)
+        self.assertIn("main-sha-plan", aggregate)
         self.assertNotIn("merge-main", aggregate.replace("merged-main", ""), "the aggregate must not merge main itself")
 
     def test_the_aggregate_says_which_tier_ran(self):

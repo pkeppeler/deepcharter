@@ -363,7 +363,7 @@ merge_single() {
     fi
     reason=$(grep -m1 -E '^(REFUSED|ERROR):' <<<"$out" || true)
     [[ -n $reason ]] || reason="the gate exited $rc: $(tail -n 1 <<<"$out")"
-    # The PR's own CI ran the PR tier (ADR 0114): it lands with the full suites, as a batch of one, which the caller opens.
+    # The PR's own CI ran the PR tier (ADR 0116): it lands with the full suites, as a batch of one, which the caller opens.
     if [[ $out == *"[pr-tier]"* ]]; then return 3; fi
     if [[ $out == *"[stale-base]"* ]]; then
       if ((stale_n >= stale_max)); then

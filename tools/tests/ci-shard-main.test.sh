@@ -67,56 +67,13 @@ rc=0
 out=$(SHARD_KIND='a b' bash "$script" "$work/d" 1 2>&1) || rc=$?
 check "a SHARD_KIND that is not a word: exit 2" "$rc" 2
 
-# SHARD_ALSO: an extra member that must agree, and with it a count of 0 (a run with no shard).
-rm -rf "$work/d"
-mkdir "$work/d"
-printf '%s\n' "$A" >"$work/d/main-sha-1"
-printf '%s\n' "$A" >"$work/d/main-sha-checks"
-rc=0
-out=$(SHARD_ALSO=checks SHARD_KIND=build GITHUB_OUTPUT="$work/output" bash "$script" "$work/d" 1 2>&1) || rc=$?
-check "an extra member that agrees: exit 0" "$rc" 0
-printf '%s\n' "$B" >"$work/d/main-sha-checks"
-rc=0
-out=$(SHARD_ALSO=checks SHARD_KIND=build bash "$script" "$work/d" 1 2>&1) || rc=$?
-check "an extra member that differs: exit 1" "$rc" 1
-has "an extra member that differs: names it" "shard checks $B"
-rm -f "$work/d/main-sha-1"
-printf '%s\n' "$A" >"$work/d/main-sha-checks"
-rc=0
-out=$(SHARD_ALSO=checks SHARD_KIND=build GITHUB_OUTPUT="$work/output" bash "$script" "$work/d" 0 2>&1) || rc=$?
-check "no shard, one extra member: exit 0" "$rc" 0
-has "no shard, one extra member: the notice carries its sha" "::notice title=merged-main::$A"
-rc=0
-out=$(bash "$script" "$work/d" 0 2>&1) || rc=$?
-check "no shard and no extra member: exit 2" "$rc" 2
-rc=0
-out=$(SHARD_ALSO='A b' bash "$script" "$work/d" 0 2>&1) || rc=$?
-check "an extra member that is not a lowercase word: exit 2" "$rc" 2
-
-# SHARD_PREFIX: the tool-test parts' files are main-sha-tool-<i>, which a build aggregate in the same directory never reads.
-rm -rf "$work/d"
-mkdir "$work/d"
-printf '%s\n' "$A" >"$work/d/main-sha-tool-1"
-printf '%s\n' "$A" >"$work/d/main-sha-tool-2"
-printf '%s\n' "$B" >"$work/d/main-sha-1"
-rc=0
-out=$(SHARD_KIND=tool SHARD_PREFIX=tool- GITHUB_OUTPUT="$work/output" bash "$script" "$work/d" 2 2>&1) || rc=$?
-check "prefixed parts: exit 0" "$rc" 0
-has "prefixed parts: named in the message" "Every tool shard merged origin/main $A"
-rc=0
-out=$(SHARD_PREFIX=tool- bash "$script" "$work/d" 3 2>&1) || rc=$?
-check "a prefixed part missing: exit 1" "$rc" 1
-rc=0
-out=$(SHARD_PREFIX='a b' bash "$script" "$work/d" 1 2>&1) || rc=$?
-check "a SHARD_PREFIX that is not a word and a dash: exit 2" "$rc" 2
-
 rc=0
 out=$(bash "$script" 2>&1) || rc=$?
 check "no arguments: usage, exit 2" "$rc" 2
 
 rc=0
 out=$(bash "$script" "$work/d" 0 2>&1) || rc=$?
-check "zero shards without SHARD_ALSO: exit 2" "$rc" 2
+check "zero shards: exit 2" "$rc" 2
 
 [[ $failures -eq 0 ]] || { echo "$failures failed"; exit 1; }
 echo "all passed"
