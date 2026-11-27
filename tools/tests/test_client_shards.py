@@ -60,6 +60,12 @@ class ClientShardWorkflowTest(unittest.TestCase):
         self.assertIn("::notice title=ci-tier::", job)
         self.assertNotIn("merge-main", job.replace("merged-main", ""), "the aggregate must not merge main itself")
 
+    def test_the_compile_job_pins_main_and_the_aggregate_compares_its_merged_main(self):
+        compile_job = re.search(r"^  compile:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)[1]
+        self.assertIn("main-sha: ${{ needs.changes.outputs.main-sha }}", compile_job)
+        self.assertIn("name: compile\n", compile_job.split("upload-merged-main")[1])
+        self.assertIn("main-sha-compile", self.aggregate_job())
+
     def test_each_shard_uploads_its_own_screenshots(self):
         self.assertIn("name: client-gametest-screenshots${{ inputs.artifact-suffix }}", ACTION)
         self.assertIn("artifact-suffix: -${{ matrix.shard }}", self.shard_job())

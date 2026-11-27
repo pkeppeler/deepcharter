@@ -25,7 +25,7 @@ permissions:
 
 env:
   # The shards of a full run; a PR-tier run takes as many as its classes need (the changes job).
-  CLIENT_SHARDS: 29
+  CLIENT_SHARDS: 34
 
 jobs:
   changes:
@@ -38,6 +38,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       run: ${{ steps.decide.outputs.run }}
+      # The one main this run tests: every other job merges exactly this commit (#1571).
       main-sha: ${{ steps.merge.outputs.main-sha }}
       client-full: ${{ steps.plan.outputs.client-full }}
       client-classes: ${{ steps.plan.outputs.client-classes }}
@@ -85,7 +86,14 @@ jobs:
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
-      - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.changes.outputs.main-sha }}
+      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: compile
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
@@ -109,7 +117,7 @@ jobs:
     if: needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0'
     runs-on: ubuntu-latest
     # One shard holds at most gradle/ci-budget.txt's client-shard seconds of tests by measured weight (tools/tests/test_ci_budget.py checks it).
-    # The action's own deadline (250 s from the step's start) ends the run with a message before this limit would kill it silently.
+    # The action's own deadline (215 s from the step's start) ends the run with a message before this limit would kill it silently.
     timeout-minutes: 5
     strategy:
       fail-fast: false
@@ -126,6 +134,8 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.changes.outputs.main-sha }}
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
@@ -195,6 +205,13 @@ jobs:
           if [ "$COUNT" = 0 ]; then
             echo "::notice title=merged-main::$MAIN_SHA"
           else
+            # ci-shard-main.sh counts the numbered shards; the compile job's sha must be the same one.
+            read -r compile < "$RUNNER_TEMP/shard-main/main-sha-compile" || true
+            read -r first < "$RUNNER_TEMP/shard-main/main-sha-1" || true
+            if [ -z "$compile" ] || [ "$compile" != "$first" ]; then
+              echo "::error::client-compile merged main '$compile' but client-gametest-shard 1 merged '$first'"
+              exit 1
+            fi
             .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"
           fi
       # What ran, for tools/merge-pr.sh: it lands only a head whose client suite ran whole (ADR 0116).

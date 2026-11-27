@@ -106,13 +106,30 @@ class ShardsFitTheBudgetTest(unittest.TestCase):
         cls.server_weights = shards.parse_weights(REPO / "gradle/server-test-weights.txt")
         cls.budget = shards.budgets()
 
-    def test_the_budgets_leave_the_limit_on_a_slow_runner(self):
-        # setup + start-up + tests, all slower by the factor, under the job limit (the arithmetic is in gradle/ci-budget.txt).
+    def test_the_budgets_keep_the_worst_job_under_the_worst_seconds_on_a_slow_runner(self):
+        # Setup and start-up (measured, in ci-budget.txt) plus the shard's tests, all slower by the factor, under the worst-job seconds,
+        # which are under the job limit.
+        b = self.budget
+        factor = b["slow-runner-factor"]
+        self.assertLess(b["worst-job-seconds"], b["job-limit-minutes"] * 60)
+        self.assertLessEqual((b["client-overhead-seconds"] + b["client-shard-seconds"]) * factor, b["worst-job-seconds"])
+        self.assertLessEqual((b["server-overhead-seconds"] + 1.55 * b["server-shard-seconds"]) * factor, b["worst-job-seconds"])
+        self.assertLessEqual((40 + b["tool-part-seconds"]) * factor, b["worst-job-seconds"])
+
+    # What runs outside the client action's run step, at the measured speed: the job's setup, the checkout, the download and the
+    # dependency resolve before it, and the post steps after it.
+    PRE_STEP_SECONDS = 65
+    POST_STEP_SECONDS = 15
+
+    def test_the_client_actions_deadline_ends_the_run_before_the_job_limit_kills_it(self):
+        action = (REPO / ".github/actions/client-gametest/action.yml").read_text()
+        deadline = int(re.search(r"^\s+max_seconds=(\d+)$", action, re.M)[1])
         limit = self.budget["job-limit-minutes"] * 60
-        factor = self.budget["slow-runner-factor"]
-        self.assertLessEqual((65 + 35 + self.budget["client-shard-seconds"]) * factor, limit)
-        self.assertLessEqual((60 + 1.55 * self.budget["server-shard-seconds"]) * factor, limit)
-        self.assertLessEqual((40 + self.budget["tool-part-seconds"]) * factor, limit)
+        self.assertLessEqual(deadline + self.PRE_STEP_SECONDS + self.POST_STEP_SECONDS, limit)
+        # And it does not end a shard that would still finish inside the worst-job seconds on a slow runner: the step's own
+        # Gradle and Minecraft start-up (42 s) and the budget's tests, both slower by the factor.
+        slow_step = (42 + self.budget["client-shard-seconds"]) * self.budget["slow-runner-factor"]
+        self.assertGreaterEqual(deadline, slow_step)
 
     def test_no_client_class_outweighs_a_client_shard(self):
         budget = self.budget["client-shard-seconds"]

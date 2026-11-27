@@ -29,10 +29,32 @@ env:
   BUILD_SHARDS: 15
 
 jobs:
+  # Picks the main this run tests once; every job that merges main merges exactly that commit (#1571).
+  setup:
+    name: setup
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      main-sha: ${{ steps.main.outputs.main-sha }}
+    steps:
+      - id: main
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          for attempt in 1 2 3 4; do
+            sha=$(git ls-remote "https://github.com/$REPO" refs/heads/main | cut -f1) || sha=
+            [[ $sha =~ ^[0-9a-f]{40}$ ]] && break
+            [[ $attempt -lt 4 ]] && sleep $((attempt * 5))
+          done
+          [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo "::error::could not read the sha of origin/main"; exit 1; }
+          echo "main-sha=$sha" >> "$GITHUB_OUTPUT"
+
   # Decides the tier and the classes it runs (tools/ci_affected.py, ADR 0116): what the server shards below take. It merges main as the
   # other jobs do, so its changed-path list is exactly the PR's.
   plan:
     name: ci-plan
+    needs: setup
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -50,6 +72,8 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
@@ -70,6 +94,7 @@ jobs:
   # later pushes reuse.
   compile:
     name: compile
+    needs: setup
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -80,7 +105,14 @@ jobs:
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
-      - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
+      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: compile
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
@@ -106,7 +138,7 @@ jobs:
   # heavier than gradle/ci-budget.txt allows. The job id stays `build` for the Gradle cache (cache-seed.yml says why).
   build:
     name: build-shard ${{ matrix.shard }}
-    needs: [plan, compile]
+    needs: [setup, plan, compile]
     if: ${{ !github.event.pull_request.draft && needs.plan.outputs.server-count != '0' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -125,6 +157,8 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
@@ -159,7 +193,7 @@ jobs:
   # same-OS fallback rather than the same-job-id match.
   checks:
     name: build-checks
-    needs: compile
+    needs: [setup, compile]
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -172,6 +206,8 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
@@ -239,8 +275,9 @@ jobs:
         run: |
           read -r checks < "$RUNNER_TEMP/shard-main/main-sha-checks" || true
           read -r plan < "$RUNNER_TEMP/shard-main/main-sha-plan" || true
-          if [ -z "$checks" ] || [ "$checks" != "$plan" ]; then
-            echo "::error::build-checks merged main '$checks' but the plan job merged '$plan'"
+          read -r compile < "$RUNNER_TEMP/shard-main/main-sha-compile" || true
+          if [ -z "$checks" ] || [ "$checks" != "$plan" ] || [ "$checks" != "$compile" ]; then
+            echo "::error::build-checks merged main '$checks', the plan job '$plan' and the compile job '$compile'"
             exit 1
           fi
           if [ "$COUNT" = 0 ]; then
@@ -263,6 +300,7 @@ jobs:
   # The matrix and the aggregate's part count must agree: tools/tests/test_tool_test_parts.py checks it. `tool-tests` below is their aggregate.
   tool-part:
     name: tool-tests-part ${{ matrix.part }}
+    needs: setup
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -286,6 +324,8 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
@@ -296,7 +336,6 @@ jobs:
       # build-audio-pack.test.sh and the Python tests that encode need ffmpeg. They make their own synthetic tones; CI never
       # has, reads or needs the original game audio.
       - uses: ./.github/actions/install-ffmpeg
-        if: matrix.kind != 'gates'
       - name: Python unit tests
         if: matrix.kind == 'python'
         run: tools/ci-tool-tests.sh python ${{ matrix.slice }}
@@ -316,7 +355,7 @@ jobs:
   # for each shard count, one job each (4:30 together), and every other check (1:30). `tool-tests` below waits for them with the others.
   tool-gates:
     name: tool-tests-gates ${{ matrix.part }}
-    needs: compile
+    needs: [setup, compile]
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -336,6 +375,8 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}

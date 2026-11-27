@@ -31,7 +31,7 @@ class BuildShardWorkflowTest(unittest.TestCase):
 
     def test_a_shard_takes_the_plans_count_and_classes_and_runs_only_when_there_are_some(self):
         shard = job("build")
-        self.assertIn("needs: [plan, compile]", shard)
+        self.assertIn("needs: [setup, plan, compile]", shard)
         self.assertIn("needs.plan.outputs.server-count != '0'", shard)
         self.assertIn("SHARD: ${{ matrix.shard }}/${{ needs.plan.outputs.server-count }}", shard)
         self.assertIn('-PgametestClasses=$CLASSES', shard)
@@ -58,7 +58,7 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("name: compiled-ci", job("compile"))
         for key in ("build", "checks"):
             with self.subTest(key):
-                self.assertRegex(job(key), r"needs: (compile|\[plan, compile\])\n")
+                self.assertRegex(job(key), r"needs: \[setup, (plan, )?compile\]\n")
                 self.assertIn("name: compiled-ci", job(key))
 
     def test_the_shards_run_at_most_6_at_once_so_a_full_run_leaves_runners_for_other_prs(self):
@@ -95,6 +95,7 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn('.ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"', aggregate)
         self.assertIn("main-sha-checks", aggregate)
         self.assertIn("main-sha-plan", aggregate)
+        self.assertIn("main-sha-compile", aggregate)
         self.assertNotIn("merge-main", aggregate.replace("merged-main", ""), "the aggregate must not merge main itself")
 
     def test_the_aggregate_says_which_tier_ran(self):
@@ -109,6 +110,10 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("name: ci-plan\n", plan)
         self.assertIn("name: plan\n", plan)
         self.assertIn("tools/ci_affected.py", plan)
+
+    def test_the_compile_job_hands_its_merged_main_to_the_aggregate_too(self):
+        self.assertIn("name: compile\n", job("compile").split("upload-merged-main")[1])
+        self.assertIn("main-sha-compile", job("build-result"))
 
     def test_no_other_job_is_named_build(self):
         self.assertEqual(re.findall(r"^    name: build$", WORKFLOW, re.M), ["    name: build"])

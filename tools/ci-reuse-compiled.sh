@@ -2,19 +2,22 @@
 # Usage: tools/ci-reuse-compiled.sh record   (the compile job: after it has compiled)
 #        tools/ci-reuse-compiled.sh check    (a job that downloaded the compile job's output, .github/actions/download-compiled)
 #
-# The compile jobs (ci.yml, client-tests.yml, record-evidence.yml) write a fingerprint of everything the compile reads, `git ls-tree` of
-# src/, gradle/ and the build files of the merged tree, into build/ci-compiled-inputs next to the classes they built. A job whose own
-# merged tree has the same fingerprint can skip the compile tasks and run on the downloaded classes: Gradle would recompile anyway,
-# because Loom's remapped Minecraft jars on its classpath differ per runner (the lock file's trusted-artifacts note), and a recompile is a
-# minute and a half of a five-minute job (#1574). Main moving between the jobs by a commit that touches none of those paths (the roadmap,
-# the papercuts, docs, tools) leaves the fingerprint alone.
+# The compile jobs (ci.yml, client-tests.yml, record-evidence.yml) write a fingerprint of the merged tree into build/ci-compiled-inputs
+# next to the classes they built: `git ls-tree -r` of every file but the ones in DENY (docs, tools, workflows, agent files, root
+# prose), so a path nobody thought of changes it and the compile is redone: it fails closed. A job whose own merged tree has the same
+# fingerprint can skip the compile tasks and run on the downloaded classes: Gradle would recompile anyway, because Loom's remapped
+# Minecraft jars on its classpath differ per runner (the lock file's trusted-artifacts note), and a recompile is a minute and a half of
+# a five-minute job (#1574). The jobs of one run merge one main (#1571), so the fingerprints differ only if a job's tree differs.
 # `check` prints `skip=<gradle arguments>` to $GITHUB_OUTPUT (and stdout): the three `-x <compile task>` arguments when the fingerprints
 # are equal, empty otherwise, in which case the job compiles itself.
 set -euo pipefail
 
+# Paths the compile cannot read: a path in this list that it does read is the one way to a stale build, so the list is short and
+# names directories and prose only.
+DENY=$'^[^\t]*\t(docs/|tools/|\\.github/|\\.claude/|\\.githooks/|prompts/|\\.papercuts\\.jsonl$|[^/]*\\.md$|LICENSE$)'
+
 inputs() {
-  git ls-tree HEAD -- src gradle build.gradle.kts settings.gradle.kts gradle.properties gradle.lockfile buildscript-gradle.lockfile \
-    settings-gradle.lockfile | git hash-object --stdin
+  git ls-tree -r HEAD | grep -Ev "$DENY" | git hash-object --stdin
 }
 
 case ${1-} in

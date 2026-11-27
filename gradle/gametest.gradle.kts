@@ -416,11 +416,11 @@ object GametestScan {
 	/** A class with no entry in client-test-weights.txt counts as this many seconds, so a new class lands in a shard without anyone editing the file. */
 	const val DEFAULT_CLIENT_WEIGHT = 10
 
+	/** An evidence scenario (a name ending in Scenario) does nothing outside tools/record-evidence.sh, so it counts as this many seconds unless the file lists it. */
+	const val SCENARIO_CLIENT_WEIGHT = 1
+
 	/** The same for server-test-weights.txt: about the mean of the listed classes. */
 	const val DEFAULT_SERVER_WEIGHT = 6
-
-	/** A class named `...Scenario` is an evidence scenario: without DEEPCHARTER_EVIDENCE it returns at once, so an unlisted one counts as this many seconds, not the default. */
-	const val SCENARIO_CLIENT_WEIGHT = 1
 
 	private val campaignEnvironmentUse = Regex("""\bCampaignEnvironments\s*\.\s*(\w+)""")
 
@@ -438,10 +438,8 @@ object GametestScan {
 		if (index < 1 || index > count) {
 			throw GradleException("$property is '$shard', expected i/n with 1 <= i <= n, like 2/3")
 		}
-		fun weight(name: String): Int {
-			val simple = name.substring(name.lastIndexOf(".") + 1)
-			return weights[name] ?: weights[simple] ?: if (simple.endsWith("Scenario")) SCENARIO_CLIENT_WEIGHT else defaultWeight
-		}
+		fun weight(name: String) = weights[name] ?: weights[name.substring(name.lastIndexOf(".") + 1)]
+			?: if (name.endsWith("Scenario")) SCENARIO_CLIENT_WEIGHT else defaultWeight
 		fun weight(unit: List<String>) = unit.sumOf { weight(it) }
 		// A unit heavier than [maxUnit] (the campaign classes of an environment kept together) cannot fit a shard whole, so it is
 		// broken into its classes: those runs of the environment's batches cost a little more start-up, which the weights absorb.
