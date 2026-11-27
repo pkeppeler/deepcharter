@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.function.Function;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
@@ -172,18 +173,24 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
                     ? Component.translatable("screen.deepcharter.upgrade.capped", pod.cap())
                             .getString()
                     : "";
-            MutableComponent label = here && held.installed() == tier
-                    ? Component.translatable("screen.deepcharter.upgrade.installed", tier)
-                            .append(capped)
+            Function<String, MutableComponent> worded = suffix -> here && held.installed() == offered
+                    ? Component.translatable("screen.deepcharter.upgrade.installed", offered)
+                            .append(suffix)
                     : crafted
-                            ? Component.translatable("screen.deepcharter.upgrade.crafted", tier)
+                            ? Component.translatable("screen.deepcharter.upgrade.crafted", offered)
                             : needsFirst
-                                    ? Component.translatable("screen.deepcharter.upgrade.needs_first", tier, price)
-                                    : Component.translatable("screen.deepcharter.upgrade.buy", tier, price, capped);
+                                    ? Component.translatable("screen.deepcharter.upgrade.needs_first", offered, price)
+                                    : Component.translatable("screen.deepcharter.upgrade.buy", offered, price, suffix);
+            MutableComponent label = worded.apply(capped);
             if (selected == ComponentTrack.ENGINE) {
                 // What the pod gets from it: a tier above the cap works as the cap's.
-                label.append(Component.translatable(
-                        "screen.deepcharter.upgrade.lifts", PodLoad.shownEngineLift(Math.min(tier, pod.cap()))));
+                Component lifts = Component.translatable(
+                        "screen.deepcharter.upgrade.lifts", PodLoad.shownEngineLift(Math.min(offered, pod.cap())));
+                label = worded.apply(capped).append(lifts);
+                if (CrtText.width(font, label.getString()) > tierWidth - LABEL_ROOM) {
+                    // The lift is what the row is for, and a capped tier's is the cap's: the cap's own note makes way.
+                    label = worded.apply("").append(lifts);
+                }
             }
             CrtButton button = addRenderableWidget(new CrtButton(
                     tierX,

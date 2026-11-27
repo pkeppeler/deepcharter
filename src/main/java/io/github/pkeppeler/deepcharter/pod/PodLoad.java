@@ -101,9 +101,9 @@ public record PodLoad(float load, float limit, float climbLimit) {
         return climbLimit(fitted, PodTuning.DEFAULT.movement().gravity());
     }
 
-    /** {@link #engineLift} as the player reads it: in whole pod units, rounded as {@link OreEncumbrance#shown} rounds an ore's mass. */
-    public static int shownEngineLift(int tier) {
-        return OreEncumbrance.shown(engineLift(tier));
+    /** {@link #engineLift} as the player reads it: written as {@link OreEncumbrance#shown} writes an ore's mass, to a tenth. */
+    public static String shownEngineLift(int tier) {
+        return OreEncumbrance.shown(OreEncumbrance.tenths(engineLift(tier)));
     }
 
     /** Whether the held rotor cannot climb: the load is at or over the climb limit. The cockpit's OVERLOADED. */

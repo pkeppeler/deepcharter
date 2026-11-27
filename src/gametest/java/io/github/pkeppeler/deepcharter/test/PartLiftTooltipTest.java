@@ -24,6 +24,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #1541: an engine part says what it lifts, in the units of the cockpit's LOAD gauge, and the figure is the climb
@@ -32,8 +33,8 @@ import net.minecraft.world.phys.Vec3;
 public class PartLiftTooltipTest {
     private static final String LIFT_KEY = "item.deepcharter.part.lift";
 
-    /** The number the stack's lift line shows, or -1 when it has none; fails on more than one. */
-    private static int shownLift(GameTestHelper helper, ItemStack stack) {
+    /** The text the stack's lift line shows, or null when it has none; fails on more than one. */
+    private static @Nullable String shownLift(GameTestHelper helper, ItemStack stack) {
         List<TranslatableContents> lifts =
                 stack.getTooltipLines(Item.TooltipContext.of(helper.getLevel()), null, TooltipFlag.NORMAL).stream()
                         .map(Component::getContents)
@@ -42,7 +43,7 @@ public class PartLiftTooltipTest {
                         .filter(contents -> contents.getKey().equals(LIFT_KEY))
                         .toList();
         expect(helper, lifts.size() <= 1, "%s should have at most one lift line, has %s", stack, lifts.size());
-        return lifts.isEmpty() ? -1 : (Integer) lifts.getFirst().getArgs()[0];
+        return lifts.isEmpty() ? null : (String) lifts.getFirst().getArgs()[0];
     }
 
     /** Each tier a Prospector takes: the part's tooltip shows what the climb limit of a pod with that part is. */
@@ -51,27 +52,28 @@ public class PartLiftTooltipTest {
         PodEntity pod = helper.spawn(PodRegistry.PROSPECTOR, new Vec3(0.5, 1, 0.5));
         CharterId owner = CharterId.random();
         PodComponents.register(pod, owner);
-        int previous = OreEncumbrance.shown(PodLoad.of(pod).climbLimit());
+        int previous = OreEncumbrance.tenths(PodLoad.of(pod).climbLimit());
         for (int tier = 1; tier <= Chassis.PROSPECTOR.tierCap(); tier++) {
             ItemStack part = ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.ENGINE, tier, owner);
             PodComponents.install(pod, part);
-            int expected = OreEncumbrance.shown(PodLoad.of(pod).climbLimit());
-            int shown = shownLift(helper, part);
+            int tenths = OreEncumbrance.tenths(PodLoad.of(pod).climbLimit());
+            String expected = OreEncumbrance.shown(tenths);
+            String shown = shownLift(helper, part);
             expect(
                     helper,
-                    shown == expected,
+                    expected.equals(shown),
                     "a tier %s engine shows Lifts %s, its pod climbs to %s",
                     tier,
                     shown,
                     expected);
             expect(
                     helper,
-                    shown > previous,
+                    tenths > previous,
                     "tier %s lifts %s, no more than the tier below, %s",
                     tier,
                     shown,
                     previous);
-            previous = shown;
+            previous = tenths;
         }
         pod.discard();
         helper.succeed();
@@ -86,11 +88,11 @@ public class PartLiftTooltipTest {
             ItemStack part = ComponentItems.stackOf(
                     ComponentTrack.ENGINE, new PartLabel(tier, CharterId.random(), "ENGINE-" + tier));
             float power = PodStats.base().enginePower() * UpgradeTuning.DEFAULT.ratio(ComponentTrack.ENGINE, tier);
-            int expected = OreEncumbrance.shown((float) (power * share));
-            int shown = shownLift(helper, part);
+            String expected = OreEncumbrance.shown(OreEncumbrance.tenths((float) (power * share)));
+            String shown = shownLift(helper, part);
             expect(
                     helper,
-                    shown == expected,
+                    expected.equals(shown),
                     "a tier %s engine shows Lifts %s, thrust against gravity gives %s",
                     tier,
                     shown,
@@ -106,10 +108,10 @@ public class PartLiftTooltipTest {
                 continue;
             }
             ItemStack part = ComponentItems.stackOf(track, new PartLabel(1, CharterId.random(), "X-0001"));
-            expect(helper, shownLift(helper, part) == -1, "a %s part shows a lift line", track);
+            expect(helper, shownLift(helper, part) == null, "a %s part shows a lift line", track);
         }
         ItemStack unlabelled = new ItemStack(ComponentItems.item(ComponentTrack.ENGINE));
-        expect(helper, shownLift(helper, unlabelled) == -1, "an engine part with no label shows a lift line");
+        expect(helper, shownLift(helper, unlabelled) == null, "an engine part with no label shows a lift line");
         helper.succeed();
     }
 }
