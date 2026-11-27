@@ -12,4 +12,3 @@ key.deepcharter.line_slab  the pilot lines the slab or stops lining, in a pod wi
 key.deepcharter.pod_screen  opens the pod screen from a seat for anyone aboard; from outside, sneak and use already opens it, but a rider has no block or entity to use
 key.deepcharter.sonar_ping  the navigator pings the sonar on demand; vanilla has no sonar action and the clicks aboard belong to piloting
 key.deepcharter.sonar_mark  marks or clears the echo being looked at, beside the ping key; vanilla has no equivalent and the clicks aboard belong to piloting
-key.deepcharter.dump_cargo  dumps the whole hold and must be held for a second so a brush dumps nothing; a click is too easy to do by accident and vanilla has no key for it
