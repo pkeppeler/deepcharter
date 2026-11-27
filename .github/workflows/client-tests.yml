@@ -37,6 +37,8 @@ jobs:
     timeout-minutes: 5
     outputs:
       run: ${{ steps.decide.outputs.run }}
+      # The one main this run tests: every shard merges exactly this commit, so they cannot disagree (#1571).
+      main-sha: ${{ steps.merge.outputs.main-sha }}
     steps:
       # The PR head merged with the real main (#979): main-sha..HEAD is exactly the PR's changes.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -77,6 +79,8 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.changes.outputs.main-sha }}
       # The shard's merged main sha, for the aggregate (a matrix job's output holds one shard's value, so a file per shard).
       # Uploaded before the tests so a failed shard still hands it over.
       - env:
