@@ -133,7 +133,7 @@ public final class PodCharge {
     }
 
     /**
-     * The hull a pod sitting on its own charge loses: the whole blast, then the unbraked fall of {@code dropRows} into the hole, landing as
+     * The hull a pod sitting on its own charge loses: the whole blast, then the fall of {@code dropRows} into the hole, braked by the ground cushion, landing as
      * {@link HardLanding} counts it with the pod's own stats. A pod with this much hull or less would be wrecked.
      */
     public static float wreckingHull(PodEntity pod, RepairTuning tuning, int dropRows) {
