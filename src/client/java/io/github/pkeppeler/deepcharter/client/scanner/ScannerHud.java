@@ -135,7 +135,7 @@ public final class ScannerHud {
 
         graphics.fill(frame.x(), frame.y(), frame.right(), frame.bottom(), look.frameColor());
         graphics.text(client.font, title(scanned), left, look.margin() + 1, look.titleColor());
-        drawCells(graphics, client, scanned, cell, left, top);
+        drawCells(graphics, client, scanned, cell, left, top, left, top, top + area.rows() * cell);
     }
 
     /** Whether the ridden pod has a working scanner, so there is a map to show; the cockpit draws its scanner bezel only then. */
@@ -173,7 +173,10 @@ public final class ScannerHud {
                     scanned,
                     windowCellSize(window, area),
                     windowCellLeft(graphics.guiWidth(), window, area, -area.halfWidth()),
-                    windowCellTop(graphics.guiHeight(), window, area, area.up()));
+                    windowCellTop(graphics.guiHeight(), window, area, area.up()),
+                    windowLeft,
+                    windowTop,
+                    windowTop + window.height());
         } finally {
             graphics.disableScissor();
         }
@@ -222,11 +225,21 @@ public final class ScannerHud {
     }
 
     /**
-     * The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at ({@code left}, {@code top}). The
-     * known cells are one picture of the blocks' own textures, one blit ({@link ScannerMap}); the pod is a flat marker over it.
+     * The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at
+     * ({@code left}, {@code top}). The known cells are one picture of the blocks' own textures, one blit
+     * ({@link ScannerMap}); the pod is a flat marker over it, and the depth ruler ({@link ScannerRuler}) runs down the
+     * left edge of what shows: from {@code visibleLeft} across, {@code visibleTop} to {@code visibleBottom}.
      */
     private static void drawCells(
-            GuiGraphicsExtractor graphics, Minecraft client, ScanSlice scanned, int cell, int left, int top) {
+            GuiGraphicsExtractor graphics,
+            Minecraft client,
+            ScanSlice scanned,
+            int cell,
+            int left,
+            int top,
+            int visibleLeft,
+            int visibleTop,
+            int visibleBottom) {
         ScannerLook look = ScannerLook.current();
         ScanArea area = scanned.area();
         graphics.fill(left, top, left + area.columns() * cell, top + area.rows() * cell, look.airColor());
@@ -240,6 +253,7 @@ public final class ScannerHud {
         for (int up = 0; up <= podCellsUp; up++) {
             fillCell(graphics, area, cell, left, top, up, look.podColor());
         }
+        ScannerRuler.draw(graphics, client, scanned, look, cell, left, top, visibleLeft, visibleTop, visibleBottom);
     }
 
     private static void fillCell(
