@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
@@ -78,9 +80,13 @@ public class ActiveStateTest {
     private static void expectActive(GameTestHelper helper, BlockPos absolute, boolean expected, String why) {
         BlockState state = helper.getLevel().getBlockState(absolute);
         if (state.getValue(TextureProperties.ACTIVE) != expected) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s: the terminal at %s should show active=%s, shows %s",
-                    why, absolute.toShortString(), expected, state);
+                    why,
+                    absolute.toShortString(),
+                    expected,
+                    state);
         }
     }
 
@@ -88,16 +94,19 @@ public class ActiveStateTest {
         BlockEntity entity = helper.getLevel().getBlockEntity(absolute);
         BlockState state = helper.getLevel().getBlockState(absolute);
         if (entity == null || !entity.getBlockState().equals(state)) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "the block entity at %s holds %s, the level %s",
-                    absolute.toShortString(), entity == null ? "nothing" : entity.getBlockState(), state);
+                    absolute.toShortString(),
+                    entity == null ? "nothing" : entity.getBlockState(),
+                    state);
         }
     }
 
     private static void repairDirectly(GameTestHelper helper, RepairState state, TerminalType type) {
         for (Item part : type.parts()) {
             if (state.insert(type, part).isPresent()) {
-                throw helper.assertionException("inserting %s straight into the state should succeed", part);
+                throw failure(helper, "inserting %s straight into the state should succeed", part);
             }
         }
     }
@@ -154,7 +163,7 @@ public class ActiveStateTest {
                             player.getUUID(),
                             "Lamp Co " + UUID.randomUUID().toString().substring(0, 8))
                     .isPresent()) {
-                throw helper.assertionException("founding a charter should succeed");
+                throw failure(helper, "founding a charter should succeed");
             }
             WorldData.with(server, RepairState.TYPE, new RepairState(), () -> {
                 BlockPos taker = place(helper, PUMP.block().defaultBlockState(), 1);
@@ -170,7 +179,7 @@ public class ActiveStateTest {
                     Item part = PUMP.parts().get(i);
                     player.getInventory().add(new ItemStack(part));
                     if (TerminalParts.insert(player, taker, part).isPresent()) {
-                        throw helper.assertionException("inserting part %s of the fuel pump should succeed", i);
+                        throw failure(helper, "inserting part %s of the fuel pump should succeed", i);
                     }
                 }
                 expectActive(helper, taker, true, "the pump that took the last part");
@@ -188,8 +197,7 @@ public class ActiveStateTest {
     public void aTerminalSetInTheWrongStateIsCorrectedOnItsNextTick(GameTestHelper helper) {
         BlockState lit = ContractTerminal.TYPE.block().defaultBlockState();
         if (!lit.getValue(TextureProperties.ACTIVE)) {
-            throw helper.assertionException(
-                    "the contract terminal's default state should be active: it never went dark");
+            throw failure(helper, "the contract terminal's default state should be active: it never went dark");
         }
         BlockPos contract = place(helper, lit.setValue(TextureProperties.ACTIVE, false), 1);
         helper.succeedWhen(() -> {
@@ -261,9 +269,11 @@ public class ActiveStateTest {
         UnreadableChecks.assertSavedDataNoThrow(
                 helper, "terminal activity", level.getServer(), RepairState.TYPE, paths);
         if (!level.getBlockState(pump).equals(before)) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "unreadable repair data must leave the terminal as it was: %s, now %s",
-                    before, level.getBlockState(pump));
+                    before,
+                    level.getBlockState(pump));
         }
         helper.succeed();
     }
@@ -317,7 +327,7 @@ public class ActiveStateTest {
     @GameTest
     public void thePropertyIsCalledActive(GameTestHelper helper) {
         if (!TextureProperties.ACTIVE.getName().equals("active")) {
-            throw helper.assertionException("the property is called %s", TextureProperties.ACTIVE.getName());
+            throw failure(helper, "the property is called %s", TextureProperties.ACTIVE.getName());
         }
         helper.succeed();
     }
