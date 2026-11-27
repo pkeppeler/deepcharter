@@ -19,8 +19,8 @@ object KeybindGate {
 	private val CONSTANT = Regex("""\bString\s+(\w+)\s*=\s*"([^"\\]*)"\s*;""")
 	private val NAME = Regex("""^(?:(?:\w+\s*\.\s*)*(\w+)\s*\.\s*)?(\w+)$""")
 	private val LANG_KEY = Regex(""""(key\.deepcharter\.[^"]+)"\s*:""")
-	val ID = Regex("""^key\.deepcharter\.[a-z0-9_.]+$""")
-	const val MIN_REASON_WORDS = 3
+	private val ID = Regex("""^key\.deepcharter\.[a-z0-9_.]+$""")
+	private const val MIN_REASON_WORDS = 3
 
 	/** {@code text} with every comment turned into spaces, newlines kept, string literals left. */
 	fun withoutComments(text: String): String {
@@ -154,11 +154,11 @@ val keybindAdvice = "A custom key is a last resort: a vanilla key or a click is 
 	"to gradle/keybind-allowlist.txt, and say why in the PR; a retired key leaves the list."
 
 /** The problems over the fixture tree {@code root}: its .java files, the one keybind-allowlist.txt and its .json lang fragments. */
-val keybindProblems: (File, File) -> List<String> = { root, base ->
+val keybindProblems: (File) -> List<String> = { root ->
 	val files = root.walkTopDown().filter { it.isFile }.toList()
 	val allowlist = files.singleOrNull { it.name == "keybind-allowlist.txt" }
 		?: throw GradleException("the fixture tree needs exactly one keybind-allowlist.txt")
-	KeybindGate.problems(files.filter { it.name.endsWith(".java") }, allowlist, files.filter { it.name.endsWith(".json") }, base)
+	KeybindGate.problems(files.filter { it.name.endsWith(".java") }, allowlist, files.filter { it.name.endsWith(".json") }, root)
 }
 // Shared with checkGametestFixtures (gametest.gradle.kts), as orphan-comment-gate.gradle.kts does.
 extra["keybindProblems"] = keybindProblems
