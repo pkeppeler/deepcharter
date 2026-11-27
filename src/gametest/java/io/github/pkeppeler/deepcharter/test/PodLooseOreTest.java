@@ -46,9 +46,9 @@ public class PodLooseOreTest {
     private static final int SETTLE_TICKS = 3;
     /** Ticks of held D that a steering measure turns the pod for. */
     private static final int TURN_TICKS = 20;
-    /** Ticks with no key held, enough for the turn rate (kept at 0.9 a tick) to die away to nothing. */
-    private static final int COAST_TICKS = 80;
-    /** The share of the turn the loose ore leaves, with a little for the turn rate's rounding. */
+    /** Ticks with no key held; tank steering stops the turn the tick the key is let go, so a few are enough. */
+    private static final int COAST_TICKS = 5;
+    /** The share of the turn the loose ore leaves, with a little for rounding. */
     private static final float TURN_TOLERANCE = 0.03f;
 
     private static final String FIRST_LINE_KEY = "deepcharter.pod.loose.first";

@@ -17,7 +17,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 
 /**
  * What each item does (SPEC sections 10 and 11). All of them but the thrown kit work on the pod the player is piloting, and
@@ -105,8 +105,8 @@ final class Consumables {
             }
         }
         play(pod, sound);
-        // The blast shakes the roof over anyone on foot near it (#987), from the middle of the cube it cleared.
-        CaveIns.blasted(level, Vec3.atCenterOf(middle), PodCharge.blasterOf(pod));
+        // The blast shakes the roof over anyone on foot near the cube it cleared, from its edge (#987, #1458).
+        CaveIns.blasted(level, AABB.encapsulatingFullBlocks(low, high), PodCharge.blasterOf(pod));
         return Optional.empty();
     }
 
