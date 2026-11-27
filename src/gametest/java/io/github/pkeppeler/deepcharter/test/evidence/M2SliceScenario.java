@@ -75,7 +75,9 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Options;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -469,7 +471,7 @@ public class M2SliceScenario extends EvidenceScenario {
             still("15-boarded-the-mole");
 
             // Fly.
-            ctx.getInput().holdKey(options -> options.keyJump);
+            holdDriveKey(options -> options.keyJump);
             snap(7);
             ctx.getInput().releaseKey(options -> options.keyJump);
             awaitServer(server -> directiveDone(server, "meet_the_mole/board_mole")
@@ -479,7 +481,7 @@ public class M2SliceScenario extends EvidenceScenario {
 
             // Drill down: the floor, the dirt, the planted ore, and out of the world into layer 1.
             ctx.runOnClient(client -> ClientSession.player(client).setXRot(40f));
-            ctx.getInput().holdKey(options -> options.keySprint);
+            holdDriveKey(options -> options.keySprint);
             // The real drill bores the first blocks, past the 10 that the directive asks for.
             recordUntil(
                     server -> findPod(server, mole.get())
@@ -497,7 +499,7 @@ public class M2SliceScenario extends EvidenceScenario {
                     "6. SHORTCUT: the rest of the bore, down to the floor of the world, is skipped. The Mole is set in a pocket 6 blocks above the floor, and refuelled with coal that is handed over.");
             skipTheBoreToTheFloor();
             refuelWithCoal();
-            ctx.getInput().holdKey(options -> options.keySprint);
+            holdDriveKey(options -> options.keySprint);
             recordUntil(
                     server -> podInLayer(server, mole.get(), 1),
                     WAIT_TICKS * 3,
@@ -508,7 +510,7 @@ public class M2SliceScenario extends EvidenceScenario {
             // it.
             ctx.getInput().releaseKey(options -> options.keySprint);
             snap(2);
-            ctx.getInput().holdKey(options -> options.keySprint);
+            holdDriveKey(options -> options.keySprint);
             // Released the tick the directive is done: a stone slab takes 24 ticks to bore, and below layer 1's ceiling
             // there are caves.
             for (int tick = 0;
@@ -525,7 +527,7 @@ public class M2SliceScenario extends EvidenceScenario {
             still("18-layer-1-below-the-colony");
 
             // Climb back out, through the ceiling of layer 1 and the shaft, to the colony.
-            ctx.getInput().holdKey(options -> options.keyJump);
+            holdDriveKey(options -> options.keyJump);
             recordUntil(
                     server -> podIn(server, mole.get(), Level.OVERWORLD),
                     WAIT_TICKS,
@@ -576,7 +578,7 @@ public class M2SliceScenario extends EvidenceScenario {
 
         /** Sets the Mole in a sealed pocket in the rock {@link #BORE_RESUMED_ABOVE_FLOOR} blocks above the floor of the campaign level's surface band, under where it is. */
         private void skipTheBoreToTheFloor() {
-            onServer(server -> {
+            BlockPos pocket = onServer(server -> {
                 // The descent resumes in the surface band of the campaign level, where the layers are bands of one
                 // level, so
                 // the drill carries the Mole across each floor in place.
@@ -592,6 +594,15 @@ public class M2SliceScenario extends EvidenceScenario {
                         new BlockPos(x + 2, low + 4, z + 2),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
+                return new BlockPos(x, low, z);
+            });
+            ClientWait.lightSettled(ctx, two.server(), 1, pocket.getX(), pocket.getZ(), 2);
+            onServer(server -> {
+                ServerLevel campaign = TestLayers.level(server, 1);
+                PodEntity pod = pod(server, mole.get());
+                int x = pocket.getX();
+                int z = pocket.getZ();
+                int low = pocket.getY();
                 Entity arrived = pod.teleport(new TeleportTransition(
                         campaign,
                         new Vec3(x + 0.5, low, z + 0.5),
@@ -724,6 +735,8 @@ public class M2SliceScenario extends EvidenceScenario {
                 buildRoom(one);
                 return null;
             });
+            ClientWait.lightSettled(
+                    ctx, two.server(), 1, X + (ROOM_EAST - ROOM_WEST) / 2, Z, (ROOM_EAST + ROOM_WEST) / 2 + 1);
             board(mole.get());
             onServer(server -> {
                 real(server)
@@ -766,7 +779,7 @@ public class M2SliceScenario extends EvidenceScenario {
             refuelWithCoal();
             snap(HOLD_FRAMES);
             ctx.runOnClient(client -> ClientSession.player(client).setXRot(35f));
-            ctx.getInput().holdKey(options -> options.keySprint);
+            holdDriveKey(options -> options.keySprint);
             recordUntil(
                     server -> podInLayer(server, mole.get(), 2),
                     WAIT_TICKS * 5,
@@ -831,8 +844,14 @@ public class M2SliceScenario extends EvidenceScenario {
             LamplessFigure[] figure = {null};
             dismount();
             onServer(server -> {
+                cutDrift(TestLayers.level(server, 2), site);
+                return null;
+            });
+            Vec3 driftMiddle = at(site, -(DRIFT_LENGTH + 7) / 2.0, 0, 0);
+            ClientWait.lightSettled(
+                    ctx, two.server(), 2, (int) driftMiddle.x, (int) driftMiddle.z, (DRIFT_LENGTH - 7) / 2 + 2);
+            onServer(server -> {
                 ServerLevel level = TestLayers.level(server, 2);
-                cutDrift(level, site);
                 pod(server, mole.get())
                         .teleportTo(
                                 level,
@@ -966,11 +985,10 @@ public class M2SliceScenario extends EvidenceScenario {
             ctx.waitTicks(10);
             ClientWait.until(
                     ctx,
-                    "the player riding the Mole in layer 2 with no screen open",
+                    "the player riding the Mole in layer 2",
                     client -> TestLayers.clientIsIn(client, 2)
-                            && ClientSession.player(client).getVehicle() instanceof PodEntity
-                            && client.gui.screen() == null);
-            ctx.getInput().holdKey(options -> options.keyUp);
+                            && ClientSession.player(client).getVehicle() instanceof PodEntity);
+            holdDriveKey(options -> options.keyUp);
             recordUntil(
                     server -> pod(server, mole.get()).position().distanceTo(bay) < 7,
                     WAIT_TICKS,
@@ -994,8 +1012,11 @@ public class M2SliceScenario extends EvidenceScenario {
             still("37-note-n10-on-the-table");
             useKey();
             awaitServer(server -> Notes.foundFor(server, real(server).getUUID()).contains(Notes.id(10)));
+            // The click opens the Note in the handbook; the player reads it and closes it before driving.
+            ClientWait.screen(ctx, HandbookScreen.class);
             snap(HOLD_FRAMES);
             still("38-note-n10-found");
+            ctx.setScreen(() -> null);
 
             // The tow cable: the pilot uses it on the wreck.
             say("13. The tow cable goes on the wreck. SHORTCUT: the cable is handed over, not crafted.");
@@ -1040,9 +1061,10 @@ public class M2SliceScenario extends EvidenceScenario {
             });
             ClientWait.until(
                     ctx,
-                    "the player riding a pod in the overworld",
+                    "the player riding a pod in the overworld with no screen open",
                     client -> ClientLight.clientLevel(client).dimension().equals(Level.OVERWORLD)
-                            && ClientSession.player(client).getVehicle() instanceof PodEntity);
+                            && ClientSession.player(client).getVehicle() instanceof PodEntity
+                            && client.gui.screen() == null);
             ctx.runOnClient(client -> {
                 ClientSession.player(client).setYRot(-90f);
                 ClientSession.player(client).setXRot(10f);
@@ -1051,7 +1073,7 @@ public class M2SliceScenario extends EvidenceScenario {
             say("14. Towing the wreck home along the ground, with the real drive keys.");
             snap(HOLD_FRAMES);
             still("40-towing-at-the-edge-of-the-colony");
-            ctx.getInput().holdKey(options -> options.keyUp);
+            holdDriveKey(options -> options.keyUp);
             recordUntil(
                     server -> directiveDone(server, "company_property/tow_prospector"),
                     WAIT_TICKS * 3,
@@ -1438,6 +1460,12 @@ public class M2SliceScenario extends EvidenceScenario {
                     .findFirst()
                     .orElseThrow(() -> new AssertionError("no button starts with " + prefix)));
             ctx.clickScreenButton(label);
+        }
+
+        /** Holds a drive or fly key once no screen is open: an open screen eats the key, and the beat stalls. */
+        private void holdDriveKey(Function<Options, KeyMapping> key) {
+            ClientWait.until(ctx, "no screen open before holding a drive key", client -> client.gui.screen() == null);
+            ctx.getInput().holdKey(key);
         }
 
         private void useKey() {

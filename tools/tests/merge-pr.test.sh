@@ -214,8 +214,8 @@ files() {
 
 # The production REQUIRED_CHECKS, so no case depends on its value: the default
 # fake runs report each one as succeeding, plus an unrelated skipped one.
-required=$(sed -n 's/^REQUIRED_CHECKS=(\(.*\))$/\1/p' "$script")
-[[ -n $required ]] || { echo "cannot read REQUIRED_CHECKS from $script" >&2; exit 1; }
+required=$(sed -n 's/^REQUIRED_CHECKS=(\(.*\))$/\1/p' "$tools/lib/ci-gate.sh")
+[[ -n $required ]] || { echo "cannot read REQUIRED_CHECKS from $tools/lib/ci-gate.sh" >&2; exit 1; }
 # The client suite is `client-gametest-shard <i>` jobs plus the aggregate `client-gametest` (#1079).
 cg_pass_specs=("client-gametest:3:success" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:success")
 default_specs=(docs:1:skipped "${cg_pass_specs[@]}")
@@ -683,8 +683,9 @@ mkdir "$work/tools"
 cp -R "$tools/lib" "$work/tools/lib"
 cp "$tools/py" "$tools/closing_refs.py" "$tools/merge_message.py" "$tools/ci-client-needed.sh" "$work/tools/"
 cp "$tools/../.python-version" "$work/.python-version"
-sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
-grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
+cp "$script" "$work/tools/merge-pr.sh"
+sed -i.bak 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$work/tools/lib/ci-gate.sh"
+grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/lib/ci-gate.sh" || fail "required-checks copy was not patched"
 SCRIPT=$work/tools/merge-pr.sh refusal "required check absent" "lacks required check: lint" \
   "STUB_RUNS=$(runs build:1:success)"
 SCRIPT=$work/tools/merge-pr.sh refusal "required check name is exact" "lacks required check: build" \
@@ -964,7 +965,8 @@ logged "mark adds label" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/la
 # check_pr_body_and_labels: the two lists must hold the same steps.
 lib=$tools/lib/pr-body-checks.sh
 wrapped=$(sed -n '/^check_pr_body_and_labels() {$/,/^}$/p' "$lib" | sed -n 's/^  \([a-z_]*\)$/\1/p')
-called=$(grep -oE '^(check|load)_[a-z_]+' "$script" || true)
+# check_ci_gate and check_client_suite_ran are the CI half (tools/lib/ci-gate.sh), which mark never runs.
+called=$(grep -oE '^(check|load)_[a-z_]+' "$script" | grep -vE '^check_(ci_gate|client_suite_ran)$' || true)
 [[ -n $wrapped ]] || { echo "cannot read check_pr_body_and_labels from $lib" >&2; exit 1; }
 if [[ $(sort <<<"$wrapped") == "$(sort -u <<<"$called")" ]]; then
   pass "merge-pr.sh and check_pr_body_and_labels call the same steps"

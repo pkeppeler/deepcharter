@@ -67,7 +67,7 @@ public class PodHazardCuesScenario extends EvidenceScenario {
                     context,
                     "the player in layer 1",
                     client -> client.player != null && TestLayers.clientIsIn(client, 1));
-            context.waitTicks(30);
+            ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 4);
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();

@@ -20,7 +20,7 @@ import net.minecraft.world.level.levelgen.feature.Feature;
  * placed features pick the ground; this decides what grows on it.
  *
  * @param inChunk whether a great stalk must fit in its origin's chunk, so what grows does not depend on the order chunks are
- *     decorated in (layer 3, #972); the surface's stalks predate it and keep their shape without
+ *     decorated in (the layers' stalks, ADR 0088); the surface's stalks predate it and keep their shape without
  */
 public record FungalStalkFeature(boolean inChunk) implements Feature {
     public static final MapCodec<FungalStalkFeature> CODEC =

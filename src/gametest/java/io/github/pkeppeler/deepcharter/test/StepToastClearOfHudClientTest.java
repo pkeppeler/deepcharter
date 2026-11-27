@@ -127,8 +127,6 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     private static void seatThePilot(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel one = TestLayers.level(server, 1);
-            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.setGameMode(GameType.SURVIVAL);
             RoomCarver.carve(
                     one,
                     -ROOM_RADIUS,
@@ -138,6 +136,12 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                     -ROOM_RADIUS,
                     ROOM_RADIUS,
                     Blocks.AIR);
+        });
+        ClientWait.lightSettled(context, singleplayer.getServer(), 1, 0, 0, ROOM_RADIUS);
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(0.5, FEET_Y, 0.5);
@@ -478,13 +482,14 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                 widest = Math.max(widest, font.width(readout.hint().get()));
             }
             double scale = look.scale();
+            int boxHeight = (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale);
             hud.put(
                     "block readout",
                     new Box(
                             (width - (int) Math.ceil(widest * scale)) / 2,
-                            height / 2 + look.offsetY(),
+                            look.blockTop(height, font.lineHeight),
                             (int) Math.ceil(widest * scale),
-                            (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale)));
+                            boxHeight));
         });
         if (TransmissionOverlay.active()) {
             TransmissionLook look = TransmissionLook.current();

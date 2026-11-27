@@ -193,7 +193,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 > Your latest delivery has been credited to your account.
 
 **T41 · L7 Old Furnaces · source unknown (Roz)**
-> Count the masks. Every one of them was a man who came down here, same as you. Same as him. It isn't an initial, you know. It's the end of his name. —R.
+> Count the masks. Every one of them was a man who came down here, same as you. Same as him. I wrote that nobody's ever been promoted. I was wrong. There's one opening, and it's been yours since the day you signed on. —R.
 
 **T42 · L7 the Watching Wall · relay** (`POD BEHEMOTH-0001, SURVEY ONE — LOOP 22,281`)
 > Lights are down, we're dark, we're— they're open. THEY'RE OPEN. ALL OF THEM. THE EYES ARE OPEN. Sir, put the lights back on. Sir, please. Sir, they're looking at—

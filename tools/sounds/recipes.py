@@ -183,19 +183,19 @@ HYMNS = {
 }
 
 
-def _hymn(seed, play):
-    """The motif played on one reed, then bent by how deep it is."""
+def _hymn(seed, play, notes=HYMN):
+    """The motif (or the opening `notes` of it) played on one reed, then bent by how deep it is."""
     rng = random.Random(seed)
     sin = math.sin
     harmonic_weights = [(h, h**1.1) for h in range(1, 9)]
     beat = play["beat"]
-    length = sum(beats for _, beats in HYMN) * beat + 0.5
+    length = sum(beats for _, beats in notes) * beat + 0.5
     count = dsp.seconds(length)
     depth, rate = play["wobble"]
     wobble = [depth * v for v in dsp.sine(count, rate)]
     out = [0.0] * count
     at = 0.0
-    for step, beats in HYMN:
+    for step, beats in notes:
         cents = play["shift"] * 100 + rng.uniform(-1, 1) * play["drift"]
         freq = A3 * 2 ** ((step * 100 + cents) / 1200)
         start = dsp.seconds(at)
@@ -222,6 +222,12 @@ def hymn_layer_1():
 
 def hymn_layer_2():
     return _hymn(2499, HYMNS["layer_2"])
+
+
+def hymn_chapter():
+    """A handbook chapter is done: the hymn's first three notes on the colony reed, rising and held on the step where the whole motif
+    stalls, with a shorter room, so it is over in a little over four seconds."""
+    return _hymn(2520, dict(HYMNS["colony"], tail=1.0), notes=((0, 1.0), (3, 1.0), (5, 1.5)))
 
 
 def _harmonics(count, length, base, top, falloff):
@@ -347,6 +353,25 @@ def power_on():
     return dsp.normalize(dsp.widen(dsp.plus(dsp.scale(click, 1.5), dsp.times(dsp.scale(hum, 0.3), dsp.fade(rise, 0.0, 0.4))), 5), 0.6)
 
 
+def terminal_online():
+    """A machine comes online: soft square tones in the terminal's voice (`_blips`) stack upward, a step apart, into a held G major
+    chord over the cabinet's hum, and ring away. It opens on 0.7 seconds of quiet, the length of `power_on`'s click and hum-up, so the
+    server plays both at once and hears "power on, then chord" without a timer."""
+    notes = (392.0, 493.88, 587.33, 783.99)
+    step, hold = 0.12, 1.1
+    count = dsp.seconds(step * (len(notes) - 1) + hold)
+    out = [0.0] * count
+    for n, freq in enumerate(notes):
+        start = dsp.seconds(step * n)
+        span = count - start
+        tone = [math.tanh(2 * v) for v in dsp.sine(span, freq)]
+        rung = dsp.times(dsp.fade(tone, 0.01, 0.5), dsp.decay(span, 1.5))
+        for i, v in enumerate(rung):
+            out[start + i] += v
+    quiet = [0.0] * dsp.seconds(0.7)
+    return dsp.normalize(dsp.widen(quiet + dsp.filt(out, "lp", 3500, 0.7), 5), 0.5)
+
+
 def terminal_hum():
     """A terminal waiting: a cabinet hum, a thin whine from the tube and the odd relay tick."""
     length = 8.0
@@ -462,6 +487,7 @@ RECIPES = {
     "hymn/colony": hymn_colony,
     "hymn/layer_1": hymn_layer_1,
     "hymn/layer_2": hymn_layer_2,
+    "hymn/chapter": hymn_chapter,
     "pod/engine_idle_loop": engine_idle,
     "pod/engine_drive_loop": engine_drive,
     "pod/engine_drill_side_loop": engine_drill_side,
@@ -472,6 +498,7 @@ RECIPES = {
     "drill/dig_3": dig_3,
     "drill/blocked": blocked,
     "terminal/power_on": power_on,
+    "terminal/online": terminal_online,
     "terminal/hum_loop": terminal_hum,
     "ui/typewriter_1": typewriter_1,
     "ui/typewriter_2": typewriter_2,
