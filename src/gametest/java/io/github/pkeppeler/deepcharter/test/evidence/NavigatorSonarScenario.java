@@ -213,8 +213,8 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         }
         put(level, new BlockPos(X + 8, FLOOR_Y + 1, Z - 9), HazardBlocks.GAS_POCKET);
         put(level, new BlockPos(X - 18, FLOOR_Y + 1, Z + 6), HazardBlocks.GAS_POCKET);
-        // A body standing in a hollow of its own, east: it is in the echo tag the test mod adds, so it returns an ore
-        // echo.
+        // A body standing in a hollow of its own, east: it is in the echo tag the test mod adds, so it returns an
+        // ore echo.
         room(level, X + 4 * CELL, FLOOR_Y, Z - 2 * CELL, 1, 1);
         ArmorStand body = TestEntities.create(EntityTypes.ARMOR_STAND, level);
         body.setNoGravity(true);

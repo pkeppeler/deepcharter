@@ -66,8 +66,9 @@ public record SlotRule(
         return new SlotRule(fits, unfit, check, ghost, true, maxStack);
     }
 
-    public SlotRule holding(int most) {
-        return new SlotRule(fits, unfit, check, ghost, locks, most);
+    /** This rule with a slot that holds one item. */
+    public SlotRule holdingOne() {
+        return new SlotRule(fits, unfit, check, ghost, locks, 1);
     }
 
     /** Why {@code stack} cannot go into this slot now, or empty when it can. */

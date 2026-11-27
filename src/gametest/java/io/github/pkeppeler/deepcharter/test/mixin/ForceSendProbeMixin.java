@@ -29,8 +29,8 @@ public abstract class ForceSendProbeMixin {
             boolean onGround,
             boolean horizontalCollision,
             CallbackInfo info) {
-        // Vanilla drops a packet that comes before the client accepts a teleport, and a rider's moves are its
-        // vehicle's.
+        // Vanilla drops a packet that comes before the client accepts a teleport, and a rider's moves are
+        // its vehicle's.
         if (awaitingPositionFromClient == null && !player.isPassenger()) {
             ForceSendProbe.move(player, new Vec3(x, y, z), onGround);
         }

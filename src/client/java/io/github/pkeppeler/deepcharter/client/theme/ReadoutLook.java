@@ -55,6 +55,8 @@ public record ReadoutLook(
      * above {@link #blockBottom}, whether or not there is a hint under the name, so the name never moves between
      * blocks. Never above the screen.
      */
+    // const-param: callers pass font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font); the
+    // parameter keeps the layout tied to the font, and tests pass it too
     public int blockTop(int guiHeight, int lineHeight) {
         return Math.max(0, blockBottom(guiHeight) - (int) Math.ceil((2 * lineHeight + lineGap) * scale));
     }
@@ -71,6 +73,8 @@ public record ReadoutLook(
      * The y of the top of the placement readout's box {@code boxHeight} high, growing up from {@link #placementBottom};
      * never above the screen.
      */
+    // const-param: callers pass font.lineHeight, which javac folds to 9 (a constant final field in 26.3's Font); the
+    // parameter keeps the layout tied to the font, and tests pass it too
     public int placementTop(int guiHeight, int lineHeight, int boxHeight) {
         return Math.max(0, placementBottom(guiHeight, lineHeight) - boxHeight);
     }
