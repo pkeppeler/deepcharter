@@ -430,8 +430,8 @@ public final class SeamClient {
         if (carried == null) {
             return false;
         }
-        // entity-query: an id the swap carried is in the level the client moved it to; a miss leaves the vanilla add to
-        // run
+        // entity-query: an id the swap carried is in the level the client moved it to; a miss leaves the vanilla add
+        // to run
         Entity entity = level.getEntity(packet.getId());
         if (entity == null || !carried.uuid().equals(packet.getUUID()) || carried.type() != packet.getType()) {
             return false;

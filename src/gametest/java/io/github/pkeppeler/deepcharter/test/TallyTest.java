@@ -48,7 +48,10 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
@@ -126,8 +129,8 @@ public class TallyTest {
                     for (int y = -1; y <= ARENA_HEIGHT; y++) {
                         boolean shell =
                                 y == -1 || y == ARENA_HEIGHT || Math.abs(u) == HALF + 1 || Math.abs(v) == HALF + 1;
-                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not layer
-                        // rock
+                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not
+                        // layer rock
                         level.setBlock(
                                 origin.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
                     }
@@ -377,9 +380,8 @@ public class TallyTest {
             for (int u = -HALF; u <= HALF; u++) {
                 for (int v = -HALF; v <= HALF; v++) {
                     for (int y = BORE_DEPTH; y < 0; y++) {
-                        // room-carver: the stone under this test's own arena, in the overworld test structure, not
-                        // layer
-                        // rock
+                        // room-carver: the stone under this test's own arena, in the overworld test structure,
+                        // not layer rock
                         level.setBlock(origin.offset(u, y, v), Blocks.STONE.defaultBlockState(), 3);
                     }
                 }
@@ -1047,6 +1049,91 @@ public class TallyTest {
             }
         }
         helper.succeed();
+    }
+
+    /**
+     * (#1009) A light in either hand keeps a Tally off a person on foot, as it keeps off a Retained: the same dark,
+     * ore-carrying person draws one with empty hands, and draws none with a torch in the main hand or the off hand.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SETTLE_TICKS + 60)
+    public void aLightInHandKeepsATallyOffAPersonOnFoot(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(16);
+        Arena[] made = {null};
+        TestTicks.each(helper, () -> {
+            Arena arena = made[0];
+            if (arena == null || arena.age(helper) < SETTLE_TICKS) {
+                return;
+            }
+            ServerPlayer person = arena.holder.player();
+            if (!Tally.draws(person)) {
+                throw failure(helper, "a person with ore in the dark and empty hands draws no Tally");
+            }
+            person.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
+            if (Tally.draws(person)) {
+                throw failure(helper, "a person with a torch in the main hand draws a Tally");
+            }
+            person.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            person.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.TORCH));
+            if (Tally.draws(person)) {
+                throw failure(helper, "a person with a torch in the off hand draws a Tally");
+            }
+            person.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.STONE));
+            if (!Tally.draws(person)) {
+                throw failure(helper, "a stone in the hand keeps a Tally off");
+            }
+            arena.clear();
+            helper.succeed();
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+    }
+
+    /**
+     * (#1009) A light does not free a person a Tally has clamped to: a torch taken in hand at the clamp keeps further
+     * Tallies off, and the clamped one still takes its sample.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CLAMP_BUDGET_TICKS + SAMPLE_BUDGET_TICKS + 60)
+    public void aTorchLitAfterTheClampDoesNotFreeAPersonOnFoot(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(17);
+        Arena[] made = {null};
+        long[] clampedAt = {-1};
+        TestTicks.each(helper, () -> {
+            Arena arena = made[0];
+            if (arena == null) {
+                return;
+            }
+            ServerPlayer person = arena.holder.player();
+            if (clampedAt[0] < 0) {
+                if (arena.tally.isClamped()) {
+                    clampedAt[0] = arena.age(helper);
+                    if (!Tally.draws(person)) {
+                        throw failure(helper, "a dark person with ore and empty hands draws no Tally");
+                    }
+                    person.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
+                    if (Tally.draws(person)) {
+                        throw failure(helper, "a person with a torch in hand draws a Tally");
+                    }
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
+                    throw failure(helper, "the Tally had not clamped to the pack");
+                }
+                return;
+            }
+            if (arena.tally.isRemoved()) {
+                if (arena.ore() != ORES - 1) {
+                    throw failure(
+                            helper,
+                            "the person carries %s cheap ore after a torch came to hand at the clamp, not %s",
+                            arena.ore(),
+                            ORES - 1);
+                }
+                arena.clear();
+                helper.succeed();
+            } else if (arena.ore() == ORES && arena.age(helper) - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
+                throw failure(helper, "the Tally let go of a person with a torch in hand and took nothing");
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
     }
 
     /**

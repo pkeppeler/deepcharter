@@ -80,7 +80,7 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
 
     @Override
     public boolean accepts(TerminalView other) {
-        return view.pos().equals(other.pos()) && view.type().equals(other.type()) && other.repaired();
+        return view.pos().equals(other.pos()) && view.type().equals(other.type());
     }
 
     @Override
@@ -113,8 +113,8 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
         scroll.beginLayout();
         int trackWidth = Math.max(TRACK_WIDTH, widestTrackLabel() + LABEL_ROOM);
         int tierX = left + trackWidth + COLUMN_GAP;
-        // Close sits under the longest list of tiers, so it stays on the screen however many tracks the left column
-        // holds.
+        // Close sits under the longest list of tiers, so it stays on the screen however many tracks the left
+        // column holds.
         int closeY = listTop()
                 + Arrays.stream(ComponentTrack.values())
                                 .mapToInt(ComponentTrack::maxTier)

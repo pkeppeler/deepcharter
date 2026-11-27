@@ -15,8 +15,11 @@ public final class ScannerClientInit {
         ScannerHud.init();
         // Release once the level is gone: a last frame would re-create the texture after a queued release.
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (client.level == null && ScannerMap.held()) {
-                ScannerMap.release();
+            if (client.level == null) {
+                ScannerRuler.release();
+                if (ScannerMap.held()) {
+                    ScannerMap.release();
+                }
             }
         });
     }

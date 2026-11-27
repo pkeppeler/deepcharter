@@ -44,8 +44,8 @@ public class TowChainTest {
     @GameTest
     public void aSlackLineHangsAndATautOneIsStraight(GameTestHelper helper) {
         TowChain slack = line(2 * RADIUS + 3.0);
-        // A rope of 5 over a chord of 3 hangs sqrt(3 * 3 * 2 / 8) = 1.5 blocks at its lowest, to within the curve's
-        // sampling.
+        // A rope of 5 over a chord of 3 hangs sqrt(3 * 3 * 2 / 8) = 1.5 blocks at its lowest, to within the
+        // curve's sampling.
         if (Math.abs(sagOf(slack) - 1.5) > 0.05) {
             throw failure(
                     helper, "a rope of %s over a chord of 3 should hang about 1.5 blocks, hung %s", ROPE, sagOf(slack));

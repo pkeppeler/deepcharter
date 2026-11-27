@@ -18,7 +18,9 @@ import net.minecraft.world.level.block.state.BlockState;
  * a client does not keep the light of the rock that was there. A solid fill (a stone bed) goes through here too, so that its shell is sealed to the same depth.
  */
 public final class RoomCarver {
-    private static final int ARRIVAL_RADIUS = 4;
+    /** How far the room {@link #carveAroundFirstPlayer} cuts reaches from the player's feet, across. */
+    public static final int ARRIVAL_RADIUS = 4;
+
     private static final int ARRIVAL_HEIGHT = 5;
     private static final int POCKET_HEIGHT = 8;
 
@@ -54,14 +56,23 @@ public final class RoomCarver {
      * nothing and the rows under the crust are the next layer's rock.
      */
     public static void carvePocketBelow(ServerLevel level, int layer, int x1, int x2, int z1, int z2) {
-        int floor = TestLayers.band(level, layer).minY();
-        carve(level, x1, x2, floor - POCKET_HEIGHT - 1, floor - POCKET_HEIGHT - 1, z1, z2, Blocks.STONE);
-        carve(level, x1, x2, floor - POCKET_HEIGHT, floor - 1, z1, z2, Blocks.AIR);
+        carvePocketBelow(level, layer, x1, x2, z1, z2, POCKET_HEIGHT);
     }
 
-    /** The layer 2 arrival point is in lava, which burns a pod seated there; a sealed room of air around the first player keeps it out. */
-    public static void carveAroundFirstPlayer(TestServerContext server) {
-        server.runOnServer(minecraftServer -> {
+    /** As {@link #carvePocketBelow(ServerLevel, int, int, int, int, int)}, with {@code rows} of air over the bed. */
+    public static void carvePocketBelow(ServerLevel level, int layer, int x1, int x2, int z1, int z2, int rows) {
+        int floor = TestLayers.band(level, layer).minY();
+        carve(level, x1, x2, floor - rows - 1, floor - rows - 1, z1, z2, Blocks.STONE);
+        carve(level, x1, x2, floor - rows, floor - 1, z1, z2, Blocks.AIR);
+    }
+
+    /**
+     * The layer 2 arrival point is in lava, which burns a pod seated there; a sealed room of air around the first
+     * player keeps it out. Returns the player's feet, the room's middle, for a ClientWait.lightSettled before a pod is
+     * seated in it.
+     */
+    public static BlockPos carveAroundFirstPlayer(TestServerContext server) {
+        return server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             BlockPos feet = player.blockPosition();
             carve(
@@ -69,6 +80,7 @@ public final class RoomCarver {
                     feet.offset(-ARRIVAL_RADIUS, 0, -ARRIVAL_RADIUS),
                     feet.offset(ARRIVAL_RADIUS, ARRIVAL_HEIGHT, ARRIVAL_RADIUS),
                     Blocks.AIR.defaultBlockState());
+            return feet;
         });
     }
 }

@@ -4,15 +4,10 @@ import io.github.pkeppeler.deepcharter.client.layer.BreachVoidCover;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
-import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.minecraft.client.Camera;
@@ -43,13 +38,13 @@ import org.joml.Vector3fc;
  */
 public final class CavernSky {
     /** Far from the colony, in the middle of a chunk, so the drawn chunks reach as far both ways. */
-    private static final int HALL_X = 5_000;
+    static final int HALL_X = 5_000;
 
     /** As {@link #HALL_X}. */
-    private static final int HALL_Z = 5_000;
+    static final int HALL_Z = 5_000;
 
     /** The render distance, in chunks, while the camera is in the hall: the hall must reach past it. */
-    private static final int RENDER_DISTANCE = 2;
+    static final int RENDER_DISTANCE = 2;
 
     /** From the camera to either end of the hall: past the 2 chunks drawn round the camera's chunk, with a chunk to spare. */
     private static final int HALF_LENGTH = 64;
@@ -81,11 +76,6 @@ public final class CavernSky {
     /** How far under the hall's floor the camera's feet are for the underwater views: its eye is under the water. */
     private static final int UNDERWATER_BELOW = 4;
 
-    /** Half the width of the box of the screen that must show the fog alone: about 16 degrees across. */
-    private static final int HALF_BOX_WIDTH = 100;
-
-    /** Half the height of the box of the screen that must show the fog alone: about 10 degrees up and down. */
-    private static final int HALF_BOX_HEIGHT = 60;
     /** A pixel that differs from the box's median by more than this on a channel is a sky pixel that is not fog. */
     private static final int UNIFORM_TOLERANCE = 8;
     /** The box's median may differ from the biome's fog colour by this much on a channel (the render rounds). */
@@ -250,26 +240,8 @@ public final class CavernSky {
 
     /** Reads the box in the middle of {@code shot} against the fog colour {@code fog}. */
     public static Reading read(Path shot, Vector3fc fog) {
-        BufferedImage image = image(shot);
-        int cx = image.getWidth() / 2;
-        int cy = image.getHeight() / 2;
-        int[][] channels = new int[3][(2 * HALF_BOX_WIDTH) * (2 * HALF_BOX_HEIGHT)];
-        int n = 0;
-        for (int y = cy - HALF_BOX_HEIGHT; y < cy + HALF_BOX_HEIGHT; y++) {
-            for (int x = cx - HALF_BOX_WIDTH; x < cx + HALF_BOX_WIDTH; x++) {
-                int rgb = image.getRGB(x, y);
-                channels[0][n] = (rgb >> 16) & 0xFF;
-                channels[1][n] = (rgb >> 8) & 0xFF;
-                channels[2][n] = rgb & 0xFF;
-                n++;
-            }
-        }
-        int[] median = new int[3];
-        for (int c = 0; c < 3; c++) {
-            int[] sorted = channels[c].clone();
-            Arrays.sort(sorted);
-            median[c] = sorted[sorted.length / 2];
-        }
+        ScreenBox box = ScreenBox.boxMedian(shot);
+        int n = box.count();
         int off = 0;
         int brighter = 0;
         int worst = 0;
@@ -277,8 +249,8 @@ public final class CavernSky {
             int delta = 0;
             int above = 0;
             for (int c = 0; c < 3; c++) {
-                delta = Math.max(delta, Math.abs(channels[c][i] - median[c]));
-                above = Math.max(above, channels[c][i] - median[c]);
+                delta = Math.max(delta, Math.abs(box.channel(c, i) - box.median(c)));
+                above = Math.max(above, box.channel(c, i) - box.median(c));
             }
             worst = Math.max(worst, delta);
             off += delta > UNIFORM_TOLERANCE ? 1 : 0;
@@ -287,28 +259,16 @@ public final class CavernSky {
         int[] wanted = {channel(fog.x()), channel(fog.y()), channel(fog.z())};
         int fogDelta = 0;
         for (int c = 0; c < 3; c++) {
-            fogDelta = Math.max(fogDelta, Math.abs(median[c] - wanted[c]));
+            fogDelta = Math.max(fogDelta, Math.abs(box.median(c) - wanted[c]));
         }
         String read =
                 ("the box's median is %s and the fog %s; %d of %d pixels differ from the median by more than %d (worst %d), %d of"
                                 + " them brighter")
-                        .formatted(hex(median), hex(wanted), off, n, UNIFORM_TOLERANCE, worst, brighter);
+                        .formatted(box.medianHex(), ScreenBox.hex(wanted), off, n, UNIFORM_TOLERANCE, worst, brighter);
         return new Reading(off == 0 && fogDelta <= FOG_TOLERANCE, brighter == 0, read);
     }
 
     private static int channel(float value) {
         return Math.round(value * 255);
-    }
-
-    private static String hex(int[] rgb) {
-        return "#%02x%02x%02x".formatted(rgb[0], rgb[1], rgb[2]);
-    }
-
-    private static BufferedImage image(Path shot) {
-        try {
-            return ImageIO.read(shot.toFile());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 }

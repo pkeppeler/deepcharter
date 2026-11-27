@@ -139,10 +139,14 @@ final class TestSiteTable {
         claim("EntityQueryAuditTest", 0, 20000, 20015, 20000, 20015);
         claim("EntityQueryAuditTest", 0, 40000, 40015, 40000, 40015);
 
+        claim("EntityTickingGateTest", 0, 95980, 96700, 95980, 96040);
+
         claim("FarChunksTest", 0, 64000, 64015, 64000, 64015);
         claim("FarChunksTest", 0, 64080, 64095, 64080, 64095);
         claim("FarChunksTest", 0, 64160, 64175, 64160, 64175);
         claim("FarChunksTest", 0, 64320, 64335, 64320, 64335);
+
+        claim("FungalHollowsTest", 3, 368, 543, 368, 543);
 
         row("GrainedCrustTest", 1, 4591, 4609, 40, 11, 6191, 6209);
         row("GrainedCrustTest", 1, 5071, 5089, 40, 4, 6191, 6209);
@@ -178,8 +182,7 @@ final class TestSiteTable {
         claim("LayerDimensionsTest", 2, 299999, 300001, 299999, 300001);
 
         claim("LayerStructuresTest", 0, 44000, 44015, 44000, 44015);
-        // The chunks of the layer structure sites StructureSite places from the seed, forced in layers 1 and 2: both
-        // claimed.
+        // The layer structure sites StructureSite places from the seed, forced in layers 1 and 2: both claimed.
         claim("LayerStructuresTest", 1, 1280, 1311, 1248, 1295);
         claim("LayerStructuresTest", 1, 1344, 1359, 1312, 1391);
         claim("LayerStructuresTest", 1, 1392, 1439, 1200, 1279);
@@ -202,6 +205,8 @@ final class TestSiteTable {
         claim("LightSyncSafetyNetTest", 1, -38688, -38673, 40000, 40015);
         claim("LightSyncSafetyNetTest", 1, -38080, -38065, 40000, 40015);
         claim("LightSyncSafetyNetTest", 1, -38048, -38033, 40000, 40015);
+
+        claim("LightWatchReportTest", 0, -34410, -33700, 39990, 40030);
 
         claim("M2SliceTest", 1, 9296, 9311, 9296, 9311);
         claim("M2SliceTest", 2, 9296, 9311, 9296, 9311);
@@ -287,6 +292,16 @@ final class TestSiteTable {
         claim("PodDriveStepTest", 1, 4259, 4270, 3107, 3117);
         claim("PodDriveStepTest", 1, 4259, 4270, 3123, 3133);
         claim("PodDriveStepTest", 1, 4259, 4270, 3139, 3149);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3155, 3165);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3171, 3181);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3187, 3197);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3203, 3213);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3219, 3229);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3235, 3245);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3251, 3261);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3267, 3277);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3283, 3293);
+        claim("PodDriveStepTest", 1, 4259, 4270, 3299, 3309);
 
         claim("PodFuelTripTest", 1, 7396, 7410, 7396, 7404);
         claim("PodFuelTripTest", 1, 7426, 7440, 7396, 7404);
@@ -318,6 +333,8 @@ final class TestSiteTable {
         claim("PodSonarTest", 1, 9137, 9225, 6973, 7027);
 
         row("PodSounderTest", 1, 5993, 6007, 48, 21, 3593, 3607);
+
+        claim("PodSprintTest", 1, 18990, 19999, 18990, 19999);
 
         claim("PodStatsTest", 1, 3996, 4009, 2996, 3005);
         claim("PodStatsTest", 1, 4061, 4067, 2997, 3003);
@@ -406,6 +423,10 @@ final class TestSiteTable {
         claim("SurfaceBreachTest", 1, 2499, 2501, 2499, 2501);
         claim("SurfaceBreachTest", 1, 2599, 2601, 2599, 2601);
 
+        claim("SurfaceTerrainTest", 0, -1040, 1040, -1040, 1040);
+
+        claim("SurfaceWritesTest", 0, 16001590, 16001625, 16001590, 16001625);
+
         row("TallChassisTest", 1, 9992, 10008, 48, 11, 8992, 9008);
 
         claim("TallyTest", 0, 6800, 6815, 6800, 6815);
@@ -424,6 +445,8 @@ final class TestSiteTable {
         claim("TallyTest", 0, 6800, 6815, 7696, 7711);
         claim("TallyTest", 0, 6800, 6815, 7760, 7775);
         claim("TallyTest", 0, 52000, 52015, 52000, 52015);
+
+        claim("TeleportArrivalTest", 0, 13984, 14031, -16, 31);
 
         row("TetherTest", 1, 16999, 17051, 64, 14, 16999, 17027);
 
@@ -444,6 +467,21 @@ final class TestSiteTable {
         claim("TowingTest", 2, 2098, 2102, 2098, 2102);
         claim("TowingTest", 2, 2198, 2202, 2198, 2202);
 
+        claim("VoidBelowTest", 1, 9096, 9104, 9146, 9154);
+        claim("VoidBelowTest", 2, 9096, 9104, 9146, 9154);
+        claim("VoidBelowTest", 1, 9196, 9204, 9146, 9154);
+        claim("VoidBelowTest", 2, 9196, 9204, 9146, 9154);
+        claim("VoidBelowTest", 1, 9296, 9304, 9146, 9154);
+        claim("VoidBelowTest", 2, 9296, 9304, 9146, 9154);
+        claim("VoidBelowTest", 1, 9396, 9404, 9146, 9154);
+        claim("VoidBelowTest", 2, 9396, 9404, 9146, 9154);
+        claim("VoidBelowTest", 1, 9496, 9504, 9146, 9154);
+        claim("VoidBelowTest", 2, 9496, 9504, 9146, 9154);
+        claim("VoidBelowTest", 1, 9596, 9604, 9146, 9154);
+        claim("VoidBelowTest", 2, 9596, 9604, 9146, 9154);
+        claim("VoidBelowTest", 1, 9696, 9704, 9146, 9154);
+        claim("VoidBelowTest", 2, 9696, 9704, 9146, 9154);
+
         claim("WorkOrdersTest", 0, 14000, 14015, 14000, 14015);
         claim("WorkOrdersTest", 0, 14992, 15007, 14992, 15007);
 
@@ -455,19 +493,30 @@ final class TestSiteTable {
 
         String spawn =
                 "stages inside the spawn square, which every test world shares (the colony, the content surveys)";
+        exempt("CampaignAtmosphereTest", spawn);
         exempt("CampaignContentTest", spawn);
         exempt("ColonyInteriorLightTest", spawn);
         exempt("ColonyPhonographTest", spawn);
         exempt("ColonyPlacementTest", spawn);
         exempt("FoundingMoleHangarTest", spawn);
+        exempt("GrainedCrustDecoyTest", spawn);
         exempt("HandbookChaptersOneToFiveTest", spawn);
+        exempt("LayerAtmosphereTest", spawn);
         exempt("PencilPathsTest", spawn);
         exempt("SalvageBootstrapTest", spawn);
         String structure =
                 "stages at its own GameTest structure, which the runner places at a different spot of the world per run";
         exempt("FlueScrapeTest", structure);
+        exempt("GiantFungusTest", structure);
+        exempt("PhonographTest", structure);
         exempt("PodSyncTest", structure);
         exempt("StalkCollapseTest", structure);
+        String ownDimension =
+                "stages only in deepcharter:campaign_full, a dimension of its own that the guards do not check";
+        exempt("CampaignTerrainTest", ownDimension);
+        exempt("ClaimFeaturesTest", ownDimension);
+        exempt("TheClaimTest", ownDimension);
+        exempt("ContinuityEventTest", "stages only in the Nether, which the guards do not check");
         exempt(
                 "ObtainableItemsTest",
                 "only reads the layer structure sites the world generates, the chunks LayerStructuresTest claims");

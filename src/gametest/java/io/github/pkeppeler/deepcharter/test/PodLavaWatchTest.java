@@ -85,11 +85,14 @@ public class PodLavaWatchTest {
     private static void run(
             GameTestHelper helper, ServerLevel level, int x, boolean piloted, Consumer<Staged> stage, Watch watch) {
         MockPlayer pilot = MockPlayers.join(helper, "Watch pilot " + OWNERS.incrementAndGet());
-        pilot.player().setGameMode(GameType.SURVIVAL);
-        pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         Staged[] staged = {null};
         int[] ticks = {0};
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Carved once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
+            pilot.player().setGameMode(GameType.SURVIVAL);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);
@@ -126,7 +129,6 @@ public class PodLavaWatchTest {
     public void lavaFlowingDownTheShaftFromOutsideTheLinersViewWarnsBeforeTheHullBurns(GameTestHelper helper) {
         int x = 7000;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         int[] warnedAt = {-1};
         int[] warnedBlocksOff = {0};
         float[] startHull = {0f};
@@ -178,7 +180,6 @@ public class PodLavaWatchTest {
     public void aPodWithNoLavaAboutIsNotWarned(GameTestHelper helper) {
         int x = 7064;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         quietFor(helper, level, x, staged -> {}, () -> {});
     }
 
@@ -190,14 +191,15 @@ public class PodLavaWatchTest {
     public void lavaSealedOffByARockPlugInTheShaftIsNotWarned(GameTestHelper helper) {
         int x = 7128;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         int plug = FLOOR + 8;
-        RoomCarver.carve(level, x - 1, x, plug, plug, Z - 1, Z, Blocks.STONE);
         quietFor(
                 helper,
                 level,
                 x,
-                staged -> level.setBlock(new BlockPos(x, plug + 4, Z), Blocks.LAVA.defaultBlockState(), 3),
+                staged -> {
+                    RoomCarver.carve(level, x - 1, x, plug, plug, Z - 1, Z, Blocks.STONE);
+                    level.setBlock(new BlockPos(x, plug + 4, Z), Blocks.LAVA.defaultBlockState(), 3);
+                },
                 () -> {
                     if (!level.getFluidState(new BlockPos(x, plug + 1, Z)).is(FluidTags.LAVA)) {
                         throw failure(
@@ -255,7 +257,6 @@ public class PodLavaWatchTest {
             boolean expectedAbove,
             boolean piloted) {
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         run(
                 helper,
                 level,
@@ -347,7 +348,6 @@ public class PodLavaWatchTest {
     public void lavaThatSettlesBeyondTheNearBandWarnsOnceThenFallsQuiet(GameTestHelper helper) {
         int x = 7768;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         boolean[] warned = {false};
         BlockPos source = new BlockPos(x + CORRIDOR, FLOOR, Z);
         run(
@@ -396,7 +396,6 @@ public class PodLavaWatchTest {
     public void lavaThatSettlesWithinTheNearBandKeepsWarning(GameTestHelper helper) {
         int x = 7832;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         run(
                 helper,
                 level,
@@ -449,11 +448,7 @@ public class PodLavaWatchTest {
 
     private static void capTheShaft(GameTestHelper helper, int x, boolean openBeside) {
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         int capY = FLOOR + BOX;
-        if (openBeside) {
-            RoomCarver.carve(level, x - 2, x + 1, capY, capY, Z - 2, Z + 1, Blocks.AIR);
-        }
         float[] startHull = {0f};
         boolean[] lining = {false};
         int[] cappedAt = {-1};
@@ -463,6 +458,9 @@ public class PodLavaWatchTest {
                 x,
                 true,
                 staged -> {
+                    if (openBeside) {
+                        RoomCarver.carve(level, x - 2, x + 1, capY, capY, Z - 2, Z + 1, Blocks.AIR);
+                    }
                     startHull[0] = staged.pod().hull();
                     staged.pilot().player().getInventory().add(new ItemStack(SlagBrick.item(), BRICKS));
                     level.setBlock(new BlockPos(x, FLOOR + SHAFT - 1, Z), Blocks.LAVA.defaultBlockState(), 3);
