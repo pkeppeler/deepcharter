@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodChase;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.pod.SeatedHotbar;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
@@ -45,6 +46,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,14 +70,15 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Client GameTest for the cockpit HUD (#247, the Ribbon): a seated pilot gets the Ribbon by default and the vanilla hotbar, hearts and held item name are not drawn (read from
- * pixels, against a shot of the game with its HUD switched off) while the action bar stays; on foot, with a pack that turns the cockpit off, and on a GUI too small for the
+ * Client GameTest for the cockpit HUD (#247, the Ribbon): a seated pilot gets the Ribbon by default and the vanilla hearts, food and experience are not drawn (read from
+ * pixels, against a shot of the game with its HUD switched off) while the hotbar (#1457) and the action bar stay; on foot, with a pack that turns the cockpit off, and on a GUI too small for the
  * Ribbon the vanilla HUD is back; the gauges read the pod's real fuel, hull and depth; every line of the plain readout is on the plate; and the Ribbon fits the GUI at every
  * GUI scale (1 to 4 and Auto) of every common window, with the longest warnings.
  */
@@ -86,16 +89,17 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     private static final int RISE = 20;
     /** The pod's feet this high over the floor of layer 1 are inside the signal decay's blackout band, above the breach crust. */
     private static final int BLACKOUT_FEET_Y = TestLayers.worldY(1, 4);
-    /** The middle of the bottom of the screen at GUI scale 2 (427 x 240): where the hotbar, the hearts, the held item name and the action bar are, clear of every console. */
-    private static final int[] VANILLA_BOX = {126, 165, 298, 232};
+    /** The rows of the hearts, the food, the armour and the experience bar at GUI scale 2 (427 x 240), between the hotbar and the held item name, clear of every console. */
+    private static final int[] STATUS_BOX = {126, 189, 298, 217};
+    /** The hotbar at GUI scale 2, inside its 182 x 22 sprite. */
+    private static final int[] HOTBAR_BOX = {126, 219, 298, 238};
     /** The rows of the held item name and the action bar (the dismount hint), over the hotbar and the hearts: a leaked line of text is a few percent of the box above but most of this strip. */
     private static final int[] TEXT_STRIP = {126, 170, 298, 190};
 
-    private static final double SAME_TEXT = 0.005;
     private static final int GUI_SCALE = 2;
     /**
-     * How much of the vanilla box may differ between a shot of the cockpit and a shot of the bare game (the pod's idle pose moves a few pixels between shots:
-     * 1.5 % measured), and how much must differ when the vanilla HUD is drawn there (the hotbar and the hearts alone are a third of it).
+     * How much of a vanilla box may differ between a shot of the cockpit and a shot of the bare game (the pod's idle pose moves a few pixels between shots:
+     * 1.5 % measured), and how much must differ when the vanilla HUD is drawn there (the hotbar fills most of its box, the hearts, food and experience bar half of theirs).
      */
     private static final double SAME = 0.03;
 
@@ -175,12 +179,13 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         40); // tick-wait: the charter's first transmission arrives a moment after the mount, and is
                 // cleared below
 
-                expectTheCockpitHidesExactlyTheVanillaBottomCluster();
+                expectTheCockpitHidesExactlyTheVanillaBars();
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
                 expectTheAccountLineIsANote();
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
                 expectEveryPlateMessageIsAPlateCase();
                 expectThePlateHoldsEveryLineClearOfItsBorder(context);
+                expectThePlateStopsAboveTheOffHandSlot(context);
                 expectTheRibbonIsTheDefaultSeatedHud(context);
                 expectCockpitHidesTheVanillaHud(context, singleplayer, pod);
                 expectCockpitHidesTheVanillaHudInTheChaseViewToo(context, singleplayer, pod);
@@ -198,22 +203,20 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
-    private static void expectTheCockpitHidesExactlyTheVanillaBottomCluster() {
+    private static void expectTheCockpitHidesExactlyTheVanillaBars() {
         Set<Identifier> expected = Set.of(
-                VanillaHudElements.HOTBAR,
                 VanillaHudElements.ARMOR_BAR,
                 VanillaHudElements.HEALTH_BAR,
                 VanillaHudElements.FOOD_BAR,
                 VanillaHudElements.AIR_BAR,
                 VanillaHudElements.MOUNT_HEALTH,
                 VanillaHudElements.INFO_BAR,
-                VanillaHudElements.EXPERIENCE_LEVEL,
-                VanillaHudElements.HELD_ITEM_TOOLTIP);
+                VanillaHudElements.EXPERIENCE_LEVEL);
         if (!Set.copyOf(CockpitHud.HIDDEN_WHILE_SEATED).equals(expected)
                 || CockpitHud.HIDDEN_WHILE_SEATED.size() != expected.size()) {
             throw new AssertionError(
-                    "The cockpit hides the hotbar, health, armour, food, air, mount health, experience bar and level"
-                            + " and held item name, and leaves the action bar, got "
+                    "The cockpit hides health, armour, food, air, mount health and the experience bar and level, and"
+                            + " leaves the hotbar, the held item name and the action bar, got "
                             + CockpitHud.HIDDEN_WHILE_SEATED);
         }
     }
@@ -327,16 +330,16 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
         BufferedImage bare = shotOfBareGame(context);
         BufferedImage cockpit = shot(context, "cockpit-seated", false);
-        double seated = differing(bare, cockpit, VANILLA_BOX);
+        double seated = differing(bare, cockpit, STATUS_BOX);
         if (seated > SAME) {
             throw new AssertionError(
-                    "Seated under the cockpit, the vanilla hotbar, hearts and held item name must not be drawn: "
-                            + seated + " of the middle of the bottom of the screen differs from the game with no HUD");
+                    "Seated under the cockpit, the vanilla hearts, food and experience must not be drawn: " + seated
+                            + " of their rows differs from the game with no HUD");
         }
-        double text = differing(bare, cockpit, TEXT_STRIP);
-        if (text > SAME_TEXT) {
-            throw new AssertionError("Seated under the cockpit, no held item name is drawn: " + text
-                    + " of the text rows differs from the game with no HUD");
+        double hotbar = differing(bare, cockpit, HOTBAR_BOX);
+        if (hotbar < DIFFERENT) {
+            throw new AssertionError("Seated under the cockpit, the vanilla hotbar is drawn (#1457), but only " + hotbar
+                    + " of its box differs from the game with no HUD");
         }
         singleplayer
                 .getServer()
@@ -351,12 +354,12 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 "the cockpit gone on foot",
                 client -> CockpitHud.seated(client).isEmpty());
         BufferedImage onFoot = shot(context, "cockpit-on-foot", true);
-        double back = differing(bare, onFoot, VANILLA_BOX);
+        double back = differing(bare, onFoot, STATUS_BOX);
         if (back < DIFFERENT) {
             throw new AssertionError(
-                    "On foot the vanilla HUD is back: the middle of the bottom of the screen should differ from the"
-                            + " bare game, but only "
-                            + back + " of it does");
+                    "On foot the vanilla hearts and food are back: their rows should differ from the bare game, but"
+                            + " only "
+                            + back + " of them does");
         }
         singleplayer.getServer().runOnServer(server -> {
             if (!server.getPlayerList().getPlayers().getFirst().startRiding(pod)) {
@@ -371,7 +374,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     /**
      * The shipped default (#1281): taking the pilot seat switches to the third-person chase view, so the Ribbon must
-     * stand and the vanilla hotbar stay hidden there too. The test turns the chase on, boards again, and puts the
+     * stand, the hearts stay hidden and the hotbar shown there too. The test turns the chase on, boards again, and puts the
      * first-person view back.
      */
     private void expectCockpitHidesTheVanillaHudInTheChaseViewToo(
@@ -402,10 +405,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             }
             BufferedImage bare = shotOfBareGame(context);
             BufferedImage chase = shot(context, "cockpit-chase-view", false);
-            double seated = differing(bare, chase, VANILLA_BOX);
+            double seated = differing(bare, chase, STATUS_BOX);
             if (seated > SAME) {
-                throw new AssertionError("In the chase view the vanilla hotbar and hearts must not be drawn either: "
-                        + seated + " of the middle of the bottom of the screen differs from the game with no HUD");
+                throw new AssertionError("In the chase view the vanilla hearts must not be drawn either: " + seated
+                        + " of their rows differs from the game with no HUD");
+            }
+            double hotbar = differing(bare, chase, HOTBAR_BOX);
+            if (hotbar < DIFFERENT) {
+                throw new AssertionError("In the chase view the vanilla hotbar is drawn too, but only " + hotbar
+                        + " of its box differs from the game with no HUD");
             }
         } finally {
             PodChase.setAutomatic(false);
@@ -413,7 +421,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
-    /** A shot with the whole HUD switched off, which is what the vanilla box shows when nothing is drawn in it. */
+    /** A shot with the whole HUD switched off, which is what a vanilla box shows when nothing is drawn in it. */
     private BufferedImage shotOfBareGame(ClientGameTestContext context) {
         BufferedImage[] bare = {null};
         ClientChecks.withHudHidden(context, () -> bare[0] = shot(context, "cockpit-bare", false));
@@ -442,7 +450,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
-    /** The share of the pixels of the vanilla box that differ by more than a few levels between two shots. */
+    /** The share of the pixels of {@code box} that differ by more than a few levels between two shots. */
     private static double differing(BufferedImage a, BufferedImage b, int[] box) {
         int scale = GUI_SCALE;
         int differing = 0;
@@ -732,7 +740,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
-    /** A pack that sets {@code enabled} to 0 gives the plain HUD back while seated, with the vanilla hotbar. */
+    /** A pack that sets {@code enabled} to 0 gives the plain HUD back while seated, with the vanilla hearts and food. */
     private void expectAPackCanTurnTheCockpitOff(ClientGameTestContext context) {
         ClientPacks.enable(context, TestPacks.COCKPIT_OFF);
         try {
@@ -742,7 +750,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 throw new AssertionError("With the cockpit turned off, a seated pilot gets the plain HUD");
             }
             BufferedImage bare = shotOfBareGame(context);
-            double back = differing(bare, shot(context, "cockpit-off", true), VANILLA_BOX);
+            double back = differing(bare, shot(context, "cockpit-off", true), STATUS_BOX);
             if (back < DIFFERENT) {
                 throw new AssertionError("With the cockpit turned off the vanilla HUD is drawn while seated, but only "
                         + back + " of the bottom differs from the bare game");
@@ -916,6 +924,14 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         pieces.put("band", box(layout.band(), guiWidth, guiHeight));
         pieces.put("bezel", box(layout.cap(), guiWidth, guiHeight));
         pieces.put("scanner", box(layout.scanner(), guiWidth, guiHeight));
+        // Vanilla's hotbar, which a seated pilot keeps (#1457): it must not cover the band, the bezel, the scanner or
+        // the plate.
+        pieces.put("hotbar", box(SeatedHotbar.bar(guiWidth, guiHeight)));
+        for (String piece : List.of("band", "bezel", "scanner")) {
+            if (overlap(pieces.get("hotbar"), Objects.requireNonNull(pieces.get(piece), "a piece of the Ribbon"))) {
+                problems.add(where + ": the hotbar covers the " + piece);
+            }
+        }
         Map<String, CockpitLook.Gauge> gauges = Map.of(
                 "fuel",
                 layout.fuel(),
@@ -964,29 +980,112 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
         problems.addAll(sinkProblems(font, layout, look, pieces, gauges, guiWidth, guiHeight, where));
         for (List<CockpitHud.Row> rows : plateCases()) {
-            List<CockpitHud.Row> kept = CockpitHud.fitting(rows, CockpitHud.roomForRows(font, layout, look, guiHeight));
-            CockpitHud.Box plate = CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight);
-            int[] plateBox = {plate.left(), plate.top(), plate.left() + plate.width(), plate.top() + plate.height()};
-            if (!inside(plateBox, screen)) {
-                problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
-                        + Arrays.toString(plateBox));
-            }
-            for (String piece : List.of("band", "bezel", "load title")) {
-                if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
-                    problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
-                }
-            }
             long alerts = rows.stream()
                     .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
                     .count();
-            long keptAlerts = kept.stream()
-                    .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
-                    .count();
-            if (alerts != keptAlerts) {
-                problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
+            // Every set of what vanilla draws along the bottom edge: either main arm, with and without an off-hand
+            // item and the hotbar's attack indicator.
+            for (List<HudKeepClear.Rect> slots : slotSets(guiWidth, guiHeight)) {
+                List<CockpitHud.Row> kept = CockpitHud.plateRows(font, layout, look, rows, slots, guiWidth, guiHeight);
+                CockpitHud.Box plate = CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight);
+                int[] plateBox = {plate.left(), plate.top(), plate.left() + plate.width(), plate.top() + plate.height()
+                };
+                if (!inside(plateBox, screen)) {
+                    problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
+                            + Arrays.toString(plateBox));
+                }
+                for (String piece : List.of("band", "bezel", "load title")) {
+                    if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
+                        problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
+                    }
+                }
+                for (HudKeepClear.Rect slot : slots) {
+                    if (overlap(plateBox, box(slot))) {
+                        problems.add(where + ": the plate with " + kept.size() + " rows covers the " + slot.what()
+                                + " of "
+                                + slots.stream().map(HudKeepClear.Rect::what).toList());
+                    }
+                }
+                long keptAlerts = kept.stream()
+                        .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
+                        .count();
+                if (alerts != keptAlerts) {
+                    problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
+                }
             }
         }
         return problems;
+    }
+
+    /** What vanilla can draw along the bottom edge of the GUI: for either main arm, with and without an off-hand item and the hotbar's attack indicator. */
+    private static List<List<HudKeepClear.Rect>> slotSets(int guiWidth, int guiHeight) {
+        List<List<HudKeepClear.Rect>> sets = new ArrayList<>();
+        for (HumanoidArm arm : HumanoidArm.values()) {
+            for (boolean offhand : new boolean[] {false, true}) {
+                for (boolean indicator : new boolean[] {false, true}) {
+                    sets.add(SeatedHotbar.slots(arm, offhand, indicator, guiWidth, guiHeight));
+                }
+            }
+        }
+        return sets;
+    }
+
+    /**
+     * A left-handed pilot with an off-hand item has the off-hand slot right of the bar, under the plate's columns: a plate narrow enough to miss the bar but wide enough to
+     * reach over the off-hand slot stops above it. Each GUI has such a plate (a column of notes of one width, found by trying widths), so the check is not vacuous: the
+     * same plate fitted against the bar alone covers the off-hand slot.
+     */
+    private void expectThePlateStopsAboveTheOffHandSlot(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            Font font = client.font;
+            CockpitLook look = CockpitLook.current();
+            CockpitLook.Layout layout = look.ribbon();
+            List<String> found = new ArrayList<>();
+            for (int[] gui : new int[][] {{320, 240}, {427, 240}}) {
+                int width = gui[0];
+                int height = gui[1];
+                List<HudKeepClear.Rect> slots = SeatedHotbar.slots(HumanoidArm.LEFT, true, false, width, height);
+                HudKeepClear.Rect bar = slots.getFirst();
+                HudKeepClear.Rect offhand = slots.getLast();
+                int cases = 0;
+                for (int letters = 1; letters <= 40; letters++) {
+                    Component text = Component.literal("M".repeat(letters));
+                    List<CockpitHud.Row> rows =
+                            Collections.nCopies(20, CockpitHud.Row.of(new PodStatusHud.Line(text, 0)));
+                    HudKeepClear.Rect barOnly = plateRect(font, layout, look, rows, List.of(bar), width, height);
+                    if (barOnly.overlaps(bar) || !barOnly.overlaps(offhand)) {
+                        continue;
+                    }
+                    cases++;
+                    HudKeepClear.Rect plate = plateRect(font, layout, look, rows, slots, width, height);
+                    if (plate.overlaps(offhand) || plate.overlaps(bar)) {
+                        found.add(width + " x " + height + ": the plate " + plate + " covers the off-hand slot "
+                                + offhand + " or the bar " + bar);
+                    }
+                }
+                if (cases == 0) {
+                    found.add(width + " x " + height + ": no plate width misses the bar and meets the off-hand slot "
+                            + offhand);
+                }
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The plate must stop above a left-handed pilot's off-hand slot: " + problems);
+        }
+    }
+
+    private static HudKeepClear.Rect plateRect(
+            Font font,
+            CockpitLook.Layout layout,
+            CockpitLook look,
+            List<CockpitHud.Row> rows,
+            List<HudKeepClear.Rect> slots,
+            int guiWidth,
+            int guiHeight) {
+        List<CockpitHud.Row> kept = CockpitHud.plateRows(font, layout, look, rows, slots, guiWidth, guiHeight);
+        return CockpitHud.plateBox(font, layout, look, kept, guiWidth, guiHeight)
+                .rect("plate");
     }
 
     /**
@@ -1230,6 +1329,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     private static PodStatusHud.Line line(String name, Object... args) {
         return new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod." + name, args), 0);
+    }
+
+    private static int[] box(HudKeepClear.Rect rect) {
+        return new int[] {rect.x(), rect.y(), rect.right(), rect.bottom()};
     }
 
     private static int[] box(PanelLook.Decal decal, int guiWidth, int guiHeight) {
