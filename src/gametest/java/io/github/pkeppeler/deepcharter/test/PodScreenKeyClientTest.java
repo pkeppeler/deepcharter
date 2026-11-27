@@ -21,6 +21,11 @@ public class PodScreenKeyClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            int[] at = singleplayer.getServer().computeOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                return new int[] {player.getBlockX(), player.getBlockZ()};
+            });
+            ClientWait.chunksAround(context, at[0], at[1], 4);
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
