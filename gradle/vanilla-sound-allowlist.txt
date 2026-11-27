@@ -1,0 +1,2 @@
+# A vanilla sound id in a JSON data file under src/main/resources that stays (#1557), one per line: `<path>  <id>  <why it stays>`.
+# The path is from the repository root. checkVanillaSoundGate fails an entry that allows nothing. Prefer a mod sound to an entry here.
