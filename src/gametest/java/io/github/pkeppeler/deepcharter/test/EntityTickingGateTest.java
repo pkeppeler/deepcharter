@@ -109,6 +109,8 @@ public class EntityTickingGateTest {
                     driver.teleportTo(level, start, EAST, 0f);
                     PodEntity driven = TestEntities.create(PodRegistry.POD, level);
                     driven.setPos(start);
+                    // A pod drives along its own facing, not the pilot's look (#1307).
+                    driven.setYRot(EAST);
                     level.addFreshEntity(driven);
                     if (!driver.player().startRiding(driven)) {
                         throw failure(helper, "the pilot could not mount the pod");
