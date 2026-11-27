@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.ore.MassTooltip;
 import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
@@ -56,8 +57,8 @@ public class OreMassTooltipTest {
 
     /** The text the stack's mass line shows; fails when it has none. */
     private static String shownMass(GameTestHelper helper, ItemStack stack) {
-        Component line = MassTooltip.line(stack).orElse(null);
-        expect(helper, line != null, "%s should have a mass line", stack);
+        Component line =
+                MassTooltip.line(stack).orElseThrow(() -> failure(helper, "%s should have a mass line", stack));
         return (String) ((TranslatableContents) line.getContents()).getArgs()[0];
     }
 
