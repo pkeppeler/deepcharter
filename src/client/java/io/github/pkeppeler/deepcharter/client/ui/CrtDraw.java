@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.ui;
 
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import net.minecraft.client.gui.Font;
@@ -171,5 +172,26 @@ public final class CrtDraw {
                 right + tuning.headerRuleInset(),
                 ruleTop + 1,
                 tuning.dimColor());
+    }
+
+    /** {@code text} in the pixel digits (#1539) with its top left at ({@code x}, {@code y}), tinted {@code color}: a GUI pixel to a texel, never scaled. */
+    public static void pixelDigits(
+            GuiGraphicsExtractor graphics, String text, int x, int y, int color, CockpitLook.Digits look) {
+        for (PixelDigits.Cell cell : PixelDigits.layout(text, look)) {
+            graphics.blit(
+                    RenderPipelines.GUI_TEXTURED,
+                    PixelDigits.SHEET,
+                    x + cell.x(),
+                    y,
+                    (float) cell.u(),
+                    0f,
+                    cell.width(),
+                    look.height(),
+                    cell.width(),
+                    look.height(),
+                    PixelDigits.sheetWidth(look),
+                    look.height(),
+                    color);
+        }
     }
 }

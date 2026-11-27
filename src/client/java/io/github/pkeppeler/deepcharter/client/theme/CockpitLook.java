@@ -7,7 +7,7 @@ import net.minecraft.resources.Identifier;
 
 /**
  * The cockpit HUD a pilot sees from the seat: the Ribbon ({@code theme/cockpit.json}, #247, docs/design/cockpit-concepts-2.md, the user's pick of 2026-10-11). One slim
- * ribbon along the top edge holds a bar for each of fuel, hull, load, depth and heat, the altimeter in a recess at its middle and a row of warning lamps at its end;
+ * ribbon along the top edge holds a bar for each of fuel, hull, load, depth and heat, each titled on a tab under it, the altimeter in a recess at its middle and a row of warning lamps at its end;
  * the scanner hangs from the ribbon's right end and the readout plate (the tally and every other line of the readout) under it. Its sprites are GUI sprites under
  * {@code textures/gui/sprites/cockpit/ribbon/} ({@link Layout#sprite}); the gauges only draw what moves, on the bar the sprites left room for. A pack restyles the
  * colours and the places, or turns the cockpit off ({@code enabled} 0) to get the plain text HUD back. Colours are ARGB, lengths are GUI pixels.
@@ -32,11 +32,14 @@ import net.minecraft.resources.Identifier;
  * @param scannerTitleGap the space between the scanner window and its title under it
  * @param lampGap the space between two warning lamps
  * @param tallyGap the space between two numbers of the plate's tally
- * @param titleGap the space between the inside of a gauge title's plate border and its text, on each side
- * @param titleTextHeight how tall the font's capitals are drawn, which a gauge title's plate holds
+ * @param titleGap the space between the inside of a gauge title's tab border and its icon and text, on each side
+ * @param titleTextHeight how tall the font's capitals are drawn, which a gauge title's tab holds and a gauge's icon is
+ * @param iconWidth how wide a gauge's icon is, which its title and its number on the plate's tally both carry (#1436)
+ * @param iconGap the space between a gauge's icon and the text after it
  * @param camera the front camera's feed (#448)
  * @param decay what the signal decay (#502) does to the instruments
  * @param sink the SINK readout (#1432)
+ * @param digits the altimeter's pixel digits (#1539)
  */
 public record CockpitLook(
         boolean enabled,
@@ -60,9 +63,12 @@ public record CockpitLook(
         int tallyGap,
         int titleGap,
         int titleTextHeight,
+        int iconWidth,
+        int iconGap,
         CameraLook camera,
         DecayLook decay,
-        SinkLook sink) {
+        SinkLook sink,
+        Digits digits) {
     /** How a bar fills: segments lit from its start across, or up. */
     public enum Kind {
         ACROSS,
@@ -125,6 +131,7 @@ public record CockpitLook(
      * @param scanner where the scanner's cells go (and its title, under them)
      * @param readout where the readout's plate hangs: under the anchor
      * @param altimeterY the altimeter's top, as the HUD theme's {@code altimeterMargin} is without a cockpit
+     * @param titleY the top of each gauge's title tab, from the band's top: the tabs ride the band's lower edge (#1436)
      */
     public record Layout(
             Decal band,
@@ -138,7 +145,8 @@ public record CockpitLook(
             Decal lamps,
             Decal scanner,
             Anchor readout,
-            int altimeterY) {
+            int altimeterY,
+            int titleY) {
         private static final String P = "ribbon";
 
         static Layout of(ThemeData d) {
@@ -162,10 +170,11 @@ public record CockpitLook(
                     Decal.of(d, P + "Lamps"),
                     Decal.of(d, P + "Scanner"),
                     Anchor.of(d, P + "Readout"),
-                    d.integer(P + "AltimeterY", 0, 200));
+                    d.integer(P + "AltimeterY", 0, 200),
+                    d.integer(P + "TitleY", 0, 200));
         }
 
-        /** The GUI sprite {@code slot} of the Ribbon: {@code plate}, {@code part_a} or {@code cap}. */
+        /** The GUI sprite {@code slot} of the Ribbon: {@code plate}, {@code tab}, {@code part_a}, {@code cap} or a gauge's {@code icon_<gauge>}. */
         public Identifier sprite(String slot) {
             return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cockpit/" + P + "/" + slot);
         }
@@ -351,7 +360,7 @@ public record CockpitLook(
     }
 
     /**
-     * The SINK readout (#1432): while the pod sinks, a plate under the band's middle holds a SINK title and a bar of
+     * The SINK readout (#1432): while the pod sinks, a tab under the band's middle holds a SINK title and a bar of
      * the sink against the hard-landing buffer, with the buffer marked. Title and bar are in the hull gauge's colour,
      * {@code warnColor} near the buffer and {@code lowColor} past it.
      *
@@ -396,6 +405,25 @@ public record CockpitLook(
         }
     }
 
+    /**
+     * The altimeter's pixel digits (#1539): a sheet of white glyphs under {@code textures/gui/cockpit/digits.png}, drawn a GUI pixel to a texel so they never smooth-scale. The
+     * sheet holds the wide glyphs, then the narrow ones ({@code PixelDigits} names them); the generator, {@code tools/cockpit_ribbon.py}, writes the sheet and these keys together.
+     *
+     * @param width how wide a digit, a minus, an f and a t are
+     * @param height how tall every glyph is
+     * @param gap the space between two glyphs
+     * @param narrowWidth how wide a comma and a full stop are, and a space
+     */
+    public record Digits(int width, int height, int gap, int narrowWidth) {
+        static Digits of(ThemeData d) {
+            return new Digits(
+                    d.integer("digitsW", 1, 16),
+                    d.integer("digitsH", 1, 16),
+                    d.integer("digitsGap", 0, 8),
+                    d.integer("digitsNarrowW", 1, 16));
+        }
+    }
+
     public static CockpitLook current() {
         return UiTheme.current().cockpit();
     }
@@ -428,8 +456,11 @@ public record CockpitLook(
                 d.integer("tallyGap", 0, 16),
                 d.integer("titleGap", 0, 8),
                 d.integer("titleTextHeight", 1, 32),
+                d.integer("iconWidth", 1, 32),
+                d.integer("iconGap", 0, 8),
                 CameraLook.of(d),
                 DecayLook.of(d),
-                SinkLook.of(d));
+                SinkLook.of(d),
+                Digits.of(d));
     }
 }

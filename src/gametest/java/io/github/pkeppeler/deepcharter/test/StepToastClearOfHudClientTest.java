@@ -25,6 +25,7 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionHud;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.client.ui.PixelDigits;
 import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -464,14 +465,16 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             hud.put("sonar scope", sonarScope(client, width, height));
         }
         if (seated.isEmpty()) {
-            Component reading = Altimeter.reading(level, player.getBlockY());
+            CockpitLook.Digits digits = CockpitLook.current().digits();
+            int readingWidth = PixelDigits.width(
+                    Altimeter.reading(level, player.getBlockY()).getString(), digits);
             hud.put(
                     "altimeter",
                     new Box(
-                            (width - font.width(reading)) / 2,
+                            (width - readingWidth) / 2,
                             HudLook.current().altimeterMargin(),
-                            font.width(reading),
-                            font.lineHeight));
+                            readingWidth,
+                            digits.height()));
         }
         Optional<Component> account = AccountHud.text();
         if (account.isPresent() && !CockpitHud.showsReadout(client, width, height)) {

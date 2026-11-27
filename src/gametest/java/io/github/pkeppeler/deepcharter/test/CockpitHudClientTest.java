@@ -11,11 +11,14 @@ import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodChase;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.client.pod.SeatedHotbar;
+import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.client.ui.PixelDigits;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -39,6 +42,7 @@ import io.github.pkeppeler.deepcharter.test.support.VanillaHudRows;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UncheckedIOException;
@@ -49,6 +53,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -112,9 +117,12 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     /** The GUI scale settings: 0 is Auto. */
     private static final int[] GUI_SCALES = {0, 1, 2, 3, 4};
     /** The width of the altimeter's recess in the ribbon sprite (tools/cockpit_ribbon.py), which its longest reading must fit. */
-    private static final int ALTIMETER_RECESS_WIDTH = 72;
+    private static final int ALTIMETER_RECESS_WIDTH = 40;
+    /** The recess's top from the band's top, and its height. */
+    private static final int ALTIMETER_RECESS_TOP = 2;
 
-    private static final String LONGEST_ALTIMETER = "-12,345 ft.";
+    private static final int ALTIMETER_RECESS_HEIGHT = 7;
+
     /**
      * How far past its bar a gauge's title may hang under the band, each side: #1449's LOAD title is 4 pixels wider
      * than its bar. The SINK plate stays out of every gauge's column, so it never meets a title.
@@ -183,6 +191,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
                 expectTheAccountLineIsANote();
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
+                expectTheAltimeterIsSmallPixelDigitsInItsRecessAtGuiScales(context);
                 expectEveryPlateMessageIsAPlateCase();
                 expectThePlateHoldsEveryLineClearOfItsBorder(context);
                 expectThePlateStopsAboveTheOffHandSlot(context);
@@ -535,8 +544,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 throw new AssertionError("A stranded pod's warning lights the fourth lamp, the readout is " + readout);
             }
             return CockpitHud.rows(shown, reading, look, readout).stream()
-                    .map(row -> row.parts().stream()
-                            .map(part -> ((TranslatableContents) part.text().getContents()).getKey())
+                    .map(row -> row.cells().stream()
+                            .map(cell ->
+                                    ((TranslatableContents) cell.line().text().getContents()).getKey())
                             .toList())
                     .toList();
         });
@@ -637,7 +647,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 throw new AssertionError("In the blackout the altimeter is dark with the depth gauge");
             }
             CockpitHud.Row tag = CockpitHud.tag(decay, CockpitLook.current());
-            if (!(tag.parts().getFirst().text().getContents() instanceof TranslatableContents contents)
+            if (!(tag.first().text().getContents() instanceof TranslatableContents contents)
                     || !contents.getKey().equals("hud.deepcharter.pod.signal_lost")) {
                 throw new AssertionError(
                         "In the blackout the plate is the tag that says something is on the line, got " + tag);
@@ -826,14 +836,105 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     }
 
     /**
+     * The altimeter's readout (#1539) is the cockpit's pixel digits, not the game's font: on the 1920 x 1080 window at GUI scale 1, 2 and 4 (all fit the Ribbon)
+     * it is as wide as the pixel digits make its reading and as tall as a glyph, centred on the screen (so on the band's recess) with its top {@code ribbonAltimeterY}
+     * under the screen's, inside the band and inside the recess (a pixel clear of its sides), drawn from a sheet it takes cell for cell (so a GUI pixel to a texel, never
+     * scaled), and smaller than the font's line was, so the readout stays inside the status budget. What the HUD keeps clear is that box
+     * grown by the breach's jitter.
+     */
+    private void expectTheAltimeterIsSmallPixelDigitsInItsRecessAtGuiScales(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            List<String> found = new ArrayList<>();
+            CockpitLook look = CockpitLook.current();
+            CockpitLook.Layout layout = look.ribbon();
+            String reading = Altimeter.reading(
+                            ClientLight.clientLevel(client),
+                            ClientSession.player(client).getBlockY())
+                    .getString();
+            int width = PixelDigits.width(reading, look.digits());
+            int height = look.digits().height();
+            int jitter = BreachLook.current().jitterPixels();
+            for (int requested : new int[] {1, 2, 4}) {
+                int[] gui = guiSize(1920, 1080, requested);
+                String where = "GUI scale " + requested + " (" + gui[0] + " x " + gui[1] + ")";
+                List<HudKeepClear.Rect> altimeters = HudKeepClear.rects(client, gui[0], gui[1]).stream()
+                        .filter(rect -> rect.what().equals("altimeter"))
+                        .toList();
+                if (altimeters.size() != 1) {
+                    found.add(where + ": the HUD keeps clear " + altimeters.size() + " altimeters, not one");
+                    continue;
+                }
+                HudKeepClear.Rect drawn = altimeters.getFirst().grow(-jitter);
+                int[] size = {drawn.width(), drawn.height()};
+                if (size[0] != width || size[1] != height) {
+                    found.add(where + ": the readout is " + size[0] + " x " + size[1] + ", the pixel digits make \""
+                            + reading + "\" " + width + " x " + height);
+                }
+                if (Math.abs(drawn.x() + drawn.right() - gui[0]) > 1) {
+                    found.add(where + ": the readout is not centred, it spans " + drawn.x() + " to " + drawn.right());
+                }
+                int[] band = box(layout.band(), gui[0], gui[1]);
+                if (drawn.y() != layout.altimeterY() || !inside(box(drawn), band)) {
+                    found.add(where + ": the readout's top is " + drawn.y() + ", not " + layout.altimeterY()
+                            + " inside the band " + Arrays.toString(band));
+                }
+                int middle = (band[0] + band[2]) / 2;
+                int[] recess = {
+                    middle - ALTIMETER_RECESS_WIDTH / 2,
+                    band[1] + ALTIMETER_RECESS_TOP,
+                    middle + ALTIMETER_RECESS_WIDTH / 2,
+                    band[1] + ALTIMETER_RECESS_TOP + ALTIMETER_RECESS_HEIGHT
+                };
+                if (drawn.x() - recess[0] < 1
+                        || recess[2] - drawn.right() < 1
+                        || drawn.y() - recess[1] < 1
+                        || recess[3] - drawn.bottom() < 1) {
+                    found.add(where + ": the readout " + Arrays.toString(box(drawn))
+                            + " is not a pixel clear inside the recess " + Arrays.toString(recess));
+                }
+                if (size[0] >= client.font.width(reading) || size[1] >= client.font.lineHeight) {
+                    found.add(where + ": the readout is no smaller than the game's font drew it, "
+                            + client.font.width(reading) + " x " + client.font.lineHeight);
+                }
+            }
+            found.addAll(digitSheetProblems(reading, look.digits()));
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The altimeter must be small pixel digits in its recess: " + problems);
+        }
+    }
+
+    /** The glyph sheet is as big as the theme's glyphs make it, and each glyph of {@code reading} is cut from it whole: drawn at its own size, so a GUI pixel to a texel. */
+    private static List<String> digitSheetProblems(String reading, CockpitLook.Digits digits) {
+        List<String> found = new ArrayList<>();
+        try (InputStream in = CockpitHudClientTest.class.getResourceAsStream(
+                "/assets/" + DeepCharter.MOD_ID + "/textures/gui/cockpit/digits.png")) {
+            BufferedImage sheet = ImageIO.read(Objects.requireNonNull(in, "the digit sheet is not shipped"));
+            if (sheet.getWidth() != PixelDigits.sheetWidth(digits) || sheet.getHeight() != digits.height()) {
+                found.add("the digit sheet is " + sheet.getWidth() + " x " + sheet.getHeight()
+                        + ", the theme's glyphs make it " + PixelDigits.sheetWidth(digits) + " x " + digits.height());
+            }
+            for (PixelDigits.Cell cell : PixelDigits.layout(reading, digits)) {
+                if (cell.u() + cell.width() > sheet.getWidth()) {
+                    found.add("a glyph at " + cell.u() + " of width " + cell.width() + " is cut from past the sheet");
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return found;
+    }
+
+    /**
      * The plate cases cover every message the plate can show: the lang keys of their lines are the readout's lines ({@link PodStatusHud#KINDS}, less the four the plain HUD
      * shows and the plate shows as its tally instead) and the two tags, so a new readout line is not silently left out of the fit checks.
      */
     private static void expectEveryPlateMessageIsAPlateCase() {
         Set<String> covered = drawnPlates().stream()
                 .flatMap(List::stream)
-                .flatMap(row -> row.parts().stream())
-                .map(part -> part.text().getContents())
+                .flatMap(row -> row.cells().stream())
+                .map(cell -> cell.line().text().getContents())
                 .filter(TranslatableContents.class::isInstance)
                 .map(contents -> ((TranslatableContents) contents).getKey())
                 .collect(Collectors.toSet());
@@ -877,11 +978,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 GuiSpriteScaling.NineSlice.Border inset = CockpitHud.plateInset(layout, look);
                 int widest = 0;
                 for (CockpitHud.Row row : rows) {
-                    int width = look.tallyGap() * (row.parts().size() - 1);
-                    for (PodStatusHud.Line part : row.parts()) {
-                        width += client.font.width(part.text());
-                    }
-                    widest = Math.max(widest, width);
+                    widest = Math.max(widest, row.width(client.font, look));
                 }
                 int textLeft = box.left() + inset.left();
                 int textTop = box.top() + inset.top();
@@ -897,7 +994,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     box.top() + box.height() - border.bottom() - textBottom
                 };
                 if (Arrays.stream(clear).anyMatch(side -> side < look.plateGap())) {
-                    found.add(rows.getLast().parts().getFirst().text().getString() + ": clear by (left, top, right,"
+                    found.add(rows.getLast().first().text().getString() + ": clear by (left, top, right,"
                             + " bottom) " + Arrays.toString(clear) + " in a plate " + box.width() + " x "
                             + box.height() + ", the gap is " + look.plateGap());
                 }
@@ -965,21 +1062,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         if (overlap(pieces.get("band"), pieces.get("bezel"))) {
             problems.add(where + ": the bezel covers the band");
         }
-        CockpitHud.Box title = CockpitHud.loadTitleBox(font, layout, look, guiWidth, guiHeight);
-        pieces.put(
-                "load title",
-                new int[] {title.left(), title.top(), title.left() + title.width(), title.top() + title.height()});
-        if (!inside(pieces.get("load title"), screen) || overlap(pieces.get("load title"), pieces.get("bezel"))) {
-            problems.add(where + ": the load title leaves the screen or covers the bezel");
-        }
-        if (font.width(LONGEST_ALTIMETER) > ALTIMETER_RECESS_WIDTH
-                || layout.altimeterY() + font.lineHeight > layout.band().height()) {
+        problems.addAll(titleProblems(font, look, guiWidth, guiHeight, where, bars, pieces));
+        if (PixelDigits.width(PixelDigits.LONGEST_READING, look.digits()) > ALTIMETER_RECESS_WIDTH
+                || layout.altimeterY() + look.digits().height() > layout.band().height()) {
             problems.add(where + ": the altimeter reading does not fit its recess in the band");
         }
         problems.addAll(sinkProblems(font, layout, look, pieces, gauges, guiWidth, guiHeight, where));
         for (List<CockpitHud.Row> rows : plateCases()) {
             long alerts = rows.stream()
-                    .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
+                    .filter(row -> row.first().kind() == PodStatusHud.Kind.ALERT)
                     .count();
             // Every set of what vanilla draws along the bottom edge: either main arm, with and without an off-hand
             // item and the hotbar's attack indicator.
@@ -992,9 +1083,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     problems.add(where + ": the plate with " + kept.size() + " rows leaves the screen: "
                             + Arrays.toString(plateBox));
                 }
-                for (String piece : List.of("band", "bezel", "load title")) {
-                    if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
-                        problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
+                for (Map.Entry<String, int[]> piece : pieces.entrySet()) {
+                    if (!piece.getKey().equals("scanner")
+                            && !piece.getKey().equals("hotbar")
+                            && overlap(plateBox, piece.getValue())) {
+                        problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece.getKey());
                     }
                 }
                 for (HudKeepClear.Rect slot : slots) {
@@ -1005,7 +1098,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     }
                 }
                 long keptAlerts = kept.stream()
-                        .filter(row -> row.parts().getFirst().kind() == PodStatusHud.Kind.ALERT)
+                        .filter(row -> row.first().kind() == PodStatusHud.Kind.ALERT)
                         .count();
                 if (alerts != keptAlerts) {
                     problems.add(where + ": the plate dropped a warning, " + keptAlerts + " of " + alerts + " kept");
@@ -1088,7 +1181,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     /**
      * The SINK plate (#1432) on the screen, under the band and touching it, out of every gauge's column (where a
-     * gauge's title hangs), clear of the bezel, of #1449's LOAD title box and of vanilla's rows.
+     * gauge's title hangs), clear of the bezel, of every gauge's title and of vanilla's rows.
      */
     private static List<String> sinkProblems(
             Font font,
@@ -1107,9 +1200,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             problems.add(where + ": the SINK plate " + Arrays.toString(sink) + " is not hung on screen from the band "
                     + Arrays.toString(band));
         }
-        for (String piece : List.of("bezel", "scanner", "load title")) {
-            if (overlap(sink, Objects.requireNonNull(pieces.get(piece), "the piece is placed"))) {
-                problems.add(where + ": the SINK plate covers the " + piece);
+        for (Map.Entry<String, int[]> piece : pieces.entrySet()) {
+            if (!piece.getKey().equals("band") && !piece.getKey().equals("hotbar") && overlap(sink, piece.getValue())) {
+                problems.add(where + ": the SINK plate covers the " + piece.getKey());
             }
         }
         gauges.forEach((name, gauge) -> {
@@ -1159,8 +1252,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         && CockpitReading.of(shown, 0).sink() > 0);
         int[] probe = context.computeOnClient(client -> {
             CockpitHud.Box box = CockpitHud.sinkBox(client.font, look.ribbon(), look, 427, 240);
-            // The first segment of the bar, which any sink lights: the bar ends at the plate sprite's right border.
-            int border = CockpitHud.plateInset(look.ribbon(), look).right() - look.plateGap();
+            // The first segment of the bar, which any sink lights: the bar ends at the tab sprite's right border.
+            int border = CockpitHud.spriteBorder(look.ribbon().sprite("tab")).right();
             int x = box.left()
                     + box.width()
                     - border
@@ -1242,6 +1335,61 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
+    /**
+     * Each gauge's title (#1436) on a GUI {@code guiWidth} x {@code guiHeight}, with the real font: on the screen, centred under its bar and clear of it, riding the
+     * band's lower edge, a pixel or more from the next title, clear of the scanner window and its black gasket, and out of the room under the altimeter's recess,
+     * which is the altimeter's (#1432). Each title is added to {@code pieces}, which the plate must keep clear of.
+     */
+    private static List<String> titleProblems(
+            Font font,
+            CockpitLook look,
+            int guiWidth,
+            int guiHeight,
+            String where,
+            Map<String, int[]> bars,
+            Map<String, int[]> pieces) {
+        List<String> problems = new ArrayList<>();
+        CockpitLook.Layout layout = look.ribbon();
+        int[] band = box(layout.band(), guiWidth, guiHeight);
+        int[] window = box(layout.scanner(), guiWidth, guiHeight);
+        int middle = (band[0] + band[2]) / 2;
+        int[] recess = {middle - ALTIMETER_RECESS_WIDTH / 2, band[1], middle + ALTIMETER_RECESS_WIDTH / 2, guiHeight};
+        int[] gasket = {window[0] - 1, window[1] - 1, window[2] + 1, window[3] + 1};
+        List<int[]> placed = new ArrayList<>();
+        for (CockpitHud.Meter gauge : CockpitHud.Meter.values()) {
+            String name = gauge.name().toLowerCase(Locale.ROOT);
+            CockpitHud.Box box = CockpitHud.titleBox(font, layout, look, gauge, guiWidth, guiHeight);
+            int[] title = {box.left(), box.top(), box.left() + box.width(), box.top() + box.height()};
+            int[] bar = Objects.requireNonNull(bars.get(name), () -> "no bar for " + name);
+            if (!inside(title, new int[] {0, 0, guiWidth, guiHeight})) {
+                problems.add(where + ": the " + name + " title leaves the screen: " + Arrays.toString(title));
+            }
+            if (Math.abs(title[0] + title[2] - bar[0] - bar[2]) > 1) {
+                problems.add(where + ": the " + name + " title is not centred under its bar");
+            }
+            if (title[1] <= bar[3] || title[1] >= band[3] || title[3] <= band[3]) {
+                problems.add(where + ": the " + name + " title " + Arrays.toString(title)
+                        + " does not ride the band's lower edge clear of its bar " + Arrays.toString(bar));
+            }
+            if (overlap(title, gasket) || overlap(title, recess)) {
+                problems.add(where + ": the " + name + " title " + Arrays.toString(title)
+                        + " covers the scanner window or the room under the altimeter's recess");
+            }
+            if (box.width() - font.width(gauge.title()) < look.iconWidth() + look.iconGap()
+                    || box.height() < look.titleTextHeight()) {
+                problems.add(where + ": the " + name + " title's tab does not hold its icon and title");
+            }
+            for (int[] other : placed) {
+                if (overlap(new int[] {title[0] - 1, title[1], title[2] + 1, title[3]}, other)) {
+                    problems.add(where + ": the " + name + " title touches another title");
+                }
+            }
+            placed.add(title);
+            pieces.put(name + " title", title);
+        }
+        return problems;
+    }
+
     /** The plates to fit: each warning alone, and every warning a pilot can have at once with every note too. */
     private static List<List<CockpitHud.Row>> plateCases() {
         // The longest drop line: the farthest slabs, a three-figure hull and the deepest drop the probe prices.
@@ -1277,10 +1425,13 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("brace_working"),
                 line("soot", 11, 44, 44),
                 line("sprint", 40, 80));
-        PodStatusHud.Line tally = line("tally_hull", 100, 100);
+        // The tally as the cockpit draws it, each number after its icon.
         List<CockpitHud.Row> head = List.of(
-                new CockpitHud.Row(
-                        List.of(tally, line("tally_fuel", 78), line("tally_cargo", 24), line("tally_depth", -420))),
+                new CockpitHud.Row(List.of(
+                        new CockpitHud.Cell(line("tally_hull", 100, 100), CockpitHud.Meter.HULL.icon()),
+                        new CockpitHud.Cell(line("tally_fuel", 78), CockpitHud.Meter.FUEL.icon()),
+                        new CockpitHud.Cell(line("tally_cargo", 24), CockpitHud.Icon.CART),
+                        new CockpitHud.Cell(line("tally_depth", -420), CockpitHud.Meter.DEPTH.icon()))),
                 CockpitHud.Row.of(
                         new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0)));
         List<List<CockpitHud.Row>> cases = new ArrayList<>();
