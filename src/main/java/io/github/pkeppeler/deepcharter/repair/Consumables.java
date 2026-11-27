@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.layer.CaveIns;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodCharge;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodFootprint;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
@@ -84,10 +85,18 @@ final class Consumables {
         return Optional.empty();
     }
 
-    /** Clears the natural rock within {@code radius} of the pod's middle on each axis, as a gas blast does. Company rock, lava and anything built stay. */
+    /**
+     * Clears the natural rock within {@code radius} of the pod's feet on each axis, as a gas blast does. Company rock, lava and anything built
+     * stay. The cube sits on the row the pod's feet are in, not on the middle of its box (#1478): a pod is 2.9 blocks tall, so a cube round its
+     * middle reached no row under it, and the slab under the pod is what a pilot spends a stick on (a gas pocket the sounder marks, a slab the
+     * drill refuses). So it clears {@code radius} slabs under the pod and {@code radius} rows up from its feet row, short of the roof over a
+     * 3-row cab, which stands. Across, the cube is centred on the footprint's middle cell; a 2-wide Mole has no middle cell, so its extra
+     * column is always on the +x and +z side, whichever way the pod sits within the drill's alignment slack.
+     */
     private static Optional<Component> blast(PodEntity pod, int radius, DeepSound sound) {
         ServerLevel level = (ServerLevel) pod.level();
-        BlockPos middle = BlockPos.containing(pod.getBoundingBox().getCenter());
+        PodFootprint foot = PodFootprint.of(pod);
+        BlockPos middle = foot.feetMiddle();
         BlockPos low = middle.offset(-radius, -radius, -radius);
         BlockPos high = middle.offset(radius, radius, radius);
         for (BlockPos cell : BlockPos.betweenClosed(low, high)) {
@@ -96,7 +105,7 @@ final class Consumables {
             }
         }
         play(pod, sound);
-        // The blast shakes the roof over anyone on foot near it (#987).
+        // The blast shakes the roof over anyone on foot near the cube it cleared, from its edge (#987, #1458).
         CaveIns.blasted(level, AABB.encapsulatingFullBlocks(low, high), PodCharge.blasterOf(pod));
         return Optional.empty();
     }

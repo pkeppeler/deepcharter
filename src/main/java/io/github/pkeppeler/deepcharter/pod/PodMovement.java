@@ -7,7 +7,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Server-authoritative pod movement: treads on the ground, a rotor to climb. The server reads the pilot's vanilla
- * input, so there is no packet of our own; clients only see the pod move. W, S, A and D steer it as a boat is steered
+ * input, so there is no packet of our own; clients only see the pod move. W, S, A and D steer it with tank controls
  * ({@link PodSteering}).
  */
 public final class PodMovement {
@@ -41,7 +41,7 @@ public final class PodMovement {
         double vx = facing.x * throttle;
         double vz = facing.z * throttle;
 
-        float lift = Math.max(0f, stats.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
+        float lift = PodLoad.of(pod, stats).lift();
         boolean thrusting = input.jump() && lift > 0f;
         double vy = pod.getDeltaMovement().y;
         if (thrusting) {
@@ -55,8 +55,8 @@ public final class PodMovement {
         // noPhysics makes Entity.move skip block collision; only this hook sets it on a pod.
         pod.noPhysics = PodEvents.ignoresBlockCollision(pod);
         pod.move(MoverType.SELF, pod.getDeltaMovement());
-        // Entity.move leaves the speed it ran into. Clear it only if it still points into the surface, so a bounce
-        // survives.
+        // Entity.move leaves the speed it ran into. Clear it only if it still points into the surface, so a
+        // bounce survives.
         double after = pod.getDeltaMovement().y;
         if (pod.verticalCollision && (pod.verticalCollisionBelow ? after < 0 : after > 0)) {
             pod.setDeltaMovement(pod.getDeltaMovement().multiply(1, 0, 1));

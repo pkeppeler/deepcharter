@@ -12,10 +12,15 @@ public final class PodInit {
         PodRenames.init();
         PodCommands.init();
         PodMovement.init();
+        PodLoad.init();
+        PodSprint.init();
         HardLanding.init();
         PodCues.init();
         PodDrill.init();
         PodCargo.init();
+        PodMenu.init();
+        PodDump.init();
+        PodFuelSlot.init();
         PodFuel.init();
         PodComponents.init();
         PodLights.init();

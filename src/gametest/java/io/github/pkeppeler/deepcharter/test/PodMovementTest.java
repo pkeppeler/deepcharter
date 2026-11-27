@@ -6,7 +6,6 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.BACK_LEFT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_BACK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
-import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_RIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.LEFT;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.RIGHT;
@@ -33,11 +32,23 @@ public class PodMovementTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final double EPSILON = 1e-6;
+    /** A rig pod thrown down this fast lands hard through the ground cushion (#1432), which brakes a crewed sink. */
+    private static final double HARD_SINK = 1.5;
+
     private static final float SOUTH = 0f;
     private static final float WEST = 90f;
 
     /** Where the pilot looks: never the pod's facing, because the pilot's view does not steer a pod. */
     private static final float PILOT_LOOKS = 137f;
+
+    /** Degrees a tick two turns may differ by and still be one steady rate: rounding of the float yaw. */
+    private static final float TURN_EPSILON = 1e-3f;
+
+    /** The tick of a held turn key from which the turn must be steady: past any ramp-up and the first tick's timing. */
+    private static final int STEADY_FROM = 4;
+
+    /** Ticks a steady turn is watched for. */
+    private static final int STEADY_TICKS = 20;
 
     /** A pod standing on a small stone floor and facing {@code yaw}, with a mock pilot seated and looking elsewhere. */
     private record Rig(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
@@ -83,13 +94,15 @@ public class PodMovementTest {
         Rig rig = Rig.build(helper, 0, WEST);
         Vec3 start = rig.pod.position();
         rig.pilot.setInput(FORWARD);
-        helper.runAfterDelay(10, () -> {
+        // Five ticks keep the pod on the small floor at the cruise speed.
+        helper.runAfterDelay(5, () -> {
             try {
                 Vec3 moved = rig.pod.position().subtract(start);
                 if (moved.x > -1.0 || Math.abs(moved.z) > EPSILON) {
                     throw failure(
                             helper,
-                            "the pod faces west, so forward drives it west along x only, whatever the pilot looks at; moved %s",
+                            "the pod faces west, so forward drives it west along x only, whatever the pilot looks at;"
+                                    + " moved %s",
                             moved);
                 }
                 if (rig.pod.getYRot() != WEST) {
@@ -132,7 +145,7 @@ public class PodMovementTest {
     }
 
     @GameTest(maxTicks = 100)
-    public void leftAndRightSteerTheYawLikeABoat(GameTestHelper helper) {
+    public void leftAndRightTurnTheYaw(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);
         rig.pilot.setInput(LEFT);
         helper.runAfterDelay(10, () -> {
@@ -160,31 +173,88 @@ public class PodMovementTest {
         });
     }
 
+    /**
+     * Tank controls (ADR 0095): a held turn key turns the pod at one steady rate, after at most a tick or two of
+     * ramp-up, with no build-up beyond it.
+     */
     @GameTest(maxTicks = 100)
-    public void steeringSpeedsUpToTheBoatsTurnRate(GameTestHelper helper) {
+    public void heldTurnKeyTurnsAtASteadyRate(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);
         rig.pilot.setInput(RIGHT);
         float[] last = {SOUTH};
-        float[] first = {0f};
+        float[] low = {Float.MAX_VALUE};
+        float[] high = {-Float.MAX_VALUE};
         int[] ticks = {0};
         TestTicks.each(helper, () -> {
             float turned = Mth.wrapDegrees(rig.pod.getYRot() - last[0]);
             last[0] = rig.pod.getYRot();
-            if (++ticks[0] == 3) {
-                first[0] = turned;
+            if (++ticks[0] < STEADY_FROM) {
+                return;
             }
-            if (ticks[0] < 50) {
+            low[0] = Math.min(low[0], turned);
+            high[0] = Math.max(high[0], turned);
+            if (ticks[0] < STEADY_FROM + STEADY_TICKS) {
                 return;
             }
             try {
-                // Vanilla's boat adds 1 degree a tick of turn rate and keeps 0.9 of it: it settles at 10 degrees a
-                // tick.
-                if (first[0] > 4f || turned < 8f || turned > 10.5f) {
+                if (low[0] <= 0f || high[0] - low[0] > TURN_EPSILON) {
                     throw failure(
                             helper,
-                            "the turn rate should build up (%s on the third tick) to about 10 degrees a tick, it is %s",
-                            first[0],
-                            turned);
+                            "a held D should turn the pod at one steady rate, it turned %s to %s degrees a tick",
+                            low[0],
+                            high[0]);
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    /** No carried momentum: once D is let go the pod's yaw stops changing within two ticks. */
+    @GameTest(maxTicks = 100)
+    public void releasingTheTurnKeyStopsTheTurn(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        rig.pilot.setInput(RIGHT);
+        helper.runAfterDelay(20, () -> {
+            float turned = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+            if (turned <= TURN_EPSILON) {
+                rig.finish();
+                throw failure(helper, "a held D should have turned the pod before it was let go, it turned %s", turned);
+            }
+            rig.pilot.releaseInput();
+            helper.runAfterDelay(2, () -> {
+                float stopped = rig.pod.getYRot();
+                helper.runAfterDelay(10, () -> {
+                    try {
+                        float drift = Mth.wrapDegrees(rig.pod.getYRot() - stopped);
+                        if (Math.abs(drift) > TURN_EPSILON) {
+                            throw failure(
+                                    helper,
+                                    "the pod should stop turning within 2 ticks of letting go of D, it turned %s more",
+                                    drift);
+                        }
+                        helper.succeed();
+                    } finally {
+                        rig.finish();
+                    }
+                });
+            });
+        });
+    }
+
+    /** A bare A or D turns the pod where it stands, as a tank pivots: no creep forward. */
+    @GameTest(maxTicks = 100)
+    public void bareTurnKeyTurnsInPlace(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0, SOUTH);
+        Vec3 start = rig.pod.position();
+        rig.pilot.setInput(RIGHT);
+        helper.runAfterDelay(20, () -> {
+            try {
+                Vec3 moved = rig.pod.position().subtract(start).multiply(1, 0, 1);
+                float turned = Mth.wrapDegrees(rig.pod.getYRot() - SOUTH);
+                if (moved.length() > EPSILON || turned < 30f) {
+                    throw failure(helper, "a bare D turns the pod in place, it moved %s and turned %s", moved, turned);
                 }
                 helper.succeed();
             } finally {
@@ -196,10 +266,11 @@ public class PodMovementTest {
     @GameTest
     public void drivingFollowsTheHeadingAfterATurn(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);
-        rig.pilot.setInput(FORWARD_RIGHT);
-        helper.runAfterDelay(8, () -> {
+        // A bare D turns the pod in place, so it stays on the small floor until W drives it.
+        rig.pilot.setInput(RIGHT);
+        helper.runAfterDelay(6, () -> {
             rig.pilot.setInput(FORWARD);
-            helper.runAfterDelay(4, () -> {
+            helper.runAfterDelay(2, () -> {
                 Vec3 before = rig.pod.position();
                 helper.runAfterDelay(2, () -> {
                     try {
@@ -209,7 +280,8 @@ public class PodMovementTest {
                         if (turned < 10f || step.normalize().dot(facing) < 0.99) {
                             throw failure(
                                     helper,
-                                    "after turning right (%s degrees) the pod drives along its new facing %s, it moved %s",
+                                    "after turning right (%s degrees) the pod drives along its new facing %s, it moved"
+                                            + " %s",
                                     turned,
                                     facing,
                                     step);
@@ -224,8 +296,8 @@ public class PodMovementTest {
     }
 
     /**
-     * The boat reverses with S whatever A or D do, and turns while it does: so does the pod (unlike W with S, which
-     * cancels).
+     * S reverses whatever A or D do, and the pod turns while it does, A still to the left, as tank controls keep it
+     * (unlike W with S, which cancels).
      */
     @GameTest(maxTicks = 100)
     public void backWithLeftReversesWhileTurning(GameTestHelper helper) {
@@ -354,6 +426,7 @@ public class PodMovementTest {
     @GameTest(maxTicks = 100)
     public void hardLandingDamagesHullAndNotThePilot(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 12, SOUTH);
+        rig.pod.setDeltaMovement(0, -HARD_SINK, 0);
         float hullBefore = rig.pod.hull();
         float healthBefore = rig.pilot.player().getHealth();
         helper.runAfterDelay(50, () -> {
@@ -452,7 +525,8 @@ public class PodMovementTest {
                 if (dropped < 2.5 || dropped > 3.1 || pod.getY() - (FLOOR_Y + 1) < 2) {
                     throw failure(
                             helper,
-                            "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y %s",
+                            "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y"
+                                    + " %s",
                             dropped,
                             pod.getY());
                 }

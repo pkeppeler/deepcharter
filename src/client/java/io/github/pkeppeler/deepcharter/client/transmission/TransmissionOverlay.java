@@ -35,7 +35,7 @@ public final class TransmissionOverlay {
     private static final String CHARTER_FIELD = "[CHARTER]";
     private static final String DIRECTOR_FIELD = "[DIRECTOR]";
     private static final float SOUND_VOLUME = 0.5f;
-    private static final float TYPEWRITER_PITCH = 1.0f;
+    private static final float PITCH = 1.0f;
     private static final long TICKS_PER_DAY = 24_000L;
     private static final String PARAGRAPH = "\n\n";
 
@@ -110,8 +110,7 @@ public final class TransmissionOverlay {
             play(
                     current.transmission().framing() == Transmission.Framing.UNKNOWN
                             ? DeepSound.TRANSMISSION_MENACE
-                            : DeepSound.TRANSMISSION_INCOMING,
-                    1.0f);
+                            : DeepSound.TRANSMISSION_INCOMING);
         }
         if (!current.header().done()) {
             current.header().advance(SECONDS_PER_TICK);
@@ -122,7 +121,7 @@ public final class TransmissionOverlay {
         }
         if (letterTyped) {
             letterTyped = false;
-            play(DeepSound.UI_TYPEWRITER, TYPEWRITER_PITCH);
+            play(DeepSound.UI_TYPEWRITER);
         }
     }
 
@@ -196,7 +195,7 @@ public final class TransmissionOverlay {
         return component.getString();
     }
 
-    private static void play(DeepSound sound, float pitch) {
-        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(sound.event(), pitch, SOUND_VOLUME));
+    private static void play(DeepSound sound) {
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(sound.event(), PITCH, SOUND_VOLUME));
     }
 }

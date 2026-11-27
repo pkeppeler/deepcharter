@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShaftViews;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -30,8 +31,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Evidence scenario "explosive-tiers" (#1458): the hole each explosive leaves, side by side, cut open. Five sites stand in a row on the floor of
- * a lit stone room in layer 1. At each the real item is used as a player uses it: dynamite and plastic explosives from the seat of a pod in a pocket of a stone pile (their blast is round the pod's
- * middle, so most of it is above the floor) on plain stone, a blasting charge and a shaped charge from the seat of a pod over a column of Company rock (the pod is moved clear before the
+ * a lit stone room in layer 1. At each the real item is used as a player uses it: dynamite and plastic explosives from the seat of a pod in a pocket of a stone pile (their blast is a cube round the pod's
+ * feet row, a slab or two under the floor and the rest above it) on plain stone, a blasting charge and a shaped charge from the seat of a pod over a column of Company rock (the pod is moved clear before the
  * fuse ends), and a thrown charge thrown on foot straight down onto Company rock. Then the rock in front of each site's middle is cut away, so
  * each hole shows as a section, and the camera stands in the cut, one still per site and one of the row. The scenario uses only what main
  * has too, so the same file records the before stills there.
@@ -53,6 +54,8 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
 
     private static final int ROW_VIEW_BACK = 26;
     private static final int FUSE_WAIT_TICKS = 100;
+    /** Blocks past the row's ends that the carved room reaches, so its light settles before a pod is seated. */
+    private static final int LIGHT_MARGIN = 16;
 
     /** What each site holds, in the row's order. */
     private enum Site {
@@ -112,8 +115,8 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
                     }
                 }
                 for (Site site : new Site[] {Site.DYNAMITE, Site.PLASTIC}) {
-                    // A pile of stone round the pod, so the blast round its middle has rock to clear above the floor
-                    // too.
+                    // A pile of stone round the pod, so the blast round its feet row has rock to clear above the
+                    // floor too.
                     RoomCarver.carve(one, site.x() - 4, site.x() + 4, FLOOR_Y, FLOOR_Y + 5, Z - 4, Z + 4, Blocks.STONE);
                     RoomCarver.carve(one, site.x() - 1, site.x(), FLOOR_Y, FLOOR_Y + 2, Z - 1, Z, Blocks.AIR);
                 }
@@ -136,6 +139,8 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
                 player.teleportTo(one, X, FLOOR_Y, Z - 9, Set.of(), 0, 0, true);
             });
             awaitWorld(context);
+            ClientWait.lightSettled(
+                    context, singleplayer.getServer(), 1, (X + lastX) / 2, Z, (lastX - X) / 2 + LIGHT_MARGIN);
             context.waitTicks(20);
             List<PodEntity> pods = new ArrayList<>();
             for (Site site : Site.values()) {
@@ -202,8 +207,8 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             use(player, site.item);
             player.stopRiding();
-            // Clear of the charge's reach (3 blocks), on the room's floor: the fuse lives on the pod, so it must stay
-            // loaded.
+            // Clear of the charge's reach (3 blocks), on the room's floor: the fuse lives on the pod, so it must
+            // stay loaded.
             pod.setPos(site.x(), FLOOR_Y, Z - 9);
             player.teleportTo(player.level(), site.x() + 4, FLOOR_Y, Z - 9, Set.of(), 0, 0, true);
         });

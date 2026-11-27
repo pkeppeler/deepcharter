@@ -1,0 +1,14 @@
+{
+  "feature": "deepcharter:giant_fungus_spore_fields",
+  "placement": [
+    {
+      "type": "deepcharter:layer_rows",
+      "layer": 3,
+      "min": 86,
+      "max": 170
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.Item;
@@ -17,7 +18,10 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
-/** Registers the consumables, the thrown kit's projectile and flare block, and the repair station's actions. */
+/**
+ * Registers the consumables, the thrown kit's projectile and flare block, the teleporters' arrival ticket, and the
+ * repair station's actions.
+ */
 public final class RepairRegistry {
     private static final Map<Consumable, Item> ITEMS = new EnumMap<>(Consumable.class);
 
@@ -61,12 +65,27 @@ public final class RepairRegistry {
             new FlareLightBlock(
                     BlockBehaviour.Properties.of().setId(FLARE_LIGHT_KEY).sound(SoundType.WOOD)));
 
+    /**
+     * Holds a teleporter's landing chunk (#1353, {@link Teleports}) until the pilot's own chunk tickets arrive: it
+     * loads and simulates the chunks, keeps the dimension active, and is not saved. It lapses
+     * {@link RepairTuning#arrivalTicketTicks()} ticks after its chunk is ready to save ({@code ChunkHolder.saveSync}
+     * settles): vanilla counts a timed ticket down only from then, well after the chunk ticks entities.
+     */
+    static final TicketType TELEPORT_ARRIVAL = Registry.register(
+            BuiltInRegistries.TICKET_TYPE,
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "teleport_arrival"),
+            new TicketType(
+                    RepairTuning.DEFAULT.arrivalTicketTicks(),
+                    TicketType.FLAG_LOADING | TicketType.FLAG_SIMULATION | TicketType.FLAG_KEEP_DIMENSION_ACTIVE));
+
     private RepairRegistry() {}
 
     private static Item tool(Consumable consumable, Item.Properties properties) {
         return switch (consumable) {
             case TETHER -> new TetherItem(properties);
             case BOLT_DRIVER -> new BoltDriverItem(properties);
+            // enum-default: only item()'s TOOL arm calls this, so a new tool needs its own arm and the throw refuses
+            // any other member at registration
             default -> throw new IllegalStateException(consumable + " is not a tool");
         };
     }

@@ -54,16 +54,11 @@ public final class TerminalFeatures {
         }
     }
 
-    /** The feature of a view of {@code type}, or empty for a type with none or a terminal that is offline. */
+    /** The feature of a view of the online terminal of {@code type}, or empty for a type with none. */
     static Optional<TerminalFeature> supply(
-            TerminalType type,
-            boolean repaired,
-            MinecraftServer server,
-            ServerPlayer player,
-            Optional<Charter> charter,
-            BlockPos pos) {
+            TerminalType type, MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
         Registration<?> registration = REGISTRATIONS.get(type.id());
-        return registration == null || !repaired ? Optional.empty() : registration.supply(server, player, charter, pos);
+        return registration == null ? Optional.empty() : registration.supply(server, player, charter, pos);
     }
 
     /** How a view of the terminal type {@code id} carries its feature on the wire. */

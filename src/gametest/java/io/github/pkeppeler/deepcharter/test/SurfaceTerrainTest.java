@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -65,7 +66,7 @@ public class SurfaceTerrainTest {
      */
     private static final int EMPTY_BELOW = -800;
 
-    private static final int MAX_TICKS = 6000;
+    private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 6000;
     /** The ground of the colony pad: the first block above it is free. */
     private static final int PAD_GROUND = 64;
     /** The pad is flattened out to a radius of 56 blocks; the check keeps clear of the ramp at the edge. */
@@ -117,34 +118,39 @@ public class SurfaceTerrainTest {
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theGroundHoldsOnlyRegolithRockAndBasalt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
+        // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a 13 x 13
+        // square of them held the server tick (and the deadlines of the tests beside this one) for a minute (#1142).
+        FarChunks.whenReachedStatus(
+                helper,
+                FarChunks.rect(
+                        level,
+                        SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS,
+                        SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS,
+                        SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS,
+                        SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS),
+                ChunkStatus.FEATURES,
+                chunks -> theGroundHoldsOnly(helper, chunks));
+    }
+
+    private static void theGroundHoldsOnly(GameTestHelper helper, List<ChunkAccess> chunks) {
+        ServerLevel level = helper.getLevel();
         LayerChain.Band surface = TestLayers.band(level, TestLayers.SURFACE);
         Set<String> found = new TreeSet<>();
-        for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
-                chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
-                chunkX++) {
-            for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
-                    chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
-                    chunkZ++) {
-                // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a 13 x
-                // 13
-                // square of them held the server tick (and the deadlines of the tests beside this one) for a minute.
-                ChunkAccess chunk = level.getChunk(chunkX, chunkZ, ChunkStatus.FEATURES);
-                LevelChunkSection[] sections = chunk.getSections();
-                for (int index = 0; index < sections.length; index++) {
-                    int sectionMinY = chunk.getSectionYFromSectionIndex(index) << 4;
-                    // The campaign level holds the layers' rock under the surface band; only the band's sections are
-                    // the surface's.
-                    if (sectionMinY < surface.minY() || sectionMinY + 15 > surface.maxY()) {
-                        continue;
-                    }
-                    // Counted from the blocks, not from the palette: a palette keeps the states a section once held,
-                    // such as the campaign's default rock that the surface rule then replaced.
-                    sections[index]
-                            .getStates()
-                            .count((state, count) -> found.add(BuiltInRegistries.BLOCK
-                                    .getKey(state.getBlock())
-                                    .toString()));
+        for (ChunkAccess chunk : chunks) {
+            LevelChunkSection[] sections = chunk.getSections();
+            for (int index = 0; index < sections.length; index++) {
+                int sectionMinY = chunk.getSectionYFromSectionIndex(index) << 4;
+                // The campaign level holds the layers' rock under the surface band; only the band's sections are
+                // the surface's.
+                if (sectionMinY < surface.minY() || sectionMinY + 15 > surface.maxY()) {
+                    continue;
                 }
+                // Counted from the blocks, not from the palette: a palette keeps the states a section once held,
+                // such as the campaign's default rock that the surface rule then replaced.
+                sections[index]
+                        .getStates()
+                        .count((state, count) -> found.add(
+                                BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString()));
             }
         }
         Set<String> allowed = new TreeSet<>(GROUND_BLOCKS);
@@ -177,6 +183,7 @@ public class SurfaceTerrainTest {
             for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
                     chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
                     chunkZ++) {
+                // sync-load: the caller waited for the sample's chunks with FarChunks.whenBlocksLoaded
                 LevelChunk chunk = level.getChunk(chunkX, chunkZ);
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
@@ -211,9 +218,18 @@ public class SurfaceTerrainTest {
         columns.put("colony plateau", new BlockPos(0, PAD_GROUND, 0));
         columns.put("colony plateau edge", new BlockPos(PAD_CHECK_RADIUS, PAD_GROUND, -PAD_CHECK_RADIUS));
         columns.put("west of the plateau", new BlockPos(-60, PAD_GROUND, 0));
+        FarChunks.whenBlocksLoaded(
+                helper,
+                columns.values().stream()
+                        .map(at -> new FarChunks.At(level, at.getX() >> 4, at.getZ() >> 4))
+                        .distinct()
+                        .toList(),
+                () -> expectHeightmapsAgree(helper, level, columns));
+    }
+
+    private static void expectHeightmapsAgree(GameTestHelper helper, ServerLevel level, Map<String, BlockPos> columns) {
         for (Map.Entry<String, BlockPos> column : columns.entrySet()) {
             BlockPos at = column.getValue();
-            level.getChunk(at.getX() >> 4, at.getZ() >> 4);
             int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, at.getX(), at.getZ());
             int blocking = level.getHeight(Heightmap.Types.MOTION_BLOCKING, at.getX(), at.getZ());
             int blockingNoLeaves = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, at.getX(), at.getZ());
@@ -256,13 +272,25 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
+    private record ExpectedTop(String biome, int minimumRise, String block) {}
+
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void everyBiomeHasItsOwnTopBlock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        expectTopBlock(helper, level, "deepcharter:regolith_plains", 0, "deepcharter:regolith");
-        expectTopBlock(helper, level, "deepcharter:mesa_country", 0, "deepcharter:ochre_regolith");
-        expectTopBlock(helper, level, "deepcharter:basalt_field", BASALT_MIN_RISE, "deepcharter:basalt_outcrop");
-        helper.succeed();
+        List<ExpectedTop> tops = List.of(
+                new ExpectedTop("deepcharter:regolith_plains", 0, "deepcharter:regolith"),
+                new ExpectedTop("deepcharter:mesa_country", 0, "deepcharter:ochre_regolith"),
+                new ExpectedTop("deepcharter:basalt_field", BASALT_MIN_RISE, "deepcharter:basalt_outcrop"));
+        FarChunks.whenBlocksLoaded(
+                helper,
+                tops.stream()
+                        .map(top -> surveyColumn(helper, level, top.biome(), top.minimumRise()))
+                        .map(column -> new FarChunks.At(level, column.getX() >> 4, column.getZ() >> 4))
+                        .toList(),
+                () -> {
+                    tops.forEach(top -> expectTopBlock(helper, level, top.biome(), top.minimumRise(), top.block()));
+                    helper.succeed();
+                });
     }
 
     /** The surface stays empty (#915, ADR 0036): no category of any surface biome lists a creature, monsters included. */
@@ -270,13 +298,27 @@ public class SurfaceTerrainTest {
     public void noCreatureSpawnsInTheSurfaceBiomes(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
+        Map<String, BlockPos> columns = new LinkedHashMap<>();
         for (String biome : Arrays.asList(
                 "deepcharter:regolith_plains",
                 "deepcharter:mesa_country",
                 "deepcharter:basalt_field",
                 "deepcharter:salvage_yard")) {
-            BlockPos column = surveyColumn(helper, level, biome, 0);
-            level.getChunkAt(column);
+            columns.put(biome, surveyColumn(helper, level, biome, 0));
+        }
+        FarChunks.whenBlocksLoaded(
+                helper,
+                columns.values().stream()
+                        .map(column -> new FarChunks.At(level, column.getX() >> 4, column.getZ() >> 4))
+                        .toList(),
+                () -> expectNoCreatureSpawns(helper, level, generator, columns));
+    }
+
+    private static void expectNoCreatureSpawns(
+            GameTestHelper helper, ServerLevel level, ChunkGenerator generator, Map<String, BlockPos> columns) {
+        for (Map.Entry<String, BlockPos> entry : columns.entrySet()) {
+            String biome = entry.getKey();
+            BlockPos column = entry.getValue();
             for (MobCategory category : MobCategory.values()) {
                 int listed = generator
                         .getMobsAt(level, level.structureManager(), category, column)
@@ -485,8 +527,8 @@ public class SurfaceTerrainTest {
 
     // The GameTest server bakes its overworld from the flat preset, so the surface is tried in the test pack's copies
     // of the shipped overworld: campaign_full is an exact copy, and campaign_sample, where most tests run, differs
-    // from it in one place (below). This keeps both copies, in the pack and in the preset, equal to the shipped
-    // overworld.
+    // from it in one place (below). This keeps both copies, in the pack and in the preset, equal to the
+    // shipped overworld.
     @GameTest
     public void theSampleDimensionsMatchTheShippedOverworld(GameTestHelper helper) throws IOException {
         JsonElement shipped = read(helper, "/data/minecraft/dimension/overworld.json");
@@ -565,6 +607,7 @@ public class SurfaceTerrainTest {
     private static void expectTopBlock(
             GameTestHelper helper, ServerLevel level, String biome, int minimumRise, String expected) {
         BlockPos column = surveyColumn(helper, level, biome, minimumRise);
+        // sync-load: the caller waited for the column's chunk with FarChunks.whenBlocksLoaded
         LevelChunk chunk = level.getChunkAt(column);
         // level-height: the level's top is the surface band's top, and the scan stops at the first ground
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(column.getX(), level.getMaxY(), column.getZ());

@@ -165,10 +165,12 @@ public class ReacherFigureScenario extends EvidenceScenario {
                     client -> client.level != null
                             && TestLayers.clientIsIn(client, LAYER)
                             && client.gui.screen() == null);
+            serverDo(server -> buildChamber(layer(server)));
+            ClientWait.lightSettled(
+                    ctx, world.getServer(), LAYER, FLOOR.getX() + LENGTH / 2, FLOOR.getZ(), LENGTH / 2 + 1);
             serverDo(server -> {
                 ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
                 ServerLevel level = layer(server);
-                buildChamber(level);
                 PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.PROSPECTOR), level);
                 pod.setPos(at(POD));
                 pod.setYRot(POD_YAW);
@@ -241,8 +243,8 @@ public class ReacherFigureScenario extends EvidenceScenario {
             settle();
             screenshot(ctx, "reacher-rock");
 
-            // In the rock, lit: the figure nearer the pod, seen side-on across the chamber, with the lamp lighting the
-            // wall
+            // In the rock, lit: the figure nearer the pod, seen side-on across the chamber, with the lamp lighting
+            // the wall
             // behind it.
             stand(LIT, TOWARD_POD);
             look(at(new Vec3(LIT.x, 2.2, 3.4)), at(LIT).add(0, 1.4, 0));

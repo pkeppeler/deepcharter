@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.mixin;
 
+import io.github.pkeppeler.deepcharter.test.support.EntityTickingGate;
 import io.github.pkeppeler.deepcharter.test.support.PendingWork;
 import java.util.Collection;
 import net.minecraft.gametest.framework.GameTestInfo;
@@ -11,15 +12,18 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Releases a done test's pending work however it finished: {@code GameTestInfo.tick} returns early for a test finished outside it. */
+/**
+ * Releases a done test's pending work however it finished ({@code GameTestInfo.tick} returns early for a test finished
+ * outside it), and scans the running tests with {@code EntityTickingGate}.
+ */
 @Mixin(value = GameTestTicker.class, remap = false)
 public abstract class GameTestTickerMixin {
     @Shadow
     @Final
     private Collection<GameTestInfo> testInfos;
 
-    // After every info has ticked, so nothing clears a collection the info is iterating. The ticker drops done infos
-    // next.
+    // After every info has ticked, so nothing clears a collection the info is iterating. The ticker drops done
+    // infos next.
     @Inject(
             method = "tick",
             at = @At(value = "INVOKE", target = "Ljava/util/Collection;removeIf(Ljava/util/function/Predicate;)Z"))
@@ -29,5 +33,6 @@ public abstract class GameTestTickerMixin {
                 ((PendingWork) info).deepcharter$dropPendingWork();
             }
         }
+        EntityTickingGate.scan(testInfos);
     }
 }

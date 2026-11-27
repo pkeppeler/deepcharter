@@ -151,8 +151,8 @@ public class StructureLightBorderTest {
                 yield acrossBorder(site, lampU, lampV);
             }
             case CANDLE -> {
-                // The candle is at u = 2 and v = 1; its air is on the -u side, so the border must be at the lamp's own
-                // edge.
+                // The candle is at u = 2 and v = 1; its air is on the -u side, so the border must be at the lamp's
+                // own edge.
                 int lampU = oU + 2;
                 if ((lampU & 15) != 0) {
                     yield Optional.empty();
@@ -283,6 +283,8 @@ public class StructureLightBorderTest {
                                     server,
                                     () -> placement.withRing().forEach(chunk -> {
                                         FarChunks.force(helper, level, chunk.x(), chunk.z());
+                                        // sync-load: the conduit swap of inContext lasts one tick, and the chunk must
+                                        // generate inside it
                                         level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
                                     }));
                         } else {

@@ -292,8 +292,8 @@ public final class PodCharge {
     private static void blast(ServerLevel level, Fuse fuse, boolean clearRock, Predicate<PodEntity> hurts) {
         AABB volume = fuse.volume();
         Vec3 middle = volume.getCenter();
-        // entity-query: the blast reaches chargeReach round a charge that a ticking pod set, so its chunks are
-        // entity-ticking
+        // entity-query: the blast reaches chargeReach round a charge that a ticking pod set, so its chunks
+        // are entity-ticking
         for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, volume.inflate(fuse.reach()))) {
             if (Wrecks.isWreck(pod) || !hurts.test(pod)) {
                 continue;

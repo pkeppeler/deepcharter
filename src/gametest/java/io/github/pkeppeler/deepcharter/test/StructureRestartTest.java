@@ -77,6 +77,7 @@ public class StructureRestartTest {
         void loadWithoutAPad(GameTestHelper helper) {
             WorldData.with(helper.getLevel().getServer(), ColonySite.TYPE, new ColonySite(), () -> {
                 for (ChunkPos chunk : chunks) {
+                    // sync-load: the chunks must load inside the swap, in this tick, to be held while no pad is chosen
                     level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
                 }
                 if (unmet(level, sites).isEmpty()) {
@@ -139,6 +140,7 @@ public class StructureRestartTest {
         cell.loadWithoutAPad(helper);
         ServerLevel level = cell.level();
         // The pad is back. Any chunk load now finds chunks held and a pad chosen.
+        // sync-load: the test is that a chunk load on the server thread, in this tick, draws the held chunks
         level.getChunk(3000, 3000, ChunkStatus.FULL);
         TestTicks.each(helper, () -> {
             // The drain runs at the end of a tick, so the first tick sees them undrawn; the timeout fails a test that

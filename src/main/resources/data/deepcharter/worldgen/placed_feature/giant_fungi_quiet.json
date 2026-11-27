@@ -1,0 +1,14 @@
+{
+  "feature": "deepcharter:giant_fungus_quiet",
+  "placement": [
+    {
+      "type": "deepcharter:layer_rows",
+      "layer": 3,
+      "min": 0,
+      "max": 85
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

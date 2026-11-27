@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -123,6 +124,11 @@ public final class CaveIns {
         return read(level, feet).loose();
     }
 
+    /** Air, or the moss film (#974): a film of moss on a face is no roof, and does not fill the cell under one. */
+    private static boolean open(BlockState state) {
+        return state.isAir() || state.is(LayerBlocks.OVERGROWTH_VENEER);
+    }
+
     /** Never loads a chunk: a block in one that is not loaded is not read. */
     private static Roof read(ServerLevel level, BlockPos feet) {
         CaveInTuning tuning = CaveInTuning.DEFAULT;
@@ -141,11 +147,10 @@ public final class CaveIns {
                         break;
                     }
                     BlockState state = level.getBlockState(at);
-                    if (state.isAir() || !state.getFluidState().isEmpty()) {
+                    if (open(state) || !state.getFluidState().isEmpty()) {
                         continue;
                     }
-                    if (state.is(HazardBlocks.NATURAL_ROCK)
-                            && level.getBlockState(at.below()).isAir()) {
+                    if (state.is(HazardBlocks.NATURAL_ROCK) && open(level.getBlockState(at.below()))) {
                         if (holds(bolts, at)) {
                             bolted++;
                         } else {
@@ -277,14 +282,14 @@ public final class CaveIns {
             falling.setHurtsEntities(CaveInTuning.DEFAULT.fallDamage(), CaveInTuning.DEFAULT.fallDamageMax());
             rocks.add(falling);
         }
-        // PLACEHOLDER sound until the sound pass.
-        level.playSound(null, feet, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 0.8F, 0.5F);
+        level.playSound(null, feet, DeepSound.CAVE_IN_COLLAPSE.event(), SoundSource.BLOCKS, 1.0F, 1.0F);
     }
 
     /**
-     * A falling block settles in the cell of any entity under it, so rock that landed on a person would leave them inside it. Rock about to
-     * reach a person on foot shatters on them instead: it hurts by the blocks it fell to their feet, up to {@link
-     * CaveInTuning#fallDamageMax()}, never to their last health, and leaves no block. Returns whether it shattered.
+     * A falling block settles in the cell of any entity under it, so rock that landed on a person would leave them
+     * inside it. Rock about to reach a person on foot shatters on them instead: it hurts by the blocks it fell to their
+     * feet, up to {@link CaveInTuning#fallDamageMax()}, never to their last health, and leaves no block. Returns
+     * whether it shattered.
      */
     private static boolean shatterOnPerson(ServerLevel level, FallingBlockEntity rock) {
         AABB reach = rock.getBoundingBox().expandTowards(0, rock.getDeltaMovement().y - STEP_DOWN, 0);
@@ -325,7 +330,7 @@ public final class CaveIns {
         if (!level.getBlockState(roof).is(HazardBlocks.NATURAL_ROCK)) {
             return Optional.of("bolt_not_rock");
         }
-        if (!level.getBlockState(cell).isAir()) {
+        if (!open(level.getBlockState(cell))) {
             return Optional.of("bolt_no_room");
         }
         if (boltNear(level, cell, spacing)) {

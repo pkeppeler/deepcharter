@@ -8,14 +8,13 @@ import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.repair.ThrownKitTuning;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.util.Mth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Server GameTests for #1458: the explosives are a ladder, and a retune that breaks it fails here. No world is built: each blast's size is read
  * from the tunables that the blast tests pin to the real blast ({@code RepairStationTest} the dynamite's and plastic's cube round the pod's
- * middle, {@code BlastingChargeTest} and {@code ShapedChargeTest} the charges' bore square and rows, {@code ThrownKitTest} the thrown charge's
+ * feet row, {@code BlastingChargeTest} and {@code ShapedChargeTest} the charges' bore square and rows, {@code ThrownKitTest} the thrown charge's
  * column).
  *
  * <p>Two sizes, for every chassis. <b>Depth</b>, the rows a blast clears under the pod's feet (under where it lies, for a thrown charge): the
@@ -33,11 +32,10 @@ public class ExplosiveTiersTest {
     /** A blast's size: rows under the feet, and cells in solid rock. */
     private record Size(int depth, int cells) {}
 
-    /** A cube of {@code radius} round the pod's middle, the dynamite's and the plastic's blast: the middle is the row of the box's centre. */
-    private static Size cube(Chassis chassis, int radius) {
-        int middleAboveFeet = Mth.floor(chassis.height() / 2.0);
+    /** A cube of {@code radius} round the pod's feet row, the dynamite's and the plastic's blast (#1478): {@code radius} slabs under the pod. */
+    private static Size cube(int radius) {
         int side = 2 * radius + 1;
-        return new Size(radius - middleAboveFeet, side * side * side);
+        return new Size(radius, side * side * side);
     }
 
     /** A seated charge: the bore square, {@code rows} deep. */
@@ -53,8 +51,8 @@ public class ExplosiveTiersTest {
     @GameTest
     public void eachExplosiveTierBlastsDeeperThanTheOneBelowIt(GameTestHelper helper) {
         for (Chassis chassis : Chassis.all()) {
-            Size dynamite = cube(chassis, REPAIR.dynamiteRadius());
-            Size plastic = cube(chassis, REPAIR.plasticRadius());
+            Size dynamite = cube(REPAIR.dynamiteRadius());
+            Size plastic = cube(REPAIR.plasticRadius());
             Size blasting = seated(chassis, REPAIR.chargeDepth());
             Size shaped = seated(chassis, REPAIR.shapedDepth());
             LOGGER.info(
