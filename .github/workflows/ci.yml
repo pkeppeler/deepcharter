@@ -26,7 +26,7 @@ permissions:
 
 env:
   # The shards of a full run; a PR-tier run takes as many as its classes need (the plan job).
-  BUILD_SHARDS: 15
+  BUILD_SHARDS: 16
 
 jobs:
   # Picks the main this run tests once; every job that merges main merges exactly that commit (#1571).

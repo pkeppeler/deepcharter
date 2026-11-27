@@ -4,7 +4,7 @@ status: accepted
 
 # CI runs the affected tests on a PR push and the full suites on a batch
 
-Issue #1592, part 2 of #1574. [ADR 0115](0115-no-ci-job-runs-longer-than-five-minutes.md) cut every suite into shards that fit five minutes: 29 client shards, 15 server shards, 8 tool-test parts, a compile job each for CI and the client suite, and the aggregates, about 50 jobs. Run on every PR push, that is more than the account's concurrent-job cap allows more than one PR at a time, and most pushes change one class.
+Issue #1592, part 2 of #1574. [ADR 0115](0115-no-ci-job-runs-longer-than-five-minutes.md) cut every suite into shards that fit five minutes: 29 client shards, 16 server shards, 8 tool-test parts, a compile job each for CI and the client suite, and the aggregates, about 50 jobs. Run on every PR push, that is more than the account's concurrent-job cap allows more than one PR at a time, and most pushes change one class.
 
 ## Decision
 
@@ -18,15 +18,25 @@ Issue #1592, part 2 of #1574. [ADR 0115](0115-no-ci-job-runs-longer-than-five-mi
 
 The user's reading of the rule (#1574): a PR push's CI is green within 5 minutes of the push, end to end; the full suites at merge may take longer. So this tier is the core of the rule, and [ADR 0115](0115-no-ci-job-runs-longer-than-five-minutes.md)'s shards are for the merge.
 
-The critical path of a push, from jobs measured on part 1's runs (a runner that is free; the account's queue added 4 to 30 minutes when other runs held it):
+What a push runs, and what keeps it short:
 
-| Push | Path | Seconds |
-| --- | --- | --- |
-| docs or tools only | `setup` (about 10) then the tool-test parts, the longest 125; `build-checks` after `compile` | 10 + 168 + 182 = 360 |
-| one server class | `setup` 10, `compile` 168 (the plan, about 40, runs beside it), then one shard of about 150 with no queue | 10 + 168 + 150 = about 330 |
-| a change to a build file or workflow | the full tiers | the merge's: `compile` 168, then the shards in waves |
+- **`build-needed`.** The plan says whether any changed path is one a Gradle task reads: the deny list of `tools/ci-reuse-compiled.sh` (docs, tools, workflows, agent files, root prose) is the list of paths it does not, except the Java gates and gate checks under `tools/`. When none is, `compile`, `build-checks`, the shards and the gate checks are skipped, the `build` aggregate records a `ci-gradle` notice, and the merge gate takes the skipped `build-checks` on the strength of it. A docs or tools push runs only the seven tool-test parts, the plan and the aggregates.
+- **No compile job on the PR tier.** `compile` runs only for a full run, whose shards download one compile. A PR-tier `build-checks`, shard or gate job compiles for itself, beside the others, so the critical path is the longest of them and not compile plus that. Each takes the compile of the source sets it did not change from the Gradle build cache (`org.gradle.caching` is on in CI, `tools/ci-gradle-resolve.sh`), which `cache-seed.yml` fills from main on a push that touches `src/` and `build-checks` saves for the PR's later pushes.
+- **A diff against the PR's base branch**, not against main's tip: the same paths for a PR into main, and measurable on a throwaway PR into another branch.
 
-That is not yet 300: `compile` (140 s of Gradle on a cold runner) sits in front of everything that builds. What would bring it under, in order of effect, none done here: skip `compile`, `build-checks` and the shards when no path the Gradle build reads changed (the fingerprint of ADR 0115 says which, and the aggregates already pass a skipped shard job); let `build-checks` compile beside `compile` instead of after it (about 270 s alone, so only if it stays under 300 at 1.3x); and a Gradle build cache the PR runs share. A pushed `full-ci` label or a change to a build file runs the merge's tier and so takes the merge's time. The measurement the rule asks for, push time to the last required check, needs this PR on `main` (a PR that changes `.github/` always runs the full tier), and is the first thing to take after it lands.
+Measured on throwaway PRs into this branch (2026-11-27, one probe commit each; the account's queue held jobs 2 to 5 minutes before a runner, so the table gives the time of the jobs on the critical path and not the wall clock, which is in the last column):
+
+| Push | Critical path (job seconds) | Sum | Wall clock with the queue |
+| --- | --- | --- | --- |
+| docs only | `setup` 4, plan 16, tool-test parts 70 to 134, aggregate 9, between-job gaps about 15 | about 165 | 13 min 40 s |
+| tools only (`tools/merge-queue.sh`) | `setup` 4, plan 22, parts 70 to 142, aggregate 7, gaps about 15 | about 170 | 18 min |
+| one server class, cold cache | `setup` 4, plan 20, `build-checks` 259 (its Gradle build 223), aggregate, gaps | about 310 | 18 min |
+| one server class, warm cache | `setup` 3, plan 26, `build-checks` 207 (58 tasks from the cache, `compileJava` and `compileClientJava` among them), gaps and the aggregate about 25 | about 260 | 7 min 53 s |
+| the same, client side | `client-changes` 11, one client shard 216 to 222, aggregate about 10 | about 250 | 6 min 12 s (of 3 min 30 s of it before a runner started the first shard) |
+
+So a docs or tools push is green in about 3 minutes and a source push in about 4 minutes 20 seconds when the cache is warm, with no queue. Cold, a source push is 5 minutes and 10 seconds: `build-checks` compiles from nothing. The cache is cold for a PR's first push until main's seed has run once after this lands (`cache-seed.yml` now fires on `src/`); a PR's later pushes find its own `build-checks` entry. With the queue the account's other runs make, the wall clock is what the last column says, and no change to this workflow shortens it.
+
+A full run (a batch, `full-ci`, or a change to a build file or workflow) takes the merge tier's longer time, as the user accepted.
 
 ## Concurrent jobs
 
@@ -34,7 +44,7 @@ GitHub's usage-limits table allows 20 concurrent jobs on the Free plan, 40 on Pr
 
 | Run | Jobs | Peak at once |
 | --- | --- | --- |
-| Full `CI` (batch) | plan, compile, 8 tool parts and gates, 15 server shards, checks, aggregates | about 10 (shards in waves of 6) |
+| Full `CI` (batch) | plan, compile, 8 tool parts and gates, 16 server shards, checks, aggregates | about 10 (shards in waves of 6) |
 | Full `Client tests` (batch) | changes, compile, 29 client shards, aggregate | 10 (waves of 10) |
 | PR tier, one class changed | plan, compile, 8 tool parts and gates, checks, 1 server shard, aggregates, and the client suite's 3 jobs when it selects a class | about 12 |
 | PR tier, docs only | plan, 8 tool parts and gates, aggregates (the compile job runs, the shards do not) | about 10 |
