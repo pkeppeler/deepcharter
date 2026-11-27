@@ -506,8 +506,8 @@ public class M2SliceScenario extends EvidenceScenario {
                     "The Mole did not cross into layer 1",
                     () -> {});
             say("6. Layer 1. The Mole has crossed the breach. The drill goes on, which completes \"drill down\".");
-            // The crossing gave the server a new player state, so the held key is pressed again for the server to see
-            // it.
+            // The crossing gave the server a new player state, so the held key is pressed again for the server to
+            // see it.
             ctx.getInput().releaseKey(options -> options.keySprint);
             snap(2);
             holdDriveKey(options -> options.keySprint);
@@ -949,8 +949,8 @@ public class M2SliceScenario extends EvidenceScenario {
 
         /** A 3 x 4 drift with a rail down it, from the bay's west wall out {@link #DRIFT_LENGTH} blocks. Its shell is sealed first. */
         private static void cutDrift(ServerLevel level, StructureSite site) {
-            // The box that is cut: RoomCarver seals the shell round it, which is the floor, the ceiling, both walls and
-            // the
+            // The box that is cut: RoomCarver seals the shell round it, which is the floor, the ceiling, both walls
+            // and the
             // far end.
             BlockPos a = BlockPos.containing(at(site, -DRIFT_LENGTH, 0, -1));
             BlockPos b = BlockPos.containing(at(site, -7, 3, 1));
@@ -1255,8 +1255,8 @@ public class M2SliceScenario extends EvidenceScenario {
             still("52-work-order-done");
             ctx.setScreen(() -> null);
             BlockPos statue = TestColony.anchor(site.colony(), ColonyAnchor.STATUE);
-            // The anchor is the block the Host stands in, over his 5-block plinth: his feet are 5 blocks above the
-            // square.
+            // The anchor is the block the Host stands in, over his 5-block plinth: his feet are 5 blocks above
+            // the square.
             stand(
                     Vec3.atBottomCenterOf(statue.below(5)).add(0, 1, 12),
                     Vec3.atCenterOf(statue).add(0, 5, 0));
@@ -1366,10 +1366,10 @@ public class M2SliceScenario extends EvidenceScenario {
         /** Opens the handbook at the chapter's directives, takes a still, and closes it. */
         private void readHandbook(String chapter, String still) {
             ctx.waitTicks(20);
-            // The test pack adds a sample chapter that is never finished, which would classify every real chapter after
-            // it.
-            // So the screen is built as HandbookScreen.open builds it, from the shipped chapters only and the progress
-            // the
+            // The test pack adds a sample chapter that is never finished, which would classify every real chapter
+            // after it.
+            // So the screen is built as HandbookScreen.open builds it, from the shipped chapters only and the
+            // progress the
             // server synced.
             List<HandbookPage> pages = ctx.computeOnClient(ShippedHandbook::pages);
             ctx.setScreen(() -> new HandbookScreen(pages, id -> true, id -> {}, List.of()));
@@ -1764,8 +1764,8 @@ public class M2SliceScenario extends EvidenceScenario {
                     Z + ROOM_RADIUS_Z,
                     LayerBlocks.BREACH_CRUST);
             RoomCarver.carvePocketBelow(level, 1, X - ROOM_WEST, X + ROOM_EAST, Z - ROOM_RADIUS_Z, Z + ROOM_RADIUS_Z);
-            // The wall ores sit in this stone shell, so it is carved sealed as well: lava must not be one block behind
-            // them.
+            // The wall ores sit in this stone shell, so it is carved sealed as well: lava must not be one block
+            // behind them.
             RoomCarver.carve(
                     level,
                     X - ROOM_WEST - 1,

@@ -264,6 +264,7 @@ public class ActiveStateTest {
         Map<String, Runnable> paths = new LinkedHashMap<>();
         paths.put("place", () -> place(helper, PUMP.block().defaultBlockState(), 3));
         paths.put("sync at a terminal", () -> TerminalActivity.sync(level, pump));
+        // sync-load: the chunk of the test's own structure, which is loaded
         paths.put("chunk load", () -> TerminalActivity.sync(level, level.getChunkAt(pump)));
         UnreadableChecks.assertSavedDataNoThrow(
                 helper, "terminal activity", level.getServer(), RepairState.TYPE, paths);

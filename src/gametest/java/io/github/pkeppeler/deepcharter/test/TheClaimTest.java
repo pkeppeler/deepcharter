@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.ClaimShaftFeature;
 import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -87,12 +88,21 @@ public class TheClaimTest {
      * underground, where there are a few, through Topsoil Claims to the Deep Claim, and stays small everywhere:
      * pockets, fissures and passages, nothing like layer 3's halls.
      */
-    @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.C,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void cavesOpenUpWithDepth(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper, sampleChunks(helper, SAMPLE_CHUNKS), () -> cavesOpenUpWithDepthLoaded(helper));
+    }
+
+    private static void cavesOpenUpWithDepthLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         long[] open = new long[Zones.COUNT + 1];
         long[] all = new long[Zones.COUNT + 1];
         for (BlockPos column : columns(SAMPLE_CHUNKS)) {
+            // sync-load: whenBlocksLoaded loaded the chunks
             ChunkAccess chunk = level.getChunk(column);
             for (int y = SURFACE_CAVES_LOW; y <= SURFACE_CAVES_HIGH; y++) {
                 all[0]++;
@@ -145,8 +155,16 @@ public class TheClaimTest {
      * is the zone's stratum; the contact between two strata lies in a band round the zone's edge and waves from column
      * to column, so it reads as rock and not as a ruled line.
      */
-    @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.C,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void eachZoneHasItsOwnRock(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper, sampleChunks(helper, SAMPLE_CHUNKS), () -> eachZoneHasItsOwnRockLoaded(helper));
+    }
+
+    private static void eachZoneHasItsOwnRockLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         long[] matching = new long[Zones.COUNT];
         long[] rock = new long[Zones.COUNT];
@@ -155,6 +173,7 @@ public class TheClaimTest {
         int lowestContact = Integer.MAX_VALUE;
         int highestContact = Integer.MIN_VALUE;
         for (BlockPos column : columns(SAMPLE_CHUNKS)) {
+            // sync-load: whenBlocksLoaded loaded the chunks
             ChunkAccess chunk = level.getChunk(column);
             int lowestHardpan = Integer.MAX_VALUE;
             for (int y = LAYER.minY() + LayerTuning.DEFAULT.crustThickness(); y < LAYER.topExclusive(); y++) {
@@ -224,8 +243,18 @@ public class TheClaimTest {
      * ladder, timber of stalk planks and candle stubs burnt out in niches, and, in some, a prayer card; and some of
      * them cut through a cave.
      */
-    @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.C,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void abandonedShaftsAreDressedAsTheLoreHasThem(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper,
+                sampleChunks(helper, SHAFT_CHUNKS),
+                () -> abandonedShaftsAreDressedAsTheLoreHasThemLoaded(helper));
+    }
+
+    private static void abandonedShaftsAreDressedAsTheLoreHasThemLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Block pail = block("lunch_pail");
         Block card = block("prayer_card");
@@ -233,6 +262,7 @@ public class TheClaimTest {
         List<BlockPos> pails = new ArrayList<>();
         int cards = 0;
         for (BlockPos column : columns(SHAFT_CHUNKS)) {
+            // sync-load: whenBlocksLoaded loaded the chunks
             ChunkAccess chunk = level.getChunk(column);
             for (int y = LAYER.minY(); y < LAYER.topExclusive(); y++) {
                 BlockState state = chunk.getBlockState(column.atY(y));
@@ -249,6 +279,7 @@ public class TheClaimTest {
             int stubs = 0;
             int timber = 0;
             int caveCells = 0;
+            // sync-load: whenBlocksLoaded loaded the chunks (the shafts lie in the sample)
             ChunkAccess chunk = level.getChunk(foot);
             for (BlockPos at : BlockPos.betweenClosed(foot.offset(-8, 0, -8), foot.offset(8, 32, 8))) {
                 if (!ChunkPos.containing(at).equals(chunk.getPos())) {
@@ -306,8 +337,16 @@ public class TheClaimTest {
      * lies in that chunk, and every block a shaft may write, its shell included, lies in the chunk its placement
      * picked.
      */
-    @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.C,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void theClaimsFeaturesStayInTheirChunks(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper, sampleChunks(helper, SAMPLE_CHUNKS), () -> theClaimsFeaturesStayInTheirChunksLoaded(helper));
+    }
+
+    private static void theClaimsFeaturesStayInTheirChunksLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         var registry = level.registryAccess().lookupOrThrow(Registries.PLACED_FEATURE);
         int positions = 0;
@@ -317,6 +356,7 @@ public class TheClaimTest {
             for (int dx = 0; dx < SAMPLE_CHUNKS; dx++) {
                 for (int dz = 0; dz < SAMPLE_CHUNKS; dz++) {
                     ChunkPos chunk = new ChunkPos(SAMPLE_CHUNK + dx, SAMPLE_CHUNK + dz);
+                    // sync-load: whenBlocksLoaded loaded the chunks
                     level.getChunk(chunk.x(), chunk.z());
                     PlacementContext context =
                             new PlacementContext(level, level.getChunkSource().getGenerator(), Optional.of(feature));
@@ -425,5 +465,11 @@ public class TheClaimTest {
 
     private static String percent(double share) {
         return String.format(Locale.ROOT, "%.2f%%", 100 * share);
+    }
+
+    /** The chunks of a square of {@code chunks} chunks from the sample's corner. */
+    private static List<FarChunks.At> sampleChunks(GameTestHelper helper, int chunks) {
+        return FarChunks.rect(
+                helper.getLevel(), SAMPLE_CHUNK, SAMPLE_CHUNK, SAMPLE_CHUNK + chunks - 1, SAMPLE_CHUNK + chunks - 1);
     }
 }

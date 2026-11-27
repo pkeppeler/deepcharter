@@ -361,8 +361,8 @@ public class FuelPumpTest {
 
     @GameTest
     public void anExactPurchaseBeyondTheRoomIsRefused(GameTestHelper helper) {
-        // 4.2 litres of room: 5.8 of 10 litres is in the tank. BUY n is exact, so it takes whole litres of the room
-        // only.
+        // 4.2 litres of room: 5.8 of 10 litres is in the tank. BUY n is exact, so it takes whole litres of the
+        // room only.
         Scene scene = scene(helper, 50);
         run(helper, scene, s -> {
             s.pod().setFuel(58f);
@@ -591,8 +591,8 @@ public class FuelPumpTest {
             if (!ReserveTank.isInstalled(copy) || PodStats.of(copy).tankLitres() != before) {
                 throw failure(helper, "the reserve tank did not survive a reload");
             }
-            // Version 1 is the first format of this attachment, so there is no earlier format to load. A new version
-            // must
+            // Version 1 is the first format of this attachment, so there is no earlier format to load. A new
+            // version must
             // add that test here, next to the unknown-version test below.
             helper.succeed();
         } finally {

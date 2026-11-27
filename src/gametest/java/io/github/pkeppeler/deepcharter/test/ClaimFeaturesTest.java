@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.ore.ZoneFillFeature;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.surface.SurfaceWrites;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -120,14 +121,22 @@ public class ClaimFeaturesTest {
      * rock, never sideways), so a shaft never writes past its shell, and never onto the far side of its own chunk,
      * which a write past the chunk's edge lands on.
      */
-    @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.C,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void aShaftWritesOnlyInsideItsBounds(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(helper, shaftChunks(helper), () -> aShaftWritesOnlyInsideItsBoundsLoaded(helper));
+    }
+
+    private static void aShaftWritesOnlyInsideItsBoundsLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ClaimShaftFeature shaft = (ClaimShaftFeature) feature(level, "claim_shafts");
         RandomSource rows = RandomSource.create(1277);
         int placed = 0;
         List<String> strays = new ArrayList<>();
         for (int i = 0; i < SHAFT_TRIES; i++) {
+            // sync-load: whenBlocksLoaded loaded the chunks
             ChunkAccess chunk = level.getChunk(FIRST_CHUNK + i, FIRST_CHUNK);
             BlockPos origin = chunk.getPos().getWorldPosition().atY(LAYER.minY() + 30 + rows.nextInt(120));
             BoundingBox bounds = shaft.plan(RandomSource.create(i), origin).bounds();
@@ -162,8 +171,16 @@ public class ClaimFeaturesTest {
      * rock it replaced, and of an ore of the zone's table: the zone fill's ores, with the richer ones weighted up
      * against Ironium.
      */
-    @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.C,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void aCaveOreSeamLiesOnACaveFaceInItsZonesOre(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper, seamChunks(helper), () -> aCaveOreSeamLiesOnACaveFaceInItsZonesOreLoaded(helper));
+    }
+
+    private static void aCaveOreSeamLiesOnACaveFaceInItsZonesOreLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CaveOreFeature seams = (CaveOreFeature) feature(level, "claim_cave_ores");
         String[] fills = {"fill_topsoil_claims", "fill_stone_benches", "fill_deep_claim"};
@@ -197,6 +214,7 @@ public class ClaimFeaturesTest {
         int seamsPlaced = 0;
         List<String> wrong = new ArrayList<>();
         for (int c = 0; c < SEAM_CHUNKS; c++) {
+            // sync-load: whenBlocksLoaded loaded the chunks
             ChunkAccess chunk = level.getChunk(FIRST_CHUNK + c, FIRST_CHUNK + 4);
             for (int t = 0; t < SEAM_TRIES_PER_CHUNK; t++) {
                 BlockPos origin = chunk.getPos()
@@ -249,8 +267,18 @@ public class ClaimFeaturesTest {
      * the zone fill's one roll a block almost never makes) and salvage crates on cave floors away from the shafts'
      * drifts.
      */
-    @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.C,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void theClaimHasSeamsOnCaveFacesAndCachesOnCaveFloors(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper,
+                sampleChunks(helper, SAMPLE_CHUNKS),
+                () -> theClaimHasSeamsOnCaveFacesAndCachesOnCaveFloorsLoaded(helper));
+    }
+
+    private static void theClaimHasSeamsOnCaveFacesAndCachesOnCaveFloorsLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Block pail = LayerBlocks.LUNCH_PAIL;
         List<BlockPos> pails = new ArrayList<>();
@@ -258,6 +286,7 @@ public class ClaimFeaturesTest {
         Map<BlockPos, Block> faceOres = new HashMap<>();
         for (int cx = SAMPLE_CHUNK; cx < SAMPLE_CHUNK + SAMPLE_CHUNKS; cx++) {
             for (int cz = SAMPLE_CHUNK; cz < SAMPLE_CHUNK + SAMPLE_CHUNKS; cz++) {
+                // sync-load: whenBlocksLoaded loaded the chunks
                 ChunkAccess chunk = level.getChunk(cx, cz);
                 BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
                 for (int y = LAYER.minY(); y < LAYER.topExclusive(); y++) {
@@ -313,8 +342,16 @@ public class ClaimFeaturesTest {
      * generated wall every block of layer rock further than the noise and the surface depth can move a contact is the
      * rock {@code stratum} names.
      */
-    @GameTest(environment = CampaignEnvironments.C, dimension = FULL, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.C,
+            dimension = FULL,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void theStrataRuleAndLayerBlocksAgree(GameTestHelper helper) {
+        FarChunks.whenBlocksLoaded(
+                helper, sampleChunks(helper, 3), () -> theStrataRuleAndLayerBlocksAgreeLoaded(helper));
+    }
+
+    private static void theStrataRuleAndLayerBlocksAgreeLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         StrataRule rule = (StrataRule) level.registryAccess()
                 .lookupOrThrow(Registries.MATERIAL_RULE)
@@ -340,6 +377,7 @@ public class ClaimFeaturesTest {
         int checked = 0;
         List<String> wrong = new ArrayList<>();
         for (int cx = SAMPLE_CHUNK; cx < SAMPLE_CHUNK + 3; cx++) {
+            // sync-load: whenBlocksLoaded loaded the chunks
             ChunkAccess chunk = level.getChunk(cx, SAMPLE_CHUNK);
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
             for (int y = band.minY(); y < band.minY() + band.height(); y++) {
@@ -378,6 +416,8 @@ public class ClaimFeaturesTest {
         SurfaceWrites.forgetKnown();
         for (int cx = 0; cx < 6; cx++) {
             for (int cz = 0; cz < 6; cz++) {
+                // sync-load: the case is the generation of fresh chunks, and the pairs they judge are counted
+                // on this thread
                 level.getChunk(FIRST_CHUNK + 200 + cx, FIRST_CHUNK + 200 + cz);
             }
         }
@@ -400,5 +440,22 @@ public class ClaimFeaturesTest {
         int x = at.getX() - chunk.getPos().getMinBlockX();
         int z = at.getZ() - chunk.getPos().getMinBlockZ();
         return ((at.getY() - LAYER.minY()) * 16 + x) * 16 + z;
+    }
+
+    /** The chunks the shaft test places a shaft in, one per try along a row. */
+    private static List<FarChunks.At> shaftChunks(GameTestHelper helper) {
+        return FarChunks.rect(helper.getLevel(), FIRST_CHUNK, FIRST_CHUNK, FIRST_CHUNK + SHAFT_TRIES - 1, FIRST_CHUNK);
+    }
+
+    /** The chunks the seam test places seams in, one per chunk along a row. */
+    private static List<FarChunks.At> seamChunks(GameTestHelper helper) {
+        return FarChunks.rect(
+                helper.getLevel(), FIRST_CHUNK, FIRST_CHUNK + 4, FIRST_CHUNK + SEAM_CHUNKS - 1, FIRST_CHUNK + 4);
+    }
+
+    /** The chunks of a square of {@code chunks} chunks from the sample's corner. */
+    private static List<FarChunks.At> sampleChunks(GameTestHelper helper, int chunks) {
+        return FarChunks.rect(
+                helper.getLevel(), SAMPLE_CHUNK, SAMPLE_CHUNK, SAMPLE_CHUNK + chunks - 1, SAMPLE_CHUNK + chunks - 1);
     }
 }

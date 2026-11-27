@@ -52,6 +52,7 @@ public class ChunkUnloadTest {
     @GameTest
     public void aFullChunkIsSaved(GameTestHelper helper) {
         ChunkMapAccess chunkMap = (ChunkMapAccess) helper.getLevel().getChunkSource().chunkMap;
+        // sync-load: the chunk of the test's own structure, which is loaded
         LevelChunk full = helper.getLevel().getChunkAt(helper.absolutePos(BlockPos.ZERO));
         full.markUnsaved();
         if (!chunkMap.deepcharter$save(full)) {
