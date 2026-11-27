@@ -49,6 +49,9 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The cargo slot's gauge reads the pod's load against its climb limit (#1449, {@link CockpitReading#load}): a mark in the limit colour after
  * {@link Layout#loadLimit} segments, the bar in that colour at and over it, and a LOAD title on a small plate hung under it from the band.
+ *
+ * <p>While the pod sinks fast, a SINK plate hangs under the band's middle (#1432, {@link CockpitReading#sink}, coloured
+ * by {@link #sinkColor}). It reads the depth gauge's signal, as the altimeter does.
  */
 public final class CockpitHud {
     /** How many warning lamps the Ribbon has: low fuel, low hull, burning, any other warning of the readout, and overloaded. */
@@ -90,6 +93,8 @@ public final class CockpitHud {
     }
 
     private static double heat;
+    /** Client ticks the SINK plate stays up: reset while the pod sinks past its show share, counted down after. */
+    private static int sinkHold;
 
     private CockpitHud() {}
 
@@ -163,6 +168,10 @@ public final class CockpitHud {
         }
         if (showsReadout(client, guiWidth, guiHeight)) {
             CockpitLook look = CockpitLook.current();
+            if (sinkShown(pod)) {
+                Box sink = sinkBox(client.font, layout, look, guiWidth, guiHeight);
+                into.add(new HudKeepClear.Rect("cockpit sink", sink.left(), sink.top(), sink.width(), sink.height()));
+            }
             if (layout.cargo().on()) {
                 Box title = loadTitleBox(client.font, layout, look, guiWidth, guiHeight);
                 into.add(new HudKeepClear.Rect(
@@ -189,12 +198,20 @@ public final class CockpitHud {
     private static void tick(Minecraft client) {
         if (client.player == null || !(client.player.getVehicle() instanceof PodEntity pod)) {
             heat = 0;
+            sinkHold = 0;
             return;
         }
         CockpitLook look = CockpitLook.current();
         heat = pod.hullBurning()
                 ? Math.min(1.0, heat + look.heatRisePerTick())
                 : Math.max(0.0, heat - look.heatFallPerTick());
+        if (pod.onGround()) {
+            sinkHold = 0;
+        } else if (CockpitReading.of(pod, heat).sink() >= look.sink().showShare()) {
+            sinkHold = look.sink().holdTicks() + 1;
+        } else if (sinkHold > 0) {
+            sinkHold--;
+        }
     }
 
     public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
@@ -274,6 +291,11 @@ public final class CockpitHud {
                 Part.HEAT,
                 layout.heat().area(),
                 () -> gauge(graphics, layout.heat(), decay.shown(Part.HEAT, reading.heat()), look.heatColor(), look));
+        if (sinkShown(pod) && decay.fault(Part.DEPTH) != Fault.DROP) {
+            double bar = Math.min(
+                    1.0, reading.sink() * look.sink().limit() / look.sink().segments());
+            sinkReadout(graphics, client.font, layout, look, decay.shown(Part.DEPTH, bar));
+        }
         draw(
                 graphics,
                 decay,
@@ -444,6 +466,76 @@ public final class CockpitHud {
                 box.left() + border.left() + look.titleGap(),
                 box.top() + border.top() + look.titleGap(),
                 look.cargoColor());
+    }
+
+    /** Whether the SINK plate is up: the pod is airborne and sank past the show share within the plate's hold time. */
+    public static boolean sinkShown(PodEntity pod) {
+        return sinkHold > 0 && !pod.onGround();
+    }
+
+    private static Component sinkTitleText() {
+        return Component.translatable("hud.deepcharter.cockpit.sink");
+    }
+
+    /**
+     * Where the SINK plate is: the title and the bar side by side, {@link CockpitLook#titleGap} past the plate sprite's
+     * border, as tall as the taller of the font's capitals and the bar, centred under the band (so under the
+     * altimeter's recess) and hung from its lower edge.
+     */
+    public static Box sinkBox(Font font, Layout layout, CockpitLook look, int guiWidth, int guiHeight) {
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        CockpitLook.SinkLook sink = look.sink();
+        int width = font.width(sinkTitleText())
+                + sink.barGap()
+                + sink.barWidth()
+                + border.left()
+                + border.right()
+                + 2 * look.titleGap();
+        int height = Math.max(look.titleTextHeight(), sink.barHeight())
+                + border.top()
+                + border.bottom()
+                + 2 * look.titleGap();
+        Decal band = layout.band();
+        return new Box(
+                band.left(guiWidth) + (band.width() - width) / 2, band.top(guiHeight) + band.height(), width, height);
+    }
+
+    /**
+     * The SINK readout's colour at a sink of {@code share} of the buffer: the hull gauge's, {@code ribbonWarn} from the
+     * warning share, the warning colour past 1.
+     */
+    public static int sinkColor(double share, CockpitLook look) {
+        if (share > 1.0) {
+            return look.lowColor();
+        }
+        return share >= look.sink().warnShare() ? look.sink().warnColor() : look.hullColor();
+    }
+
+    /**
+     * The SINK plate with its bar at {@code bar} (0 to 1, the full bar {@code segments / limit} of the buffer): its
+     * title, and its bar lit to it with the buffer marked in the warning colour.
+     */
+    private static void sinkReadout(
+            GuiGraphicsExtractor graphics, Font font, Layout layout, CockpitLook look, double bar) {
+        Box box = sinkBox(font, layout, look, graphics.guiWidth(), graphics.guiHeight());
+        CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
+        GuiSpriteScaling.NineSlice.Border border = plateBorder(layout);
+        CockpitLook.SinkLook sink = look.sink();
+        int color = sinkColor(bar * sink.segments() / sink.limit(), look);
+        int x = box.left() + border.left() + look.titleGap();
+        int y = box.top() + border.top() + look.titleGap();
+        int content = Math.max(look.titleTextHeight(), sink.barHeight());
+        graphics.text(font, sinkTitleText(), x, y + (content - look.titleTextHeight()) / 2, color);
+        int left = x + font.width(sinkTitleText()) + sink.barGap();
+        int top = y + (content - sink.barHeight()) / 2;
+        int lit = (int) Math.ceil(bar * sink.segments() - 1e-9);
+        for (int i = 0; i < sink.segments(); i++) {
+            int from = left + i * sink.barWidth() / sink.segments();
+            int to = left + (i + 1) * sink.barWidth() / sink.segments() - 1;
+            graphics.fill(from, top, to, top + sink.barHeight(), i < lit ? color : look.offColor());
+        }
+        int mark = left + sink.limit() * sink.barWidth() / sink.segments() - 1;
+        graphics.fill(mark, top - 1, mark + 1, top + sink.barHeight() + 1, look.lowColor());
     }
 
     /** The warning lamps: {@link #LAMPS} squares in a row (a slot wider than it is tall) or a column, each lit in its colour or off. */

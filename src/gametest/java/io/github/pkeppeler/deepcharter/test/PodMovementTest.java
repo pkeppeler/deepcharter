@@ -32,6 +32,9 @@ public class PodMovementTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final double EPSILON = 1e-6;
+    /** A rig pod thrown down this fast lands hard through the ground cushion (#1432), which brakes a crewed sink. */
+    private static final double HARD_SINK = 1.5;
+
     private static final float SOUTH = 0f;
     private static final float WEST = 90f;
 
@@ -89,7 +92,8 @@ public class PodMovementTest {
                 if (moved.x > -1.0 || Math.abs(moved.z) > EPSILON) {
                     throw failure(
                             helper,
-                            "the pod faces west, so forward drives it west along x only, whatever the pilot looks at; moved %s",
+                            "the pod faces west, so forward drives it west along x only, whatever the pilot looks at;"
+                                    + " moved %s",
                             moved);
                 }
                 if (rig.pod.getYRot() != WEST) {
@@ -210,7 +214,8 @@ public class PodMovementTest {
                         if (turned < 10f || step.normalize().dot(facing) < 0.99) {
                             throw failure(
                                     helper,
-                                    "after turning right (%s degrees) the pod drives along its new facing %s, it moved %s",
+                                    "after turning right (%s degrees) the pod drives along its new facing %s, it moved"
+                                            + " %s",
                                     turned,
                                     facing,
                                     step);
@@ -355,6 +360,7 @@ public class PodMovementTest {
     @GameTest(maxTicks = 100)
     public void hardLandingDamagesHullAndNotThePilot(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 12, SOUTH);
+        rig.pod.setDeltaMovement(0, -HARD_SINK, 0);
         float hullBefore = rig.pod.hull();
         float healthBefore = rig.pilot.player().getHealth();
         helper.runAfterDelay(50, () -> {
@@ -453,7 +459,8 @@ public class PodMovementTest {
                 if (dropped < 2.5 || dropped > 3.1 || pod.getY() - (FLOOR_Y + 1) < 2) {
                     throw failure(
                             helper,
-                            "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y %s",
+                            "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y"
+                                    + " %s",
                             dropped,
                             pod.getY());
                 }

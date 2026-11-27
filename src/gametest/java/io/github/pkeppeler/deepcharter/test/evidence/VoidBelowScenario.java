@@ -26,8 +26,8 @@ import net.minecraft.world.level.block.Blocks;
 /**
  * Evidence scenario "void-below" (#1387): a pilot with 32 hull drills down a shaft of layer 1 towards the breach crust,
  * which takes 8 hull a row, 24 in all. Under the crust is a cave: 8 rows of open space over stone, a 9-block free fall
- * from the last crust row that would land hard for about 27 hull. Before #1387 the HUD showed nothing (32 outlasts 24);
- * now the crust warning adds the drop: {@code CRUST 3 DOWN HULL 32, IT TAKES 24 + DROP 27}. The pod bores the crust,
+ * from the last crust row that would land hard for about 19 hull. Before #1387 the HUD showed nothing (32 outlasts 24);
+ * now the crust warning adds the drop: {@code CRUST 3 DOWN HULL 32, IT TAKES 24 + DROP 19}. The pod bores the crust,
  * and as it falls into the cave the pilot holds the rotor whenever the pod sinks faster than half a block a tick, so it
  * lands with the 8 hull the crust left.
  *
