@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.test.support.BoreBot.Side;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -15,7 +17,7 @@ public class BoreBotTest {
                 Side.SOUTH.nextInDeclarationOrder(),
                 Side.NORTH.nextInDeclarationOrder());
         if (!walked.equals(List.of(Side.WEST, Side.SOUTH, Side.NORTH, Side.EAST))) {
-            throw helper.assertionException("next() from east, west, south, north gave " + walked);
+            throw failure(helper, "next() from east, west, south, north gave %s", walked);
         }
         helper.succeed();
     }
@@ -25,14 +27,14 @@ public class BoreBotTest {
         List<Side> right = List.of(
                 Side.EAST.turnedRight(), Side.SOUTH.turnedRight(), Side.WEST.turnedRight(), Side.NORTH.turnedRight());
         if (!right.equals(List.of(Side.SOUTH, Side.WEST, Side.NORTH, Side.EAST))) {
-            throw helper.assertionException("turnedRight() from east, south, west, north gave " + right);
+            throw failure(helper, "turnedRight() from east, south, west, north gave %s", right);
         }
         for (Side side : Side.values()) {
             if (side.turnedLeft().turnedRight() != side || side.opposite().opposite() != side) {
-                throw helper.assertionException("left, right or opposite does not undo itself at " + side);
+                throw failure(helper, "left, right or opposite does not undo itself at %s", side);
             }
             if (side.opposite() != side.turnedRight().turnedRight()) {
-                throw helper.assertionException("opposite is not two turns at " + side);
+                throw failure(helper, "opposite is not two turns at %s", side);
             }
         }
         helper.succeed();
