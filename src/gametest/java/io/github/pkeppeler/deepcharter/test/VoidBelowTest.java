@@ -58,8 +58,8 @@ public class VoidBelowTest {
         float nine = VoidBelow.dropCost(stock, 9);
         expect(
                 helper,
-                nine > 26f && nine < 28f,
-                "a free fall of 9 blocks lands hard for about 27 hull, it costs %s",
+                nine > 18f && nine < 20f,
+                "a free fall of 9 blocks lands hard for about 19 hull, it costs %s",
                 nine);
         expect(
                 helper,
@@ -72,7 +72,7 @@ public class VoidBelowTest {
         expect(helper, three == 0f && four > 0f, "3 blocks land soft and 4 hard, they cost %s and %s", three, four);
         expect(helper, VoidBelow.dropCost(stock, 0) == 0f, "no fall is free");
         // Independent of the helper's loop: a fall long enough for terminal speed costs (gravity / (1 / drag - 1) -
-        // 0.7) x 70.
+        // 0.7) x 50.
         PodTuning.Movement movement = PodTuning.DEFAULT.movement();
         double terminal = movement.gravity() * movement.verticalDrag() / (1 - movement.verticalDrag());
         float deep = VoidBelow.dropCost(stock, 4000);
@@ -124,9 +124,9 @@ public class VoidBelowTest {
         crust(one, x);
         RoomCarver.carvePocketBelow(one, 1, x - 3, x + 3, Z - 3, Z + 3);
         float drop = VoidBelow.dropCost(PodStats.base(), POCKET_FALL);
-        // 28 outlasts the crust's 24, so before #1387 it showed nothing; the drop of about 27 makes it a death.
-        expectWarning(helper, pod(one, x, 5, 28f), 2, 3, FULL_CRUST, drop, "2 slabs above the crust, over the pocket");
-        expectWarning(helper, pod(one, x, 1, 28f), 0, 1, ROW, drop, "on the last crust row, before it is bored");
+        // 26 outlasts the crust's 24, so before #1387 it showed nothing; the drop of about 19 makes it a death.
+        expectWarning(helper, pod(one, x, 5, 26f), 2, 3, FULL_CRUST, drop, "2 slabs above the crust, over the pocket");
+        expectWarning(helper, pod(one, x, 1, 26f), 0, 1, ROW, drop, "on the last crust row, before it is bored");
         expectNone(helper, pod(one, x, 5, FULL_CRUST + drop + 1), "for a hull that outlasts the crust and the drop");
         helper.succeed();
     }
@@ -140,8 +140,8 @@ public class VoidBelowTest {
         RoomCarver.carve(one, x - 3, x + 3, floor - 12, floor - 1, Z - 3, Z + 3, Blocks.STONE);
         expectNone(
                 helper,
-                pod(one, x, 5, 28f),
-                "for 28 hull over solid rock: the crust takes 24 and the pod lands on rock");
+                pod(one, x, 5, 26f),
+                "for 26 hull over solid rock: the crust takes 24 and the pod lands on rock");
         expectWarning(helper, pod(one, x, 5, 20f), 2, 3, FULL_CRUST, 0f, "for 20 hull, with no drop part");
         helper.succeed();
     }
