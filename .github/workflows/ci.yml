@@ -20,12 +20,34 @@ env:
   BUILD_SHARDS: 4
 
 jobs:
+  # Picks the main this run tests once; every job that merges main merges exactly that commit (#1571).
+  setup:
+    name: setup
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      main-sha: ${{ steps.main.outputs.main-sha }}
+    steps:
+      - id: main
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          for attempt in 1 2 3 4; do
+            sha=$(git ls-remote "https://github.com/$REPO" refs/heads/main | cut -f1) || sha=
+            [[ $sha =~ ^[0-9a-f]{40}$ ]] && break
+            [[ $attempt -lt 4 ]] && sleep $((attempt * 5))
+          done
+          [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo "::error::could not read the sha of origin/main"; exit 1; }
+          echo "main-sha=$sha" >> "$GITHUB_OUTPUT"
+
   # The server GameTest suite runs as BUILD_SHARDS parallel jobs (#1327, ADR 0111). Each takes the shard `i/n` of the server
   # classes that gradle/gametest.gradle.kts picks by weight (-PgametestShard; gradle/server-test-weights.txt), so every class runs
   # in exactly one shard, and classes that share a campaign environment share a shard. The matrix and BUILD_SHARDS must agree:
   # tools/tests/test_build_shards.py checks it. The job id stays `build` for the Gradle cache (cache-seed.yml says why).
   build:
     name: build-shard ${{ matrix.shard }}
+    needs: setup
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     # One shard is ~1/4 of the suite by weight: 6 to 8 minutes of tests on 2026-11-26's runners, with 3 to 4 minutes of setup before it.
@@ -42,6 +64,8 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
@@ -64,6 +88,7 @@ jobs:
   # cache-seed.yml's entry through its same-OS fallback rather than the same-job-id match.
   checks:
     name: build-checks
+    needs: setup
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -75,6 +100,8 @@ jobs:
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
@@ -141,6 +168,7 @@ jobs:
 
   tool-tests:
     name: tool-tests
+    needs: setup
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 15 # tests take ~1 min on a runner; leave headroom for test growth
@@ -151,6 +179,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
       # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
       # has, reads or needs the original game audio.
       - uses: ./.github/actions/setup-python-uv

@@ -9,8 +9,8 @@ adr_lib=0
 source tools/lib/adr.sh 2>/dev/null && adr_lib=1
 R=pkeppeler/deepcharter
 # Worst case: limit check 8 s + handoff 10 s + open PRs 10 s + the per-PR mergeable reads 6 s in total + ADR list
-# 10 s + merged PRs 10 s = 54 s, under the 60 s hook timeout (the local git calls and python start-ups take well
-# under a second). SESSION_START_PR_BUDGET (seconds) is a test seam for the 6 s.
+# 10 s + merged PRs 10 s + playtest issue count 4 s = 58 s, under the 60 s hook timeout (the local git calls and python
+# start-ups take well under a second). SESSION_START_PR_BUDGET (seconds) is a test seam for the 6 s.
 t() { perl -e 'alarm shift; exec @ARGV' "${T:-10}" "$@" 2>/dev/null; }
 
 # Make the pre-push hook active in every session: an unset core.hooksPath becomes .githooks. A set value stays, even a different one.
@@ -115,6 +115,22 @@ else:
     [ -z "$unread" ] || echo "(mergeability not read for some PRs: time budget used up)"
   else
     echo "(could not fetch PRs)"
+  fi
+  echo
+  # One line when playtest-feedback issues exist past the marker the player-experience skill has learned from.
+  skill=.claude/skills/player-experience/SKILL.md
+  marker=$(sed -n 's/^Learned through playtest-feedback issue: #\([0-9][0-9]*\).*/\1/p' "$skill" 2>/dev/null | head -1)
+  if [ -z "$marker" ]; then
+    echo "(could not read the playtest marker in $skill)"
+  elif fresh=$(T=4 t gh api "repos/$R/issues?labels=playtest-feedback&state=all&sort=created&direction=desc&per_page=100" \
+    --jq "[.[] | select(has(\"pull_request\") | not) | select(.number > $marker)] | length"); then
+    case ${fresh:-0} in
+      0) ;;
+      1) echo "1 new playtest issue: run /refresh-player-experience" ;;
+      *) echo "$fresh new playtest issues: run /refresh-player-experience" ;;
+    esac
+  else
+    echo "(could not check for new playtest issues)"
   fi
   echo
   echo "## Local-only state (not on GitHub)"
