@@ -79,16 +79,24 @@ class Theme(unittest.TestCase):
 
     def test_there_is_one_look_and_no_sprite_of_a_style_that_was_dropped(self):
         self.assertEqual({"ribbon"}, {p.name for p in SPRITES.parent.iterdir()})
-        self.assertEqual({"part_a.png", "cap.png", "plate.png", "plate.png.mcmeta"}, {p.name for p in SPRITES.iterdir()})
+        icons = {f"icon_{name}.png" for name in ("fuel", "hull", "weight", "cart", "depth", "heat")}
+        self.assertEqual({"part_a.png", "cap.png", "plate.png", "plate.png.mcmeta", "tab.png", "tab.png.mcmeta"} | icons, {p.name for p in SPRITES.iterdir()})
 
-    def test_the_plate_is_cut_in_nine(self):
-        path = SPRITES / "plate.png"
-        scaling = json.loads(path.with_name(path.name + ".mcmeta").read_text())["gui"]["scaling"]
-        self.assertEqual("nine_slice", scaling["type"])
-        self.assertEqual((scaling["width"], scaling["height"]), png_size(path))
-        border = scaling["border"]
-        self.assertLess(border["left"] + border["right"], scaling["width"], "a nine-slice needs a middle")
-        self.assertLess(border["top"] + border["bottom"], scaling["height"], "a nine-slice needs a middle")
+    def test_the_plate_and_the_title_tab_are_cut_in_nine(self):
+        for name in ("plate", "tab"):
+            path = SPRITES / f"{name}.png"
+            scaling = json.loads(path.with_name(path.name + ".mcmeta").read_text())["gui"]["scaling"]
+            with self.subTest(sprite=name):
+                self.assertEqual("nine_slice", scaling["type"])
+                self.assertEqual((scaling["width"], scaling["height"]), png_size(path))
+                border = scaling["border"]
+                self.assertLess(border["left"] + border["right"], scaling["width"], "a nine-slice needs a middle")
+                self.assertLess(border["top"] + border["bottom"], scaling["height"], "a nine-slice needs a middle")
+
+    def test_each_icon_is_as_wide_as_the_theme_says_and_as_tall_as_the_capitals(self):
+        for name in cockpit_ribbon.ICONS:
+            with self.subTest(icon=name):
+                self.assertEqual((THEME["iconWidth"], THEME["titleTextHeight"]), png_size(SPRITES / f"icon_{name}.png"))
 
     def test_every_decal_has_a_sprite_of_its_size(self):
         for slot, camel in SLOTS.items():
@@ -177,18 +185,174 @@ class Load(unittest.TestCase):
         self.assertTrue(0 < limit < segments, "the bar shows a share of load past the limit")
         self.assertEqual(0, limit * THEME[STYLE + "CargoW"] % segments, "the mark sits in the gap between two segments")
 
-    def test_the_load_title_hangs_under_its_gauge_on_screen_and_clear_of_the_plate_and_the_bezel(self):
-        left, top, width, height = cockpit_ribbon.title_box(LOOK)
-        title = (left, top, left + width, top + height)
-        screen = (cockpit_ribbon.SCREEN_W, cockpit_ribbon.SCREEN_H)
-        gauge = rect(STYLE + "Cargo", screen)
-        self.assertTrue(inside(title, (0, 0) + screen))
-        self.assertLessEqual(title[0], gauge[0] + 1)
-        self.assertGreaterEqual(title[2], gauge[2] - 1, "the title is centred under its gauge")
-        self.assertEqual(rect(STYLE + "PartA", screen)[3], title[1], "the title hangs from the band's lower edge")
-        for state in cockpit_ribbon.STATES.values():
-            self.assertFalse(overlap(title, plate_rect(screen, state)))
-        self.assertFalse(overlap(title, rect(STYLE + "Cap", screen)))
+
+
+class Titles(unittest.TestCase):
+    """Each gauge's title (#1436): a tab in the game's font with the gauge's icon, centred under its bar and riding the band's lower edge."""
+
+    def boxes(self, screen):
+        return {g: cockpit_ribbon.title_box(LOOK, g, screen) for g in GAUGES}
+
+    def test_every_gauge_has_a_title_and_the_titles_are_the_lang_files(self):
+        lang = json.loads((ROOT / "src/lang/en_us/pod.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(GAUGES), set(cockpit_ribbon.TITLES))
+        for gauge, title in cockpit_ribbon.TITLES.items():
+            with self.subTest(gauge=gauge):
+                self.assertEqual(lang["hud.deepcharter.cockpit." + cockpit_ribbon.TITLE_KEYS[gauge]], title)
+
+    def test_each_title_is_centred_under_its_bar_and_rides_the_bands_lower_edge_clear_of_the_bar(self):
+        for screen in GUI_SIZES:
+            band = rect(STYLE + "PartA", screen)
+            for gauge, title in self.boxes(screen).items():
+                bar = rect(STYLE + gauge.capitalize(), screen)
+                with self.subTest(screen=screen, gauge=gauge):
+                    self.assertLessEqual(abs((title[0] + title[2]) - (bar[0] + bar[2])), 1, "centred under its bar")
+                    self.assertGreater(title[1], bar[3], "clear of the bar and its lit lower edge")
+                    self.assertLess(title[1], band[3], "rides the band's lower edge")
+                    self.assertGreater(title[3], band[3], "hangs below the band")
+                    self.assertLessEqual(title[1] + THEME["titleTextHeight"], title[3], "holds the capitals")
+
+    def test_no_two_titles_touch_and_none_takes_the_room_under_the_altimeter_recess(self):
+        for screen in GUI_SIZES:
+            band = rect(STYLE + "PartA", screen)
+            middle = (band[0] + band[2]) // 2
+            recess = (middle - cockpit_ribbon.RECESS_W // 2, band[1], middle + cockpit_ribbon.RECESS_W // 2, screen[1])
+            boxes = self.boxes(screen)
+            for a in GAUGES:
+                with self.subTest(screen=screen, gauge=a):
+                    self.assertFalse(overlap(boxes[a], recess), "the room under the altimeter's recess is the altimeter's (#1432)")
+                for b in GAUGES:
+                    if a < b:
+                        grown = (boxes[a][0] - 1, boxes[a][1], boxes[a][2] + 1, boxes[a][3])
+                        self.assertFalse(overlap(grown, boxes[b]), (a, b))
+
+    def test_titles_are_on_screen_and_clear_of_the_plate_and_the_scanner_window(self):
+        # On a narrow GUI the bezel hangs under the band's right half, so the titles there ride the joint of the two, over steel, short of the window's black gasket.
+        for screen in GUI_SIZES:
+            window = rect(STYLE + "Scanner", screen)
+            for gauge, title in self.boxes(screen).items():
+                with self.subTest(screen=screen, gauge=gauge):
+                    self.assertTrue(inside(title, (0, 0) + screen))
+                    self.assertFalse(overlap(title, (window[0] - 1, window[1] - 1, window[2] + 1, window[3] + 1)), "the window and its black gasket")
+                    for state in list(cockpit_ribbon.STATES.values()) + [WIDE_ALERT]:
+                        self.assertFalse(overlap(title, plate_rect(screen, state)))
+
+    def test_the_tallys_hull_fuel_and_depth_carry_their_gauges_icons_and_the_bay_count_the_cart(self):
+        # The tally's cargo number counts the ore in the bay, not the LOAD gauge's weight, so it carries the cart and the LOAD gauge the weight.
+        tally = cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["calm"])[0]
+        icons = cockpit_ribbon.GAUGE_ICONS
+        self.assertEqual([icons["hull"], icons["fuel"], "cart", icons["depth"]], [icon for _, _, icon in tally])
+        self.assertEqual("weight", icons["cargo"])
+        self.assertNotIn("cart", icons.values())
+        self.assertTrue(all(icon is None for row in cockpit_ribbon.plate_rows(cockpit_ribbon.STATES["burning"])[1:] for _, _, icon in row))
+
+
+# The game font's digits and capitals, the 5 x 7 of each glyph's cell, transcribed from assets/minecraft/textures/font/ascii.png in the 26.3 client jar (the
+# tool-tests job has no Gradle cache to read it from).
+_FONT_TEXT = """
+0 .###. #...# #..## #.#.# ##..# #...# .###.
+1 ..#.. .##.. ..#.. ..#.. ..#.. ..#.. #####
+2 .###. #...# ....# ..##. .#... #...# #####
+3 .###. #...# ....# ..##. ....# #...# .###.
+4 ...## ..#.# .#..# #...# ##### ....# ....#
+5 ##### #.... ####. ....# ....# #...# .###.
+6 ..##. .#... #.... ####. #...# #...# .###.
+7 ##### #...# ....# ...#. ..#.. ..#.. ..#..
+8 .###. #...# #...# .###. #...# #...# .###.
+9 .###. #...# #...# .#### ....# ...#. .##..
+A .###. #...# ##### #...# #...# #...# #...#
+B ####. #...# ####. #...# #...# #...# ####.
+C .###. #...# #.... #.... #.... #...# .###.
+D ####. #...# #...# #...# #...# #...# ####.
+E ##### #.... ###.. #.... #.... #.... #####
+F ##### #.... ###.. #.... #.... #.... #....
+G .#### #.... #..## #...# #...# #...# .###.
+H #...# #...# ##### #...# #...# #...# #...#
+I ###.. .#... .#... .#... .#... .#... ###..
+J ....# ....# ....# ....# ....# #...# .###.
+K #...# #..#. ###.. #..#. #...# #...# #...#
+L #.... #.... #.... #.... #.... #.... #####
+M #...# ##.## #.#.# #...# #...# #...# #...#
+N #...# ##..# #.#.# #..## #...# #...# #...#
+O .###. #...# #...# #...# #...# #...# .###.
+P ####. #...# ####. #.... #.... #.... #....
+Q .###. #...# #...# #...# #...# #..#. .##.#
+R ####. #...# ####. #...# #...# #...# #...#
+S .#### #.... .###. ....# ....# #...# .###.
+T ##### ..#.. ..#.. ..#.. ..#.. ..#.. ..#..
+U #...# #...# #...# #...# #...# #...# .###.
+V #...# #...# #...# #...# .#.#. .#.#. ..#..
+W #...# #...# #...# #...# #.#.# ##.## #...#
+X #...# .#.#. ..#.. .#.#. #...# #...# #...#
+Y #...# .#.#. ..#.. ..#.. ..#.. ..#.. ..#..
+Z ##### ....# ...#. ..#.. .#... #.... #####
+"""
+FONT = {line[0]: tuple(line[2:].split(" ")) for line in _FONT_TEXT.strip().splitlines()}
+# Two shapes read apart at 5 x 7 when they differ in at least a quarter of the 35 pixels. The hollow shield of #1436, 6 from "Q" and 8 from "D", read as "0".
+MIN_PIXELS_APART = 9
+
+
+def pixels_apart(a, b) -> int:
+    return sum(p != q for row_a, row_b in zip(a, b) for p, q in zip(row_a, row_b))
+
+
+class IconsAreNotGlyphs(unittest.TestCase):
+    """An icon is drawn inline with text in the text's colour (the tally), so it must not read as a glyph of the game's font, nor as another icon."""
+
+    def test_no_icon_reads_as_a_digit_or_a_capital(self):
+        for name, rows in cockpit_ribbon.ICONS.items():
+            for glyph, glyph_rows in FONT.items():
+                with self.subTest(icon=name, glyph=glyph):
+                    self.assertGreaterEqual(pixels_apart(rows, glyph_rows), MIN_PIXELS_APART)
+
+    def test_no_two_icons_read_as_each_other(self):
+        for a, rows_a in cockpit_ribbon.ICONS.items():
+            for b, rows_b in cockpit_ribbon.ICONS.items():
+                if a < b:
+                    with self.subTest(a=a, b=b):
+                        self.assertGreaterEqual(pixels_apart(rows_a, rows_b), MIN_PIXELS_APART)
+
+    def test_no_icon_is_a_comb(self):
+        # Three strokes side by side read as the strokes of a letter however far the pixels are: the fire's three tongues on its bed read as "W" ("WHEAT").
+        for name, rows in cockpit_ribbon.ICONS.items():
+            for line in (*rows, *("".join(column) for column in zip(*rows))):
+                with self.subTest(icon=name, line=line):
+                    self.assertLess(len(re.findall("#+", line)), 3)
+
+    def test_no_icon_has_a_hole_taller_than_a_pixel(self):
+        # A closed outline at the font's height reads as "0", "O" or "D" at any width, and is far from every glyph by pixels: the hollow hull shield read
+        # "087/100" and the thermometer's hollow tube "0HEAT". A one-pixel hole (the hull's boss) reads as a mark on a solid shape.
+        for name, rows in cockpit_ribbon.ICONS.items():
+            with self.subTest(icon=name):
+                self.assertLessEqual(tallest_hole(rows), 1)
+
+    def test_the_hole_check_catches_the_outlines_that_read_as_zero_and_passes_a_boss(self):
+        hollow_shield = ("#####", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#..")
+        hollow_tube = (".#...", "#.#..", "#.#..", "#.#..", "###..", "###..", ".#...")
+        bossed_shield = ("#####", "#####", "##.##", "#####", ".###.", ".###.", "..#..")
+        self.assertEqual((tallest_hole(hollow_shield), tallest_hole(hollow_tube), tallest_hole(bossed_shield)), (5, 3, 1))
+
+
+def tallest_hole(rows) -> int:
+    """The most rows any unlit 4-connected region spans that does not touch the cell's edge."""
+    h, w = len(rows), len(rows[0])
+    seen, tallest = set(), 0
+    for y0 in range(h):
+        for x0 in range(w):
+            if rows[y0][x0] != "." or (x0, y0) in seen:
+                continue
+            region, stack = [], [(x0, y0)]
+            seen.add((x0, y0))
+            while stack:
+                x, y = stack.pop()
+                region.append((x, y))
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and rows[ny][nx] == "." and (nx, ny) not in seen:
+                        seen.add((nx, ny))
+                        stack.append((nx, ny))
+            if all(0 < x < w - 1 and 0 < y < h - 1 for x, y in region):
+                tallest = max(tallest, len({y for _, y in region}))
+    return tallest
 
 
 class Coverage(unittest.TestCase):

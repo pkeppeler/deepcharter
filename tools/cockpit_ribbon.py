@@ -51,14 +51,32 @@ LAMPS = 5
 # The cargo slot's gauge reads the pod's load (#1449): the climb limit is marked after this many of its segments, so each segment under the mark is a tenth of
 # the climb limit and the three past it show how far over the pod is, to 130%.
 LOAD_LIMIT_SEGMENT = 10
-# The load gauge's title, as the game draws it in its own font on a plate cut from the readout plate, hung under the gauge from the band's lower edge.
-LOAD_TITLE = "LOAD"
+# Each gauge's title (#1436): its lang key under hud.deepcharter.cockpit., and the title the lang file gives it, which the game draws in its own font (the terminal
+# font's 6 pixels read as "I NAD" at GUI scale 1) after the gauge's icon, on a tab centred under the bar and riding the band's lower edge.
+TITLE_KEYS = {"fuel": "fuel", "hull": "hull", "cargo": "load", "depth": "depth", "heat": "heat"}
+_LANG = json.loads((ROOT / "src/lang/en_us/pod.json").read_text(encoding="utf-8"))
+TITLES = {gauge: _LANG["hud.deepcharter.cockpit." + key] for gauge, key in TITLE_KEYS.items()}
+# The altimeter's recess at the band's middle. The room under it is the altimeter's (#1432 hangs the sink rate there), so no title takes it.
+RECESS_W = 72
+# The icons, white, tinted by the game in the colour of what they mark, `iconWidth` wide and as tall as the font's capitals. Each gauge's title carries its
+# gauge's icon (GAUGE_ICONS), and so does the plate's tally number of the same thing: hull, fuel and depth. The tally's cargo number is the ore in the bay, not
+# the LOAD gauge's weight, so it carries the cart, which no gauge has. Each reads apart from the others by its shape, not only by its colour, and none reads as
+# a glyph of the game's font beside its text (test_cockpit_ribbon's IconsAreNotGlyphs says how).
+ICONS = {
+    "fuel": ("..#..", ".###.", ".###.", "#####", "#####", "#####", ".###."),  # a drop
+    "hull": ("#####", "#####", "##.##", "#####", ".###.", ".###.", "..#.."),  # a filled shield with its boss
+    "weight": ("..#..", ".#.#.", "..#..", ".###.", ".###.", "#####", "#####"),  # a weight with its ring
+    "depth": ("..#..", "..#..", "..#..", "..#..", "#####", ".###.", "..#.."),  # an arrow down
+    "heat": ("...#.", ".#.##", ".####", "#####", ".###.", ".....", "#####"),  # a flame of two tongues over its burner
+    "cart": (".....", ".....", "#...#", "#####", ".###.", ".....", ".#.#."),  # a mine cart's tub on its wheels
+}
+GAUGE_ICONS = {"fuel": "fuel", "hull": "hull", "cargo": "weight", "depth": "depth", "heat": "heat"}
 KIND = {"across": 0, "up": 1}
 SHARED = {
     "enabled": 1, "minGuiWidth": MIN_GUI_W, "minGuiHeight": MIN_GUI_H,
     "fuelColor": "#F0A010", "hullColor": "#58B05A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
-    "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "plateGap": 2,
-    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5, "titleGap": 0, "titleTextHeight": 7,
+    "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "plateGap": 1,
+    "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 3, "titleGap": 1, "titleTextHeight": 7, "iconWidth": 5, "iconGap": 1,
     "cameraInstalled": 0, "cameraStaticPerHull": 4.0, "cameraStaticFallPerTick": 0.03, "cameraStaticDots": 2400, "cameraDotSize": 2,
     "cameraLensHeatPerTick": 0.01, "cameraLensCoolPerTick": 0.02, "cameraLensDead": 1.0, "cameraLensRecover": 0.6,
     "cameraFlickerMaxChance": 0.35, "cameraFlickerMinTicks": 2, "cameraFlickerMaxTicks": 6, "cameraHazeLines": 14, "cameraHazeAlpha": 90, "cameraVeilAlpha": 150, "cameraDotAlphaMin": 80, "cameraTearBands": 6, "cameraTearAlpha": 90,
@@ -71,7 +89,7 @@ SHARED = {
     # The SINK readout (#1432): the sink against the hard-landing buffer, the title and a bar on a plate hung under the band's middle while the pod sinks past
     # sinkShowShare of the buffer. The bar's limit mark is after sinkLimit of its segments; it turns ribbonWarn from sinkWarnShare of the buffer and lowColor past
     # it, and stays sinkHoldTicks after the sink.
-    "ribbonWarn": "#FFB02E", "sinkShowShare": 0.6, "sinkWarnShare": 0.75, "sinkBarW": 12, "sinkBarH": 5, "sinkSegments": 4, "sinkLimit": 3, "sinkBarGap": 2, "sinkHoldTicks": 20,
+    "ribbonWarn": "#FFB02E", "sinkShowShare": 0.6, "sinkWarnShare": 0.75, "sinkBarW": 12, "sinkBarH": 5, "sinkSegments": 4, "sinkLimit": 3, "sinkBarGap": 1, "sinkHoldTicks": 20,
 }
 # The width of the SINK readout's title, "SINK", as the game's font measures it: its I is narrower than FONT_W.
 SINK_TITLE_W = 22
@@ -225,10 +243,27 @@ def readout_plate():
     return Sprite(img, (3, 3, 3, 3))
 
 
-def bar_labels(img, x, y, text):
-    """Engraved capitals: a light edge below and to the right of the dark ink."""
-    img.text(x + 1, y + 1, text, rgb("#ffffff", 70))
-    img.text(x, y, text, H[7])
+def title_tab():
+    """The tab behind a gauge's title, 5 x 5 cut in nine with a border of 1: the readout plate's dark glass in a steel rim, its corners round."""
+    img = Img(5, 5)
+    img.rect(0, 0, 5, 5, (8, 12, 11, 222))
+    img.outline(0, 0, 5, 5, H[4])
+    for corner in ("tl", "tr", "bl", "br"):
+        img.round_corner(corner, 1)
+    return Sprite(img, (1, 1, 1, 1))
+
+
+def icon(rows):
+    """An icon: white where `rows` has a #, for the game to tint."""
+    img = Img(SHARED["iconWidth"], SHARED["titleTextHeight"])
+    img.mask(rows, 0, 0, rgb("#FFFFFF"))
+    return Sprite(img)
+
+
+def tab_size(gauge):
+    """The size of `gauge`'s title tab, (width, height): the tab's border and `titleGap` round the icon, `iconGap` and the title, as the client works it out."""
+    chrome = 2 * (title_tab().border[0] + SHARED["titleGap"])
+    return chrome + SHARED["iconWidth"] + SHARED["iconGap"] + len(TITLES[gauge]) * FONT_W, chrome + SHARED["titleTextHeight"]
 
 
 def lamp_well(img, x, y):
@@ -243,22 +278,58 @@ def lamp_well(img, x, y):
 # warning lamps at its end; the scanner's bezel hangs from the band's right end and a one line plate (the tally, then every other line of the readout) under that.
 
 
+# The bars, each with its title's tab under it (#1436): the tabs stand TAB_SPACE apart and clear of the room under the recess, and the bars BAR_SPACE apart; the
+# band's ends keep EDGE for their screws.
+BAR_W, BAR_H, BAR_Y, SEGMENTS = 26, 5, 3, 13
+TAB_SPACE, BAR_SPACE, EDGE = 2, 6, 8
+# The tabs' top, from the band's top: the row under the bars' lit lower edge, so a tab rides the band's lower lip and hangs only a little below it.
+TITLE_Y = BAR_Y + BAR_H + 1
+
+
+def bar_places():
+    """Where each bar, the recess and the lamps go on a band laid out from its left end: ({gauge: x}, recess x, lamps x, band width). The recess is at the band's
+    middle, so the band is as wide as twice its wider side."""
+
+    xs = {}
+
+    def place(gauges, bar_end, tab_end):
+        """Puts `gauges` left to right after a bar ending at `bar_end` and a tab at `tab_end`; returns where the last bar and tab end."""
+        for gauge in gauges:
+            width = tab_size(gauge)[0]
+            left = -((BAR_W - width) // 2)
+            xs[gauge] = max(bar_end + BAR_SPACE, tab_end + TAB_SPACE + left)
+            bar_end, tab_end = xs[gauge] + BAR_W, xs[gauge] + width - left
+        return bar_end, tab_end
+
+    bar_end, tab_end = place(("fuel", "hull", "cargo"), EDGE - BAR_SPACE, -TAB_SPACE)
+    recess = max(bar_end + BAR_SPACE, tab_end + TAB_SPACE)
+    bar_end, _ = place(("depth", "heat"), recess + RECESS_W, recess + RECESS_W)
+    lamps = bar_end + BAR_SPACE
+    side = max(recess, lamps + LAMPS * 4 + (LAMPS - 1) * SHARED["lampGap"] + EDGE - recess - RECESS_W)
+    shift = side - recess
+    return {g: x + shift for g, x in xs.items()}, side, lamps + shift, 2 * side + RECESS_W
+
+
 def ribbon():
     look = Look()
     look.sprite("plate", readout_plate())
+    look.sprite("tab", title_tab())
+    for name, rows in ICONS.items():
+        look.sprite(f"icon_{name}", icon(rows))
     look.keys.update(anchor_keys(STYLE + "Readout", 2, 0, 2, 128))
     look.keys[STYLE + "AltimeterY"] = 3
-    w, h, bar_w, bar_h, segments = 320, 14, 26, 5, 13
+    look.keys[STYLE + "TitleY"] = TITLE_Y
+    xs, recess, lamps_x, w = bar_places()
+    h = 14
     band = slab(w, h, (0, 0, 6, 6), random.Random(448_11))
     place = Placed(w, h, 1, 0, 0, 0)
-    for name, ux, text in (("fuel", 8, "F"), ("hull", 46, "H"), ("cargo", 84, "L"), ("depth", 203, "D"), ("heat", 241, "T")):
-        bar_labels(band, ux, 3, text)
-        well(band, ux + 7, 4, bar_w, bar_h)
-        look.gauge(name, "across", place.inner(ux + 7, 4, bar_w, bar_h), segments)
+    for name, x in xs.items():
+        well(band, x, BAR_Y, BAR_W, BAR_H)
+        look.gauge(name, "across", place.inner(x, BAR_Y, BAR_W, BAR_H), SEGMENTS)
     look.keys[STYLE + "CargoLimit"] = LOAD_LIMIT_SEGMENT
-    well(band, 124, 2, 72, 10)  # the altimeter's recess
-    lamps_w = lamp_well(band, 284, 4)
-    look.lamps(place.inner(284, 4, lamps_w, 5))
+    well(band, recess, 2, RECESS_W, 10)  # the altimeter's recess
+    lamps_w = lamp_well(band, lamps_x, BAR_Y)
+    look.lamps(place.inner(lamps_x, BAR_Y, lamps_w, 5))
     for sx, sy in ((4, 7), (w - 5, 7)):
         screw(band, sx, sy, rgb("#9aa6b0"), rgb("#3c454e"))
     look.sprite("part_a", Sprite(band), place)
@@ -326,15 +397,18 @@ ACCOUNT = "Scanner Player0  $0"
 
 
 def plate_rows(state):
-    """The rows of the readout plate in `state`, top to bottom, each a list of (text, colour): the tally, the account line, then every other line of the readout."""
-    account = [[(ACCOUNT, "#6FD99A")]]
-    alerts = [[(s, "#FF5522")] for s in state["alerts"]]
-    tally = [[(text, SHARED[key]) for text, key in zip(state["tally"], ("hullColor", "fuelColor", "cargoColor", "depthColor"))]]
+    """The rows of the readout plate in `state`, top to bottom, each a list of (text, colour, icon or None): the tally, hull, fuel and depth each after its
+    gauge's icon and the bay's ore count after the cart, the account line, then every other line of the readout."""
+    account = [[(ACCOUNT, "#6FD99A", None)]]
+    alerts = [[(s, "#FF5522", None)] for s in state["alerts"]]
+    marks = (GAUGE_ICONS["hull"], GAUGE_ICONS["fuel"], "cart", GAUGE_ICONS["depth"])
+    tally = [[(text, SHARED[gauge + "Color"], mark) for text, gauge, mark in zip(state["tally"], ("hull", "fuel", "cargo", "depth"), marks)]]
     return tally + account + alerts
 
 
 def row_width(row):
-    return sum(len(text) * FONT_W - 1 for text, _ in row) + SHARED["tallyGap"] * (len(row) - 1)
+    icons = sum(SHARED["iconWidth"] + SHARED["iconGap"] for _, _, icon in row if icon)
+    return sum(len(text) * FONT_W - 1 for text, _, _ in row) + icons + SHARED["tallyGap"] * (len(row) - 1)
 
 
 def plate_inset(look):
@@ -350,26 +424,24 @@ def plate_size(look, state):
 
 
 def sink_box(look):
-    """The SINK readout's plate on the 427 x 240 screen, (left, top, width, height), as the client puts it: centred under the band (under the altimeter's recess) and
+    """The SINK readout's tab on the 427 x 240 screen, (left, top, width, height), as the client puts it: centred under the band (under the altimeter's recess) and
     hung from its lower edge. The coverage counts it although it shows only while the pod sinks."""
-    inset = look.sprites["plate"].border[0] + SHARED["titleGap"]
+    inset = look.sprites["tab"].border[0] + SHARED["titleGap"]
     width = SINK_TITLE_W + SHARED["sinkBarGap"] + SHARED["sinkBarW"] + 2 * inset
     height = max(SHARED["titleTextHeight"], SHARED["sinkBarH"]) + 2 * inset
     band = look.parts["part_a"]
     return band.left(SCREEN_W) + (band.w - width) // 2, band.top(SCREEN_H) + band.h, width, height
 
 
-def title_box(look):
-    """The load gauge's title plate on the 427 x 240 screen, (left, top, width, height): centred under the gauge, hung from the band's lower edge, as the client
-    puts it."""
+def title_box(look, gauge, screen=(SCREEN_W, SCREEN_H)):
+    """`gauge`'s title tab on `screen`, (left, top, right, bottom): centred under the bar, its top `ribbonTitleY` under the band's, as the client puts it."""
     t = look.keys
-    inset = look.sprites["plate"].border[0] + SHARED["titleGap"]
-    width = len(LOAD_TITLE) * FONT_W + 2 * inset  # the game measures a run of text with its last advance
-    height = SHARED["titleTextHeight"] + 2 * inset
-    gauge = Placed(t[STYLE + "CargoW"], t[STYLE + "CargoH"], t[STYLE + "CargoAnchorX"], t[STYLE + "CargoAnchorY"], t[STYLE + "CargoX"], t[STYLE + "CargoY"])
-    band = look.parts["part_a"]
-    left = gauge.left(SCREEN_W) + (gauge.w - width) // 2
-    return left, band.top(SCREEN_H) + band.h, width, height
+    prefix = STYLE + gauge.capitalize()
+    bar = Placed(t[prefix + "W"], t[prefix + "H"], t[prefix + "AnchorX"], t[prefix + "AnchorY"], t[prefix + "X"], t[prefix + "Y"])
+    width, height = tab_size(gauge)
+    left = bar.left(screen[0]) + (bar.w - width) // 2
+    top = look.parts["part_a"].top(screen[1]) + t[STYLE + "TitleY"]
+    return left, top, left + width, top + height
 
 
 def coverage(look):
@@ -390,8 +462,11 @@ def coverage(look):
     plate = Placed(width, height, t[STYLE + "ReadoutAnchorX"], t[STYLE + "ReadoutAnchorY"], t[STYLE + "ReadoutX"], t[STYLE + "ReadoutY"])
     left, top = plate.left(SCREEN_W), plate.top(SCREEN_H)
     status |= {(left + i, top + j) for j in range(height) for i in range(width)}
-    for left, top, width, height in (sink_box(look), title_box(look)):
-        status |= {(left + i, top + j) for j in range(height) for i in range(width)}
+    for gauge in GAUGES:
+        left, top, right, bottom = title_box(look, gauge)
+        status |= {(x, y) for y in range(top, bottom) for x in range(left, right)}
+    left, top, width, height = sink_box(look)
+    status |= {(left + i, top + j) for j in range(height) for i in range(width)}
     mark(scanner, look.sprites["cap"].img, look.parts["cap"])
     window = Placed(t[STYLE + "ScannerW"], t[STYLE + "ScannerH"], t[STYLE + "ScannerAnchorX"], t[STYLE + "ScannerAnchorY"], t[STYLE + "ScannerX"], t[STYLE + "ScannerY"])
     scanner |= {(window.left(SCREEN_W) + i, window.top(SCREEN_H) + j) for j in range(window.h) for i in range(window.w)}
@@ -475,10 +550,12 @@ def preview_look(look, state):
     gauge = Placed(t[STYLE + "CargoW"], t[STYLE + "CargoH"], t[STYLE + "CargoAnchorX"], t[STYLE + "CargoAnchorY"], t[STYLE + "CargoX"], t[STYLE + "CargoY"])
     mark_x = gauge.left(SCREEN_W) + t[STYLE + "CargoLimit"] * gauge.w // t[STYLE + "CargoSegments"] - 1
     img.rect(mark_x, gauge.top(SCREEN_H) - 1, 1, gauge.h + 2, rgb(SHARED["lowColor"]))
-    tl, tt, tw, th = title_box(look)
-    img.blit(nine_slice(sprites["plate"].img, sprites["plate"].border, tw, th), tl, tt)
-    inset = sprites["plate"].border[0] + SHARED["titleGap"]
-    img.text(tl + inset, tt + inset, LOAD_TITLE, rgb(SHARED["cargoColor"]))
+    inset = sprites["tab"].border[0] + SHARED["titleGap"]
+    for name in GAUGES:
+        left, top, right, bottom = title_box(look, name)
+        img.blit(nine_slice(sprites["tab"].img, sprites["tab"].border, right - left, bottom - top), left, top)
+        img.mask(ICONS[GAUGE_ICONS[name]], left + inset, top + inset, rgb(SHARED[name + "Color"]))
+        img.text(left + inset + SHARED["iconWidth"] + SHARED["iconGap"], top + inset, TITLES[name], rgb(SHARED[name + "Color"]))
     img.text(SCREEN_W // 2 - text_width("-1,234 ft.") // 2, t[STYLE + "AltimeterY"] + 1, "-1,234 ft.", rgb("#FFFFFF"))
     width, height = plate_size(look, state)
     inset_left, inset_top, _, _ = plate_inset(look)
@@ -488,7 +565,10 @@ def preview_look(look, state):
     y = py + inset_top
     for row in plate_rows(state):
         x = px + inset_left
-        for text, color in row:
+        for text, color, mark in row:
+            if mark:
+                img.mask(ICONS[mark], x, y, rgb(color))
+                x += SHARED["iconWidth"] + SHARED["iconGap"]
             img.text(x, y, text.replace("%", ""), rgb(color))
             x += len(text) * FONT_W - 1 + SHARED["tallyGap"]
         y += 11
@@ -500,7 +580,7 @@ def preview(directory: Path) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     look = ribbon()
     for name, state in STATES.items():
-        (directory / f"preview-{STYLE}-{name}.png").write_bytes(big(preview_look(look, state), 2).to_png())
+        (directory / f"preview-{STYLE}-{name}.png").write_bytes(big(preview_look(look, state)).to_png())
 
 
 def main(argv: list[str]) -> int:
