@@ -217,8 +217,8 @@ public class ScannerTiersTest {
                     "the thermal tier should reach 2 blocks either side of the plane for the Mole and the Prospector (a bore of 2 or 3 and a block of margin), got %d",
                     spread);
         }
-        // Perpendicular to an east-facing plane is the Z axis. Each column ahead holds lava at one offset from the
-        // plane.
+        // Perpendicular to an east-facing plane is the Z axis. Each column ahead holds lava at one offset from
+        // the plane.
         int[] offsets = {0, 1, 2, -1, -2, 3, -3};
         Cell[] expected = {Cell.LAVA, Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.AIR, Cell.AIR
         };

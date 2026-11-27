@@ -719,8 +719,8 @@ public class TowingTest {
                 step -> start.add(0.2 * Math.min(step, 100), 0, 0),
                 (tower, towed, age) -> {
                     if (age == 1) {
-                        // The same as a reload for the line: the transient state of the cable is gone and the link is
-                        // not.
+                        // The same as a reload for the line: the transient state of the cable is gone and the link
+                        // is not.
                         PodTowing.detach(towed);
                         PodTowing.attach(tower, towed);
                     }
@@ -1318,11 +1318,12 @@ public class TowingTest {
         double z = 2100.5;
         double y = TestLayers.worldY(1, 8);
         ServerLevel one = TestLayers.level(helper, 1);
-        openShaft(one, x, z);
         MockPlayer mock = MockPlayers.join(helper, "towing-crossing");
         mock.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pods = {null, null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, y, z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            openShaft(one, x, z);
             pods[0] = spawn(one, x, y, z);
             pods[1] = spawn(one, x, y + 2, z);
             PodTowing.attach(pods[0], pods[1]);
@@ -1368,13 +1369,14 @@ public class TowingTest {
         double z = 2200.5;
         double y = TestLayers.worldY(1, 8);
         ServerLevel one = TestLayers.level(helper, 1);
-        openShaft(one, x, z);
         MockPlayer pilot = MockPlayers.join(helper, "towing-pilot");
         MockPlayer rider = MockPlayers.join(helper, "towing-rider");
         pilot.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         rider.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
         PodEntity[] pods = {null, null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, y, z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            openShaft(one, x, z);
             pods[0] = spawn(one, x, y, z);
             pods[1] = spawn(one, x, y + 2, z);
             PodTowing.attach(pods[0], pods[1]);

@@ -105,8 +105,8 @@ public final class FounderStatue {
         ColonySite.Placed colony = Colony.placed(server)
                 .orElseThrow(() ->
                         new IllegalStateException("the colony is not built: the Founder has no hands to restore"));
-        // The pair in a chunk that is not loaded is not found: it is of an earlier pair, and discards itself when it
-        // loads.
+        // The pair in a chunk that is not loaded is not found: it is of an earlier pair, and discards itself when
+        // it loads.
         BlockPos site = markerPos(server).orElseThrow();
         ColonyDisplays.readable(server).ifPresent(displays -> displays.beginHands(site));
         hands(server).forEach(Entity::discard);

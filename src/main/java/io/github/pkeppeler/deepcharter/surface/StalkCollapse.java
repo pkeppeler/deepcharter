@@ -177,7 +177,7 @@ final class StalkCollapse {
         return switch (direction) {
             case UP -> collapses(nextState);
             case DOWN -> hangs(nextState) && hangsFree(level, next) && pendantOf(level, falling, next);
-            default -> great(state) && great(nextState);
+            case NORTH, SOUTH, WEST, EAST -> great(state) && great(nextState);
         };
     }
 

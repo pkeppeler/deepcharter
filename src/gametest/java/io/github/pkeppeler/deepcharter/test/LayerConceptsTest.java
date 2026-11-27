@@ -148,8 +148,8 @@ public class LayerConceptsTest {
             for (Scene scene : LayerConceptScenes.read(server)) {
                 if (scene.layer() == layer) {
                     LayerConceptScenes.place(hold, server, scene, size);
-                    // It checks the biome in the corners and the middle of the box, and fails when /fillbiome did not
-                    // take.
+                    // It checks the biome in the corners and the middle of the box, and fails when /fillbiome did
+                    // not take.
                     LayerConceptScenes.setAtmosphere(hold, server, scene, size, "company");
                     LayerConceptScenes.setAtmosphere(hold, server, scene, size, "deep");
                     LayerConceptScenes.release(hold, server, scene, size);

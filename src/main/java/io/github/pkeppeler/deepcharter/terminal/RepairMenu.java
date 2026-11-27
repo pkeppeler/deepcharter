@@ -103,10 +103,10 @@ public final class RepairMenu extends SlottedMenu {
                     .checked(stack -> refusal(slot, part).map(TerminalRefusal::message))
                     .ghost(new ItemStack(part), new ItemStack(part).getHoverName())
                     .locking()
-                    .holding(1);
+                    .holdingOne();
             addRuleSlot(view, i, FRAME + i % PART_COLUMNS * PART_COLUMN, PARTS_Y + i / PART_COLUMNS * PART_ROW, rule);
         }
-        addPlayerInventory(inventory, FRAME, inventoryY(parts.size()));
+        addPlayerInventory(inventory, inventoryY(parts.size()));
         refresh();
     }
 
