@@ -1,4 +1,4 @@
-# The time budget of CI (#1574, ADR 0113): no job runs longer than job-limit-minutes, and each shard of a suite holds at most the seconds
+# The time budget of CI (#1574, ADR 0115): no job runs longer than job-limit-minutes, and each shard of a suite holds at most the seconds
 # below of tests by weight, so that the job fits the limit on a runner slow-runner-factor times slower than the ones measured.
 # tools/tests/test_ci_budget.py enforces all of it: `timeout-minutes` on every job, no class heavier than its shard budget, and the
 # shard counts in the workflows (CLIENT_SHARDS, BUILD_SHARDS) enough for the weights. Lines are `<name> <number>`.

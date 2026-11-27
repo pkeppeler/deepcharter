@@ -41,6 +41,13 @@ class ToolTestPartsTest(unittest.TestCase):
         self.assertIn("tools/tests/gate_checks.py", gates[1])
         self.assertEqual(WORKFLOW.count("tools/tests/gate_checks.py"), 1)
 
+    def test_the_parts_hand_their_main_sha_over_in_artifacts_the_builds_aggregate_does_not_read(self):
+        # tools/ci-shard-main.sh (main's copy) counts main-sha-<n> files in one directory, so the parts use their own artifacts.
+        for number in ("${{ matrix.part }}", "8"):
+            self.assertIn(f"artifact: tool-main-{number}", WORKFLOW)
+        self.assertIn("pattern: tool-main-*", WORKFLOW)
+        self.assertNotIn("merged-main-tool", WORKFLOW)
+
     def test_the_aggregate_waits_for_every_part_and_the_gate_checks(self):
         self.assertIn(f'ci-shard-main.sh "$RUNNER_TEMP/shard-main" {len(matrix()) + 1}', WORKFLOW)
         self.assertIn("needs: [tool-part, tool-gates]", WORKFLOW)
