@@ -26,7 +26,7 @@ permissions:
 
 env:
   # The shards of a full run; a PR-tier run takes as many as its classes need (the plan job).
-  BUILD_SHARDS: 13
+  BUILD_SHARDS: 15
 
 jobs:
   # Decides the tier and the classes it runs (tools/ci_affected.py, ADR 0116): what the server shards below take. It merges main as the

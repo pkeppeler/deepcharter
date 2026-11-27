@@ -36,7 +36,7 @@ FILES = {
     "gradle/client-test-weights.txt": "OneClientTest 40\nTwoClientTest 40\nThreeClientTest 40\n",
     "gradle/ci-budget.txt": "server-shard-seconds 100\nclient-shard-seconds 100\n",
 }
-FULL = {"server": 13, "client": 30}
+FULL = {"server": 15, "client": 30}
 
 
 def plan(changed: list[str], head_ref: str = "1-slug", labels: tuple[str, ...] = (), files: dict[str, str] | None = None) -> dict[str, str]:
@@ -95,7 +95,7 @@ class MappingTest(unittest.TestCase):
                 path = Path(tmp) / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(text)
-            result = affected.plan([f"{MAIN}/Island.java"], "1-x", set(), 13, 30, Path(tmp))
+            result = affected.plan([f"{MAIN}/Island.java"], "1-x", set(), 15, 30, Path(tmp))
         self.assertEqual(["BetaTest"], names(result, "server"))
 
     def test_a_scenario_is_never_listed(self):
@@ -165,7 +165,7 @@ class FallBackTest(unittest.TestCase):
 
 
 class RealTreeTest(unittest.TestCase):
-    full = (13, 30)
+    full = (15, 30)
 
     def real(self, changed: list[str], **kwargs: object) -> dict[str, str]:
         return affected.plan(changed, kwargs.get("head_ref", "1-slug"), set(), *self.full)  # type: ignore[arg-type]
@@ -176,7 +176,7 @@ class RealTreeTest(unittest.TestCase):
 
     def test_a_batch_runs_every_shard(self):
         result = self.real(["docs/design/mechanics.md"], head_ref="batch/20261127T101500Z")
-        self.assertEqual(("13", "30"), (result["server-count"], result["client-count"]))
+        self.assertEqual(("15", "30"), (result["server-count"], result["client-count"]))
 
     def test_a_changed_server_test_class_runs_at_least_that_class(self):
         test = next((REPO / "src/gametest/java").rglob("PodDrillTest.java"))
