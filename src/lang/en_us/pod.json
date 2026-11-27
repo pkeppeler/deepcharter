@@ -18,6 +18,7 @@
   "entity.deepcharter.prospector": "Prospector",
   "hud.deepcharter.pod.burning": "HULL BURNING",
   "hud.deepcharter.cockpit.load": "LOAD",
+  "hud.deepcharter.cockpit.sink": "SINK",
   "hud.deepcharter.pod.overloaded": "OVERLOADED",
   "hud.deepcharter.pod.camera": "CAM",
   "hud.deepcharter.pod.camera_dead": "NO FEED",
