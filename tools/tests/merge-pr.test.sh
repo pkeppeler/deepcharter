@@ -791,6 +791,14 @@ run_check "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13
 exited "tier: --check accepts a PR-tier build that ran no server shard" 0
 refusal "tier: that PR-tier build is still not landable" "$tier_hint" \
   "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success)" STUB_TIER=pr
+run_check STUB_TIER=pr
+printed "tier: --check's last line says a PR-tier head lands only as a batch" "ci tier: pr, lands only as a batch (tools/merge-batch.sh 7)"
+run_check STUB_TIER=
+printed "tier: a head with no ci-tier notice is logged as [pre-tier]" "[pre-tier]"
+run_check STUB_TIER=full
+if [[ $out == *"[pre-tier]"* ]]; then fail "tier: a head with a notice is not logged as [pre-tier]"; else pass "tier: a head with a notice is not logged as [pre-tier]"; fi
+# The library lands unless told otherwise: a caller that sets nothing refuses a PR-tier head.
+refusal "tier: landing is the default" "[pr-tier]" STUB_TIER=pr
 # A push that changes nothing a Gradle task reads (docs, tools) runs no Gradle job: build-checks and the shards are only skipped, and the
 # `build` aggregate's ci-gradle notice says why (ADR 0116). Without the notice the same runs are refused.
 no_gradle_runs=$(runs build:2:success tool-tests:3:success "build-checks:13:skipped")

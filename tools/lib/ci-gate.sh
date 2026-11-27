@@ -5,8 +5,7 @@
 #
 # Two tiers (ADR 0116): a PR push runs only the GameTest classes its change can affect, a batch PR or a change that can reach every test
 # the full suites. Each aggregate (`build`, `client-gametest`) records which in a `ci-tier` notice, `full` or `pr`; one with no notice is
-# from before the tiers and ran everything. The caller sets $require_full_tier to 1 to land a PR or to read a batch PR's CI, and to 0 for
-# --check: a head whose CI ran the PR tier is then refused with the marker [pr-tier], which tools/merge-batch.sh reads.
+# from before the tiers and ran everything. $require_full_tier defaults to 1 (landing a PR, or reading a batch PR's CI); --check sets it to 0: a head whose CI ran the PR tier is then refused with the marker [pr-tier], which tools/merge-batch.sh reads.
 
 # Job names (ci.yml) that run on every PR; the path-gated client job (client-tests.yml) is not listed. `build` is the aggregate of
 # the `build-shard <i>` jobs and `build-checks` (#1327), which the stale-base rule below also reads.
@@ -22,6 +21,9 @@ read_ci_tier() {
     '.[] | select(.title == "ci-tier") | .message' \
     || refuse "could not read the annotations of $1 run $run_id: $gh_list_err"
   ci_tier_note=${ci_tier_note%%$'\n'*}
+  if [[ -z $ci_tier_note ]]; then
+    echo "$1 run $run_id has no ci-tier notice: CI from before the tiers [pre-tier], which ran everything, so it counts as full" >&2
+  fi
   printf -v "$2" '%s' "$([[ $ci_tier_note == pr ]] && echo pr || echo full)"
 }
 
@@ -204,7 +206,7 @@ check_ci_gate() {
   ci_tier=full
   [[ $build_tier == full && $client_tier == full ]] || ci_tier=pr
   [[ $gate_only -eq 0 ]] || echo "ci tier: $ci_tier (server suite: $build_tier, client suite: $client_tier)"
-  if [[ ${require_full_tier:-0} -eq 1 && $ci_tier == pr ]]; then
+  if [[ ${require_full_tier:-1} -eq 1 && $ci_tier == pr ]]; then
     refuse "[pr-tier] has CI of the PR tier only (the GameTest classes its change can affect: server suite $build_tier, client suite $client_tier), and landing needs the full suites: land it with tools/merge-batch.sh $pr (a batch PR runs them), or label it full-ci and push again"
   fi
 }

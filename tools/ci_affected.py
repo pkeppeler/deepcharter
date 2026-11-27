@@ -12,13 +12,13 @@ Decides what CI runs for a pull request (ADR 0116). Reads the changed paths on s
 
 Both suites run whole for a batch PR (head ref `batch/*`), for a PR labelled `full-ci`, and for any change that can reach every test: build
 files, workflows and actions, mixins, data and lang resources, or an affected set that outweighs half the suite. Otherwise a class is
-affected when it is a changed file or mentions, by name, a class that is, through main, client and test-support code: a leaf class
-nothing mentions affects only itself and the tests that mention it. A name is a top-level or nested type; a nested name two files declare
+affected when it is a changed file or mentions, by name, a class that is, through main, client and test-support code (a helper under test/ that is no listed test class, an abstract base, ClientTestLog, passes a change on; a listed class is a leaf). A name is a top-level or nested type; a nested name two files declare
 counts for both. This over-approximates (a name in a string is not a use, a name in a comment is stripped) and never under-approximates
 for code that names what it uses; what it cannot see (a mixin's target, a registry id in data) is why mixins and data fall back to
 everything. Textures, models and sounds reach the whole client suite, and a server class only if it names an asset path. Docs, tools, the
 shard weights and the budget file affect no GameTest. A class with no @GameTest method, and an evidence scenario, is never listed."""
 import argparse
+import functools
 import json
 import re
 import sys
@@ -36,6 +36,12 @@ _COMMENTS_AND_STRINGS = re.compile(r"/\*.*?\*/|//[^\n]*|\"\"\"(?:\.|.)*?\"\"\"|\
 _TYPE_DECLARATION = re.compile(r"\b(?:class|interface|enum|record|@interface)\s+([A-Z][A-Za-z0-9_]*)")
 _IDENTIFIER = re.compile(r"\b[A-Z][A-Za-z0-9_]*\b")
 
+# The mod entry points, which nothing in the tree names (fabric.mod.json does), and the suites a file that reaches one widens to.
+_ENTRY_POINTS = (
+    ("src/main/java/", "/DeepCharter.java", ("server", "client")),
+    ("src/client/java/", "/DeepCharterClient.java", ("client",)),
+)
+
 # Paths that can change what every test does: both suites run whole.
 _EVERYTHING = (
     re.compile(r"^(build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle\.lockfile|buildscript-gradle\.lockfile|settings-gradle\.lockfile)$"),
@@ -49,8 +55,9 @@ _EVERYTHING = (
 )
 # Paths no Gradle task reads, the same list as DENY in tools/ci-reuse-compiled.sh (test_ci_affected.py checks they agree): a push that
 # changes only these runs no Gradle job. A tool the build's gates run (a Java gate, a gate check) is read by Gradle after all.
-_DENY = re.compile(r"^(docs/|tools/|\.github/|\.claude/|\.githooks/|prompts/|\.papercuts\.jsonl$|[^/]*\.md$|LICENSE$)")
-_GRADLE_TOOL = re.compile(r"^tools/([^/]*\.java|tests/(gate_|[^/]*_gate_check\.py))")
+_DENY = re.compile(r"^(docs/|tools/|\.github/|\.claude/|\.githooks/|prompts/|\.papercuts\.jsonl$|(README|CONTEXT)\.md$)")
+# What a Gradle task or a gate check runs under tools/ (test_ci_affected.py derives the list from what they import and name).
+_GRADLE_TOOL = re.compile(r"^tools/(py$|ci_shards\.py$|record-evidence\.sh$|lib/|[^/]*\.java$|tests/(gate_|[^/]*_gate_check\.py))")
 _ASSETS = re.compile(r"^src/(main|client)/resources/assets/")
 _JAVA = re.compile(r"^src/(main|client|gametest)/java/.*/([A-Za-z0-9_-]+)\.java$")
 _PACKAGE_INFO = re.compile(r"/package-info\.java$")
@@ -58,38 +65,60 @@ _PACKAGE_INFO = re.compile(r"/package-info\.java$")
 _SRC = re.compile(r"^src/")
 
 
-def read_tree(root: Path) -> dict[str, tuple[set[str], set[str]]]:
+@functools.lru_cache(maxsize=4)
+def read_tree(root: Path) -> dict[str, tuple[frozenset[str], frozenset[str]]]:
     """Each Java file's path (relative to the repo) to the type names it declares and the other capitalised names it mentions."""
     found = {}
     for source_root in ROOTS:
         for source in sorted((root / source_root).rglob("*.java")):
             stripped = _COMMENTS_AND_STRINGS.sub(" ", source.read_text())
             declared = set(_TYPE_DECLARATION.findall(stripped)) | {source.stem}
-            found[str(source.relative_to(root))] = (declared, set(_IDENTIFIER.findall(stripped)) - declared)
+            found[str(source.relative_to(root))] = (frozenset(declared), frozenset(set(_IDENTIFIER.findall(stripped)) - declared))
     return found
 
 
-def is_test(path: str) -> bool:
-    """A test class is a leaf: nothing is reached through it. Test support code is not."""
-    return path.startswith("src/gametest/java/") and "/support/" not in path
+@functools.lru_cache(maxsize=4)
+def scanned(root: Path) -> tuple[list[str], list[str], dict[str, set[str]]]:
+    """ci_shards.scan(root): the listed server and client classes and the campaign environments the server ones name."""
+    return shards.scan(root)
 
 
-def affected_files(tree: dict[str, tuple[set[str], set[str]]], changed: set[str]) -> set[str]:
-    """The files of `tree` that are in `changed`, or that mention (transitively, through any file but a test class) a type one declares.
-    A changed path not in the tree (a deleted file) still counts by its file name."""
+def test_paths(root: Path) -> frozenset[str]:
+    """The paths of the classes ci_shards.scan lists, which a change reaches but passes on to nothing: a test class is a leaf. A helper
+    under test/ that is no listed class (ClientTestLog, an abstract base) is not, and passes a change on to the tests that use it."""
+    server, client, _ = scanned(root)
+    return frozenset(f"src/gametest/java/{name.replace('.', '/')}.java" for name in server + client)
+
+
+def affected_files(
+    tree: dict[str, tuple[frozenset[str], frozenset[str]]], changed: set[str], tests: frozenset[str]
+) -> set[str]:
+    """The files of `tree` that are in `changed`, or that mention (transitively, through any file but a listed test class) a type one
+    declares. A changed path not in the tree (a deleted file) still counts by its file name."""
+    mentioned_by: dict[str, list[str]] = {}
+    for path, (_declared, mentions) in tree.items():
+        for name in mentions:
+            mentioned_by.setdefault(name, []).append(path)
     reached = {path for path in changed if path in tree}
-    names = {m[2] for m in map(_JAVA.match, changed) if m} | {n for path in reached for n in tree[path][0]}
-    grew = True
-    while grew:
-        grew = False
-        for path, (declared, mentions) in tree.items():
-            if path in reached or not mentions & names:
+    pending = [m[2] for m in map(_JAVA.match, changed) if m] + [n for path in reached for n in tree[path][0]]
+    seen_names: set[str] = set()
+    while pending:
+        name = pending.pop()
+        if name in seen_names:
+            continue
+        seen_names.add(name)
+        for path in mentioned_by.get(name, ()):
+            if path in reached:
                 continue
             reached.add(path)
-            grew = True
-            if not is_test(path):
-                names |= declared
+            if path not in tests:
+                pending.extend(tree[path][0])
     return reached
+
+
+def needs_gradle(changed: list[str]) -> bool:
+    """True when a changed path is one a Gradle task reads: anything off the deny list, or a tool a gate or gate check runs."""
+    return any(not _DENY.match(p) or _GRADLE_TOOL.match(p) for p in changed)
 
 
 def plan(
@@ -101,7 +130,7 @@ def plan(
     root: Path = REPO,
 ) -> dict[str, str]:
     """The output lines for a pull request with these changed paths."""
-    server, client, environments = shards.scan(root)
+    server, client, environments = scanned(root)
     client = [c for c in client if not c.endswith("Scenario")]
     suites = {
         "server": (server, shards.parse_weights(root / "gradle/server-test-weights.txt"), shards.DEFAULT_SERVER_WEIGHT, server_shards),
@@ -114,10 +143,17 @@ def plan(
         or any(rx.match(p) for p in changed for rx in _EVERYTHING)
         or any(_SRC.match(p) and not _JAVA.match(p) and not _ASSETS.match(p) for p in changed)
     )
-    build_needed = everything or any(not _DENY.match(p) or _GRADLE_TOOL.match(p) for p in changed)
+    build_needed = everything or needs_gradle(changed)
     assets = [p for p in changed if _ASSETS.match(p)]
     java = {p for p in changed if _JAVA.match(p) and not _PACKAGE_INFO.search(p)}
-    reached = affected_files(read_tree(root), java) if java and not everything else set()
+    reached = affected_files(read_tree(root), java, test_paths(root)) if java and not everything else set()
+    # A file that reaches a mod entry point has no test that names it: the entry point's suites run whole. DeepCharter starts both sides.
+    # A mixin is named by a config file, not by code, so a change that reaches one runs the suites it applies to (a client mixin: the client).
+    entry_suites = {
+        suite for path in reached if "/mixin/" in path for suite in (("client",) if path.startswith("src/client/") else ("server", "client"))
+    } | {
+        suite for path in reached for root_dir, name, suites in _ENTRY_POINTS if path.startswith(root_dir) and path.endswith(name) for suite in suites
+    }
     reached_names = {Path(p).stem for p in reached}
 
     def mentions_assets(class_name: str) -> bool:
@@ -126,7 +162,7 @@ def plan(
     out = {}
     for suite, (classes, weights, default, full_count) in suites.items():
         simple = {c.rsplit(".", 1)[-1]: c for c in classes}
-        if everything or (assets and suite == "client"):
+        if everything or suite in entry_suites or (assets and suite == "client"):
             chosen = sorted(simple)
         else:
             chosen = sorted(n for n in simple if n in reached_names or (assets and mentions_assets(simple[n])))

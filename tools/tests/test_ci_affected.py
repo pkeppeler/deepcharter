@@ -134,7 +134,7 @@ class BuildNeededTest(unittest.TestCase):
         return plan(list(paths), **kwargs)["build-needed"]  # type: ignore[arg-type]
 
     def test_docs_tools_and_prose_need_no_gradle_job(self):
-        for path in ("docs/a.md", "README.md", "tools/merge-pr.sh", "tools/tests/test_x.py", ".claude/CLAUDE.md", ".papercuts.jsonl", "LICENSE"):
+        for path in ("docs/a.md", "README.md", "tools/merge-pr.sh", "tools/tests/test_x.py", ".claude/CLAUDE.md", ".papercuts.jsonl"):
             with self.subTest(path):
                 self.assertEqual("false", self.needed(path))
 
@@ -156,6 +156,42 @@ class BuildNeededTest(unittest.TestCase):
         script = (REPO / "tools/ci-reuse-compiled.sh").read_text()
         shell = re.search(r"^DENY=\$'\^\[\^\\t\]\*\\t\((.*)\)'$", script, re.M)[1].replace("\\\\", "\\")
         self.assertEqual(shell, affected._DENY.pattern[len("^("):-1])
+
+
+class GradleToolPathsTest(unittest.TestCase):
+    """The tools a Gradle task or a gate check runs make a push build-needed (W2): derived from what they import and name."""
+
+    def read_paths(self) -> set[str]:
+        found = set()
+        texts = [p for p in (REPO / "tools/tests").glob("*.py") if "gate_check" in p.name or p.name.startswith("gate_")]
+        texts += [REPO / "build.gradle.kts", *(REPO / "gradle").glob("*.kts")]
+        for path in texts:
+            text = path.read_text()
+            # A path in a string literal, which the code opens or runs; a path in a comment or a docstring only describes.
+            found |= set(re.findall(r"""["'](tools/[A-Za-z0-9_./-]*[A-Za-z0-9_])["']""", text))
+            for module in re.findall(r"^(?:import|from) (\w+)", text, re.M):
+                for candidate in (REPO / "tools" / f"{module}.py", REPO / "tools/tests" / f"{module}.py"):
+                    if candidate.exists():
+                        found.add(str(candidate.relative_to(REPO)))
+        # The gate checks run through tools/py.
+        found.add("tools/py")
+        return {p for p in found if (REPO / p).is_file()}
+
+    def test_every_tool_a_gradle_task_or_gate_check_reads_is_build_needed(self):
+        paths = self.read_paths()
+        self.assertIn("tools/ci_shards.py", paths)
+        self.assertIn("tools/TestOnlyGate.java", paths)
+        missing = sorted(p for p in paths if not affected.needs_gradle([p]))
+        self.assertEqual([], missing, "a push changing these would skip the Gradle jobs that read them")
+
+    def test_the_shared_library_directory_is_build_needed(self):
+        self.assertTrue(affected.needs_gradle(["tools/lib/ci-gate.sh"]))
+
+    def test_credits_and_the_license_are_jar_inputs_so_they_need_gradle(self):
+        for path in ("CREDITS.md", "LICENSE"):
+            with self.subTest(path):
+                self.assertTrue(affected.needs_gradle([path]))
+        self.assertFalse(affected.needs_gradle(["README.md"]))
 
 
 class FallBackTest(unittest.TestCase):
@@ -192,6 +228,98 @@ class FallBackTest(unittest.TestCase):
         result = plan(["src/client/resources/assets/x/textures/a.png"])
         self.assertEqual("true", result["client-full"])
         self.assertEqual(["DeltaTest"], names(result, "server"))
+
+
+class EntryPointAndHelperTest(unittest.TestCase):
+    """A change that reaches a mod entry point has no test that names it, so it widens to that suite's full run (#1612 review C1), and a
+    helper under test/ that is not itself a test class passes the change on to the tests that use it (W1)."""
+
+    ENTRY = {
+        f"{MAIN}/DeepCharter.java": "public class DeepCharter { void init() { new PodInit(); } }\n",
+        f"{MAIN}/PodInit.java": "public class PodInit { Island i; }\n",
+        "src/client/java/io/x/DeepCharterClient.java": "public class DeepCharterClient { void init() { new PodClientInit(); } }\n",
+        "src/client/java/io/x/PodClientInit.java": "public class PodClientInit { }\n",
+        "src/client/java/io/x/LowFuelBeep.java": "public class LowFuelBeep { }\n",
+        f"{PKG}/ClientTestLog.java": "public class ClientTestLog { }\n",
+        f"{PKG}/HandCases.java": "public abstract class HandCases { ClientTestLog log; }\n",
+        f"{PKG}/HandClientTest.java": "public class HandClientTest extends HandCases implements FabricClientGameTest { }\n",
+        f"{PKG}/BoxClientTest.java": "public class BoxClientTest implements FabricClientGameTest { ClientTestLog log; }\n",
+    }
+
+    def test_a_client_init_change_selects_every_client_test(self):
+        result = plan(["src/client/java/io/x/PodClientInit.java"], files=self.ENTRY)
+        self.assertEqual("true", result["client-full"])
+        self.assertEqual(str(FULL["client"]), result["client-count"])
+
+    def test_a_file_the_client_entry_point_reaches_selects_the_client_suite_not_the_server_one(self):
+        result = plan(["src/client/java/io/x/PodClientInit.java"], files=self.ENTRY)
+        self.assertEqual("false", result["server-full"])
+
+    def test_a_main_init_change_selects_both_suites(self):
+        result = plan([f"{MAIN}/PodInit.java"], files=self.ENTRY)
+        self.assertEqual(("true", "true"), (result["server-full"], result["client-full"]))
+
+    def test_the_entry_point_itself_selects_its_suite(self):
+        self.assertEqual("true", plan(["src/client/java/io/x/DeepCharterClient.java"], files=self.ENTRY)["client-full"])
+
+    def test_a_file_nothing_reaches_still_selects_nothing(self):
+        result = plan(["src/client/java/io/x/LowFuelBeep.java"], files=self.ENTRY)
+        self.assertEqual(("0", "0", "false"), (result["client-count"], result["server-count"], result["client-full"]))
+
+    def test_a_helper_that_is_not_a_test_class_passes_a_change_on_through_an_abstract_base(self):
+        result = plan([f"{PKG}/ClientTestLog.java"], files=self.ENTRY)
+        self.assertEqual(["BoxClientTest", "HandClientTest"], names(result, "client"))
+
+    def test_a_file_a_mixin_reaches_selects_the_suites_the_mixin_runs_in(self):
+        files = {
+            **self.ENTRY,
+            "src/client/java/io/x/mixin/ScreenMixin.java": "public class ScreenMixin { LowFuelBeep b; }\n",
+            f"{MAIN}/mixin/WorldMixin.java": "public class WorldMixin { PodInit p; }\n",
+        }
+        client = plan(["src/client/java/io/x/LowFuelBeep.java"], files=files)
+        self.assertEqual(("true", "false"), (client["client-full"], client["server-full"]))
+        both = plan([f"{MAIN}/Island.java"], files={**files, f"{MAIN}/mixin/IslandMixin.java": "public class IslandMixin { Island i; }\n"})
+        self.assertEqual(("true", "true"), (both["client-full"], both["server-full"]))
+
+    def test_a_listed_test_class_is_a_leaf(self):
+        result = plan([f"{PKG}/BoxClientTest.java"], files=self.ENTRY)
+        self.assertEqual(["BoxClientTest"], names(result, "client"))
+
+
+class RealTreeSelectionTest(unittest.TestCase):
+    """Over the real tree: no main or client file escapes the mapping unseen."""
+
+    # A file that selects no test, and why. A new entry needs a reason a reviewer can check.
+    ALLOWED: dict[str, str] = {
+        "src/main/java/io/github/pkeppeler/deepcharter/wreck/WreckTuning.java": "a tuning record that no other file names (no code reads it yet)",
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.files = sorted(
+            str(p.relative_to(REPO))
+            for root in ("src/main/java", "src/client/java")
+            for p in (REPO / root).rglob("*.java")
+            if p.name != "package-info.java" and "/mixin/" not in str(p)
+        )
+
+    def selects_nothing(self, path: str) -> bool:
+        result = affected.plan([path], "1-slug", set(), 16, 34)
+        return result["server-count"] == "0" and result["client-count"] == "0"
+
+    def test_every_client_init_and_registry_selects_every_client_test(self):
+        wiring = [p for p in self.files if re.search(r"/[A-Z]\w*Client(Init|Registry)\.java$", p)]
+        self.assertGreater(len(wiring), 10)
+        for path in wiring:
+            with self.subTest(path):
+                result = affected.plan([path], "1-slug", set(), 16, 34)
+                self.assertEqual("true", result["client-full"])
+
+    def test_no_main_or_client_file_selects_no_test_unless_listed_with_a_reason(self):
+        silent = [p for p in self.files if self.selects_nothing(p) and p not in self.ALLOWED]
+        self.assertEqual([], silent, "these select no test: a class no test reaches, or a gap in the mapping")
+        stale = [p for p in self.ALLOWED if p not in self.files or not self.selects_nothing(p)]
+        self.assertEqual([], stale, "ALLOWED names a file that selects a test now or is gone")
 
 
 class RealTreeTest(unittest.TestCase):

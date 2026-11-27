@@ -196,10 +196,12 @@ $body") || refuse "could not check the title and body for long URLs"
   pending=
   [[ $is_draft == false ]] || pending="draft"
   [[ -z $review_pass_refusal ]] || pending="${pending:+$pending, }no review pass"
+  tier_note=
+  [[ ${ci_tier:-full} != pr ]] || tier_note="; ci tier: pr, lands only as a batch (tools/merge-batch.sh $pr)"
   if [[ -z $pending ]]; then
-    echo "GATE OK: PR #$pr at $sha passes the merge gate (check only, nothing changed)"
+    echo "GATE OK: PR #$pr at $sha passes the merge gate (check only, nothing changed$tier_note)"
   else
-    echo "GATE OK except: $pending (the merge would refuse until then)"
+    echo "GATE OK except: $pending (the merge would refuse until then$tier_note)"
   fi
   exit 0
 fi

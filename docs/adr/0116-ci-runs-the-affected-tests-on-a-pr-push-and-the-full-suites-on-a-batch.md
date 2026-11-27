@@ -9,7 +9,7 @@ Issue #1592, part 2 of #1574. [ADR 0115](0115-no-ci-job-runs-longer-than-five-mi
 ## Decision
 
 - **Two tiers.** A PR push runs the build (compile, Spotless and the gates in `build-checks`), the tool tests and only the GameTest classes its change can affect. A batch PR (head ref `batch/*`), a PR labelled `full-ci` when it is pushed, and a change that can reach every test run the full suites.
-- **The mapping is `tools/ci_affected.py`.** Run by the `ci-plan` job (server suite) and the `client-changes` job (client suite) on the PR's changed paths, it prints the classes, the shard count and the matrix. A class is affected when it is a changed file or mentions, by name, a class that is, transitively through main, client and test-support code (a test class is a leaf). Docs, tools and the shard weights affect no test. It falls back to the whole suite for build files, workflows and actions, mixins, data and lang resources, any `src/` path it does not understand, and an affected set over half the suite's weight. Textures, models and sounds run the whole client suite and the server classes that name an asset path.
+- **The mapping is `tools/ci_affected.py`.** Run by the `ci-plan` job (server suite) and the `client-changes` job (client suite) on the PR's changed paths, it prints the classes, the shard count and the matrix. A class is affected when it is a changed file or mentions, by name, a class that is, transitively through main, client and test-support code (a test class is a leaf). Docs, tools and the shard weights affect no test. It falls back to the whole suite for build files, workflows and actions, mixins, data and lang resources, a file that reaches a mod entry point (`DeepCharter` runs both suites whole, `DeepCharterClient` the client's; nothing in the code names an entry point, so a chain that ends there has no test to select), a file that reaches a mixin (the suites it applies to), a change under `src/` it does not understand, any `src/` path it does not understand, and an affected set over half the suite's weight. Textures, models and sounds run the whole client suite and the server classes that name an asset path.
 - **A partial run is the same machinery.** `-PgametestClasses=<names>` (new) and `-PclientTests` select the classes, `-PgametestShard` and `-PclientShard` split them, and the count is the fewest shards whose heaviest holds the budget of `gradle/ci-budget.txt`. With no class selected the shard jobs and the compile job are skipped.
 - **Each aggregate says which tier ran.** `build` and `client-gametest` record a `ci-tier` notice, `full` or `pr` (none, from before the tiers, counts as `full`). `tools/lib/ci-gate.sh` reads it, accepts a head with no shard only when the notice says `pr`, and, when landing, refuses a PR-tier head with `[pr-tier]`.
 - **The merge tools.** `tools/merge-pr.sh --check <n>` takes either tier and prints which, so review and the stage labels run on PR-tier green. Landing needs the full tier: `merge-pr.sh <n>` and `--ci <batch pr>` refuse a PR-tier head. `tools/merge-batch.sh <n>...` lands it, as a batch of one when it is alone: a single PR that is refused with `[pr-tier]` is squashed onto a `batch/*` branch and lands on that run's green. A batch of one that is red is refused, not split. A PR can land by itself when its own CI was full, either because the change reaches every test or because it carried `full-ci`.
@@ -36,6 +36,10 @@ Measured on throwaway PRs into this branch (2026-11-27, one probe commit each; t
 
 So a docs or tools push is green in about 3 minutes and a source push in about 4 minutes 20 seconds when the cache is warm, with no queue. Cold, a source push is 5 minutes and 10 seconds: `build-checks` compiles from nothing. The cache is cold for a PR's first push until main's seed has run once after this lands (`cache-seed.yml` now fires on `src/`); a PR's later pushes find its own `build-checks` entry. With the queue the account's other runs make, the wall clock is what the last column says, and no change to this workflow shortens it.
 
+Cold cache: the PR-tier shards and gate jobs restore the Gradle cache read-only and only `build-checks` saves it, so a PR's first push finds only main's seed, and if GitHub's 10 GB repository cache has evicted that entry, nothing. Measured cold (the first probe push): server shard 260 s, `build-checks` 259 s, client shards 277 s and one cancelled at the 5-minute limit. So a cold push does not reliably fit 5 minutes, and a cold client shard can time out. What keeps the cache warm: `cache-seed.yml` runs on every push to main that touches `src/` or a Gradle input, so each main commit refreshes the entry the next PRs restore; an entry used daily is the last that GitHub evicts. What is not covered: the first PR after an eviction, and a PR whose `build-checks` is skipped (docs only: it has nothing to compile). Letting shards save too would not help the first push, only the second.
+
+The tool-test parts always run, on every push: the seven Python and shell parts take 70 to 142 s together in parallel and need no Gradle, so the plan does not choose among them. The plan, the diff base and the labels are read when a run starts: a re-run of a run keeps the labels and base it had, so a `full-ci` label added after a push needs a new push.
+
 A full run (a batch, `full-ci`, or a change to a build file or workflow) takes the merge tier's longer time, as the user accepted.
 
 ## Concurrent jobs
@@ -44,12 +48,12 @@ GitHub's usage-limits table allows 20 concurrent jobs on the Free plan, 40 on Pr
 
 | Run | Jobs | Peak at once |
 | --- | --- | --- |
-| Full `CI` (batch) | plan, compile, 8 tool parts and gates, 16 server shards, checks, aggregates | about 10 (shards in waves of 6) |
-| Full `Client tests` (batch) | changes, compile, 29 client shards, aggregate | 10 (waves of 10) |
-| PR tier, one class changed | plan, compile, 8 tool parts and gates, checks, 1 server shard, aggregates, and the client suite's 3 jobs when it selects a class | about 12 |
-| PR tier, docs only | plan, 8 tool parts and gates, aggregates (the compile job runs, the shards do not) | about 10 |
+| Full `CI` (batch) | plan, compile, 7 tool parts and 3 gate-check jobs, 16 server shards, checks, aggregates | about 10 (shards in waves of 6) |
+| Full `Client tests` (batch) | changes, compile, 34 client shards, aggregate | 10 (waves of 10) |
+| PR tier, one class changed | plan, 7 tool parts, 3 gate-check jobs, `build-checks` and 1 server shard, each compiling for itself (no compile job), aggregates; the client suite's changes job and the shards its classes reach | about 14 |
+| PR tier, docs or tools only | plan and the 7 tool parts, aggregates: no Gradle job | about 8 |
 
-A batch holds about 20 of the 40 and a PR run about 10, so a batch leaves room for two PR runs, and a batch CI takes about 15 minutes (three waves of five-minute client shards). Were the plan Free (20), one batch fills it and the rest queue.
+A batch holds about 20 of the 40 and a PR run 8 to 14, so a batch leaves room for one to two PR runs, and a batch CI takes about 15 minutes (three waves of five-minute client shards). Were the plan Free (20), one batch fills it and the rest queue.
 
 ## Why
 
