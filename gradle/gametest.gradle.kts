@@ -100,6 +100,12 @@ object GametestScan {
 	private val deadlineName = Regex("""\bDeadline\s*(?:\[\s*]\s*)*(\w+)""")
 	private val inlineDeadlineAwait = Regex("""\bFarChunks\s*\.\s*deadline\s*\([^)]*\)\s*\.\s*await\s*\(""")
 
+	// FarChunks.Deadline.await does not block (#1071, #1085), so a statement starting with `expect(` (`Failures.` prefix or not), `helper.fail(`,
+	// `helper.assert...(` or `throw` directly after `.await(...);` on a Deadline is flagged; comments between them do not count.
+	// Heuristic: only the direct next statement is seen, so any statement in between defeats it, and an assertion inside a helper method is not seen.
+	private const val AWAIT_MARKER = "// await-ok:"
+	private val expectAfterAwait = Regex("""^(?:(?:Failures\s*\.\s*)?expect\s*\(|helper\s*\.\s*(?:fail|assert\w*)\s*\(|throw\b)""")
+
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
 	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
 	// seen, so the gate refuses the literal (#1026).
@@ -160,6 +166,11 @@ object GametestScan {
 		return problems
 	}
 
+	// `.await(` on a name the file declares with a `Deadline` type, or on a `[n]` index of one; null when it declares none.
+	private fun namedDeadlineAwait(text: String): Regex? = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
+		.takeIf { it.isNotEmpty() }
+		?.let { names -> Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
+
 	private fun lightWaitProblems(
 		className: String,
 		text: String,
@@ -176,9 +187,7 @@ object GametestScan {
 			val bodyClose = if (bodyOpen < 0) -1 else closing(text, bodyOpen)
 			if (bodyClose < 0) null else bodyOpen..bodyClose
 		}.toList()
-		val deadlineAwait = deadlineName.findAll(text).map { it.groupValues[1] }.toSet()
-			.takeIf { it.isNotEmpty() }
-			?.let { names -> Regex("""\b(?:${names.joinToString("|")})\s*(?:\[[^\]]*]\s*)?\.\s*await\s*\(""") }
+		val deadlineAwait = namedDeadlineAwait(text)
 		val problems = mutableListOf<String>()
 		for (read in lightRead.findAll(text)) {
 			val at = read.range.first
@@ -191,6 +200,29 @@ object GametestScan {
 			if ((inPoll || noDeadline) && !marked(markedNear, rawLines, line, LIGHT_WAIT_MARKER)) {
 				val where = if (inPoll) "inside thenWaitUntil or succeedWhen, which count ticks" else "in a test method that awaits no FarChunks.Deadline"
 				problems.add("$className:${line + 1} reads block light $where, and the light engine runs on Util.backgroundExecutor(), which other tests' chunk work can starve; wait for it under FarChunks.Deadline (poll from TestTicks.each, see #1042 and #1048), or mark a read that is not a wait with '$LIGHT_WAIT_MARKER <reason>'")
+			}
+		}
+		return problems
+	}
+
+	private fun awaitThenExpectProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val awaits = (namedDeadlineAwait(text)?.findAll(text)?.toList() ?: emptyList()) + inlineDeadlineAwait.findAll(text).toList()
+		val problems = mutableListOf<String>()
+		for (await in awaits.sortedBy { it.range.first }) {
+			val close = closing(text, await.range.last)
+			if (close < 0) continue
+			val afterCall = text.substring(close + 1).trimStart()
+			if (!afterCall.startsWith(";")) continue
+			val next = afterCall.substring(1).trimStart()
+			if (!expectAfterAwait.containsMatchIn(next)) continue
+			val line = lineOf(text, text.length - next.length)
+			if (!marked(markedNear, rawLines, line, AWAIT_MARKER)) {
+				problems.add("$className:${line + 1} follows Deadline.await directly with an assertion (expect, helper.fail or assert, or a throw), but await does not block: while unsettled it sleeps about 2 ms and returns, so this fails on the first unsettled tick; return while unsettled, then assert once settled: `if (!settled) { ...; return; }` (#1071, #1085), or mark a legitimate case with '$AWAIT_MARKER <reason>'")
 			}
 		}
 		return problems
@@ -395,6 +427,7 @@ object GametestScan {
 				}
 			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
+			problems.addAll(awaitThenExpectProblems(className, text, rawLines, markedNear))
 			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
 				problems.addAll(lightWaitProblems(className, text, rawLines, markedNear))
 			}
