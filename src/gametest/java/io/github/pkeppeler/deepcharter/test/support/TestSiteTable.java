@@ -232,13 +232,14 @@ final class TestSiteTable {
         claim("LayerStructuresTest", 1, 3207, 3258, 3195, 3205);
         claim("LayerStructuresTest", 1, 3271, 3322, 3195, 3205);
         claim("LayerStructuresTest", 1, 3335, 3455, 3195, 3205);
-        claim("LayerStructuresTest", 1, 3456, 3839, 3456, 3497);
-        claim("LayerStructuresTest", 1, 3456, 3839, 3503, 3535);
-        claim("LayerStructuresTest", 1, 3456, 3839, 3552, 3615);
-        claim("LayerStructuresTest", 1, 3456, 3679, 3536, 3551);
-        claim("LayerStructuresTest", 1, 3696, 3839, 3536, 3551);
+        claim("LayerStructuresTest", 1, 3456, 3839, 3456, 3487);
+        claim("LayerStructuresTest", 1, 3456, 3631, 3488, 3497);
+        claim("LayerStructuresTest", 1, 3744, 3839, 3488, 3497);
+        claim("LayerStructuresTest", 1, 3456, 3631, 3503, 3615);
+        claim("LayerStructuresTest", 1, 3744, 3839, 3503, 3615);
         claim("LayerStructuresTest", 1, 3456, 3497, 3498, 3502);
-        claim("LayerStructuresTest", 1, 3503, 3839, 3498, 3502);
+        claim("LayerStructuresTest", 1, 3503, 3631, 3498, 3502);
+        claim("LayerStructuresTest", 1, 3744, 3839, 3498, 3502);
         claim("LayerStructuresTest", 1, 3456, 3839, 3696, 3697);
         claim("LayerStructuresTest", 1, 3456, 3839, 3703, 3797);
         claim("LayerStructuresTest", 1, 3456, 3839, 3803, 3839);
@@ -318,15 +319,15 @@ final class TestSiteTable {
         claim("M2SliceTest", 1, 9296, 9311, 9296, 9311);
         claim("M2SliceTest", 2, 9296, 9311, 9296, 9311);
 
-        row("OddChassisTest", 1, 8992, 9008, 48, 11, 8992, 9008);
-        claim("OddChassisTest", 1, 8992, 9488, 8992, 9008);
+        row("ChassisChecks", 1, 8992, 9008, 48, 11, 8992, 9008);
+        claim("ChassisChecks", 1, 8992, 9488, 8992, 9008);
 
         row("OreCargoTest", 1, 3195, 3206, 64, 3, 3195, 3205);
 
         claim("OreHostTest", 1, 7399, 7408, 3007, 3009);
         claim("OreHostTest", 2, 7399, 7408, 3015, 3017);
         claim("OreHostTest", 3, 7399, 7408, 3023, 3025);
-        claim("OreHostTest", 1, 7040, 7055, 7040, 7055);
+        claim("OreHostTest", 1, 7024, 7071, 7040, 7087);
 
         claim("OrePlacementTest", 1, 7088, 7103, 2992, 3007);
         claim("OrePlacementTest", 1, 7792, 7807, 2992, 3007);
@@ -459,7 +460,7 @@ final class TestSiteTable {
         claim("ProspectorChassisTest", 1, 3394, 3406, 2994, 3006);
         claim("ProspectorChassisTest", 1, 3698, 3702, 3698, 3702);
         claim("ProspectorChassisTest", 1, 3798, 3802, 3798, 3802);
-        claim("ProspectorChassisTest", 1, 3680, 3695, 3536, 3551);
+        claim("ProspectorChassisTest", 1, 3632, 3743, 3488, 3615);
 
         claim("RepairStationTest", 1, 27392, 27407, 27392, 27407);
         claim("RepairStationTest", 1, 27488, 27503, 27488, 27503);
@@ -519,10 +520,10 @@ final class TestSiteTable {
         claim("SeamStreamingTest", 1, 43008, 43023, 40000, 40015);
 
         row("ShapedChargeTest", 1, 4001, 4031, 64, 6, 5385, 5415);
-        claim("ShapedChargeTest", 1, 4400, 4415, 5392, 5407);
+        claim("ShapedChargeTest", 1, 4352, 4527, 5344, 5455);
 
-        row("ShippedChassisTest", 1, 10992, 11008, 48, 10, 8992, 9008);
-        row("ShippedChassisTest", 1, 11992, 12008, 48, 10, 8992, 9008);
+        row("ChassisChecks", 1, 10992, 11008, 48, 10, 8992, 9008);
+        row("ChassisChecks", 1, 11992, 12008, 48, 10, 8992, 9008);
 
         claim("StructureLightBorderTest", 1, 15456, 15503, 15456, 15519);
         claim("StructureLightBorderTest", 1, 18128, 18175, 15472, 15535);
@@ -547,7 +548,7 @@ final class TestSiteTable {
 
         claim("SurfaceWritesTest", 0, 16001590, 16001625, 16001590, 16001625);
 
-        row("TallChassisTest", 1, 9992, 10008, 48, 11, 8992, 9008);
+        row("ChassisChecks", 1, 9992, 10008, 48, 11, 8992, 9008);
 
         claim("TallyTest", 0, 6800, 6815, 6800, 6815);
         claim("TallyTest", 0, 6800, 6815, 6864, 6879);
@@ -571,7 +572,7 @@ final class TestSiteTable {
         claim("TeleportArrivalTest", 0, 13984, 14031, -16, 31);
 
         row("TetherTest", 1, 16999, 17051, 64, 14, 16999, 17027);
-        claim("TetherTest", 1, 17888, 17903, 17008, 17023);
+        claim("TetherTest", 1, 17840, 17968, 16960, 17072);
 
         claim("ThrownKitPacingTest", 1, 7751, 7801, 5375, 5425);
         claim("ThrownKitPacingTest", 1, 7815, 7865, 5375, 5425);
@@ -640,6 +641,13 @@ final class TestSiteTable {
         exempt("ClaimFeaturesTest", ownDimension);
         exempt("TheClaimTest", ownDimension);
         exempt("ContinuityEventTest", "stages only in the Nether, which the guards do not check");
+        exempt(
+                "OddChassisTest",
+                "its sites are staged by ChassisChecks, whose claims cover them; a call on the test's own stack is not checked");
+        exempt("TallChassisTest", "stages through ChassisChecks, whose claims cover its sites, as OddChassisTest does");
+        exempt(
+                "ShippedChassisTest",
+                "stages through ChassisChecks, whose claims cover its sites, as OddChassisTest does");
         exempt(
                 "ObtainableItemsTest",
                 "only reads the layer structure sites the world generates, the cells LayerStructuresTest claims");
