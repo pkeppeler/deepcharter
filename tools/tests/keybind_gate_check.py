@@ -80,7 +80,7 @@ BAD = {
     "an entry with no reason": (
         {"Keys.java": keys(mapping(f'"{LISTED}"')), ALLOW: f"{LISTED}\n", "lang.json": lang(LISTED)},
         f"{ALLOW}:1 '{LISTED}' needs a reason of at least 3 words"),
-    "an entry with a one-line reason": (
+    "a one-word reason": (
         {"Keys.java": keys(mapping(f'"{LISTED}"')), ALLOW: f"{LISTED}  because\n", "lang.json": lang(LISTED)},
         f"{ALLOW}:1 '{LISTED}' needs a reason of at least 3 words"),
     "a duplicate entry": (
