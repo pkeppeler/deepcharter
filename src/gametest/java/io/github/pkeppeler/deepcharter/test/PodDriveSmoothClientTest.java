@@ -93,6 +93,9 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
      */
     private static final int FLOOR_TICKS = 40;
 
+    /** Seconds the client may take to draw a teleport: short, so a wait that never ends fails by name before the class's watchdog. */
+    private static final int TELEPORT_WAIT_SECONDS = 30;
+
     /** A backward teleport past the snap gap, from a pod that has just coasted: a snap, so it arrives as one does. */
     private static final double TELEPORT_BACK = 24.0;
 
@@ -350,9 +353,14 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the client to draw the teleport",
+                    TELEPORT_WAIT_SECONDS,
                     () -> {
                         serverTrail.add(serverPosition(rig.two(), rig.ownPodId()));
-                        return onClient(context, rig.ownPodId()).distanceTo(before) >= TELEPORT_BACK / 4;
+                        // Moved a good way, and toward the teleport: driving on alone does neither once the put is
+                        // late.
+                        Vec3 now = onClient(context, rig.ownPodId());
+                        return now.distanceTo(before) >= TELEPORT_BACK / 4
+                                && now.distanceTo(to) < now.distanceTo(before);
                     },
                     () -> "pod on the client " + onClient(context, rig.ownPodId()) + ", before the put " + before);
             for (int tick = 1; tick <= SNAP_TICKS; tick++) {
@@ -360,13 +368,13 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     context.waitTick();
                     serverTrail.add(serverPosition(rig.two(), rig.ownPodId()));
                 }
+                // The snap has to last: judged at the window's end, a pod that touched the server's track and eased
+                // back off it fails.
                 Vec3 drawn = onClient(context, rig.ownPodId());
-                nearest = Math.min(
-                        nearest,
-                        serverTrail.stream()
-                                .mapToDouble(drawn::distanceTo)
-                                .min()
-                                .orElseThrow());
+                nearest = serverTrail.stream()
+                        .mapToDouble(drawn::distanceTo)
+                        .min()
+                        .orElseThrow();
             }
         } finally {
             stopDriving(context);

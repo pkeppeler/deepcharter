@@ -155,17 +155,25 @@ public class PodSonarTest {
     }
 
     /**
-     * As {@link #scene(GameTestHelper, int, List, Consumer, Consumer)}, running {@code check} on the first tick after the settle on which every body is on
-     * the ground. A body falls from where the build put it, and the settle ticks are a count, not a landing: a loaded runner's cow was still in the air
-     * when they ran out (#1569). The wait fails under a {@link FarChunks.Deadline}, naming the body in the air.
+     * As {@link #scene(GameTestHelper, int, List, Consumer, Consumer)}, running {@code check} on the first tick after the settle on which the bodies at
+     * {@code landed} (indices into {@code bodies}) are on the ground. A body falls from where the build put it, and the settle ticks are a count, not
+     * a landing: a loaded runner's cow was still in the air when they ran out (#1569). Name only the bodies the check needs grounded: one that starts
+     * airborne on purpose never lands in time. The wait fails under a {@link FarChunks.Deadline}, naming the body in the air.
      */
     private static void sceneLanded(
-            GameTestHelper helper, int x, List<Entity> bodies, Consumer<ServerLevel> build, Consumer<Scene> check) {
+            GameTestHelper helper,
+            int x,
+            List<Entity> bodies,
+            List<Integer> landed,
+            Consumer<ServerLevel> build,
+            Consumer<Scene> check) {
         ServerLevel level = TestLayers.level(helper, 1);
         FarChunks.Deadline landing = FarChunks.deadline();
         run(helper, x, bodies, build, scene -> {
-            Optional<Entity> airborne =
-                    bodies.stream().filter(body -> !body.onGround()).findFirst();
+            Optional<Entity> airborne = landed.stream()
+                    .map(bodies::get)
+                    .filter(body -> !body.onGround())
+                    .findFirst();
             landing.await(helper, level, airborne.isEmpty(), () -> airborne.get() + " had not landed");
             if (airborne.isPresent()) {
                 return false;
@@ -593,6 +601,7 @@ public class PodSonarTest {
                 helper,
                 x,
                 bodies,
+                List.of(0),
                 level -> {
                     room(level, x + 8, FLOOR, Z, 2, 1, 4);
                     bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR, Z + 1.5));
@@ -816,6 +825,7 @@ public class PodSonarTest {
                 helper,
                 x,
                 bodies,
+                List.of(0),
                 level -> {
                     room(level, x + 8, FLOOR, Z, 2, 1, 4);
                     bodies.add(still(level, EntityTypes.SHEEP, x + 9.5, FLOOR, Z + 1.5));
@@ -845,6 +855,7 @@ public class PodSonarTest {
                 helper,
                 x,
                 bodies,
+                List.of(1),
                 level -> {
                     room(level, x + 8, FLOOR, Z, 2, 1, 4);
                     bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR + 2, Z + 1.5));
