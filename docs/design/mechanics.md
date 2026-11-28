@@ -2786,13 +2786,32 @@ A gradient adds one integer hash to a block in its rows and samples no noise (a 
 | Layer 1: Stone Benches to Deep Claim (packed shale to black shale) | long gradient | 64 | Same. A zone is 64 rows, so two gradients of 64 lie end to end and the rock is changing for 128 of layer 1's 192 rows; 100 would overlap |
 | Layer 1's floor, centred 11 rows over it (black shale to layer 2's green shale) | short gradient | 16 | The edge of a layer is felt, so it is a short blur, not a drift. It ends at the last rock row, so the crust meets green |
 | Layer 3's top, centred 12 rows under layer 2's crust (green shale to basalt core) | interbedded | 25 | The deep eases into the basalt in beds, a different hand from the claim's. Layer 3's caverns keep their columns, which line only basalt |
+| Layer 2: Upper Levels to Shift Change, on the zone's edge (tint only) | sharp | | The Old Workings are mine levels: a level's floor is a ruled line, and its thin khaki bed is the first stain of the iron water below |
+| Layer 2: Shift Change to Prospector's Run (tint only) | short gradient | 16 | The stain gives way to the deep's cold over a short blur, so a pilot coming down the Run feels the change in a few slabs |
+| Layer 3: the Garden to the Spore Fields, across the rock shelf between the two halls (tint only) | interbedded | 24 | The spores' cast seeps into the basalt in beds that thicken downward, read on the shelf's face from either hall |
+| Layer 3: the Spore Fields to the Quiet (tint only) | long gradient | 64 | The Quiet creeps in: the colour drains so slowly over the lower hall that only a wide scan makes it certain, as layer 1's drift |
 | Any contact with no entry | sharp | | The default |
+
+Every style is in the game, and no two layers use the same pair: layer 1 drifts, layer 2 is ruled then blurred, layer 3 is banded then drifts.
+
+**Zone colours (layers 2 and 3).** Each of these layers has one rock, so a zone differs from the next in colour alone, and its contacts are tint-only: the same block either side, so worldgen does nothing for them (no rule, no block switch, no noise read) and they cost nothing to generate. The colour a zone's rock is multiplied by:
+
+| Zone | Colour | Why |
+|---|---|---|
+| Upper Levels | grey-green (the green shale's home colour, as layer 2 always looked) | Continuity with the green that speckles into layer 1's floor |
+| Shift Change | warm khaki | The old workings' water ran iron here, where Cicatrium first appears |
+| Prospector's Run | cold slate-blue | The deep's light reaching up toward layer 3's blue-black |
+| The Garden | cold blue-black (the basalt core's home colour, as layer 3 always looked) | The user's pick of cold basalt (#1147) |
+| The Spore Fields | a spore-teal cast | The zone of the spore haze and the most gas pockets |
+| The Quiet | drained grey with a cold violet edge | The silent hall: colour leaves the rock as sound leaves the air |
+
+Neighbouring zones are at least 40 apart in tint (of 441); on the scanner the texture scales that down, most in layer 3's dark basalt, so its zones read as a shift of cast more than a step, as the layer's darkness wants. Green shale out of layer 2's rows (layer 1's floor, layer 3's top beds) keeps its home colour. Layer 3's columns are not tinted: only the core behind them, which a drill opens, shows the zone.
 
 **Colour, not blocks.** The long gradient's drift is a render-time tint (`RockTint`), not intermediate rock blocks. The hardpan, the packed shale and the black shale are drawn in one neutral grey, and a client block colour multiplies it by a colour that moves in a straight line in RGB from one rock's colour to the next over a gradient, by the block's height. The switch between the two rock blocks is dithered over the same rows, and a block of either has the same colour there, so no speckle shows: only the colour moves, a channel at most 2 a row. The rocks are the same blocks as before (hardness, drill time, spoil, drops, tags), so no pacing moves. The scanner multiplies each rock cell's texture by the same function at the cell's height, so a wide scan shows the drift and a tier-1 slice, a few rows tall, barely does. An ore takes its host's colour (its model's host layer carries the tint). A rock outside its own rows (a placed one) and any other block keep their own colour. For ore, a blended block is its own host rock (a hardpan block is a hardpan host whatever the tint), and the ore tables follow the zone by height as before.
 
 **Existing worlds.** New chunks only. A saved chunk keeps its rock: a seam where it meets a new chunk, as with #1300.
 
-**Tuning knobs.** The contacts, styles and lengths in `claim_strata.json` and `basalt_top_strata.json`; the tints in `RockTint` and `HOME_TINT` in `tools/layer_concepts/make.py` (a test holds them equal); the grey ramp `claim_grey` in `tools/textures/palette.json`.
+**Tuning knobs.** The contacts, styles and lengths in `claim_strata.json` and `basalt_top_strata.json`; the zone colours and the tint-only contacts of layers 2 and 3 in `RockTint`'s profiles; the home tints in `RockTint` and `HOME_TINT` in `tools/layer_concepts/make.py` (a test holds them equal); the grey ramp `claim_grey` in `tools/textures/palette.json`.
 
 **Open questions.** The tint is a function of height, at the contacts' rows before the contour noise moves them, so a column whose contact is moved a few rows is a few rows off its colour: not visible on a drift this long, to be checked on scanner stills at tier 1 and the top tier on the user's machine. The `layer_1` dimension (outside the campaign world) draws its packed shale with the drift's colour at its heights.
 
