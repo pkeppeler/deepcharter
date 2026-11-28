@@ -480,9 +480,9 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 | 5 | 45 | 1 |
 | 6 | 65 | 1 |
 
-The tanks column is as of #1596 (29 L, tanks of 10, 13, 17, 22, 30, 45 and 65 L; they were 15, 25, 40, 60, 100 and 150 L above the stock 10 L, and 3, 2, 1, 1, 1, 1, 1 refills). The prose below is the 139 L history.
+The tanks column is as of #1596 (29 L, tanks of 10, 13, 17, 22, 30, 45 and 65 L; they were 15, 25, 40, 60, 100 and 150 L above the stock 10 L, and 3, 2, 1, 1, 1, 1, 1 refills). The Decision below is the 139 L history: its argument still holds at 29 L.
 
-- **Once is possible.** A Mole with the tier 2 tank bored layer 1 on its 25 L plus about 57 fuel items (114 L) fed at the bottom, or 45 with a reserve tank (the 139 L figure). The pod arrives in layer 2 empty, with a 192-block climb behind it.
+- **Once is possible.** Now (#1596, 29 L), a Mole with the tier 2 tank of 17 L bores layer 1 with 6 coal (12 L) fed on the way and arrives about empty, or with a reserve tank and arrives with about 13 L. When this section was written (139 L), the same pod needed its tank of 25 L, as tier 2 was then, plus about 57 fuel items (114 L), or 45 with a reserve tank. Either way a 192-block climb is behind it.
 - **Repeatedly is not.** A second layer 2 run starts at the surface again, and the shaft cannot be driven down. Each run would be a fresh bore. The Prospector restore's runs (`EconomyAffordabilityTest`) need a pod that can start a run at the shaft bottom: by the braked drive down (#319), or an outpost with a fuel pump and a sell terminal there (SPEC section 11, built at depth). Both are built: [Hard landings (#319)](#hard-landings-319-a) and [Outposts (#320)](#outposts-at-the-layer-1-floor-320-a).
 - **Model limits (A).** The bore is counted from the top of the layer. The rock starts at y 150 to 170, so the true bore is shorter, by a tenth or less. The bore also takes the dearest zone's drill time for all of it. Both overstate the litres.
 
@@ -2246,6 +2246,8 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 ## The first tank, and no Company recovery (#963, #1430, A)
 
+> **Superseded in part by [#1596](#fuel-lasts-30-shorter-and-the-tank-ladder-is-flatter-1596).** The burn rates, the minutes a tank lasts ("four minutes" below is now three) and the trip table here are #963's. The no-recovery rule stands.
+
 **Problem.** The third playtest: the first pod "can only dig like 10 blocks before it runs out of fuel", then sits dark at the bottom of the shaft. The burn rates came from the original's per-second values (0.063, 0.19 and 0.32 L/s on a 10 L tank), but our drill takes 2.4 s a block in layer 1 (24 ticks of stone, slowed by depth, plus the pod's settling), so the same seconds bought far fewer blocks. Nobody had measured a tank in blocks. And a pilot who ran dry, broke and alone had no way out at all: #963 first answered that with a Company recovery, which #1430 took out again (below).
 
 **Measured** (`PodFuelTripTest`: the real stock pod, the real drill and a scripted pilot's inputs, in plain layer 1 stone; the pad is the top of layer 1, so a trip starts with the braked fall to the stone).
@@ -2303,6 +2305,7 @@ All rows are measured. Each tier's gain over the one below is now 1.3x to 1.5x (
 **What it moves in the economy (the decisions).**
 - **Pump price.** Kept at $1 a litre. A trip burns 1.43 times the litres, so a stock layer 1 run's fuel is $1.98 where it was $1.39; the run nets $368 where it netted $370 (surface start) and $452 where $455 (outpost start). Fuel is under 1% of a run, so no part price moves.
 - **The pricing run.** `EarlyRunModel.PRICING_RUN_TANK_SHARE` goes from a seventh to 1 / 4.9 of the tank, so a run is the same trip (the same slabs, 48 and 31) and "runs to afford" keeps its meaning. The model prices a run on the old tank ladder (`PRICING_TANK_LITRES`): a real pod can make the same trip on a smaller tank, and the user asked for less fuel, not dearer parts.
+- **Tank part prices** are kept ($500, $1,250, $5,000, $25,000, $125,000 for tiers 2 to 6; tier 1 is crafted from 7 iron and 1 copper), so a litre of tank costs about 2.5 to 3 times what it did: tier 2 is $125 for each litre over tier 1, where it was $50. That is the user's point (a bigger tank should matter less), and each tier is still worth its price: tier 1 adds 30% to every trip for a cheap craft, tier 2 adds 70% over stock for $500, under 1.4 stock runs, where engine tier 2 adds 13% for the same $500. Cutting the tank's prices would give it a price list of its own, unlike every other track, and lower the step to the Mole's best tank.
 - **The Company rock cutter** burned 21 times the drilling rate, and now burns 14.7 times, so a bitten slab costs the same litres and about a blasting charge.
 - **Field fuel items** keep their litres (coal 2, charcoal 1, biofuel 3): a litre is a litre of tank, so each item lasts 70% as long as before, like the tank. The measured effect is in the favour of the pump: a pump trip out-earns coal by 16% a minute (it was 11%), because a coal pilot reaches the limit after 21 trips where it was 30.
 - **Soot and limp thresholds** keep their litres (grace 3, limp 12, a scrape leaves 11): soot is per litre burned, so a trip fouls the engine 1.4 times faster, a coal pilot is serviced every 7 trips where it was every 10, and the free scrape is as before. This is harder on solid fuel and was left because the stock trip still reaches the limit only after several trips, and the pump is the answer to it.

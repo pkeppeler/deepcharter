@@ -60,19 +60,13 @@ public final class EarlyRunModel {
     public static final double PRICING_RUN_TANK_SHARE = 1.0 / 7.0 / 0.7;
 
     /**
-     * (A) The tank sizes the economy was priced on, by the size a tier has now (#1596 flattened the ladder from 10, 15,
-     * 25, 40, 60, 100 and 150 L to 10, 13, 17, 22, 30, 45 and 65 L). A run is a share of the tank, so a smaller tank
-     * would shorten the pricing run of every tier and make every part dearer in runs; the user asked for less fuel, not
-     * for dearer parts, so a run is still priced on the old tank. A tank that is on neither ladder (a stock tank with
-     * litres lost to a grip) is its own size.
+     * (A) The tank litres the economy was priced on, by tank tier: the ladder before #1596 flattened it (to 10, 13,
+     * 17, 22, 30, 45 and 65 L, in {@link UpgradeTuning}). A run is a share of the tank, so the smaller tanks would
+     * shorten the pricing run of every tier and make every part dearer in runs; the user asked for less fuel, not for
+     * dearer parts, so a tier's run is still priced on its old tank. The tier is read off the live ladder (see
+     * {@link #pricingTankLitres}), never from a litre literal, so a retuned ladder still prices each tier here.
      */
-    private static final Map<Integer, Float> PRICING_TANK_LITRES = Map.of(
-            13, 15f,
-            17, 25f,
-            22, 40f,
-            30, 60f,
-            45, 100f,
-            65, 150f);
+    private static final float[] PRICING_TANK_LITRES_BY_TIER = {10f, 15f, 25f, 40f, 60f, 100f, 150f};
 
     private static final int TICKS_PER_SECOND = 20;
 
@@ -263,10 +257,20 @@ public final class EarlyRunModel {
         return run(Start.OUTPOST, chassis, zone, stats, layerOneBlocks(), extraMass);
     }
 
+    /**
+     * The tank a pricing run of {@code stats} is counted on: the old litres of the tank tier whose capacity it has on
+     * the stock Mole's ladder, or its own capacity when it has none of them (a reserve tank on top, or another
+     * chassis's tank).
+     */
     private static double pricingTankLitres(PodStats stats) {
-        int whole = Math.round(stats.tankLitres());
-        boolean onTheLadder = Math.abs(stats.tankLitres() - whole) < 1e-3;
-        return onTheLadder ? PRICING_TANK_LITRES.getOrDefault(whole, stats.tankLitres()) : stats.tankLitres();
+        float stock = PodStats.base().tankLitres();
+        for (int tier = 0; tier < PRICING_TANK_LITRES_BY_TIER.length; tier++) {
+            float ladder = stock * UpgradeTuning.DEFAULT.ratio(ComponentTrack.FUEL_TANK, tier);
+            if (Math.abs(stats.tankLitres() - ladder) < 1e-3) {
+                return PRICING_TANK_LITRES_BY_TIER[tier];
+            }
+        }
+        return stats.tankLitres();
     }
 
     private static Run run(Start start, Chassis chassis, Zone zone, PodStats stats, int shaftBlocks, float extraMass) {
