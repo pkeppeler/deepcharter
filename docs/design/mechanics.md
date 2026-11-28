@@ -305,7 +305,7 @@ Read from the code, not invented. The pilot's whole counterplay to seeing a pock
 
 | What | Where | What it does for gas |
 |---|---|---|
-| The blast | `GasHazard.java:41` (`damage`), `OreTuning.java:17` | Hull cost is depth in feet times the radiator factor times 0.05 (about 20 at the top of Deep Claim). Pods within a block of the pocket take it; a pocket mined by the drill or by hand vents (`GasHazard.java:29`, `PodDrill.java:210`). |
+| The blast | `GasHazard.java:41` (`damage`), `OreTuning.java:17` | Hull cost is depth in metres times the radiator factor times 0.164, the 0.05 a foot it was before depth read in metres (#1604; about 20 at the top of Deep Claim). Pods within a block of the pocket take it; a pocket mined by the drill or by hand vents (`GasHazard.java:29`, `PodDrill.java:210`). |
 | Scanner, tier 3 and up | `ScannerTuning.java:23` (`gasTier` 3), `ScanSlice.java:85,120`, `ScannerHud.java:140` | Shows a pocket as a magenta cell in the slice (one block thick, in the pod's facing plane). Below tier 3 a pocket reads as rock. Price $1,250. **A Mole cannot fit it:** the Mole takes parts to tier 2 (`UpgradeTuning.java:14`), so the Mole sees no gas in layers 1 and 2. A Prospector (cap 3) can. |
 | Radiator | `PodComponents.java:177`, `UpgradeTuning.java:91` | Gas and lava both read it. A Mole's best is tier 2: gas costs 0.75 of the hull ($500 for 0.9, $1,250 for 0.75). |
 | Hull part | `PodComponents.java:133`, `UpgradeTuning.java:88` | More hull to spend; a soak, not an answer. |
@@ -468,20 +468,22 @@ What else the part did to the bores:
 1. **A pod could not drive back down its own shaft.** The hull paid by distance fallen, so a braked fall cost the hull of a free one and a stock hull survived 23 blocks of 192. [Hard landings (#319)](#hard-landings-319-a) changed the rule to impact speed: a braked descent is safe and costs fuel (`EarlyRunModel.driveDownLitres`), which the layer 2 runs now include.
 2. **A bore down has to carry its fuel.** There is no pump underground. The only field refuel is a fuel item fed to the parked pod (coal 2 L, charcoal 1 L, biofuel 3 L; see [Solid fuel](#solid-fuel-1280-a)), by reading the code, not tried in play.
 
-Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`EarlyRunModel.boreLitres`): **139 L**. The tank tier sets how many tank-fulls that is:
+Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`EarlyRunModel.boreLitres`): **139 L** when the section was written; **20 L** after #963 and **29 L** after #1596 raised the burn by 1 / 0.7. The tank tier sets how many tank-fulls that is:
 
 | Tank tier | Litres | Tanks for the bore |
 |---|---|---|
-| 0 (stock) | 10 | 14 |
-| 1 | 15 | 10 |
-| 2 (the Mole's best) | 25 | 6 |
-| 3 | 40 | 4 |
-| 4 | 60 | 3 |
-| 5 | 100 | 2 |
-| 6 | 150 | 1 |
+| 0 (stock) | 10 | 3 |
+| 1 | 13 | 3 |
+| 2 (the Mole's best) | 17 | 2 |
+| 3 | 22 | 2 |
+| 4 | 30 | 1 |
+| 5 | 45 | 1 |
+| 6 | 65 | 1 |
 
-- **Once is possible.** A Mole with the tier 2 tank bores layer 1 on its 25 L plus about 57 fuel items (114 L) fed at the bottom, or 45 with a reserve tank. That is one stack of coal. The pod arrives in layer 2 empty, with a 192-block climb behind it.
-- **Repeatedly is not.** A second layer 2 run starts at the surface again, and the shaft cannot be driven down. Each run would be a fresh 139 L bore. The Prospector restore's runs (`EconomyAffordabilityTest`) need a pod that can start a run at the shaft bottom: by the braked drive down (#319), or an outpost with a fuel pump and a sell terminal there (SPEC section 11, built at depth). Both are built: [Hard landings (#319)](#hard-landings-319-a) and [Outposts (#320)](#outposts-at-the-layer-1-floor-320-a).
+The tanks column is as of #1596 (29 L, tanks of 10, 13, 17, 22, 30, 45 and 65 L; they were 15, 25, 40, 60, 100 and 150 L above the stock 10 L, and 3, 2, 1, 1, 1, 1, 1 refills). The Decision below is the 139 L history: its argument still holds at 29 L.
+
+- **Once is possible.** Now (#1596, 29 L), a Mole with the tier 2 tank of 17 L bores layer 1 with 6 coal (12 L) fed on the way and arrives about empty, or with a reserve tank and arrives with about 13 L. When this section was written (139 L), the same pod needed its tank of 25 L, as tier 2 was then, plus about 57 fuel items (114 L), or 45 with a reserve tank. Either way a 192-block climb is behind it.
+- **Repeatedly is not.** A second layer 2 run starts at the surface again, and the shaft cannot be driven down. Each run would be a fresh bore. The Prospector restore's runs (`EconomyAffordabilityTest`) need a pod that can start a run at the shaft bottom: by the braked drive down (#319), or an outpost with a fuel pump and a sell terminal there (SPEC section 11, built at depth). Both are built: [Hard landings (#319)](#hard-landings-319-a) and [Outposts (#320)](#outposts-at-the-layer-1-floor-320-a).
 - **Model limits (A).** The bore is counted from the top of the layer. The rock starts at y 150 to 170, so the true bore is shorter, by a tenth or less. The bore also takes the dearest zone's drill time for all of it. Both overstate the litres.
 
 **Decision (A).** No tuning change. A tuning fix cannot work: to bore 139 L on one tank the tier would have to be 6 ($125,000), and to make a 192-block drop survivable the fall damage would have to be near zero, which removes the hazard. Both fixes are new mechanics, so they are not built here (follow-up issues in the PR). `EconomyAffordabilityTest` now pins the numbers above and the Prospector run count, so a change to fuel, tanks, hull, fall damage or layer 1's height shows here.
@@ -802,7 +804,7 @@ The no-brace columns were measured again on the merged code and give the sounder
 
 **The bore.** `W = ceil(width)` blocks on both horizontal axes, `H = ceil(height)` blocks tall (`Chassis.boreWidth`, `boreHeight`; `PodFootprint` is the pod's cells). A pod is centred in its bore. Width is both the pod's width and depth; only width and height may differ. One downward step bores `W x W` cells (`Chassis.slabCells`), one sideways step `W x H`.
 
-**Drill time per slab.** The time does not grow with the bore. A slab takes the time of its hardest block: `ticks = ceil(hardness x ticksPerHardness x (1 + max(0, depthFeet) / 1000))` for that block (`PodDrill.drillTicks`). A wider bore is slower only because it is more likely to hold something harder than stone: with `p` the zone's ore chance, the chance a slab holds ore is `1 - (1 - p)^(W x W)`, and a slab with ore takes the ore's hardness (`EarlyRunModel.slabSeconds`). A Mole (4 cells) at `p` = 0.02 meets ore in 8% of slabs, a 4-wide pod (16 cells) in 28%.
+**Drill time per slab.** The time does not grow with the bore. A slab takes the time of its hardest block: `ticks = ceil(hardness x ticksPerHardness x (1 + max(0, depth) / doublingDepth))` for that block, depth in metres and `doublingDepth` 305 m, the original's 1,000 ft (`PodDrill.drillTicks`). A wider bore is slower only because it is more likely to hold something harder than stone: with `p` the zone's ore chance, the chance a slab holds ore is `1 - (1 - p)^(W x W)`, and a slab with ore takes the ore's hardness (`EarlyRunModel.slabSeconds`). A Mole (4 cells) at `p` = 0.02 meets ore in 8% of slabs, a 4-wide pod (16 cells) in 28%.
 
 **Ore per slab.** `W x W x p x yield` (`EarlyRunModel.run`). A 4 x 4 bore brings four times a Mole's ore from each slab for the same fuel per second, so the cargo bay fills in a quarter of the slabs. Bigger pods get their ore from a bigger bay and tank, which is what the chassis and its price are for, not from the drill.
 
@@ -1664,7 +1666,7 @@ The heat shield's Goldium is the slow one: the sales forgone are 4.4 minutes of 
 
 ## The deepest point (#476)
 
-A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, means reaching the top of layer 3 (`LayerChain.topDepth(3)`, depth 575, the bottom row of layer 2's crust): a charter has drilled through the crust, or come down the Kells' shaft.
+A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in metres, like the HUD. "Reach layer 3", which opens the Morale Initiative, means reaching the top of layer 3 (`LayerChain.topDepth(3)`, depth 575, the bottom row of layer 2's crust): a charter has drilled through the crust, or come down the Kells' shaft.
 
 ## Company Rock and the straight shaft (#509, A)
 
@@ -2246,6 +2248,8 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 ## The first tank, and no Company recovery (#963, #1430, A)
 
+> **Superseded in part by [#1596](#fuel-lasts-30-shorter-and-the-tank-ladder-is-flatter-1596).** The burn rates, the minutes a tank lasts ("four minutes" below is now three) and the trip table here are #963's. The no-recovery rule stands.
+
 **Problem.** The third playtest: the first pod "can only dig like 10 blocks before it runs out of fuel", then sits dark at the bottom of the shaft. The burn rates came from the original's per-second values (0.063, 0.19 and 0.32 L/s on a 10 L tank), but our drill takes 2.4 s a block in layer 1 (24 ticks of stone, slowed by depth, plus the pod's settling), so the same seconds bought far fewer blocks. Nobody had measured a tank in blocks. And a pilot who ran dry, broke and alone had no way out at all: #963 first answered that with a Company recovery, which #1430 took out again (below).
 
 **Measured** (`PodFuelTripTest`: the real stock pod, the real drill and a scripted pilot's inputs, in plain layer 1 stone; the pad is the top of layer 1, so a trip starts with the braked fall to the stone).
@@ -2278,6 +2282,41 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 **Knobs.** `PodTuning.Fuel` (the three rates), `PodRockBiteTuning.fuelMultiplier`, `EarlyRunModel.PRICING_RUN_TANK_SHARE`.
 
 **Pins.** `PodFuelTripTest` (the tank in the pilot's units, the beep, the ladder). `PodAttachmentTest` loads a pod saved with the old recovery clock and checks it is dropped.
+
+## Fuel lasts 30% shorter, and the tank ladder is flatter (#1596)
+
+**Problem.** The friends playtest (2026-11-27): one stock tank almost got a pod through layer 1 (93 of its 98 blocks of stone), and with the tier 2 tank "a deep mining trip needs no thought about fuel at all". The user's decisions: in game chat (2026-11-27), keep the stock tank at 10 L but make it last as long as 7 L did (the burn is 1 / 0.7 times higher); on the issue (2026-11-28), on top of that, flatten the tank ladder so tier 2 no longer makes fuel a non-issue, starting from 10, 13, 17, 22, 30, 45 and 65 L for tiers 0 to 6 (was 10, 15, 25, 40, 60, 100 and 150 L). Those sizes are kept: the first trip still comes home and every tier still gains at least 1.25x over the one below. So a stock tank lasts 70% of its old time, and a bigger tank lasts 70% of what its new, smaller litres lasted before (tier 2: 5.1 minutes of the mix, was 10.6).
+
+**The change.** `PodTuning.Fuel`: 0.009, 0.027 and 0.046 L/s (idle, moving, drilling) become 0.01286, 0.03857 and 0.06571. `UpgradeTuning`: the tank track's litres. Nothing else in `src/main` moves except the Company rock cutter's multiplier (below).
+
+**Measured** (`PodFuelTripTest`, #1594's speeds, the stock Mole, plain layer 1 stone; the same script before and after).
+
+| Row | Before | After |
+|---|---|---|
+| Straight bore on one stock tank | 93 blocks, 230 s, then stranded | 66 blocks, 160 s, then stranded |
+| First trip: 40 blocks down, a side tunnel at 20 and at 40, home on the rotor | 156.7 s, 6.1 L burned, home with 3.9 L (39%) | 156.7 s, 8.8 L burned, home with 1.2 L (12%) |
+| What a stock tank of that mix lasts | 4.2 min | 3.0 min |
+| Climb home from 40 blocks down | 0.48 L in 18 s | 0.69 L in 18 s |
+| Low-fuel tone (21%, 2.1 L) | 4.3 times the climb home | 3.0 times the climb home |
+| A full tank, idle, driving, drilling (tier 0) | 1,111 s, 370 s, 217 s | 778 s, 259 s, 152 s |
+| Tank tiers 1 to 6, minutes of that mix | 6.4, 10.6, 17.0, 25.5, 42.5, 63.7 | 3.9, 5.1, 6.5, 8.9, 13.4, 19.3 |
+| Reserve tank (+25 L) with a stock tank | 14.9 min | 10.4 min |
+
+All rows are measured. Each tier's gain over the one below is now 1.3x to 1.5x (was 1.5x to 1.7x, 1.5x to 1.6x above): `MIN_TIER_GAIN` in the test is 1.25. The first trip still comes home, but with a thin 12% of the tank: a pilot who turns round at the low-fuel tone has 3 times the climb home left, and a pilot who ignores it is stranded sooner. Pins: a stock tank drills 60 to 75 blocks and 125 to 190 s (so it no longer nearly gets through layer 1), the first trip is home with at least 10%, the tone leaves twice the climb home, and the same litres last 70% as long in each activity.
+
+**What it moves in the economy (the decisions).**
+- **Pump price.** Kept at $1 a litre. A trip burns 1.43 times the litres, so a stock layer 1 run's fuel is $1.98 where it was $1.39; the run nets $368 where it netted $370 (surface start) and $452 where $455 (outpost start). Fuel is under 1% of a run, so no part price moves.
+- **The pricing run.** `EarlyRunModel.PRICING_RUN_TANK_SHARE` goes from a seventh to 1 / 4.9 of the tank, so a run is the same trip (the same slabs, 48 and 31) and "runs to afford" keeps its meaning. The model prices a run on the old tank ladder (`PRICING_TANK_LITRES_BY_TIER`): a real pod can make the same trip on a smaller tank, and the user asked for less fuel, not dearer parts.
+- **Tank part prices** are kept ($500, $1,250, $5,000, $25,000, $125,000 for tiers 2 to 6; tier 1 is crafted from 7 iron and 1 copper), so a litre of tank costs about 2.5 to 3 times what it did: tier 2 is $125 for each litre over tier 1, where it was $50. That is the user's point (a bigger tank should matter less), and each tier is still worth its price: tier 1 adds 30% to every trip for a cheap craft, tier 2 adds 70% over stock for $500, under 1.4 stock runs, where engine tier 2 adds 13% for the same $500. Cutting the tank's prices would give it a price list of its own, unlike every other track, and lower the step to the Mole's best tank.
+- **The Company rock cutter** burned 21 times the drilling rate, and now burns 14.7 times, so a bitten slab costs the same litres and about a blasting charge.
+- **Field fuel items** keep their litres (coal 2, charcoal 1, biofuel 3): a litre is a litre of tank, so each item lasts 70% as long as before, like the tank. The measured effect is in the favour of the pump: a pump trip out-earns coal by 16% a minute (it was 11%), because a coal pilot reaches the limit after 21 trips where it was 30.
+- **Soot and limp thresholds** keep their litres (grace 3, limp 12, a scrape leaves 11): soot is per litre burned, so a trip fouls the engine 1.4 times faster, a coal pilot is serviced every 7 trips where it was every 10, and the free scrape is as before. This is harder on solid fuel and was left because the stock trip still reaches the limit only after several trips, and the pump is the answer to it.
+- **The return gauge** (the low-fuel tone) stays at 21%, which still leaves 3 times the climb home from 40 blocks and 2.1 L, the whole climb from the bottom of layer 1.
+- **Tank refills for a one-way bore of layer 1** (`EconomyAffordabilityTest`): 29 L (was 20 L), so 3, 3, 2, 2, 1, 1, 1 tanks by tier (was 3, 2, 1, 1, 1, 1, 1).
+
+**Harder or easier.** Harder on fuel, deliberately: a stock tank is 30% shorter, tier 2 is 17 L (was 25), and every tier above is smaller. Money is as it was.
+
+**Knobs.** `PodTuning.Fuel` (the three rates), `UpgradeTuning` (the tank litres), `PodRockBiteTuning.fuelMultiplier`, `EarlyRunModel.PRICING_RUN_TANK_SHARE` and `PRICING_TANK_LITRES_BY_TIER`.
 
 ## Overgrowth (#974, A)
 
@@ -2370,7 +2409,7 @@ The film has no collision, breaks at once by hand or by the drill, drops nothing
 | Drifters a zone holds, one source / two sources / alarm, one source | 1 / 2 / 2 (up to the cap 2, 3, 4) | `driftersKeyOnTheTagAndAreCountedByPodsAndCappedByZone` |
 | The alarm | 3600 ticks from the last kill, 180 s on the readout, ends | `theAlarmShowsDronesAndEnds` runs all 3,600 ticks |
 
-**Priced against the hazards that exist.** Lava is 10 hull a second, for as long as the pod touches it, times the radiator. A gas pocket's blast is 0.05 hull a foot of depth, once: 25 hull at 500 feet, 50 at 1,000. One cloud is 3 a second for at most 8 seconds: less than a gas pocket in the layers the Hollows sit at, a tenth of lava's rate, and a pilot who drives clear takes a few points. The pocket is a surprise; the cloud has 10 seconds of tell and answers to a verb. Chained, it can wreck a pod that ignores it (the CREATURES.md line "can wreck a pod that ignores them, but never in one hit and never without a tell"): one cloud is a quarter of a Mole, never a hit.
+**Priced against the hazards that exist.** Lava is 10 hull a second, for as long as the pod touches it, times the radiator. A gas pocket's blast is 0.164 hull a metre of depth, once: 25 hull at 152 m, 50 at 305 m. One cloud is 3 a second for at most 8 seconds: less than a gas pocket in the layers the Hollows sit at, a tenth of lava's rate, and a pilot who drives clear takes a few points. The pocket is a surprise; the cloud has 10 seconds of tell and answers to a verb. Chained, it can wreck a pod that ignores it (the CREATURES.md line "can wreck a pod that ignores them, but never in one hit and never without a tell"): one cloud is a quarter of a Mole, never a hit.
 
 **Decisions (A).**
 - **The alarm is session-only; no ADR 0077.** The alarm is held in memory, never saved, and the readout attachment is not persistent. A restart forgets up to 3 minutes of alarm. That is the same class as the hold and the fuse (session state), the player loses nothing they could keep (no item, no progress, no account), and the worst case is a calm minute after a reload. Saving it would need a versioned `SavedData` and a decode fallback for a state that cannot be worth a migration. If the alarm ever has to survive a restart (a persistent zone state, the "while nobody is near" visits of #927), ADR 0077 is reserved for that move.

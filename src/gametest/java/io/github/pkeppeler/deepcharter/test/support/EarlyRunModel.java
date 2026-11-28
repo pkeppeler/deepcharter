@@ -5,7 +5,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.OutpostTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -50,12 +49,23 @@ public final class EarlyRunModel {
     public static final double DRIVE_DOWN_SINK = 0.6;
 
     /**
-     * (A) The share of a tank that one pricing run burns. The prices are counted in runs, and a run was a whole tank at the original's burn rates.
-     * Issue 963 slowed the burn to a seventh so that a first tank lasts minutes of play, and left the drill and the ore alone, so what a run earns
-     * for the minute it takes is as it was: a run stays the trip a seventh of the tank pays for, and "runs to afford" keeps its meaning. A pilot
-     * who burns the whole tank makes seven runs of ore, but the bay is full long before, so the model keeps the old run.
+     * (A) The share of a tank that one pricing run burns. The prices are counted in runs, and a run was a whole tank at
+     * the original's burn rates. Issue 963 slowed the burn to a seventh so that a first tank lasts minutes of play, and
+     * left the drill and the ore alone, so what a run earns for the minute it takes is as it was: a run stays the trip
+     * a seventh of the tank paid for, and "runs to afford" keeps its meaning. A pilot who burns the whole tank makes
+     * seven runs of ore, but the bay is full long before, so the model keeps the old run. Issue 1596 made a tank last
+     * 70% as long (the burn is 1 / 0.7 times higher), so the same run now takes 1 / 0.7 times the share of the tank.
      */
-    public static final double PRICING_RUN_TANK_SHARE = 1.0 / 7.0;
+    public static final double PRICING_RUN_TANK_SHARE = 1.0 / 7.0 / 0.7;
+
+    /**
+     * (A) The tank litres the economy was priced on, by tank tier: the ladder before #1596 flattened it (see
+     * {@link UpgradeTuning}). A run is a share of the tank, so the smaller tanks would shorten every tier's pricing run
+     * and make every part dearer in runs; #1596 asked for less fuel, not dearer parts, so a tier's run is still priced
+     * on its old tank. {@link #pricingTankLitres} reads the tier off the live ladder, so a retuned ladder still prices
+     * each tier here.
+     */
+    private static final float[] PRICING_TANK_LITRES_BY_TIER = {10f, 15f, 25f, 40f, 60f, 100f, 150f};
 
     private static final int TICKS_PER_SECOND = 20;
 
@@ -246,6 +256,22 @@ public final class EarlyRunModel {
         return run(Start.OUTPOST, chassis, zone, stats, layerOneBlocks(), extraMass);
     }
 
+    /**
+     * The tank a pricing run of {@code stats} is counted on: the old litres of the tank tier whose capacity it has on
+     * the stock Mole's ladder, or its own capacity when it has none of them (a reserve tank on top, or another
+     * chassis's tank).
+     */
+    private static double pricingTankLitres(PodStats stats) {
+        float stock = PodStats.base().tankLitres();
+        for (int tier = 0; tier < PRICING_TANK_LITRES_BY_TIER.length; tier++) {
+            float ladder = stock * UpgradeTuning.DEFAULT.ratio(ComponentTrack.FUEL_TANK, tier);
+            if (Math.abs(stats.tankLitres() - ladder) < 1e-3) {
+                return PRICING_TANK_LITRES_BY_TIER[tier];
+            }
+        }
+        return stats.tankLitres();
+    }
+
     private static Run run(Start start, Chassis chassis, Zone zone, PodStats stats, int shaftBlocks, float extraMass) {
         int cells = chassis.slabCells();
         double oreChance = zone.oreChance();
@@ -261,7 +287,7 @@ public final class EarlyRunModel {
                     + drillSeconds * next * stats.drillingLitresPerSecond()
                     + climbSeconds * stats.movingLitresPerSecond()
                     + (drillSeconds * next + climbSeconds) * stats.idleLitresPerSecond();
-            if (used > stats.tankLitres() * PRICING_RUN_TANK_SHARE) {
+            if (used > pricingTankLitres(stats) * PRICING_RUN_TANK_SHARE) {
                 break;
             }
             slabs = next;
@@ -309,9 +335,9 @@ public final class EarlyRunModel {
                 .max(Float::compare)
                 .orElseThrow();
         double slabHasOre = 1 - Math.pow(1 - zone.oreChance(), chassis.slabCells());
-        int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
-        double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);
-        double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthFeet);
+        int depthMetres = (int) Math.round(depthBlocks);
+        double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthMetres);
+        double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthMetres);
         return (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
     }
 
@@ -324,8 +350,8 @@ public final class EarlyRunModel {
     /** (A) The drill's own stats and a slab {@code depthBlocks} below the surface; the heat is repaired at the station's price. */
     public static Bite biteSlab(PodStats stats, double depthBlocks) {
         PodRockBiteTuning bite = PodRockBiteTuning.DEFAULT;
-        int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
-        double seconds = PodRockBite.drillTicks(stats, depthFeet) / (double) TICKS_PER_SECOND;
+        int depthMetres = (int) Math.round(depthBlocks);
+        double seconds = PodRockBite.drillTicks(stats, depthMetres) / (double) TICKS_PER_SECOND;
         double litres =
                 seconds * (stats.drillingLitresPerSecond() * bite.fuelMultiplier() + stats.idleLitresPerSecond());
         double hull = seconds * bite.heatHullPerSecond();

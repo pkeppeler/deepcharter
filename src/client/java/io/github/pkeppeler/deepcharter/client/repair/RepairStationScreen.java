@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.ShownPod;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
+import io.github.pkeppeler.deepcharter.client.ui.AboutTip;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
@@ -29,6 +30,7 @@ import io.github.pkeppeler.deepcharter.suit.SuitTracks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -67,20 +69,34 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 
     /**
      * One button of the list: what it says, the action it sends, whether it can be pressed (a track at its top tier
-     * cannot), and the item it sells, whose sheet the spec sheet key opens (#1651), or null when it sells none.
+     * cannot), what the ware does, which the tip over the list shows while the player points at it (#1645), and the item
+     * it sells, whose sheet the spec sheet key opens (#1651), or null when it sells none.
      */
     private record Row(
             Component label,
             Identifier action,
             CompoundTag args,
             boolean active,
+            Optional<Component> about,
             @Nullable Item item) {
-        Row(Component label, Identifier action, CompoundTag args, boolean active) {
-            this(label, action, args, active, null);
+        /** A row that can be pressed and says what its ware does. */
+        Row(Component label, Identifier action, CompoundTag args, Component about) {
+            this(label, action, args, true, Optional.of(about), null);
         }
 
-        Row(Component label, Identifier action, CompoundTag args) {
-            this(label, action, args, true);
+        /** A row that sells {@code item}: it can be pressed, says what the item does, and the spec sheet key opens its sheet. */
+        static Row sells(Component label, Identifier action, CompoundTag args, Component about, Item item) {
+            return new Row(label, action, args, true, Optional.of(about), item);
+        }
+
+        /** A row that cannot be pressed now, but still says what its ware does. */
+        static Row inactive(Component label, Identifier action, CompoundTag args, Component about) {
+            return new Row(label, action, args, false, Optional.of(about), null);
+        }
+
+        /** A row that sells nothing and says nothing: it only reports that the suit's log cannot be read. */
+        static Row silent(Component label, Identifier action, CompoundTag args) {
+            return new Row(label, action, args, false, Optional.empty(), null);
         }
     }
 
@@ -139,12 +155,16 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
             CompoundTag args = new CompoundTag();
             args.putInt(RepairStation.HP_KEY, hp);
             rows.add(new Row(
-                    Component.translatable("screen.deepcharter.repair.repair", hp, cost), RepairStation.REPAIR, args));
+                    Component.translatable("screen.deepcharter.repair.repair", hp, cost),
+                    RepairStation.REPAIR,
+                    args,
+                    about(RepairStation.REPAIR)));
         }
         rows.add(new Row(
                 Component.translatable("screen.deepcharter.repair.total"),
                 RepairStation.REPAIR_TOTAL,
-                new CompoundTag()));
+                new CompoundTag(),
+                about(RepairStation.REPAIR_TOTAL)));
         rows.addAll(sootRows());
         rows.addAll(suitRows());
         for (Consumable consumable : Consumable.values()) {
@@ -156,7 +176,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                     ? Component.translatable(
                             "screen.deepcharter.repair.buy_pack", name, consumable.perPurchase(), consumable.price())
                     : Component.translatable("screen.deepcharter.repair.buy", name, consumable.price());
-            rows.add(new Row(label, RepairStation.BUY, args, true, item));
+            rows.add(Row.sells(label, RepairStation.BUY, args, about(consumable), item));
         }
         return rows;
     }
@@ -183,25 +203,27 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                                 : Component.translatable(
                                         "screen.deepcharter.repair.service_part", quote.litres(), soot, quote.cost()),
                         RepairStation.SERVICE_ENGINE,
-                        new CompoundTag()))
-                .orElseGet(() -> new Row(
+                        new CompoundTag(),
+                        about(RepairStation.SERVICE_ENGINE)))
+                .orElseGet(() -> Row.inactive(
                         Component.translatable(
                                 "screen.deepcharter.repair.service_unpaid",
                                 FuelTuning.DEFAULT.soot().servicePerLitre()),
                         RepairStation.SERVICE_ENGINE,
                         new CompoundTag(),
-                        false)));
+                        about(RepairStation.SERVICE_ENGINE))));
         if (EngineSoot.limpAtColony(pod)) {
             rows.add(FlueScrape.secondsLeft(pod)
-                    .map(seconds -> new Row(
+                    .map(seconds -> Row.inactive(
                             Component.translatable("screen.deepcharter.repair.scraping", seconds),
                             RepairStation.SCRAPE_FLUE,
                             new CompoundTag(),
-                            false))
+                            about(RepairStation.SCRAPE_FLUE)))
                     .orElseGet(() -> new Row(
                             Component.translatable("screen.deepcharter.repair.scrape"),
                             RepairStation.SCRAPE_FLUE,
-                            new CompoundTag())));
+                            new CompoundTag(),
+                            about(RepairStation.SCRAPE_FLUE))));
         }
         return rows;
     }
@@ -218,22 +240,19 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
         }
         Optional<SuitTracks> held = Versioned.readable(player, SuitRegistry.TRACKS);
         if (held.isEmpty()) {
-            rows.add(new Row(
-                    Component.translatable("hud.deepcharter.suit.unreadable"),
-                    SuitShop.SUIT_BUY,
-                    new CompoundTag(),
-                    false));
+            rows.add(Row.silent(
+                    Component.translatable("hud.deepcharter.suit.unreadable"), SuitShop.SUIT_BUY, new CompoundTag()));
             return rows;
         }
         for (SuitTrack track : SuitTrack.values()) {
             Component name = Component.translatable("hud.deepcharter.suit.track." + track.id());
             int current = held.get().tier(track);
             if (current >= track.maxTier()) {
-                rows.add(new Row(
+                rows.add(Row.inactive(
                         Component.translatable("screen.deepcharter.repair.suit_top", name),
                         SuitShop.SUIT_BUY,
                         new CompoundTag(),
-                        false));
+                        about(track)));
                 continue;
             }
             CompoundTag args = new CompoundTag();
@@ -246,9 +265,23 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                             current + 1,
                             String.format(Locale.ROOT, "%,d", track.price(current + 1))),
                     SuitShop.SUIT_BUY,
-                    args));
+                    args,
+                    about(track)));
         }
         return rows;
+    }
+
+    /** What a ware does: the line {@code TerminalWares} holds for it, the spec sheet's own for an item. */
+    private static Component about(Identifier action) {
+        return TerminalWares.about(TerminalTypes.REPAIR_STATION, RepairStation.ware(action));
+    }
+
+    private static Component about(Consumable consumable) {
+        return TerminalWares.about(TerminalTypes.REPAIR_STATION, RepairStation.ware(consumable));
+    }
+
+    private static Component about(SuitTrack track) {
+        return TerminalWares.about(TerminalTypes.REPAIR_STATION, SuitShop.ware(track));
     }
 
     private static int buttonHeight() {
@@ -323,6 +356,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                     row.label(),
                     pressed ->
                             ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), row.action(), row.args())));
+            row.about().ifPresent(button::about);
             button.active = row.active();
             addRenderableWidget(scroll.shown(button));
             Item item = row.item();
@@ -397,6 +431,24 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
         return ShownPod.of(client.level, view);
     }
 
+    /** The content area, which a row's tip stays inside. */
+    public AboutTip.Bounds tipBounds() {
+        return new AboutTip.Bounds(
+                contentLeft(MARGIN),
+                contentTop(MARGIN),
+                contentRight(MARGIN),
+                contentBottom(MARGIN),
+                introTop(),
+                introTop() + Math.max(introLines().size(), 1) * lineStep());
+    }
+
+    /** The readouts the tip must not cover: the account, the hull and, while the list scrolls, which rows are shown. */
+    public List<AboutTip.Rect> tipReadouts() {
+        return textLines().stream()
+                .map(line -> AboutTip.Rect.ofText(font, line.text(), line.x(), line.y()))
+                .toList();
+    }
+
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         CrtTuning tuning = CrtTuning.current();
@@ -418,5 +470,6 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                     line.dim() ? PanelLook.dimText(tuning.dimColor()) : tuning.phosphorColor());
         }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        AboutTip.draw(graphics, font, this, tipBounds(), tipReadouts(), mouseX, mouseY);
     }
 }

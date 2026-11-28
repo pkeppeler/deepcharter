@@ -13,9 +13,11 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionLogKeys;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +49,7 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
             theBoardingSheetNamesTheSprintBoost();
             everyControlsPageFitsTheDefaultWindowAndTheSmallestGui();
             everyModKeyAndEveryPodInputKeyIsOnASheet(client.options);
+            noModKeyDefaultsToAKeyAnotherKeyHas(client.options);
             theMolesSheetNamesEveryCockpitTitle();
         });
     }
@@ -194,6 +197,41 @@ public class HandbookControlsClientTest implements FabricClientGameTest {
         require(
                 page.contains("cart is the ore in the bay"),
                 "the Mole's cockpit sheet says the plate's cart is the ore in the bay: " + page);
+    }
+
+    /**
+     * Pairs of the mod's keys that share a default on purpose: the catalogue's R acts on a hovered item in a screen,
+     * where the lining key does nothing.
+     */
+    private static final Set<Set<String>> SHARED_DEFAULTS =
+            Set.of(Set.of("key.deepcharter.catalogue.recipes", "key.deepcharter.line_slab"));
+
+    /**
+     * #1712: no two keys of the mod default to the same key, unless the pair is in {@link #SHARED_DEFAULTS}: a clash
+     * makes one press do two things (the comms log on J opened over the spec sheet's J). The comms log, which works
+     * anywhere in the world, also shares its default with no vanilla key. Vanilla's own overlaps with the mod's keys
+     * (its F3 combinations, O and G) are not checked here.
+     */
+    private static void noModKeyDefaultsToAKeyAnotherKeyHas(Options options) {
+        List<String> clashes = new ArrayList<>();
+        KeyMapping[] all = options.keyMappings;
+        for (int i = 0; i < all.length; i++) {
+            for (int j = i + 1; j < all.length; j++) {
+                KeyMapping a = all[i];
+                KeyMapping b = all[j];
+                boolean bothMod = a.getName().startsWith("key.deepcharter.")
+                        && b.getName().startsWith("key.deepcharter.");
+                boolean log = a == TransmissionLogKeys.OPEN || b == TransmissionLogKeys.OPEN;
+                if ((bothMod || log)
+                        && !a.getDefaultKey().equals(InputConstants.UNKNOWN)
+                        && a.getDefaultKey().equals(b.getDefaultKey())
+                        && !SHARED_DEFAULTS.contains(Set.of(a.getName(), b.getName()))) {
+                    clashes.add(a.getName() + " and " + b.getName() + " both default to "
+                            + a.getDefaultKey().getName());
+                }
+            }
+        }
+        require(clashes.isEmpty(), "keys share a default: " + clashes);
     }
 
     /**

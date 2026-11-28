@@ -57,14 +57,15 @@ TITLE_KEYS = {"fuel": "fuel", "hull": "hull", "cargo": "load", "depth": "depth",
 _LANG = json.loads((ROOT / "src/lang/en_us/pod.json").read_text(encoding="utf-8"))
 TITLES = {gauge: _LANG["hud.deepcharter.cockpit." + key] for gauge, key in TITLE_KEYS.items()}
 # The altimeter's recess at the band's middle. The room under it is the altimeter's (#1432 hangs the sink rate there), so no title takes it. It holds the longest reading,
-# "-12,345 ft.", drawn in the pixel digits (#1539) and centred, so the recess is that reading's width (LONGEST_READING_W, 37) and a pixel each side, rounded up to the even 38 + 2 = 40.
+# "-12,345 m", drawn in the pixel digits (#1539) and centred. It was sized for the feet reading "-12,345 ft." (37 wide and a pixel each side, made even: 40) and kept at 40
+# when depth went to metres (#1604), so the gauges round it stay where they are; the metres reading (31) sits in it with room to spare.
 RECESS_H, RECESS_Y = 7, 2
 # The altimeter's digits (#1539): a sheet of white glyphs the game tints, drawn at the HUD's pixel scale so they never smooth-scale. WIDE_GLYPHS are DIGIT_W wide and
 # come first in the sheet, then NARROW_GLYPHS, DIGIT_NARROW_W wide; a space is blank and as wide as a narrow glyph, so it takes no room in the sheet. The client reads the
 # same sizes from the theme (digitsW, digitsH, digitsGap, digitsNarrowW) and the glyph order from PixelDigits.
 DIGIT_W, DIGIT_H, DIGIT_GAP, DIGIT_NARROW_W = 3, 5, 1, 1
-LONGEST_READING = "-12,345 ft."
-WIDE_GLYPHS = "0123456789-ft"
+LONGEST_READING = "-12,345 m"
+WIDE_GLYPHS = "0123456789-m"
 NARROW_GLYPHS = ",."
 DIGITS_SHEET = ASSETS / "textures/gui/cockpit/digits.png"
 GLYPHS = {
@@ -79,8 +80,7 @@ GLYPHS = {
     "8": ("###", "#.#", "###", "#.#", "###"),
     "9": ("###", "#.#", "###", "..#", "###"),
     "-": ("...", "...", "###", "...", "..."),
-    "f": (".##", "#..", "##.", "#..", "#.."),
-    "t": (".#.", "###", ".#.", ".#.", ".##"),
+    "m": ("...", "#.#", "###", "#.#", "#.#"),
     ",": (".", ".", ".", "#", "#"),
     ".": (".", ".", ".", ".", "#"),
 }
@@ -243,8 +243,9 @@ def digits_width(text):
 
 
 LONGEST_READING_W = digits_width(LONGEST_READING)
-# A pixel each side, rounded up to an even width: the band is centred on the screen and its bars are even, so an odd recess would move them by a pixel on odd screens.
-RECESS_W = LONGEST_READING_W + 2 + LONGEST_READING_W % 2
+# Even: the band is centred on the screen and its bars are even, so an odd recess would move them by a pixel on odd screens. Fixed at the feet-era width (above).
+RECESS_W = 40
+assert RECESS_W % 2 == 0 and RECESS_W - LONGEST_READING_W >= 2, "the longest reading and a pixel each side fit the recess"
 
 
 def draw_digits(img, x, y, text, color):
@@ -441,16 +442,16 @@ def write() -> None:
 
 # The states the stills are shot in: the pod's real values, the numbers the plate shows and the alert lines (the plain readout's lines after the first four).
 STATES = {
-    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "Y150"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
-             "lines": ["Hull 100/100", "Fuel 78%", "Cargo 0", "Y 150"]},
-    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "cargo": 0.25, "tally": ["90/100", "12%", "3", "Y150"], "alerts": [], "lamps": [1, 0, 0, 0, 0],
-                 "lines": ["Hull 90/100", "Fuel 12%", "Cargo 3", "Y 150"]},
-    "burning": {"fuel": 0.7, "hull": 0.45, "depth": 0.18, "heat": 1.0, "cargo": 0.25, "tally": ["45/100", "70%", "3", "Y150"], "alerts": ["HULL BURNING"],
-                "lamps": [0, 0, 1, 1, 0], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Y 150", "HULL BURNING"]},
-    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.69, "tally": ["80/100", "50%", "5", "Y-420"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
-             "lines": ["Hull 80/100", "Fuel 50%", "Cargo 5", "Y -420"]},
-    "overloaded": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.85, "tally": ["80/100", "50%", "7", "Y-420"], "alerts": ["OVERLOADED"],
-                   "lamps": [0, 0, 0, 1, 1], "lines": ["Hull 80/100", "Fuel 50%", "Cargo 7", "Y -420", "OVERLOADED"]},
+    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "-87 m"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
+             "lines": ["Hull 100/100", "Fuel 78%", "Cargo 0", "Depth -87 m"]},
+    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "cargo": 0.25, "tally": ["90/100", "12%", "3", "-87 m"], "alerts": [], "lamps": [1, 0, 0, 0, 0],
+                 "lines": ["Hull 90/100", "Fuel 12%", "Cargo 3", "Depth -87 m"]},
+    "burning": {"fuel": 0.7, "hull": 0.45, "depth": 0.18, "heat": 1.0, "cargo": 0.25, "tally": ["45/100", "70%", "3", "-87 m"], "alerts": ["HULL BURNING"],
+                "lamps": [0, 0, 1, 1, 0], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Depth -87 m", "HULL BURNING"]},
+    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.69, "tally": ["80/100", "50%", "5", "-483 m"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
+             "lines": ["Hull 80/100", "Fuel 50%", "Cargo 5", "Depth -483 m"]},
+    "overloaded": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.85, "tally": ["80/100", "50%", "7", "-483 m"], "alerts": ["OVERLOADED"],
+                   "lamps": [0, 0, 0, 1, 1], "lines": ["Hull 80/100", "Fuel 50%", "Cargo 7", "Depth -483 m", "OVERLOADED"]},
 }
 FONT_W = 6  # the preview's glyphs, and the width the coverage assumes for a character of the game's font
 
@@ -618,7 +619,7 @@ def preview_look(look, state):
         img.blit(nine_slice(sprites["tab"].img, sprites["tab"].border, right - left, bottom - top), left, top)
         img.mask(ICONS[GAUGE_ICONS[name]], left + inset, top + inset, rgb(SHARED[name + "Color"]))
         img.text(left + inset + SHARED["iconWidth"] + SHARED["iconGap"], top + inset, TITLES[name], rgb(SHARED[name + "Color"]))
-    draw_digits(img, (SCREEN_W - digits_width("-1,234 ft.")) // 2, t[STYLE + "AltimeterY"], "-1,234 ft.", rgb("#FFFFFF"))
+    draw_digits(img, (SCREEN_W - digits_width("-1,234 m")) // 2, t[STYLE + "AltimeterY"], "-1,234 m", rgb("#FFFFFF"))
     width, height = plate_size(look, state)
     inset_left, inset_top, _, _ = plate_inset(look)
     plate = Placed(width, height, t[STYLE + "ReadoutAnchorX"], t[STYLE + "ReadoutAnchorY"], t[STYLE + "ReadoutX"], t[STYLE + "ReadoutY"])

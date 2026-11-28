@@ -1,11 +1,11 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -62,7 +62,9 @@ public final class PodStatusHud {
         lines.add(
                 new Line(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()), look.podStatusColor()));
         lines.add(new Line(
-                Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())), look.podStatusColor()));
+                Component.translatable(
+                        "hud.deepcharter.pod.depth", Altimeter.readingNumber(pod.level(), pod.getBlockY())),
+                look.podStatusColor()));
         float soot = EngineSoot.soot(pod);
         long slower = Math.round((1 - EngineSoot.output(soot)) * 100);
         if (EngineSoot.isLimp(soot)) {
@@ -310,13 +312,12 @@ public final class PodStatusHud {
     /** A line of the readout and the colour it is drawn in. */
     public record Line(Component text, int color) {
         /**
-         * The kind of a line from its key in {@link #KINDS}; a line of plain text, and the charter's account line ({@link AccountHud#KEY}), which the cockpit's plate shows
-         * under its tally, are notes. A plate too long for its room drops notes from the end up and asks each row it passes for its kind, so the account line must have one
+         * The kind of a line from its key in {@link #KINDS}; a line of plain text is a note. A plate too long for its
+         * room drops notes from the end up and asks each row it passes for its kind, so every line must have one
          * (#1457: a burning, stranded pod on a 320 wide GUI crashed the game here).
          */
         public Kind kind() {
-            if (!(text.getContents() instanceof TranslatableContents contents)
-                    || contents.getKey().equals(AccountHud.KEY)) {
+            if (!(text.getContents() instanceof TranslatableContents contents)) {
                 return Kind.INFO;
             }
             Kind kind = KINDS.get(contents.getKey());

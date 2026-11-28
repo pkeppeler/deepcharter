@@ -261,7 +261,7 @@ final class ChassisChecks {
             // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
             pilot.teleportTo(level, start, 0f, 0f);
             // Survival only now: a survival player waiting at its join spot for the far chunks can be buried there
-            // and suffocate (#1709's shard 9), and a dead mock cannot be teleported.
+            // and suffocate (#1733), and a dead mock cannot be teleported.
             pilot.player().setGameMode(GameType.SURVIVAL);
             pod[0] = spawn(level, start);
             expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
@@ -331,7 +331,7 @@ final class ChassisChecks {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
             site(level, x);
             // Survival only now: a survival player waiting at its join spot for the far chunks can be buried there
-            // and suffocate (#1709's shard 9).
+            // and suffocate (#1733).
             owner.player().setGameMode(GameType.SURVIVAL);
             pod[0] = spawn(level, new Vec3(x + middle, FLOOR, Z + middle));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod[0], ComponentTrack.LINER, 1);
@@ -392,7 +392,7 @@ final class ChassisChecks {
             site(level, x);
             build.accept(level);
             // Survival only now: a survival player waiting at its join spot for the far chunks can be buried there
-            // and suffocate (#1709's shard 9).
+            // and suffocate (#1733).
             owner.player().setGameMode(GameType.SURVIVAL);
             pod[0] = spawn(level, new Vec3(x + middle, FLOOR, Z + middle));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod[0], ComponentTrack.SOUNDER, tier);
@@ -454,7 +454,7 @@ final class ChassisChecks {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
             site(level, x);
             // Survival only now: a survival player waiting at its join spot for the far chunks can be buried there
-            // and suffocate (#1709's shard 9).
+            // and suffocate (#1733).
             owner.player().setGameMode(GameType.SURVIVAL);
             PodEntity pod = spawn(level, new Vec3(x, FLOOR, Z));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, 2);

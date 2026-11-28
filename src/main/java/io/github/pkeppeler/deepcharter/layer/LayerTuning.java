@@ -7,7 +7,6 @@ import java.util.Arrays;
  * {@link #DEFAULT}; read it as {@code LayerTuning.DEFAULT.thing()}.
  *
  * @param seaLevel       the Y of depth 0 on the surface
- * @param feetPerBlock   the altimeter's feet per block
  * @param crustThickness blocks of breach crust at the floor of each layer; the layer JSONs stack this many
  * @param pocketRadius   a crossing carves a pocket this many blocks out from the arrival column on each side
  * @param pocketHeight   blocks of air in that pocket; an entity arrives at its bottom, so this is also how far
@@ -41,7 +40,6 @@ import java.util.Arrays;
  */
 public record LayerTuning(
         int seaLevel,
-        double feetPerBlock,
         int crustThickness,
         int pocketRadius,
         int pocketHeight,
@@ -70,7 +68,6 @@ public record LayerTuning(
         HandBreakTuning handBreak) {
     public static final LayerTuning DEFAULT = new LayerTuning(
             63,
-            3.28,
             3,
             2,
             4,
