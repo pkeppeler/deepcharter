@@ -38,7 +38,8 @@
     "MinecraftAttackMixin",
     "SkyRendererMixin",
     "SoundManagerStopProbeMixin",
-    "SpriteAnimationStateMixin"
+    "SpriteAnimationStateMixin",
+    "WorldBeforeItemsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

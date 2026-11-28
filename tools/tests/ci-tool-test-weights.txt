@@ -91,4 +91,3 @@ record-evidence.test.sh 2
 server-test-lock.test.sh 31
 session-start.test.sh 19
 sound-evidence.test.sh 3
-client-test-world.test.sh 1

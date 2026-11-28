@@ -3,11 +3,12 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.client.pod.PodChase;
 import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 import io.github.pkeppeler.deepcharter.test.support.HeapHistogram;
+import io.github.pkeppeler.deepcharter.test.support.WorldBeforeItems;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Names each client GameTest in the log when it starts, starts its wall-clock limit ({@link ClientTestWatchdog}) and, when asked, records the
+ * Names each client GameTest in the log when it starts, starts its wall-clock limit ({@link ClientTestWatchdog}), arms {@link WorldBeforeItems} and, when asked, records the
  * heap ({@link HeapHistogram}). Fabric's
  * client GameTest runner logs nothing between tests, so a stalled CI run (issue 175) could not say which test it stalled in.
  * Every {@code runTest} calls this first. It also turns the pilot's chase camera ({@code PodChase}) off, because a test
@@ -23,6 +24,7 @@ public final class ClientTestLog {
         PodChase.setAutomatic(false);
         String name = test.getClass().getSimpleName();
         LOGGER.info("CLIENT-GAMETEST START {}", name);
+        WorldBeforeItems.begin(name);
         HeapHistogram.record(name);
         ClientTestWatchdog.shared().armForClass(name);
     }
@@ -32,6 +34,7 @@ public final class ClientTestLog {
         PodChase.setAutomatic(false);
         String name = test.getClass().getSimpleName();
         LOGGER.info("CLIENT-GAMETEST START {}", name);
+        WorldBeforeItems.begin(name);
         HeapHistogram.record(name);
         ClientTestWatchdog.shared().disarm();
     }
