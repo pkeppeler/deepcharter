@@ -209,15 +209,7 @@ jobs:
         run: |
           args=("-PgametestShard=$SHARD")
           if [ -n "$CLASSES" ]; then args+=("-PgametestClasses=$CLASSES"); fi
-          tools/ci-gradle-resolve.sh runGameTest "${args[@]}" $SKIP_COMPILE "-Dorg.gradle.internal.operations.trace=$RUNNER_TEMP/gradle-trace"
-      # TEMP (#1724): the cold Gradle start's build operations, to see why it takes 15 s on a runner and 3 s locally.
-      - if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: gradle-trace-${{ matrix.shard }}
-          path: ${{ runner.temp }}/gradle-trace-log.txt
-          if-no-files-found: ignore
-          retention-days: 1
+          tools/ci-gradle-resolve.sh runGameTest "${args[@]}" $SKIP_COMPILE
 
   # Everything `./gradlew build` does but the server GameTests (jars, check and its gates) and the client run tasks' dry run: one
   # job, beside the shards. Its job id is not the seeded `build`, so setup-gradle restores cache-seed.yml's entry through its

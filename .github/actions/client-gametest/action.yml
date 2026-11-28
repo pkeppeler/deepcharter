@@ -81,7 +81,7 @@ runs:
       # shellcheck disable=SC2086
       run: |
         if [ -n "$SKIP_COMPILE" ]; then
-          tools/ci-gradle-resolve.sh resolveClientGameTestRuntime downloadAssets $SKIP_COMPILE "-Dorg.gradle.internal.operations.trace=$RUNNER_TEMP/gradle-trace"
+          tools/ci-gradle-resolve.sh resolveClientGameTestRuntime downloadAssets $SKIP_COMPILE
         else
           tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime downloadAssets
         fi
@@ -237,7 +237,6 @@ runs:
         path: |
           build/client-gc.log
           build/client-heap
-          ${{ runner.temp }}/gradle-trace-log.txt
         if-no-files-found: ignore
         retention-days: 7
     # The screenshots the tests took (the failing frame is the last one), for a failure that only the runner shows.
