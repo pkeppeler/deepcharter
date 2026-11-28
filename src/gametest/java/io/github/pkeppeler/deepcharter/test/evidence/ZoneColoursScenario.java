@@ -38,8 +38,15 @@ import org.jspecify.annotations.Nullable;
  * long gradient. A still at each stop for each tier, and a frame for the recording.
  */
 public class ZoneColoursScenario extends EvidenceScenario {
-    private static final int X = 3200;
-    private static final int Z = 3200;
+    /**
+     * The bore's corner, a few blocks from the world spawn: its columns are generated already, where a bore far out
+     * waits on a ring of new campaign columns, which the software renderer of a cloud container cannot outrun.
+     */
+    private static volatile int x;
+
+    private static volatile int z;
+    /** Blocks from the spawn to the bore, clear of the spawn's own column. */
+    private static final int FROM_SPAWN = 8;
     /** Rows kept clear of the band's floor and roof, where the crusts and the open roof rows lie. */
     private static final int MARGIN = 4;
 
@@ -58,19 +65,24 @@ public class ZoneColoursScenario extends EvidenceScenario {
             pinned = true;
             PodEvents.AFTER_TICK.register(pod -> {
                 if (pod.getUUID().equals(HELD.get())) {
-                    pod.setPos(X + 1.0, HELD_Y.get(), Z + 1.0);
+                    pod.setPos(x + 1.0, HELD_Y.get(), z + 1.0);
                     pod.setDeltaMovement(Vec3.ZERO);
                 }
             });
         }
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             awaitWorld(context);
+            singleplayer.getServer().runOnServer(server -> {
+                BlockPos spawn = server.getRespawnData().globalPos().pos();
+                x = spawn.getX() + FROM_SPAWN;
+                z = spawn.getZ() + FROM_SPAWN;
+            });
             for (int layer = 2; layer <= 3; layer++) {
                 CampaignBands.Band band = CampaignBands.LAYERS.get(layer - 1);
                 Block rock = layer == 2 ? LayerBlocks.GREEN_SHALE : LayerBlocks.BASALT_CORE;
                 int at = layer;
                 singleplayer.getServer().runOnServer(server -> bore(TestLayers.level(server, at), band, rock));
-                ClientWait.lightSettled(context, singleplayer.getServer(), layer, X, Z, 1);
+                ClientWait.lightSettled(context, singleplayer.getServer(), layer, x, z, 1);
                 List<Integer> stops = stops(band);
                 int[] tiers = {1, ComponentTrack.SCANNER.maxTier()};
                 for (int tier : tiers) {
@@ -96,7 +108,7 @@ public class ZoneColoursScenario extends EvidenceScenario {
         for (int y = low; y <= high; y++) {
             for (int dx = -1; dx <= 2; dx++) {
                 for (int dz = -1; dz <= 2; dz++) {
-                    BlockPos pos = new BlockPos(X + dx, y, Z + dz);
+                    BlockPos pos = new BlockPos(x + dx, y, z + dz);
                     if (!level.getFluidState(pos).isEmpty()) {
                         level.setBlock(pos, rock.defaultBlockState(), 2);
                     }
@@ -104,7 +116,7 @@ public class ZoneColoursScenario extends EvidenceScenario {
             }
         }
         RoomCarver.carve(
-                level, new BlockPos(X, low, Z), new BlockPos(X + 1, high, Z + 1), Blocks.AIR.defaultBlockState());
+                level, new BlockPos(x, low, z), new BlockPos(x + 1, high, z + 1), Blocks.AIR.defaultBlockState());
     }
 
     /** The rows the pod stops at, top first: the middle of each zone, and each zone contact's centre between. */
@@ -127,7 +139,7 @@ public class ZoneColoursScenario extends EvidenceScenario {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             player.teleportTo(
-                    TestLayers.level(minecraftServer, layer), X + 1.0, top, Z + 1.0, Set.of(), 0f, 0f, true);
+                    TestLayers.level(minecraftServer, layer), x + 1.0, top, z + 1.0, Set.of(), 0f, 0f, true);
             player.getAbilities().mayfly = true;
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
