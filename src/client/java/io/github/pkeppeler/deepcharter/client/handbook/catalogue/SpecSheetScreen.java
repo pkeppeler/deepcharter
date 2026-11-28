@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheet;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheets;
 import java.util.Objects;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -19,16 +20,24 @@ import org.jspecify.annotations.Nullable;
 /**
  * An item's spec sheet on a screen of its own, in the recipe console's look: where a sheet pops up when no inventory with the parts
  * catalogue is open to hold it (nothing open, or a window too small for the catalogue's consoles, once the screen over it has
- * closed). Any key, the close switch and a click off the console close it, so the next sheet waiting ({@link SpecSheetOpener}) can
- * follow; the Recipes link closes it and shows the item's recipes in the catalogue, over the inventory.
+ * closed), and where the spec sheet key opens one over a screen with no catalogue (a chest, the pod screen, a terminal), which
+ * comes back when it closes. Any key, the close switch and a click off the console close it, so the next sheet waiting
+ * ({@link SpecSheetOpener}) can follow; the Recipes link closes it and shows the item's recipes in the catalogue, over the inventory.
  */
 public final class SpecSheetScreen extends Screen {
+    private final @Nullable Screen parent;
     private final Item item;
     private final SpecSheet sheet;
     private @Nullable Placed placed;
 
     public SpecSheetScreen(Item item) {
+        this(null, item);
+    }
+
+    /** The sheet of {@code item} over {@code parent}, which comes back when it closes (none: back to the game). */
+    SpecSheetScreen(@Nullable Screen parent, Item item) {
         super(Component.translatable("deepcharter.catalogue.spec"));
+        this.parent = parent;
         this.item = item;
         this.sheet = SpecSheets.of(item);
     }
@@ -106,6 +115,11 @@ public final class SpecSheetScreen extends Screen {
                 || key == InputConstants.KEY_RCONTROL
                 || key == InputConstants.KEY_LALT
                 || key == InputConstants.KEY_RALT;
+    }
+
+    @Override
+    public void onClose() {
+        Minecraft.getInstance().gui.setScreen(parent);
     }
 
     @Override

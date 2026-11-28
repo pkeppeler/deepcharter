@@ -21,6 +21,7 @@
   "deepcharter.market.pressed": "Pressed salvage crates: %s from %s spoil, now in your pack",
   "deepcharter.market.sold": "Sold %s ore for $%s",
   "deepcharter.market.sold_skipped": "Sold %s ore for $%s. %s pod(s) skipped: cargo unreadable",
+  "deepcharter.market.tooltip.price": "Sells for $%s at the colony, $%s at an outpost",
   "deepcharter.market.withdrawn": "Withdrew %s %s from the pod's cargo into your pack. It was not sold",
   "deepcharter.market.work_order.founders_hands": "Restore the Founder's hands",
   "deepcharter.market.work_order.morale_initiative": "Morale Initiative",

@@ -95,7 +95,9 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
         AbstractContainerScreen<?> inventory =
                 context.computeOnClient(client -> ClientSession.screen(client, AbstractContainerScreen.class));
         CatalogueScene.hover(
-                context, CatalogueScene.slotCell(context, inventory, slot -> slot.getItem().is(dynamite)));
+                context,
+                CatalogueScene.slotCell(
+                        context, inventory, slot -> slot.getItem().is(dynamite)));
         pressTheKeyAndSeeTheSheetOverTheCatalogue(context, panel, dynamite, "a hovered inventory slot");
 
         CatalogueScene.parkCursor(context, layout);
@@ -122,7 +124,8 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
         ContainerScreen chest = CatalogueScene.openChest(context, singleplayer, List.of(new ItemStack(cargo)));
         CatalogueScene.hover(
                 context,
-                CatalogueScene.slotCell(context, chest, slot -> slot.hasItem() && slot.getItem().is(cargo)));
+                CatalogueScene.slotCell(
+                        context, chest, slot -> slot.hasItem() && slot.getItem().is(cargo)));
         pressTheKeyAndSeeTheSheetOverTheScreen(context, chest, cargo, "a hovered chest slot");
         require(
                 context.computeOnClient(client -> ClientSession.player(client).containerMenu instanceof ChestMenu),
@@ -132,7 +135,8 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
 
     /** A row of the repair station's shop names an item: the key over it opens that item's sheet. */
     private static void overARepairStationRow(ClientGameTestContext context, Item dynamite) {
-        BlockPos at = context.computeOnClient(client -> ClientSession.player(client).blockPosition());
+        BlockPos at =
+                context.computeOnClient(client -> ClientSession.player(client).blockPosition());
         TerminalView view = new TerminalView(at, TerminalTypes.REPAIR_STATION.id(), Optional.empty(), List.of());
         context.setScreen(() -> new RepairStationScreen(view));
         ClientWait.screen(context, RepairStationScreen.class);
@@ -186,7 +190,8 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
         PodScreen pod = context.computeOnClient(client -> ClientSession.screen(client, PodScreen.class));
         CatalogueScene.hover(
                 context,
-                CatalogueScene.slotCell(context, pod, slot -> slot.hasItem() && slot.getItem().is(dynamite)));
+                CatalogueScene.slotCell(
+                        context, pod, slot -> slot.hasItem() && slot.getItem().is(dynamite)));
         pressTheKeyAndSeeTheSheetOverTheScreen(context, pod, dynamite, "a hovered pod screen slot");
     }
 

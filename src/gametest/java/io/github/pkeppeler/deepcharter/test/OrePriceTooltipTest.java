@@ -42,7 +42,8 @@ public class OrePriceTooltipTest {
     static List<String> shownPrices(GameTestHelper helper, ItemStack stack) {
         Component line =
                 OrePriceTooltip.line(stack).orElseThrow(() -> failure(helper, "%s should have a price line", stack));
-        if (!(line.getContents() instanceof TranslatableContents contents) || !contents.getKey().equals(KEY)) {
+        if (!(line.getContents() instanceof TranslatableContents contents)
+                || !contents.getKey().equals(KEY)) {
             throw failure(helper, "%s's price line is %s, not %s", stack, line, KEY);
         }
         return Arrays.stream(contents.getArgs()).map(String::valueOf).toList();
@@ -66,7 +67,8 @@ public class OrePriceTooltipTest {
     public void theTooltipReadsTheRatesTheProcessorPaysFrom(GameTestHelper helper) {
         for (OreType ore : OreType.values()) {
             List<String> shown = shownPrices(helper, OreRegistry.stack(ore));
-            long colony = OutpostRates.orePrice(helper.getLevel(), helper.absolutePos(BlockPos.ZERO).getY(), ore);
+            long colony = OutpostRates.orePrice(
+                    helper.getLevel(), helper.absolutePos(BlockPos.ZERO).getY(), ore);
             expect(
                     helper,
                     dollars(shown.get(0)) == colony && colony == OutpostRates.colonyOrePrice(ore),
@@ -93,7 +95,8 @@ public class OrePriceTooltipTest {
             List<String> worth = sheet.ratings().stream()
                     .filter(rating -> rating.label().getContents() instanceof TranslatableContents label
                             && label.getKey().equals("deepcharter.spec.rating.worth"))
-                    .map(rating -> String.valueOf(((TranslatableContents) rating.value().getContents()).getArgs()[0]))
+                    .map(rating -> String.valueOf(
+                            ((TranslatableContents) rating.value().getContents()).getArgs()[0]))
                     .toList();
             expect(
                     helper,

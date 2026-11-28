@@ -61,6 +61,7 @@ public final class CatalogueScreens {
             } else if (screen instanceof AbstractContainerScreen<?> container) {
                 SlotLookup.attach(container);
             }
+            SpecSheetOpener.attach(screen);
         });
     }
 
