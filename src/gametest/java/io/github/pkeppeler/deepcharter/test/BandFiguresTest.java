@@ -157,6 +157,7 @@ public class BandFiguresTest {
     /** Each band holds its own cap of natural figures, and the rail's figure of Prospector's Run is held back by neither. */
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void eachBandHasItsOwnCapOfFigures(GameTestHelper helper) {
+        // cap-shared: the figures are made, counted and discarded in one callback, so no other test sees the full band.
         ServerLevel level = helper.getLevel();
         int x = 24128;
         BlockPos one = new BlockPos(x, ONE.minY() + 80, Z);

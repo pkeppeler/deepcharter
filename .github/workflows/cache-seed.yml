@@ -1,6 +1,7 @@
 # Seeds the Gradle cache on main, which PR runs can read (a PR's own caches are
 # invisible to other PRs). Main never runs the real CI, so this fires only when a
-# Gradle input changes, or by hand. `classes` resolves dependencies and sets up
+# Gradle input or the sources change, or by hand: it fills the Gradle build cache with the
+# compile of main's sources, which a PR's jobs take the source sets they did not change from (ADR 0116). `classes` resolves dependencies and sets up
 # Minecraft (Loom's download, merge and remap) for every source set, without
 # running any tests.
 name: Cache seed
@@ -13,6 +14,7 @@ on:
       - settings.gradle.kts
       - gradle.properties
       - gradle/**
+      - src/**
   workflow_dispatch:
 
 concurrency:
@@ -32,7 +34,7 @@ jobs:
   build:
     name: seed
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,4 +48,12 @@ jobs:
           cache-read-only: false
       # Restores main's previous entry, so a broken one would otherwise stay broken (#830); also retries a
       # repository that fails to answer (#1358).
-      - run: tools/ci-gradle-resolve.sh classes
+      - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses
+      # Says the seed above has run: a PR's plan job looks this marker up (lookup only, a few bytes) to learn whether its jobs may compile for
+      # themselves from the Gradle build cache or must take the compile job's output, because a cold compile does not fit a job's five minutes
+      # (ADR 0116). The marker is evicted with the cache entries it stands for, as nearly as one can tell.
+      - run: echo "$GITHUB_SHA" > "$RUNNER_TEMP/seed-marker"
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/seed-marker
+          key: deepcharter-seed-marker-v1-${{ github.sha }}
