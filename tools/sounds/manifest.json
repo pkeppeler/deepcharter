@@ -1,4 +1,12 @@
 {
+  "alarm/fuel_critical": {
+    "ogg_sha256": "4012de4219bef0bb6e433dfdee77443e641d696f161ccedf695965e471568343",
+    "pcm_sha256": "ca52ced2af9a49b0a1d509829dc37113fa2785acd820d922b84064d38664f653"
+  },
+  "alarm/fuel_low": {
+    "ogg_sha256": "920f3ef7ba0ece9a631359bdaae433596334cca5ed483f69d8fd23662cff7f35",
+    "pcm_sha256": "db506fa47614ee81fcf78c8d0cfd84aa49ada5d5cac3cfdc4b0ff5a5b4fa6982"
+  },
   "ambient/layer_1_creak": {
     "ogg_sha256": "3d06681e1334e584cef117bd7b903046a45aed40c7077f298d30f30b2fceb936",
     "pcm_sha256": "6fbbc3382c9b9f78a8c9df622925df57a78d97967252b10ba9a81fe9520268ea"

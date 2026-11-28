@@ -58,7 +58,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for #71: a listener on the sound manager confirms that each wired event plays. The pod loops, the
- * low-fuel beep, the terminal music, the typewriter, the sale, the purchase, the error and the music of every layer, and (#249) the Lamp
+ * low-fuel buzzer and the critical klaxon, the terminal music, the typewriter, the sale, the purchase, the error and the music of every layer, and (#249) the Lamp
  * Hymn on founding a charter and the drone bed of every layer, which the client starts by itself from the biome's {@code ambient_sounds}.
  * Event ids are literals on purpose: they are what the private audio pack is keyed by.
  */
@@ -278,13 +278,19 @@ public class SoundWiringClientTest implements FabricClientGameTest {
             // Founding the charter (setUp) is the arrival at the colony: the hymn plays, once, to the founder.
             await(context, heard, "hymn.colony on founding the charter", client -> heard.count("hymn.colony") == 1);
 
-            // Riding a nearly empty pod beeps.
+            // Riding a pod below the urgent fuel level sounds the klaxon.
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 require(
                         player.startRiding(TestEntities.require(server.overworld(), scene.podId())),
                         "the player could not mount the pod");
             });
+            await(context, heard, "alarm.fuel_critical", client -> heard.count("alarm.fuel_critical") > 0);
+            // Above the urgent level but still low, the slower buzzer sounds instead.
+            singleplayer
+                    .getServer()
+                    .runOnServer(server -> TestEntities.require(server.overworld(), scene.podId(), PodEntity.class)
+                            .setFuel(15f));
             await(context, heard, "fuel.low", client -> heard.count("fuel.low") > 0);
             singleplayer
                     .getServer()

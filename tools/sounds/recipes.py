@@ -573,6 +573,34 @@ def lamp_out():
     return dsp.normalize(dsp.Clip(out, list(out)), 0.6)
 
 
+def _buzz(freqs, detune, length, chop, drive, floor):
+    """One alarm pulse: two detuned saws a minor second apart (they grate), chopped by a square `chop` Hz, then driven hard and thinned of its lows."""
+    count = dsp.seconds(length)
+    voices = []
+    for ratio in (1.0, detune):
+        phases = dsp.phase_of([f * ratio for f in freqs])
+        voices.append([(p / dsp.TAU) % 1.0 * 2 - 1 for p in phases])
+    gate = [0.45 + 0.55 * (1.0 if v > 0 else 0.0) for v in dsp.sine(count, chop)]
+    raw = dsp.times(dsp.plus(*voices), gate)
+    harsh = dsp.filt(dsp.shape(raw, drive), "hp", floor, 0.7)
+    return dsp.fade(harsh, 0.003, 0.02)
+
+
+def fuel_low():
+    """The low-fuel alarm (#1597): one short, grating buzzer pulse. Steady pitch, at the pace of the slow beep."""
+    pulse = _buzz([415.0] * dsp.seconds(0.3), 1.0595, 0.3, 48, 5, 220)
+    return dsp.normalize(dsp.widen(pulse, 4), 0.8)
+
+
+def fuel_critical():
+    """The nearly-dry alarm (#1597): a klaxon, two harsher pulses a fourth apart (higher, faster, louder than `fuel_low`), made to repeat twice a second."""
+    count = dsp.seconds(0.46)
+    half = count // 2
+    freqs = [880.0] * half + [660.0] * (count - half)
+    pulse = _buzz(freqs, 1.0595, 0.46, 90, 9, 300)
+    return dsp.normalize(dsp.widen(pulse, 4), 0.98)
+
+
 def rest():
     """Three seconds of silence: the placeholder of the layers' music slots, so the drone beds are all a layer plays until a score is dropped in."""
     count = dsp.seconds(3.0)
@@ -615,6 +643,8 @@ RECIPES = {
     "ui/refused": ui_refused,
     "breach/rumble": breach_rumble,
     "layer/cave_in": cave_in,
+    "alarm/fuel_low": fuel_low,
+    "alarm/fuel_critical": fuel_critical,
     "music/rest": rest,
     "continuity/needle": needle,
     "continuity/lamp_out": lamp_out,

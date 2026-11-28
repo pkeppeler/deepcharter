@@ -242,5 +242,39 @@ class ChannelTest(unittest.TestCase):
             self.assertEqual(1 if name in recipes.MONO else 2, self.channels(name), name)
 
 
+class FuelAlarmTest(unittest.TestCase):
+    """#1597: the low-fuel alarms are our own harsh pulses, and critical is plainly more urgent than low."""
+
+    @staticmethod
+    def rms(name):
+        left = recipes.render(name).left
+        return math.sqrt(sum(v * v for v in left) / len(left))
+
+    @staticmethod
+    def crossings(name):
+        left = recipes.render(name).left
+        return sum(1 for a, b in zip(left, left[1:]) if (a < 0) != (b < 0)) / (len(left) / recipes.RATE)
+
+    def test_critical_is_louder_denser_and_higher_than_low(self):
+        self.assertGreater(self.rms("alarm/fuel_critical"), self.rms("alarm/fuel_low") * 1.15)
+        self.assertGreater(self.crossings("alarm/fuel_critical"), self.crossings("alarm/fuel_low") * 1.3)
+
+    def test_each_pulse_ends_before_the_game_repeats_it(self):
+        # LowFuelBeep repeats the buzzer every 30 ticks and the klaxon every 10.
+        self.assertLessEqual(ticks_played("alarm/fuel_low"), 30)
+        self.assertLessEqual(ticks_played("alarm/fuel_critical"), 10)
+
+    def test_each_alarm_is_a_hard_buzz_not_a_soft_tone(self):
+        # A hard-driven saw sits near full scale for most of its length (a sine's mean magnitude is 0.64 of its peak).
+        for name in ("alarm/fuel_low", "alarm/fuel_critical"):
+            left = recipes.render(name).left
+            self.assertGreater(sum(abs(v) for v in left) / len(left) / max(abs(v) for v in left), 0.3, name)
+
+    def test_neither_alarm_maps_to_a_vanilla_sound(self):
+        sounds = json.loads((SOUNDS.parent.parent / "src/main/resources/assets/deepcharter/sounds.json").read_text())
+        for event, file in (("fuel.low", "alarm/fuel_low"), ("alarm.fuel_critical", "alarm/fuel_critical")):
+            self.assertEqual([{"name": f"deepcharter:{file}"}], sounds[event]["sounds"], event)
+
+
 if __name__ == "__main__":
     unittest.main()
