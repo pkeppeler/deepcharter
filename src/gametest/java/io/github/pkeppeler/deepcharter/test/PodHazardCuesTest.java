@@ -7,7 +7,6 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.pod.PodCues;
-import io.github.pkeppeler.deepcharter.pod.PodDump;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLoad;
@@ -329,8 +328,10 @@ public class PodHazardCuesTest {
                         .orElseThrow();
                 expect(
                         helper,
-                        args.length == 1 && args[0].equals(Component.keybind(PodDump.KEY)),
-                        "the overload line names the dump key as the pilot binds it, args %s",
+                        args.length == 2
+                                && args[0].equals(Component.keybind("key.inventory"))
+                                && args[1].equals(Component.keybind("key.drop")),
+                        "the overload line names the screen's key and the drop key as the pilot binds them, args %s",
                         List.of(args));
                 helper.succeed();
             } finally {

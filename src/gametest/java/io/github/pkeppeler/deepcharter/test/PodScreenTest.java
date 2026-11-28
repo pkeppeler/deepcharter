@@ -14,7 +14,6 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.pod.PodScreenPayload;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -38,6 +37,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -47,6 +47,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -186,15 +188,18 @@ public class PodScreenTest {
     }
 
     @GameTest
-    public void theKeyOpensTheScreenOfThePodTheSenderSitsIn(GameTestHelper helper) {
+    public void theInventoryKeyOpensTheScreenOfThePodTheSenderSitsIn(GameTestHelper helper) {
         Scene scene = scene(helper);
         expect(helper, scene.player().startRiding(scene.pod(), true, false), "the crew should board");
-        scene.mock().send(new PodScreenPayload());
+        scene.player()
+                .connection
+                .handlePlayerCommand(new ServerboundPlayerCommandPacket(
+                        scene.player(), ServerboundPlayerCommandPacket.Action.OPEN_INVENTORY));
         helper.succeedWhen(() -> {
             expect(
                     helper,
                     scene.player().containerMenu instanceof PodMenu,
-                    "the key should open the pod screen, open %s",
+                    "the inventory key should open the pod screen, open %s",
                     scene.player().containerMenu);
         });
     }
@@ -444,6 +449,81 @@ public class PodScreenTest {
     // ---- hold ----
 
     @GameTest
+    public void aFullBayRefusesOreFromThePackAndDropsNoneOnTheFloor(GameTestHelper helper) {
+        Scene scene = scene(helper);
+        try {
+            ServerPlayer player = scene.player();
+            PodEntity pod = scene.pod();
+            int slots = PodStats.of(pod).cargoSlots();
+            for (int i = 0; i < slots; i++) {
+                expect(
+                        helper,
+                        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM)),
+                        "the bay should take ore number %s of %s",
+                        i,
+                        slots);
+            }
+            player.getInventory().add(OreRegistry.stack(OreType.GOLDIUM));
+            PodMenu menu = open(helper, player, pod);
+
+            // Shift-click, a drag over slots past the bay, and a number key over one: none puts the ore in.
+            shiftClickFromInventory(menu, player, OreRegistry.item(OreType.GOLDIUM));
+            int packIndex = SlotClicks.inventorySlot(menu, OreRegistry.item(OreType.GOLDIUM)).index;
+            click(menu, player, packIndex, ContainerInput.PICKUP);
+            expect(helper, menu.getCarried().is(OreRegistry.item(OreType.GOLDIUM)), "the ore should be on the cursor");
+            int charitable = 0;
+            menu.clicked(
+                    AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+                    AbstractContainerMenu.getQuickcraftMask(AbstractContainerMenu.QUICKCRAFT_HEADER_START, charitable),
+                    ContainerInput.QUICK_CRAFT,
+                    player);
+            for (int window = slots; window < slots + 2; window++) {
+                menu.clicked(
+                        menu.holdSlot(window).index,
+                        AbstractContainerMenu.getQuickcraftMask(
+                                AbstractContainerMenu.QUICKCRAFT_HEADER_CONTINUE, charitable),
+                        ContainerInput.QUICK_CRAFT,
+                        player);
+            }
+            menu.clicked(
+                    AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+                    AbstractContainerMenu.getQuickcraftMask(AbstractContainerMenu.QUICKCRAFT_HEADER_END, charitable),
+                    ContainerInput.QUICK_CRAFT,
+                    player);
+            click(menu, player, packIndex, ContainerInput.PICKUP);
+            menu.broadcastChanges();
+            expect(
+                    helper,
+                    menu.getCarried().isEmpty()
+                            && held(player, OreRegistry.item(OreType.GOLDIUM)) == 1
+                            && pod.cargo().count(OreType.GOLDIUM) == 0,
+                    "a drag over slots past the bay places nothing: carried %s, %s held",
+                    menu.getCarried(),
+                    held(player, OreRegistry.item(OreType.GOLDIUM)));
+            int hotbarKey =
+                    player.getInventory().findSlotMatchingItem(new ItemStack(OreRegistry.item(OreType.GOLDIUM)));
+            expect(helper, hotbarKey >= 0 && hotbarKey < 9, "the ore should sit in the hotbar, slot %s", hotbarKey);
+            menu.clicked(menu.holdSlot(slots).index, hotbarKey, ContainerInput.SWAP, player);
+            menu.broadcastChanges();
+            expect(
+                    helper,
+                    held(player, OreRegistry.item(OreType.GOLDIUM)) == 1
+                            && pod.cargoUsed() == slots
+                            && pod.cargo().count(OreType.GOLDIUM) == 0,
+                    "a number key over a slot past the bay takes nothing: %s held, %s used of %s",
+                    held(player, OreRegistry.item(OreType.GOLDIUM)),
+                    pod.cargoUsed(),
+                    slots);
+            List<ItemEntity> onTheFloor = helper.getLevel()
+                    .getEntitiesOfClass(ItemEntity.class, pod.getBoundingBox().inflate(6));
+            expect(helper, onTheFloor.isEmpty(), "no ore is dropped on the floor, found %s", onTheFloor);
+            helper.succeed();
+        } finally {
+            scene.clean();
+        }
+    }
+
+    @GameTest
     public void theHoldMovesItemsBothWaysLikeAChest(GameTestHelper helper) {
         Scene scene = scene(helper);
         try {
@@ -470,17 +550,24 @@ public class PodScreenTest {
                     pod.cargo().stackAt(4));
 
             click(menu, player, menu.holdSlot(0).index, ContainerInput.QUICK_MOVE);
-            click(menu, player, menu.holdSlot(0).index, ContainerInput.PICKUP);
             menu.broadcastChanges();
             expect(
                     helper,
-                    held(player, OreRegistry.item(OreType.GOLDIUM)) == 0
-                            && menu.getCarried().isEmpty()
-                            && pod.cargo().entries().size() == 1
-                            && menu.refusal().isPresent(),
-                    "ore stays in the hold until a terminal takes it, with a reason: %s held, refusal %s",
+                    held(player, OreRegistry.item(OreType.GOLDIUM)) == 1
+                            && pod.cargo().entries().isEmpty()
+                            && menu.refusal().isEmpty(),
+                    "ore moves from the hold to the pack with no refusal (ADR 0110): %s held, %s in the hold, refusal %s",
                     held(player, OreRegistry.item(OreType.GOLDIUM)),
+                    pod.cargo().entries().size(),
                     menu.refusal());
+            shiftClickFromInventory(menu, player, OreRegistry.item(OreType.GOLDIUM));
+            expect(
+                    helper,
+                    held(player, OreRegistry.item(OreType.GOLDIUM)) == 0
+                            && pod.cargo().entries().size() == 1,
+                    "and back: %s held, %s ore in the hold",
+                    held(player, OreRegistry.item(OreType.GOLDIUM)),
+                    pod.cargo().entries().size());
             int dirtSlot = -1;
             for (int i = 0; i < PodMenu.HOLD_WINDOW; i++) {
                 if (menu.holdSlot(i).getItem().is(Items.DIRT)) {

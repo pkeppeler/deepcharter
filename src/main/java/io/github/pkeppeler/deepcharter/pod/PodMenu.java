@@ -8,7 +8,6 @@ import io.github.pkeppeler.deepcharter.menu.MirrorContainer;
 import io.github.pkeppeler.deepcharter.menu.SlotRule;
 import io.github.pkeppeler.deepcharter.menu.SlottedMenu;
 import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartFitting;
@@ -47,8 +46,8 @@ import net.minecraft.world.item.Items;
 
 /**
  * The pod screen (ADR 0102): one slot for each part track, the fuel slot, and a page of the hold, over the player's
- * inventory. It opens for the pod's own charter only: by sneak and use from outside, or by the pod screen key from a
- * seat ({@link PodScreenPayload}).
+ * inventory. It opens for the pod's own charter only: by sneak and use from outside, or by the inventory key from a
+ * seat ({@link PodEntity#openCustomInventoryScreen}).
  *
  * <ul>
  *   <li><b>Parts.</b> Each track's slot shows the part fitted on it, bought or crafted, or a faded stock or empty
@@ -58,7 +57,8 @@ import net.minecraft.world.item.Items;
  *       room. The gauge reads the tank.</li>
  *   <li><b>Hold.</b> {@link PodCargo}'s slots, a page at a time; anything moves in and out as with a chest, as far as
  *       the cargo bay's size. The slots are the hold itself, not a copy, so two open screens share them. Q on a stack
- *       dumps it under the pod ({@link PodDump}).</li>
+ *       dumps it under the pod ({@link PodDump}). Ore moves as any item does; in the pack it is loose ore, which costs
+ *       the pod ({@link PodLooseOre}).</li>
  * </ul>
  *
  * <p>The server's menu decides every click; the client's predicts from the data slots the server keeps in step. Walking
@@ -184,9 +184,8 @@ public final class PodMenu extends SlottedMenu {
         refresh();
     }
 
-    /** Registers the menu type and the ways to open it: sneak and use on the pod, and the key's payload. */
+    /** Registers the way to open it from outside: sneak and use on the pod. The seat's way is on {@link PodEntity}. */
     public static void init() {
-        PodScreenPayload.register();
         UseEntityCallback.EVENT.register((user, level, hand, entity, hit) -> {
             if (!(entity instanceof PodEntity target) || !user.isSecondaryUseActive() || user.isSpectator()) {
                 return InteractionResult.PASS;
@@ -442,6 +441,11 @@ public final class PodMenu extends SlottedMenu {
         return page() * HOLD_WINDOW + window;
     }
 
+    /** Whether the screen was opened from a seat, so the pack's ore is loose ore. */
+    public boolean seated() {
+        return opening.seated();
+    }
+
     /** Whether {@code slot} is one of the hold's. */
     public boolean isHold(Slot slot) {
         return slot.container == hold;
@@ -456,20 +460,12 @@ public final class PodMenu extends SlottedMenu {
         return super.routes(slot, stack);
     }
 
-    /**
-     * A fitted part stays for good, and ore leaves the hold only for a terminal or the ground: in the pack it would
-     * ride weightless and past the bay's size, and skip the spill of a teleport.
-     */
+    /** A fitted part stays for good. Ore moves between the hold and the pack like any item (ADR 0110). */
     @Override
     protected Optional<Component> keeps(RuleSlot slot) {
-        if (slot.container == parts) {
-            return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.fitted_for_good"));
-        }
-        if (isHold(slot) && OreRegistry.typeOf(slot.getItem()).isPresent()) {
-            return Optional.of(
-                    Component.translatable("deepcharter.pod.screen.refusal.ore_stays", Component.keybind("key.drop")));
-        }
-        return Optional.empty();
+        return slot.container == parts
+                ? Optional.of(Component.translatable("deepcharter.pod.screen.refusal.fitted_for_good"))
+                : Optional.empty();
     }
 
     /** A hold slot past what the hold shows is not there. */
@@ -493,9 +489,8 @@ public final class PodMenu extends SlottedMenu {
 
     /**
      * Q on a hold stack dumps one of it under the pod ({@link PodDump}), Ctrl+Q the whole stack, as vanilla drops
-     * them, but never into the world at the player: ore too, since it goes to the ground and not to a pack. The client
-     * takes it from the slot at once; the server drops it, checking {@link #stillValid} again though the click packet
-     * already has.
+     * them, but never into the world at the player. The client takes it from the slot at once; the server drops it,
+     * checking {@link #stillValid} again though the click packet already has.
      */
     @Override
     public void clicked(int index, int button, ContainerInput input, Player player) {

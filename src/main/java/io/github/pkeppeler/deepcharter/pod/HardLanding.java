@@ -73,6 +73,8 @@ public final class HardLanding {
         }
         float damage = hullDamage(PodStats.of(pod), sinkSpeed(pod.getDeltaMovement().y), damageMultiplier);
         if (damage > 0f) {
+            // Loose ore in a rider's pack rattles: a hard landing costs the hull more for each ore, never by chance.
+            damage += PodLooseOre.rattle(pod) * damageMultiplier;
             PodCues.hurtHull(pod, damage, "deepcharter.pod.hard_landing", DeepSound.POD_CRASH, ParticleTypes.POOF, 16);
         }
     }

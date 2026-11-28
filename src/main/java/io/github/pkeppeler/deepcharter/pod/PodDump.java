@@ -6,10 +6,8 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
-import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import java.util.List;
-import java.util.Optional;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.minecraft.network.chat.Component;
@@ -23,17 +21,14 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Dumping cargo from the seat (#1456, ADR 0103): Q on a stack in the pod screen's hold ({@link PodMenu}), or the
- * dump key held from a seat for the whole hold ({@link PodDumpPayload}), drops it as items under the pod, with the
- * jettison sound. It goes to the ground, never to a pack: a player seated in a pod picks up no ore and nothing a pod
- * dumped ({@link #keepsFromPack}), or the dump would ride on in the seat, ore weightless. On the ground it is an item
- * like any other: it despawns in time, and over lava it burns. The first time a pod's cargo keeps it from climbing
- * with a pilot aboard, that pilot is told once how to dump.
+ * Dumping cargo from the seat (#1456, ADR 0103, ADR 0110): Q on a stack in the pod screen's hold ({@link PodMenu})
+ * drops it as items under the pod, with the jettison sound. It goes to the ground, never straight back to a pack: a
+ * player seated in a pod picks up nothing a pod dumped ({@link #keepsFromPack}), or the dump would ride on in the
+ * seat. Ore the rider picks up from the ground another way is loose ore, which costs the pod ({@link PodLooseOre}). On
+ * the ground it is an item like any other: it despawns in time, and over lava it burns. The first time a pod's cargo
+ * keeps it from climbing with a pilot aboard, that pilot is told once how to dump.
  */
 public final class PodDump {
-    /** The dump key's binding, which the client registers and the hint names as the player binds it. */
-    public static final String KEY = "key.deepcharter.dump_cargo";
-
     /** The read mark of the one-time line on a pilot's first overloaded pod (the player's {@code ReadMarks}). */
     public static final Identifier HINT_MARK =
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_overload");
@@ -62,29 +57,7 @@ public final class PodDump {
     private PodDump() {}
 
     public static void init() {
-        PodDumpPayload.register();
         PodEvents.AFTER_TICK.register(PodEvents.OBSERVE, PodDump::explainFirstOverload);
-    }
-
-    /**
-     * Server only: dumps the whole hold of the pod {@code player} sits in, or says why not. Only a player seated in the
-     * pod who may open its screen dumps it ({@link PodMenu#mayOpen}).
-     */
-    static Optional<Component> dumpBay(ServerPlayer player) {
-        if (!(player.getVehicle() instanceof PodEntity pod) || player.isSpectator() || !pod.isAlive()) {
-            return Optional.empty();
-        }
-        if (!PodMenu.mayOpen(player, pod)) {
-            return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.not_yours"));
-        }
-        if (!pod.cargo().isReadable()) {
-            return Optional.of(Component.translatable("deepcharter.pod.screen.refusal.hold_unreadable"));
-        }
-        if (pod.cargo().occupied() == 0) {
-            return Optional.of(Component.translatable("deepcharter.pod.dump.empty"));
-        }
-        drop(pod, pod.cargo().takeAll(pod));
-        return Optional.of(Component.translatable("deepcharter.pod.dump.done"));
     }
 
     /**
@@ -99,14 +72,13 @@ public final class PodDump {
     }
 
     /**
-     * Whether {@code player} may not pick up {@code item}: a player seated in a pod picks up no ore, since a pack in
-     * the seat carries it weightless, and nothing a pod dumped, which would land back in the seat. An item whose mark
-     * cannot be read counts as dumped. On foot anyone picks either up.
+     * Whether {@code player} may not pick up {@code item}: a player seated in a pod picks up nothing a pod dumped,
+     * which would land back in the seat. An item whose mark cannot be read counts as dumped. On foot anyone picks it
+     * up.
      */
     public static boolean keepsFromPack(Player player, ItemEntity item) {
         return player.getVehicle() instanceof PodEntity
-                && (OreEncumbrance.holdsOre(item.getItem())
-                        || Versioned.readable(item, DUMPED).map(Dumped::dumped).orElse(true));
+                && Versioned.readable(item, DUMPED).map(Dumped::dumped).orElse(true);
     }
 
     /**
@@ -137,9 +109,9 @@ public final class PodDump {
     }
 
     /**
-     * Says once per player, kept as a read mark, that a pod too heavy to lift can dump its cargo, naming the dump key
-     * as the pilot binds it. Only when the cargo is what holds it down: a pod that towing alone overloads says nothing.
-     * Says nothing when the marks cannot be read.
+     * Says once per player, kept as a read mark, that a pod too heavy to lift can dump its cargo from the pod screen,
+     * naming the inventory and drop keys as the pilot binds them. Only when the cargo is what holds it down: a pod that
+     * towing alone overloads says nothing. Says nothing when the marks cannot be read.
      */
     private static void explainFirstOverload(PodEntity pod) {
         if (!(pod.getControllingPassenger() instanceof ServerPlayer pilot) || !overloadedByCargo(pod)) {
@@ -147,13 +119,15 @@ public final class PodDump {
         }
         if (ReadMarks.isReadable(pilot) && !ReadMarks.isRead(pilot, HINT_MARK)) {
             ReadMarks.mark(pilot, HINT_MARK);
-            pilot.sendSystemMessage(Component.translatable("deepcharter.pod.dump.hint", Component.keybind(KEY)));
+            pilot.sendSystemMessage(Component.translatable(
+                    "deepcharter.pod.dump.hint", Component.keybind("key.inventory"), Component.keybind("key.drop")));
         }
     }
 
     /**
-     * Whether the pod cannot climb and dumping would help: the load ({@link PodLoad}) reaches its climb limit, and without
-     * the cargo it would not (which also means the hold holds something). {@link PodCues} names the dump key only then.
+     * Whether the pod cannot climb and dumping would help: the load ({@link PodLoad}) reaches its climb limit, and
+     * without the cargo it would not (which also means the hold holds something). {@link PodCues} names how to dump
+     * only then, and names loose ore first ({@link PodLooseOre#overloadedByLoose}).
      */
     static boolean overloadedByCargo(PodEntity pod) {
         PodLoad load = PodLoad.of(pod);
