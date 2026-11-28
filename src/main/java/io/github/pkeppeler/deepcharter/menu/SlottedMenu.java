@@ -43,6 +43,7 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
     private int inventoryStart = -1;
     /** One past the inventory's last slot: a menu may add slots of its own after it, such as the offhand. */
     private int inventoryEnd = -1;
+
     private Optional<Component> refusal = Optional.empty();
 
     protected SlottedMenu(MenuType<?> type, int containerId) {

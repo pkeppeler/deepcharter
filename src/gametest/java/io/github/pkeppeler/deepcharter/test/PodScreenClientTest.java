@@ -221,8 +221,7 @@ public class PodScreenClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the rack line '" + rack + "' and the hopper line",
-                client -> screen.readouts().contains(rack)
-                        && screen.readouts().contains("NO HOPPER"),
+                client -> screen.readouts().contains(rack) && screen.readouts().contains("NO HOPPER"),
                 client -> "readouts " + screen.readouts());
     }
 
@@ -249,19 +248,23 @@ public class PodScreenClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 what,
-                () -> singleplayer.getServer().computeOnServer(server -> torchesIn(server.getPlayerList()
-                                        .getPlayers()
-                                        .getFirst()
-                                        .getOffhandItem()))
+                () -> singleplayer
+                                        .getServer()
+                                        .computeOnServer(server -> torchesIn(server.getPlayerList()
+                                                .getPlayers()
+                                                .getFirst()
+                                                .getOffhandItem()))
                                 == torches
-                        && context.computeOnClient(client -> torchesIn(ClientSession.player(client)
-                                        .getOffhandItem()))
+                        && context.computeOnClient(client ->
+                                        torchesIn(ClientSession.player(client).getOffhandItem()))
                                 == torches,
                 () -> "offhand on the server "
-                        + singleplayer.getServer().computeOnServer(server -> server.getPlayerList()
-                                .getPlayers()
-                                .getFirst()
-                                .getOffhandItem()));
+                        + singleplayer
+                                .getServer()
+                                .computeOnServer(server -> server.getPlayerList()
+                                        .getPlayers()
+                                        .getFirst()
+                                        .getOffhandItem()));
     }
 
     private static int torchesIn(ItemStack stack) {

@@ -48,8 +48,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
@@ -984,7 +984,8 @@ public class PodScreenTest {
                     player);
             expect(
                     helper,
-                    player.getOffhandItem().is(Items.TORCH) && player.getOffhandItem().getCount() == 4,
+                    player.getOffhandItem().is(Items.TORCH)
+                            && player.getOffhandItem().getCount() == 4,
                     "the swap-hands key over the torches moves them to the offhand, it holds %s",
                     player.getOffhandItem());
 

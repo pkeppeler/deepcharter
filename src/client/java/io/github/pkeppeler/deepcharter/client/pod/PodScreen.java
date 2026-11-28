@@ -268,7 +268,9 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
     protected void extractTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         super.extractTooltip(graphics, mouseX, mouseY);
         Slot hovered = hoveredSlot;
-        if (hovered == menu.offhandSlot() && !hovered.hasItem() && menu.getCarried().isEmpty()) {
+        if (hovered == menu.offhandSlot()
+                && !hovered.hasItem()
+                && menu.getCarried().isEmpty()) {
             Component swap = minecraft.options.keySwapOffhand.getTranslatedKeyMessage();
             graphics.setTooltipForNextFrame(
                     font, Component.translatable("screen.deepcharter.pod.offhand", swap), mouseX, mouseY);
