@@ -35,13 +35,26 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn('runGameTest "-PgametestShard=${{ matrix.shard }}/${{ env.BUILD_SHARDS }}"', shard)
         self.assertIn("fail-fast: false", shard)
 
-    def test_the_checks_job_runs_the_rest_of_the_build_and_the_gate_checks_once(self):
+    def test_the_checks_job_runs_the_rest_of_the_build(self):
         checks = job("checks")
         self.assertIn("name: build-checks\n", checks)
         self.assertIn("tools/ci-gradle-resolve.sh build -x runGameTest", checks)
         self.assertIn("--dry-run --configuration-cache", checks)
+
+    def test_the_gate_checks_run_once_in_the_tool_gates_job(self):
         self.assertEqual(WORKFLOW.count("tools/tests/gate_checks.py"), 1)
-        self.assertIn("tools/tests/gate_checks.py", checks)
+        self.assertIn("tools/tests/gate_checks.py", job("tool-gates"))
+
+    def test_the_shards_and_the_checks_job_download_what_the_compile_job_built(self):
+        self.assertIn("name: compile\n", job("compile"))
+        self.assertIn("name: compiled-ci", job("compile"))
+        for key in ("build", "checks"):
+            with self.subTest(key):
+                self.assertRegex(job(key), r"needs: \[setup, compile\]\n")
+                self.assertIn("name: compiled-ci", job(key))
+
+    def test_the_shards_run_at_most_6_at_once_so_a_full_run_leaves_runners_for_other_prs(self):
+        self.assertIn("max-parallel: 6", job("build"))
 
     def test_every_job_that_tests_uploads_the_main_sha_it_merged(self):
         for key, suffix in (("build", "${{ matrix.shard }}"), ("checks", "checks")):
@@ -50,17 +63,19 @@ class BuildShardWorkflowTest(unittest.TestCase):
 
     def test_the_upload_action_names_the_file_and_artifact_and_survives_a_rerun(self):
         action = (REPO / ".github/actions/upload-merged-main/action.yml").read_text()
-        self.assertIn('"$RUNNER_TEMP/main-sha-$NAME"', action)
-        self.assertIn("name: merged-main-${{ inputs.name }}", action)
-        self.assertIn("path: ${{ runner.temp }}/main-sha-${{ inputs.name }}", action)
+        self.assertIn('"$RUNNER_TEMP/main-sha-$FILE"', action)
+        self.assertIn("FILE: ${{ inputs.file || inputs.name }}", action)
+        self.assertIn("name: ${{ inputs.artifact || format('merged-main-{0}', inputs.name) }}", action)
+        self.assertIn("path: ${{ runner.temp }}/main-sha-${{ inputs.file || inputs.name }}", action)
         # upload-artifact v4+ rejects a name already used in the run, so a re-run job would fail before its tests.
         self.assertIn("overwrite: true", action)
 
     def test_the_aggregate_is_build_needs_every_job_and_runs_after_a_failure(self):
         aggregate = job("build-result")
         self.assertIn("name: build\n", aggregate)
-        self.assertIn("needs: [build, checks]", aggregate)
+        self.assertIn("needs: [compile, build, checks]", aggregate)
         self.assertIn("always()", aggregate)
+        self.assertIn("needs.compile.result", aggregate)
         self.assertIn("needs.build.result", aggregate)
         self.assertIn("needs.checks.result", aggregate)
 
@@ -70,7 +85,12 @@ class BuildShardWorkflowTest(unittest.TestCase):
         self.assertIn("merge-multiple: true", aggregate)
         self.assertIn('.ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$BUILD_SHARDS"', aggregate)
         self.assertIn("main-sha-checks", aggregate)
+        self.assertIn("main-sha-compile", aggregate)
         self.assertNotIn("merge-main", aggregate.replace("merged-main", ""), "the aggregate must not merge main itself")
+
+    def test_the_compile_job_hands_its_merged_main_to_the_aggregate_too(self):
+        self.assertIn("name: compile\n", job("compile").split("upload-merged-main")[1])
+        self.assertIn("main-sha-compile", job("build-result"))
 
     def test_no_other_job_is_named_build(self):
         self.assertEqual(re.findall(r"^    name: build$", WORKFLOW, re.M), ["    name: build"])

@@ -17,8 +17,9 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 merge_pr=${MERGE_PR:-$root/tools/merge-pr.sh}
 lock=${MERGE_QUEUE_LOCK:-$HOME/.cache/deepcharter/merge-queue.lock}
 ci_poll=${MERGE_BATCH_CI_POLL:-20}
-# Must stay above the longest CI chain: a build shard or build-checks (30 minutes) then the build aggregate (5), or a client shard (30)
-# after the changes job (5), with room for queueing.
+# Must stay above the longest CI chain: the compile job (5 minutes), a build shard or build-checks (5) and the build aggregate (5), or
+# the changes job (5), the client compile job (5), the client shards in waves of max-parallel (29 shards at 10: 3 waves of 5) and the
+# client aggregate (5), with room for queueing.
 ci_max=${MERGE_BATCH_CI_MAX:-4200}
 stale_sleep=${MERGE_BATCH_STALE_SLEEP:-90}
 pending_max=${MERGE_BATCH_PENDING_RETRIES:-10}

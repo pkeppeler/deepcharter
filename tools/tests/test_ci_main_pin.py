@@ -1,4 +1,4 @@
-"""Every job that merges main merges the one commit a setup job picked (#1571): build and tool-tests take it from
+"""Every job that merges main merges the one commit a setup job picked (#1571): the build, tool-test and compile jobs take it from
 ci.yml's `setup` job, the client shards from client-tests.yml's `changes` job. Without the pin each job fetches the tip
 of main itself and two jobs of one run can test different mains."""
 import re
@@ -9,9 +9,12 @@ WORKFLOWS = Path(__file__).resolve().parents[2] / ".github/workflows"
 
 # (workflow, job, the job that picks main)
 PINNED = [
+    ("ci.yml", "compile", "setup"),
     ("ci.yml", "build", "setup"),
     ("ci.yml", "checks", "setup"),
-    ("ci.yml", "tool-tests", "setup"),
+    ("ci.yml", "tool-part", "setup"),
+    ("ci.yml", "tool-gates", "setup"),
+    ("client-tests.yml", "compile", "changes"),
     ("client-tests.yml", "client-shard", "changes"),
 ]
 
@@ -49,7 +52,7 @@ class MainPinTest(unittest.TestCase):
     def test_the_check_flags_removed_wiring(self):
         text = (WORKFLOWS / "ci.yml").read_text()
         no_input = re.sub(r"^\s+main-sha: \$\{\{ needs\.setup.*\n", "", text, flags=re.M)
-        no_needs = text.replace("    needs: setup\n", "")
+        no_needs = text.replace("    needs: [setup, compile]\n", "    needs: compile\n")
         self.assertEqual(
             ["build: does not pass main-sha from needs.setup.outputs.main-sha"], problems(no_input, "build", "setup")[:1]
         )

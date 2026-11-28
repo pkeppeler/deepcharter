@@ -4,7 +4,7 @@ Needs the repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of
 job and the pre-push hook run it. A failing check names itself: a failing test is <check>_gate_check.<Class>.<method>.
 A passing run leaves the mod json in build/generated/gametest-resources untouched: the fixtures never reach the generation task.
 A run also fails when a fixture case is never read by an assertion (gate_batch.unread_message).
-Usage: tools/py tools/tests/gate_checks.py [room_carver] [world_data] [world_clock] [tick_wait] [light_wait] [await_expect] [light_settled] [arrived] [client_filter] [hud_toggle] [testonly] [enum_switch] [entity_query] [each_tick] [fixed_pos] [record_holder] [keep_clear] [orphan_comment] [keybind] [vanilla_sound] [null_marked] [force] [one_shot] [failure_copy] [campaign_environment] [constant_param] [sync_load] [server_shard] [site_table]   (no argument runs all)
+Usage: tools/py tools/tests/gate_checks.py [--except] [room_carver] [world_data] [world_clock] [tick_wait] [light_wait] [await_expect] [light_settled] [arrived] [client_filter] [hud_toggle] [testonly] [enum_switch] [entity_query] [each_tick] [fixed_pos] [record_holder] [keep_clear] [orphan_comment] [keybind] [vanilla_sound] [null_marked] [force] [one_shot] [failure_copy] [campaign_environment] [constant_param] [sync_load] [server_shard] [site_table]   (no argument runs all; --except runs every check but the ones named, which CI uses to split the run in two)
 """
 import importlib
 import sys
@@ -18,10 +18,17 @@ CHECKS = ("room_carver", "world_data", "world_clock", "tick_wait", "light_wait",
 
 
 def main(selected: list[str]) -> int:
-    unknown = [name for name in selected if name not in CHECKS]
+    inverted = selected[:1] == ["--except"]
+    named = selected[1:] if inverted else selected
+    unknown = [name for name in named if name not in CHECKS]
     if unknown:
         print(f"gate_checks: unknown check {unknown}; expected any of {list(CHECKS)}", file=sys.stderr)
         return 2
+    if inverted:
+        if not named:
+            print("gate_checks: --except needs at least one check to leave out", file=sys.stderr)
+            return 2
+        selected = [name for name in CHECKS if name not in named]
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     gate_batch = importlib.import_module("gate_batch")
     modules = [importlib.import_module(f"{name}_gate_check") for name in (selected or CHECKS)]

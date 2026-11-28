@@ -47,8 +47,12 @@ import net.minecraft.world.item.Items;
 /**
  * Client GameTest for the quest map (#847): each chapter's directives as a flowchart on the handbook paper, the chapter tabs, the index
  * card of a step with the items it needs, the book opening where it was left, the popup of a finished step and the L key. The screens
- * are driven by hand, with no world, and read from the text they draw ({@link DrawnText}); the keys and the real game are in
- * {@code HandbookScreenClientTest} and the quest map scenario.
+ * are driven by hand and read from the text they draw ({@link DrawnText}); the keys and the real game are in
+ * {@code HandbookScreenClientTest} and the quest map scenario. The whole test runs in one world: the cards draw item
+ * stacks, and
+ * item components are bound only once a world is loaded ("Components not bound yet" before it, #1124), so the test
+ * must not
+ * lean on an earlier class's world (#1574).
  */
 public class QuestMapClientTest implements FabricClientGameTest {
     private static final int LEFT_MOUSE = 1;
@@ -66,6 +70,13 @@ public class QuestMapClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
+            theScreensInTheWorld(context, singleplayer);
+        }
+    }
+
+    private static void theScreensInTheWorld(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         context.runOnClient(client -> {
             theMapShowsTheStepsTheCardAndTheRoadAhead();
             nothingBeyondTheNextChapterIsReadable();
@@ -87,7 +98,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
             aClickOnTheCueStillPicksTheStep();
             aCutNameStopsShortOfTheCue();
         });
-        clickingAnItemOpensItsRecipeInTheCatalogue(context);
+        clickingAnItemOpensItsRecipeInTheCatalogue(context, singleplayer);
     }
 
     private static Identifier chapterId(int chapter) {
@@ -365,29 +376,27 @@ public class QuestMapClientTest implements FabricClientGameTest {
     }
 
     /** A click on an item of the index card opens the inventory with the parts catalogue looking that item up. */
-    private static void clickingAnItemOpensItsRecipeInTheCatalogue(ClientGameTestContext context) {
-        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
-            // An empty inventory, so the card counts 0/4 of the iron.
-            singleplayer.getServer().runCommand("clear @p");
-            context.runOnClient(client -> {
-                HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
-                Box count = drawn(screen, "0/4").box();
-                int iconSize = QuestMapTuning.current().itemIconSize();
-                screen.mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
-            });
-            ClientWait.screen(context, InventoryScreen.class);
-            context.waitTicks(3);
-            CataloguePanel panel = CatalogueScene.panel(context);
-            CatalogueState.Lookup lookup =
-                    context.computeOnClient(client -> panel.state().lookup());
-            require(
-                    lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.RECIPES,
-                    "a click on the iron icon opens the inventory at iron's recipes, got " + lookup);
-            context.setScreen(() -> null);
-            everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(context);
-            anyOfStepIsOneSlotWhoseIconCyclesAndWhoseClickOpensTheShownRecipe(context);
-        }
+    private static void clickingAnItemOpensItsRecipeInTheCatalogue(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        // An empty inventory, so the card counts 0/4 of the iron.
+        singleplayer.getServer().runCommand("clear @p");
+        context.runOnClient(client -> {
+            HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+            Box count = drawn(screen, "0/4").box();
+            int iconSize = QuestMapTuning.current().itemIconSize();
+            screen.mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
+        });
+        ClientWait.screen(context, InventoryScreen.class);
+        context.waitTicks(3);
+        CataloguePanel panel = CatalogueScene.panel(context);
+        CatalogueState.Lookup lookup =
+                context.computeOnClient(client -> panel.state().lookup());
+        require(
+                lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.RECIPES,
+                "a click on the iron icon opens the inventory at iron's recipes, got " + lookup);
+        context.setScreen(() -> null);
+        everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(context);
+        anyOfStepIsOneSlotWhoseIconCyclesAndWhoseClickOpensTheShownRecipe(context);
     }
 
     /**
