@@ -15,13 +15,16 @@ FACES = ("down", "up", "north", "south", "west", "east")
 # cube_column does) and the overlay over it, so the overlay's clear pixels show the host and its opaque ones cover it. 26.3 puts each quad in
 # a chunk layer by its sprite's pixels under the face's UVs (FaceBakery.computeMaterialTransparency, then ChunkSectionLayer.byTransparency):
 # clear pixels make the overlay CUTOUT and the opaque host SOLID, with no render_type in the model.
+# The host layer has tint index 0, so an ore in a rock that RockTint colours (layer 1's strata) takes the rock's colour for its depth; any other
+# host has no tint source and draws as it is.
 PARENT = "block/ore_overlay"
 PARENT_MODEL = {
     "parent": "minecraft:block/block",
     "textures": {"particle": "#side"},
     "elements": [{"from": [0, 0, 0], "to": [16, 16, 16],
                   "faces": {face: {"texture": ("#end" if face in ("down", "up") else "#side") if layer == "host" else "#overlay",
-                                   "cullface": face} for face in FACES}} for layer in ("host", "overlay")],
+                                   "cullface": face, **({"tintindex": 0} if layer == "host" else {})} for face in FACES}}
+                 for layer in ("host", "overlay")],
 }
 NAME = re.compile(r"[a-z][a-z0-9_]*")
 

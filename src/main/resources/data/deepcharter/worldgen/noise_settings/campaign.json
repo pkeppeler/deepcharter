@@ -225,10 +225,7 @@
                   "result_state": "deepcharter:breach_crust"
                 }
               },
-              {
-                "type": "minecraft:block",
-                "result_state": "deepcharter:basalt_core"
-              }
+              "deepcharter:basalt_top_strata"
             ]
           }
         }

@@ -46,9 +46,20 @@ FACES = {"*": "#side", "up": "#end", "down": "#end"}
 
 # ---------------------------------------------------------------------------------------------------------------- layers 1 and 2: cubes
 
-def cube(side: str, end: str) -> dict:
-    """A plain cube of vanilla's `cube_column`, with the side and end textures given."""
-    return {"parent": "minecraft:block/cube_column", "textures": {"side": tex(side), "end": tex(end)}}
+def cube(side: str, end: str, tinted: bool = False) -> dict:
+    """A plain cube of vanilla's `cube_column`, with the side and end textures given; tinted, the mod's `tinted_cube_column`, which is the same
+    cube with tint index 0 on every face (RockTint colours it by depth)."""
+    parent = "deepcharter:block/tinted_cube_column" if tinted else "minecraft:block/cube_column"
+    return {"parent": parent, "textures": {"side": tex(side), "end": tex(end)}}
+
+
+def tinted_cube_column() -> dict:
+    """The parent of the tinted rock cubes: vanilla's cube_column with tint index 0 on every face, so the client's block colour (RockTint) colours
+    the neutral grey texture."""
+    faces = {face: {"texture": "#end" if face in ("down", "up") else "#side", "cullface": face, "tintindex": 0}
+             for face in ("down", "up", "north", "south", "west", "east")}
+    return {"parent": "minecraft:block/block", "textures": {"particle": "#side"},
+            "elements": [{"from": [0, 0, 0], "to": [16, 16, 16], "faces": faces}]}
 
 
 def variants(models: list[str], y_turns: tuple[int, ...]) -> list[dict]:
@@ -151,7 +162,7 @@ def faults(model: dict) -> list[str]:
     it is inside the block (0 to 16) and every face of every element lies on a face of the block. A face that lies strictly inside the block is
     a recess, and between two blocks a recess is a dark line round each one."""
     if "elements" not in model:
-        return [] if str(model.get("parent", "")).startswith("minecraft:block/cube_column") else [f"parent {model.get('parent')!r} is not a cube"]
+        return [] if str(model.get("parent", "")).startswith(("minecraft:block/cube_column", "deepcharter:block/tinted_cube_column")) else [f"parent {model.get('parent')!r} is not a cube"]
     out = []
     for index, element in enumerate(model["elements"]):
         for corner in ("from", "to"):

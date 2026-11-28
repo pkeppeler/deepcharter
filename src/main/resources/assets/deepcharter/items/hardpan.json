@@ -1,6 +1,12 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/hardpan_0"
+    "model": "deepcharter:block/hardpan_0",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": 13101672
+      }
+    ]
   }
 }

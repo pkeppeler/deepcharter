@@ -2749,7 +2749,7 @@ It plays to the pilot only, as the rumble did, from `BreachEffects.begin`: a cro
 
 **Caves.** One density term, `density_function/claim_caves.json`, added to the campaign's final density outside its interpolation, so a narrow cave stays narrow: pockets (the cave cheese noise over a threshold), tall fissures (a vertically stretched noise near zero) and narrow passages (two ridge noises near zero, as vanilla's noodles). A mask noise sets each narrow term's width, so a fissure or a passage pinches out rather than ending square. Each threshold is a gradient over depth, so the caves open up on the way down. The surface band's underground gets sparse pockets alone, from y -60 (4 rows over the band's floor) to y 20, well under the deepest ground (the pit's floor, about y 42), so nothing opens to the sky and the colony's pad is never undercut. 26.3 samples both branches of a `range_choice` over the whole volume, so the term's corner noise costs the same at every row of every band, whether it carves there or not (#1300 measured the surface at about 1.25x main's cost a row); a density function that skips the rows outside its band is [#1367](https://github.com/pkeppeler/deepcharter/issues/1367). The per-block part is the narrow terms, and the pockets are one interpolator for both bands. Each narrow term is one `deepcharter:narrow_cave` function (#1472), float for float the vanilla expression it replaced, which leaves an interpolation cell shut without working out its blocks when the cell's corners prove it shut. Layer 1's noise fill writes the strata's rock in advance ([ADR 0108](../adr/0108-the-campaigns-noise-fill-writes-layer-1s-strata-rock-in-advance.md)), so the material rule's rewrite of every row is mostly a block over itself, which is skipped. With both, ADR 0086's gate reads the surface at 0.74x and layer 1 at 1.07x of a reference layer's cost a row (numbers in PR #1490). Layer 3's halls stay the showpiece.
 
-**Strata.** Each zone of layer 1 has its own rock, laid by the campaign's material rule: Topsoil Claims' hardpan (olive: green enough to stand apart from the packed shale on the scanner, dark enough that Ironium's and Goldium's flecks stand out of it), Stone Benches' packed shale (as before) and Deep Claim's black shale (cold blue-grey, the step to layer 2's grey-green). The contact lies 6 rows under the zone's edge, moved up to 6 rows either way by a contour noise (`noise/claim_contact.json`, read once a column, in steps of one row) and raised by the column's surface depth (0 to about 5 rows, a slow wave across the claim), and a thin bed of the lower rock lies 2 to 4 rows above it and follows it, so the transition reads as bedding, not a ruled line. One material rule of our own, `deepcharter:strata` (`StrataRule`, `material_rule/claim_strata.json`), lays all of it: it works out a column's contacts once and then compares rows, because each vanilla condition a rule tests costs about the same at every block, and a contour made of noise bins doubled layer 1's cost per row. The textures are layer 1's Grain in each rock's own ramp. On the scanner the three are at least 20 apart in RGB at the cells' size, and each is at least 25 from open space, so a cave in the black shale still reads (`ClaimStrataScannerClientTest`). An ore and Company rock take the stratum as their host (ADR 0055's `Host`, two values added).
+**Strata.** (Contacts are no longer thin beds: they are transitions, [Rock transitions](#rock-transitions-1551-a).) Each zone of layer 1 has its own rock, laid by the campaign's material rule: Topsoil Claims' hardpan (olive: green enough to stand apart from the packed shale on the scanner, dark enough that Ironium's and Goldium's flecks stand out of it), Stone Benches' packed shale (as before) and Deep Claim's black shale (cold blue-grey, the step to layer 2's grey-green). The contact lies 6 rows under the zone's edge, moved up to 6 rows either way by a contour noise (`noise/claim_contact.json`, read once a column, in steps of one row) and raised by the column's surface depth (0 to about 5 rows, a slow wave across the claim), and a thin bed of the lower rock lies 2 to 4 rows above it and follows it, so the transition reads as bedding, not a ruled line. One material rule of our own, `deepcharter:strata` (`StrataRule`, `material_rule/claim_strata.json`), lays all of it: it works out a column's contacts once and then compares rows, because each vanilla condition a rule tests costs about the same at every block, and a contour made of noise bins doubled layer 1's cost per row. The textures are layer 1's Grain in each rock's own ramp. On the scanner the three are at least 20 apart in RGB at the cells' size, and each is at least 25 from open space, so a cave in the black shale still reads (`ClaimStrataScannerClientTest`). An ore and Company rock take the stratum as their host (ADR 0055's `Host`, two values added).
 
 **Abandoned shafts.** About one chunk in ten of layer 1 holds a first-generation shaft (`ClaimShaftFeature`): a hand-dug 3 x 3 hollow 12 to 30 rows deep, stalk-plank timbering every five rows with a fifth rotted out, a ladder with rungs gone, candle niches with burnt-out stubs, a prayer card in a fifth of the niches in Topsoil Claims and over half in the Deep Claim, a lunch pail at the end of a short drift at the foot, and now and then a salvage crate. Its top is a rubble plug where the collar fell in, or an open mouth where the rock's top or a cave is over it. It cuts through whatever caves it meets. The lunch pail and the prayer card are blocks of their own, which drop themselves.
 
@@ -2764,6 +2764,58 @@ It plays to the pilot only, as the rumble did, from `BreachEffects.begin`: a cro
 **Tuning knobs.** The thresholds in `claim_caves.json` (pockets, fissures, passages; each a gradient over depth); the contacts, amplitude and surface multiplier in `claim_strata.json`, the contour noise's octave; `claim_shafts.json` (rarity), `claim_shaft.json` (depths); `claim_cave_ores.json` (tries), `claim_cave_ore.json` (weights, sizes); `claim_salvage_caches.json` (tries, crates).
 
 **Open questions.** The layer 1 dimension (outside the campaign world) keeps one rock and the old caves. The strata's grain (#1272) and a depth ruler on the scanner come next.
+
+## Rock transitions (#1551, A)
+
+**Problem.** Rock changed between zones in one way, a wavy line with a thin bed, so a descent read as a ruled step. The user wants the first layer's change to be almost imperceptible: digging down you feel the rock slowly change colour without being sure, and only a higher-tier scanner, which shows a wider view, makes it certain.
+
+**Styles.** A contact of the strata rule names its style in data (`material_rule/*.json`, `StrataRule.Style`), with the rows it spans, centred on the contact and moved by the column's contour noise as before:
+
+| Style | Rows | The lower rock |
+|---|---|---|
+| `sharp` | none | The old line: a thin bed of it 2 to 3 rows over the contact |
+| `short_gradient` | 12 to 20 | Its chance rises evenly from 0 to 1 with depth, by the dither of a hash of the block's position |
+| `long_gradient` | 48 to 128 | The same, and the rock's colour drifts with it (below) |
+| `interbedded` | 12 to 64 | Bands of it in the upper rock, one in each cycle of 6 rows, one row thicker each cycle |
+
+A gradient adds one integer hash to a block in its rows and samples no noise (a rule with no amplitude, like layer 3's beds, reads neither the noise nor the surface depth): the column's contour noise is still read once a column, and the prefill (ADR 0108) guesses a gradient's block from the same hash. No dither is a band, because the hash has none.
+
+**Mapping.**
+
+| Boundary | Style | Rows | Why |
+|---|---|---|---|
+| Layer 1: Topsoil Claims to Stone Benches (hardpan to packed shale), contact 6 rows under the zone's edge | long gradient | 64 | The user's ask: the first layer's change is a drift |
+| Layer 1: Stone Benches to Deep Claim (packed shale to black shale) | long gradient | 64 | Same. A zone is 64 rows, so two gradients of 64 lie end to end and the rock is changing for 128 of layer 1's 192 rows; 100 would overlap |
+| Layer 1's floor, centred 11 rows over it (black shale to layer 2's green shale) | short gradient | 16 | The edge of a layer is felt, so it is a short blur, not a drift. It ends at the last rock row, so the crust meets green |
+| Layer 3's top, centred 12 rows under layer 2's crust (green shale to basalt core) | interbedded | 25 | The deep eases into the basalt in beds, a different hand from the claim's. Layer 3's caverns keep their columns, which line only basalt |
+| Layer 2: Upper Levels to Shift Change, on the zone's edge (tint only) | sharp | | The Old Workings are mine levels: a level's floor is a ruled line, and its thin khaki bed is the first stain of the iron water below |
+| Layer 2: Shift Change to Prospector's Run (tint only) | short gradient | 16 | The stain gives way to the deep's cold over a short blur, so a pilot coming down the Run feels the change in a few slabs |
+| Layer 3: the Garden to the Spore Fields, across the rock shelf between the two halls (tint only) | interbedded | 24 | The spores' cast seeps into the basalt in beds that thicken downward, read on the shelf's face from either hall |
+| Layer 3: the Spore Fields to the Quiet (tint only) | long gradient | 64 | The Quiet creeps in: the colour drains so slowly over the lower hall that only a wide scan makes it certain, as layer 1's drift |
+| Any contact with no entry | sharp | | The default |
+
+Every style is in the game, and no two layers use the same pair: layer 1 drifts, layer 2 is ruled then blurred, layer 3 is banded then drifts.
+
+**Zone colours (layers 2 and 3).** Each of these layers has one rock, so a zone differs from the next in colour alone, and its contacts are tint-only: the same block either side, so worldgen does nothing for them (no rule, no block switch, no noise read) and they cost nothing to generate. The colour a zone's rock is multiplied by:
+
+| Zone | Colour | Why |
+|---|---|---|
+| Upper Levels | grey-green (the green shale's home colour, as layer 2 always looked) | Continuity with the green that speckles into layer 1's floor |
+| Shift Change | warm khaki | The old workings' water ran iron here, where Cicatrium first appears |
+| Prospector's Run | cold slate-blue | The deep's light reaching up toward layer 3's blue-black |
+| The Garden | cold blue-black (the basalt core's home colour, as layer 3 always looked) | The user's pick of cold basalt (#1147) |
+| The Spore Fields | a spore-teal cast | The zone of the spore haze and the most gas pockets |
+| The Quiet | drained grey with a cold violet edge | The silent hall: colour leaves the rock as sound leaves the air |
+
+Neighbouring zones are at least 40 apart in tint (of 441); on the scanner the texture scales that down, most in layer 3's dark basalt, so its zones read as a shift of cast more than a step, as the layer's darkness wants. Green shale out of layer 2's rows (layer 1's floor, layer 3's top beds) keeps its home colour. Layer 3's columns are not tinted: only the core behind them, which a drill opens, shows the zone.
+
+**Colour, not blocks.** The long gradient's drift is a render-time tint (`RockTint`), not intermediate rock blocks. The hardpan, the packed shale and the black shale are drawn in one neutral grey, and a client block colour multiplies it by a colour that moves in a straight line in RGB from one rock's colour to the next over a gradient, by the block's height. The switch between the two rock blocks is dithered over the same rows, and a block of either has the same colour there, so no speckle shows: only the colour moves, a channel at most 2 a row. The rocks are the same blocks as before (hardness, drill time, spoil, drops, tags), so no pacing moves. The scanner multiplies each rock cell's texture by the same function at the cell's height, so a wide scan shows the drift and a tier-1 slice, a few rows tall, barely does. An ore takes its host's colour (its model's host layer carries the tint). A rock outside its own rows (a placed one) and any other block keep their own colour. For ore, a blended block is its own host rock (a hardpan block is a hardpan host whatever the tint), and the ore tables follow the zone by height as before.
+
+**Existing worlds.** New chunks only. A saved chunk keeps its rock: a seam where it meets a new chunk, as with #1300.
+
+**Tuning knobs.** The contacts, styles and lengths in `claim_strata.json` and `basalt_top_strata.json`; the zone colours and the tint-only contacts of layers 2 and 3 in `RockTint`'s profiles; the home tints in `RockTint` and `HOME_TINT` in `tools/layer_concepts/make.py` (a test holds them equal); the grey ramp `claim_grey` in `tools/textures/palette.json`.
+
+**Open questions.** The tint is a function of height, at the contacts' rows before the contour noise moves them, so a column whose contact is moved a few rows is a few rows off its colour: not visible on a drift this long, to be checked on scanner stills at tier 1 and the top tier on the user's machine. The `layer_1` dimension (outside the campaign world) draws its packed shale with the drift's colour at its heights.
 
 ## Pod controls and the chase camera (#1281, #1268, A)
 

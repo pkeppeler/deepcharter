@@ -6,29 +6,29 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
-            "ddcccccccbbbccdd",
-            "ddccbedcbbbabcdd",
-            "dddddddbaabbbccc",
-            "ccddddcbbbabbabc",
-            "ccddddcbabbbbccb",
-            "cddddcbbbbabbbbb",
-            "ccdddcabcddcbbbb",
-            "bcccccccdeddbbbb",
-            "bcdcccdbddedcbcb",
-            "bccbbbcccddddccb",
-            "cccbbbbcdcdddddc",
-            "dcbbbccdccdddcbb",
-            "cbbbbbcdccdddccc",
-            "bbbbccccddddcccc",
-            "bbbcccbcdbccdddc",
-            "cccbbabcccbcdddd"
+            "dcceeccdcbbbbacd",
+            "ddcccbcddccbbbcd",
+            "ddcbbbbcdddccccd",
+            "ddcbbbbbddddddcd",
+            "cccbbbbcddddddcb",
+            "bccdcbbcbcdddcbb",
+            "ccdddcbbbbcdcccc",
+            "bcddccbbbbcccddc",
+            "bbddcddbbbcdcddb",
+            "bbccdddbbcddddcb",
+            "bbbcdddcccccddcb",
+            "cbbcddddcbbbccca",
+            "cccddeddcbbbbccc",
+            "dcbcddddcbbabbcc",
+            "dcbcddcccbbbcccd",
+            "dccddccccbbbccdd"
           ]
         }
       ]
@@ -39,11 +39,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "ddccdccbbbbddcdd",
@@ -72,10 +72,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4"
           },
           "rows": [
             "dbbddcbbbbbcdcdd",
@@ -104,11 +104,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dddeecbbbbbccabc",
@@ -137,11 +137,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dddeecbbbbcbbbcc",
@@ -170,11 +170,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dddddbbcccbbbbdd",
@@ -203,11 +203,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "ddddcbcccbbbcabd",
@@ -236,11 +236,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "ddccddddcbbbcbcd",
@@ -269,11 +269,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "cbceedcbbbcddcdc",
@@ -302,11 +302,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "cbceeddcbbbbbbcc",
@@ -335,11 +335,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbbcddccdbbcddcc",
@@ -368,11 +368,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbbcddccdbbcdccd",
@@ -401,11 +401,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4",
-            "e": "shale1.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbbcddcbdddddbbc",
@@ -434,10 +434,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale1.1",
-            "b": "shale1.2",
-            "c": "shale1.3",
-            "d": "shale1.4"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4"
           },
           "rows": [
             "bbcccccccbbcdddd",
@@ -567,10 +567,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "bbcccccddcccdccb",
@@ -599,10 +599,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "cbbbccdddcccdccc",
@@ -631,10 +631,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "cbbbcdddcdccccdd",
@@ -663,10 +663,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "ccdcbbbdccbbcddc",
@@ -695,10 +695,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "dcccbccdbbbcdddd",
@@ -727,10 +727,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "ccbbbccdcccdcccc",
@@ -759,10 +759,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "cdcccbbcbbccdddd",
@@ -791,10 +791,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "bbccccdddcbbbccc",
@@ -823,10 +823,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "bbccccddddcccccc",
@@ -855,10 +855,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "ccbccdcdccdccccc",
@@ -887,10 +887,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "ddcbbbcccdccbbcd",
@@ -919,10 +919,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "dddccbcccdcbbbcd",
@@ -951,10 +951,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "ddddccbccdcbbccc",
@@ -983,10 +983,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale2.2",
-            "b": "shale2.3",
-            "c": "shale2.4",
-            "d": "shale2.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "ddbbbbcdddcbbbcd",
@@ -1434,9 +1434,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "aabbbbbbbbbaaaaa",
@@ -1465,9 +1465,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "aabbbbbbbbbaaaaa",
@@ -1496,9 +1496,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "bbbaaaaaaabbbbbb",
@@ -1527,9 +1527,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "bbbbbbbaaaaaaabb",
@@ -1558,9 +1558,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "bbbbbbbaaaaaaabb",
@@ -1589,9 +1589,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "aaaaaabbbbbbbbba",
@@ -1620,9 +1620,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "aaaaaabbbbbbbbba",
@@ -1651,9 +1651,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "bbbaaaaaaabbbbbb",
@@ -1682,9 +1682,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "aabbbbbbbbbaaaaa",
@@ -1713,9 +1713,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "aabbbbbbbbbaaaaa",
@@ -1744,9 +1744,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "bbbaaaaaaabbbbbb",
@@ -1775,9 +1775,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "bbbbbbaaaaaaabbb",
@@ -1806,9 +1806,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "bbbbbbbbaaaaaaab",
@@ -1837,9 +1837,9 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "basalt3.1",
-            "b": "basalt3.2",
-            "c": "basalt3.3"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3"
           },
           "rows": [
             "aaaaabbbbbbbbbaa",
@@ -1862,17 +1862,48 @@
         }
       ]
     },
+    "block/columnar_basalt_core": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "basalt3.1",
+            "b": "basalt3.2",
+            "c": "basalt3.3"
+          },
+          "rows": [
+            "aabbbbbbbbbaaaaa",
+            "bbbbbbbbbbbaaaab",
+            "bbbbbbbbbbbaaabb",
+            "ccbbbbbbbbbaaabb",
+            "ccbbbbbbbbaaaabc",
+            "ccbbbbbbbbbaaabc",
+            "ccbbbbbbbbbaaabb",
+            "bbbbbbbbbbbaaabb",
+            "bbbbbbbccbbaaabb",
+            "bbbbbbbbbbbaaabb",
+            "ccbbbbbbbbbbbbbb",
+            "ccbbbbbbbbbbbbcc",
+            "ccbbbbbbbbbccccc",
+            "ccbbbbbbbbbbbbcc",
+            "bbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbaabb"
+          ]
+        }
+      ]
+    },
     "block/hardpan_0": {
       "kind": "opaque",
       "layers": [
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bcdddcdddccbabbb",
@@ -1901,11 +1932,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bccddddddcccbbbb",
@@ -1934,11 +1965,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "ddcccdddcccbabbc",
@@ -1967,11 +1998,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dddcbbcddccbabbd",
@@ -2000,11 +2031,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dddcbbcddccbabbd",
@@ -2033,11 +2064,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bddddcbcccddcbbb",
@@ -2066,11 +2097,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bdddccccccddcbbb",
@@ -2099,11 +2130,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbdddddcbbcdccbb",
@@ -2132,11 +2163,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbcddddcbbcdccbb",
@@ -2165,11 +2196,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "ccbbbddddcbbabcc",
@@ -2198,11 +2229,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbcddddcbbccddcb",
@@ -2231,11 +2262,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbcddddcbbcdddcb",
@@ -2264,11 +2295,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dcbbcdddccbbbcdd",
@@ -2297,11 +2328,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "hardpan_rock.1",
-            "b": "hardpan_rock.2",
-            "c": "hardpan_rock.3",
-            "d": "hardpan_rock.4",
-            "e": "hardpan_rock.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dcbbcdddccbbbcdd",
@@ -2330,11 +2361,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "ccddcbbcddccdcbb",
@@ -2363,11 +2394,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dddddcbbbccccccd",
@@ -2396,10 +2427,10 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.2",
-            "b": "shale_black.3",
-            "c": "shale_black.4",
-            "d": "shale_black.5"
+            "a": "claim_grey.2",
+            "b": "claim_grey.3",
+            "c": "claim_grey.4",
+            "d": "claim_grey.5"
           },
           "rows": [
             "ccccbbaaabbbbbbc",
@@ -2428,11 +2459,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "cccbccbbbcccdedd",
@@ -2461,11 +2492,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dcbcccbbbbcddddd",
@@ -2494,11 +2525,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbcdccccdcbcddcc",
@@ -2527,11 +2558,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "cccddcbbccccdddd",
@@ -2560,11 +2591,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "dddccbbbbddccccd",
@@ -2593,11 +2624,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "ddddcbbbccccdccd",
@@ -2626,11 +2657,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "ccddbbbcddccedbb",
@@ -2659,11 +2690,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbccbbcddcddddcc",
@@ -2692,11 +2723,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "ccdcbbddcccdddcc",
@@ -2725,11 +2756,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "bbccbbbbbdddddcb",
@@ -2758,11 +2789,11 @@
         {
           "op": "pixels",
           "legend": {
-            "a": "shale_black.1",
-            "b": "shale_black.2",
-            "c": "shale_black.3",
-            "d": "shale_black.4",
-            "e": "shale_black.5"
+            "a": "claim_grey.1",
+            "b": "claim_grey.2",
+            "c": "claim_grey.3",
+            "d": "claim_grey.4",
+            "e": "claim_grey.5"
           },
           "rows": [
             "cbccbcccccddddcc",

@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.layer.gen.StrataRule;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
@@ -41,7 +42,10 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -508,11 +512,14 @@ public class LayerStructuresTest {
     public void aLayerOneStructureSealsItsShellInItsStratumsRock(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
         LayerChain.Band band = TestLayers.band(level, 1);
+        StrataRule rule = (StrataRule) level.registryAccess()
+                .lookupOrThrow(Registries.MATERIAL_RULE)
+                .getValueOrThrow(ResourceKey.create(
+                        Registries.MATERIAL_RULE, Identifier.fromNamespaceAndPath("deepcharter", "claim_strata")));
         plantAndSeal(helper, 1, StructureKind.DEEP_SHAFT, LAYER_1_SEAL_CELL, (state, pos) -> {
             Block rock = LayerBlocks.stratum(band, pos.getY());
-            boolean nearContact = LayerBlocks.stratum(band, pos.getY() + CONTACT_REACH) != rock
-                    || LayerBlocks.stratum(band, pos.getY() - CONTACT_REACH) != rock;
-            if (!state.is(LayerBlocks.GROUND) || (!nearContact && !state.is(rock))) {
+            if (!state.is(LayerBlocks.GROUND)
+                    || !rule.possibleAt(pos.getY(), CONTACT_REACH).contains(state.getBlock())) {
                 throw failure(helper, "the seal at %s is %s, expected %s", pos.toShortString(), state, rock);
             }
         });

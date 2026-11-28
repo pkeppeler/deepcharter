@@ -50,6 +50,6 @@ public abstract class NoiseBasedChunkGeneratorMixin {
             @Share("prefill") LocalRef<@Nullable StrataPrefill> prefill) {
         BlockState substance = original.call(aquifer, x, y, z, density);
         StrataPrefill plan = prefill.get();
-        return substance == null && plan != null ? plan.at(y) : substance;
+        return substance == null && plan != null ? plan.at(x, y, z) : substance;
     }
 }

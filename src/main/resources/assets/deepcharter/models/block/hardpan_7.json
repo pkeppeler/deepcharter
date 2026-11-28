@@ -1,5 +1,5 @@
 {
-  "parent": "minecraft:block/cube_column",
+  "parent": "deepcharter:block/tinted_cube_column",
   "textures": {
     "side": "deepcharter:block/hardpan_7",
     "end": "deepcharter:block/hardpan_end_3"

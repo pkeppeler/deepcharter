@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.CaveOreFeature;
 import io.github.pkeppeler.deepcharter.layer.gen.ClaimShaftFeature;
@@ -338,9 +339,10 @@ public class ClaimFeaturesTest {
 
     /**
      * The strata have one truth: the material rule's contacts sit {@link LayerBlocks#CLAIM_CONTACT_UNDER_EDGE} under
-     * each of layer 1's zone edges and lay the rocks {@link LayerBlocks#stratum} names either side, and in the
-     * generated wall every block of layer rock further than the noise and the surface depth can move a contact is the
-     * rock {@code stratum} names.
+     * each of layer 1's zone edges (the two zone contacts, in the long gradient) and
+     * {@link LayerBlocks#CLAIM_FLOOR_CONTACT_OVER_FLOOR} over its floor (the short gradient into layer 2's rock), lay
+     * the rocks {@link LayerBlocks#stratum} names either side, and in the generated wall every block of layer rock is
+     * one the rule can lay in that row, whichever way the noise and the surface depth move the contacts.
      */
     @GameTest(
             environment = CampaignEnvironments.C,
@@ -351,6 +353,9 @@ public class ClaimFeaturesTest {
                 helper, sampleChunks(helper, 3), () -> theStrataRuleAndLayerBlocksAgreeLoaded(helper));
     }
 
+    /** Rows the noise and the surface depth can move a contact either way, with a margin. */
+    private static final int SHIFT_REACH = 14;
+
     private static void theStrataRuleAndLayerBlocksAgreeLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         StrataRule rule = (StrataRule) level.registryAccess()
@@ -360,20 +365,39 @@ public class ClaimFeaturesTest {
         LayerChain.Band band = TestLayers.band(level, 1);
         expect(
                 helper,
-                rule.contacts().size() == Zones.COUNT - 1,
+                rule.contacts().size() == Zones.COUNT,
                 "the rule has %s contacts",
                 rule.contacts().size());
-        List<Integer> contacts = new ArrayList<>();
-        for (int zone = 0; zone < Zones.COUNT - 1; zone++) {
-            StrataRule.Contact contact = rule.contacts().get(zone);
-            int y = Zones.span(band.minY(), band.height(), zone).low() - LayerBlocks.CLAIM_CONTACT_UNDER_EDGE;
-            contacts.add(y);
-            expect(helper, contact.y() == y, "contact %s is at y=%s, LayerBlocks puts it at %s", zone, contact.y(), y);
-            expect(helper, contact.upper().is(LayerBlocks.stratum(band, y)), "contact %s's upper rock", zone);
-            expect(helper, contact.bed().is(LayerBlocks.stratum(band, y - 1)), "contact %s's bed", zone);
+        for (int contactIndex = 0; contactIndex < rule.contacts().size(); contactIndex++) {
+            StrataRule.Contact contact = rule.contacts().get(contactIndex);
+            boolean floor = contactIndex == Zones.COUNT - 1;
+            int y = floor
+                    ? band.minY() + LayerBlocks.CLAIM_FLOOR_CONTACT_OVER_FLOOR
+                    : Zones.span(band.minY(), band.height(), contactIndex).low() - LayerBlocks.CLAIM_CONTACT_UNDER_EDGE;
+            expect(
+                    helper,
+                    contact.y() == y,
+                    "contact %s is at y=%s, LayerBlocks puts it at %s",
+                    contactIndex,
+                    contact.y(),
+                    y);
+            expect(helper, contact.upper().is(LayerBlocks.stratum(band, y)), "contact %s's upper rock", contactIndex);
+            expect(
+                    helper,
+                    contact.style() == (floor ? StrataRule.Style.SHORT_GRADIENT : StrataRule.Style.LONG_GRADIENT),
+                    "contact %s's style is %s",
+                    contactIndex,
+                    contact.style());
+            expect(
+                    helper,
+                    floor
+                            ? contact.y() - contact.length() / 2 == band.minY() + LayerTuning.DEFAULT.crustThickness()
+                            : contact.length() == LayerBlocks.CLAIM_GRADIENT_LENGTH,
+                    "contact %s's length is %s: a zone contact's is the gradient's, and the floor's ends at the last rock row",
+                    contactIndex,
+                    contact.length());
         }
         expect(helper, rule.bottom().is(LayerBlocks.stratum(band, band.minY())), "the rule's bottom rock");
-        int reach = 12;
         int checked = 0;
         List<String> wrong = new ArrayList<>();
         for (int cx = SAMPLE_CHUNK; cx < SAMPLE_CHUNK + 3; cx++) {
@@ -381,10 +405,7 @@ public class ClaimFeaturesTest {
             ChunkAccess chunk = level.getChunk(cx, SAMPLE_CHUNK);
             BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
             for (int y = band.minY(); y < band.minY() + band.height(); y++) {
-                int row = y;
-                if (contacts.stream().anyMatch(c -> Math.abs(row - c) <= reach)) {
-                    continue;
-                }
+                Set<Block> possible = rule.possibleAt(y, SHIFT_REACH);
                 for (int x = chunk.getPos().getMinBlockX(); x <= chunk.getPos().getMaxBlockX(); x++) {
                     for (int z = chunk.getPos().getMinBlockZ();
                             z <= chunk.getPos().getMaxBlockZ();
@@ -392,7 +413,7 @@ public class ClaimFeaturesTest {
                         BlockState state = chunk.getBlockState(pos.set(x, y, z));
                         if (state.is(LayerBlocks.GROUND)) {
                             checked++;
-                            if (!state.is(LayerBlocks.stratum(band, y)) && wrong.size() < 5) {
+                            if (!possible.contains(state.getBlock()) && wrong.size() < 5) {
                                 wrong.add(state + " at " + pos.toShortString());
                             }
                         }
@@ -401,7 +422,7 @@ public class ClaimFeaturesTest {
             }
         }
         expect(helper, checked > 10_000, "only %s rock blocks checked", checked);
-        expect(helper, wrong.isEmpty(), "rock that is not LayerBlocks.stratum's: %s", wrong);
+        expect(helper, wrong.isEmpty(), "rock the strata rule cannot lay in its row: %s", wrong);
         helper.succeed();
     }
 

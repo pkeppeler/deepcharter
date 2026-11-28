@@ -96,6 +96,8 @@ LAYER_3_STEMS = ("lc_rock_3", "lc_rubble_3")
 # Layer 3's own blocks (#972): the columns that line its caverns, and the dark core between them (#504).
 COLUMNS = "columnar_basalt"
 CORE = "basalt_core"
+# The texture of the core inside a column, the core block's first look in basalt's own ramp (#1551 made the core block's textures grey).
+COLUMN_CORE = "columnar_basalt_core"
 # The seed of the core of the Grain pack (lc_core_3), the first of the shipped core's.
 CORE_SEED = 309
 
@@ -117,12 +119,21 @@ CRUST_SEED = 61
 # mottles both did, so these are the seeds the user saw and picked).
 SHARED_NOISE = {(1, False): 90100, (1, True): 90107, (2, False): 90200, (2, True): 93207, (3, False): 91300, (3, True): 95307}
 
+# The rock of layers 1 to 3 is drawn in one neutral grey ramp and tinted at render time (#1551): layer 1's packed shale, hardpan and black shale,
+# layer 2's green shale and layer 3's basalt core multiply it by RockTint's colour for their depth, so each zone has its colour and the rock gives
+# way from one to the next with no block between. The ramp's middle shade times a rock's home tint is that rock's old middle shade (palette.json,
+# claim_grey). Layer 3's columns keep their own ramp: only the core behind them is tinted.
+CLAIM_GREY = "claim_grey"
+
 # The strata of layer 1 (#1277): each zone of The Claim has a rock of its own, so a descent reads as progress in the wall and on the
 # scanner. Stone Benches keeps the packed shale; over it lies the pale, warm hardpan of Topsoil Claims and under it the cold black shale
 # of Deep Claim, which leads on to layer 2's grey-green. Each is layer 1's Grain in a ramp of its own, as many variants and ends as the
 # packed shale. By block: its ramp, the shared noise of its sides and of its ends (the first seeds from 91100 and 91300 that tile), and
 # the first seed of its variants.
-STRATA = {"hardpan": ("hardpan_rock", 91101, 91102, 1100), "black_shale": ("shale_black", 91300, 91302, 1300)}
+# The tint (0xRRGGBB) that gives each tinted rock its home colour from the grey ramp: its old middle shade over the ramp's, as RockTint.java has
+# it (test_layer_concepts holds the two equal). The scanner and the item model use the same numbers.
+HOME_TINT = {"packed_shale": 0xD2805A, "hardpan": 0xC7EA68, "black_shale": 0x9FAFD4, "green_shale": 0x69937C, "basalt_core": 0x6E84B1}
+STRATA = {"hardpan": (CLAIM_GREY, 91101, 91102, 1100), "black_shale": (CLAIM_GREY, 91300, 91302, 1300)}
 
 
 def stems(layer: int) -> tuple[str, str]:
@@ -134,13 +145,14 @@ def rock_grids(layer: int) -> dict[str, art.Grid]:
     """Every tiling texture of the rock of one layer, by name: the rock and its end, the rubble and its end."""
     rock, rubble = stems(layer)
     shades, mid = SHADES[layer], MID[layer]
+    rock_shades = art.ramp(CLAIM_GREY, 6) if layer in SHIPPED_LAYERS else shades
     side, end = SHARED_NOISE[layer, False], SHARED_NOISE[layer, True]
     seed = 100 * layer
     out: dict[str, art.Grid] = {}
     for i in range(ROCK_VARIANTS[layer]):
-        out[f"{rock}_{i}"] = fitted(lambda s: art.grained(shades, s, mid, side), seed + i)
+        out[f"{rock}_{i}"] = fitted(lambda s: art.grained(rock_shades, s, mid, side), seed + i)
     for j in range(END_VARIANTS):
-        out[f"{rock}_end_{j}"] = fitted(lambda s: art.grained(shades, s, mid, end), seed + 15 + j)
+        out[f"{rock}_end_{j}"] = fitted(lambda s: art.grained(rock_shades, s, mid, end), seed + 15 + j)
     for i in range(RUBBLE_VARIANTS):
         out[f"{rubble}_{i}"] = fitted(lambda s: art.shards(shades, s), seed + 20 + i, seams.MAX_RUBBLE_INSIDE)
     out[f"{rubble}_end"] = fitted(lambda s: art.shards(shades, s), seed + 22, seams.MAX_RUBBLE_INSIDE)
@@ -217,9 +229,11 @@ def column_grids() -> dict[str, art.Grid]:
     many sides and ends as a rock of layers 1 and 2 has, so an ore has the same number of looks in it (overlays.json). Core 0 is the pack's."""
     rock, _ = LAYER_3_STEMS
     columns = {name.replace(rock, COLUMNS): grid for name, grid in rock_grids(3).items() if name.startswith(rock)}
-    core = {f"{CORE}_{i}": art.core(SHADES[3], CORE_SEED + i) for i in range(ROCK_VARIANTS[1])}
-    ends = {f"{CORE}_end_{j}": art.core(SHADES[3], CORE_SEED + ROCK_VARIANTS[1] + j) for j in range(END_VARIANTS)}
-    return columns | core | ends
+    grey = art.ramp(CLAIM_GREY, 6)
+    core = {f"{CORE}_{i}": art.core(grey, CORE_SEED + i) for i in range(ROCK_VARIANTS[1])}
+    ends = {f"{CORE}_end_{j}": art.core(grey, CORE_SEED + ROCK_VARIANTS[1] + j) for j in range(END_VARIANTS)}
+    # The columns' own core, in basalt's ramp: the core block is grey and tinted by depth, and a column is not.
+    return columns | core | ends | {COLUMN_CORE: art.core(SHADES[3], CORE_SEED)}
 
 
 def shipped_recipes() -> dict[str, dict]:
@@ -242,7 +256,8 @@ def textures(pack: str) -> dict[str, dict]:
 def shipped_models(layer: int) -> dict[str, dict]:
     """The models of the mod's rock and rubble of a layer, by name: plain cubes, each texture with the end texture of the next of its few."""
     rock, rubble = BLOCKS[layer]
-    out = {f"{rock}_{i}": shapes.cube(f"{rock}_{i}", f"{rock}_end_{i % END_VARIANTS}") for i in range(ROCK_VARIANTS[layer])}
+    out = {f"{rock}_{i}": shapes.cube(f"{rock}_{i}", f"{rock}_end_{i % END_VARIANTS}", tinted=rock in HOME_TINT)
+           for i in range(ROCK_VARIANTS[layer])}
     return out | {f"{rubble}_{i}": shapes.cube(f"{rubble}_{i}", f"{rubble}_end") for i in range(RUBBLE_VARIANTS)}
 
 
@@ -251,9 +266,9 @@ def column_models() -> dict[str, dict]:
     out = {}
     for i in range(ROCK_VARIANTS[3]):
         m = shapes.prism(i)
-        m.textures = shapes.rock_textures(f"{COLUMNS}_{i}", f"{COLUMNS}_end_{i % END_VARIANTS}", f"{CORE}_0")
+        m.textures = shapes.rock_textures(f"{COLUMNS}_{i}", f"{COLUMNS}_end_{i % END_VARIANTS}", COLUMN_CORE)
         out[f"{COLUMNS}_{i}"] = m.json(f"layer 3 {COLUMNS} {i}")
-    return out | {f"{CORE}_{i}": shapes.cube(f"{CORE}_{i}", f"{CORE}_end_{i % END_VARIANTS}") for i in range(ROCK_VARIANTS[1])}
+    return out | {f"{CORE}_{i}": shapes.cube(f"{CORE}_{i}", f"{CORE}_end_{i % END_VARIANTS}", tinted=True) for i in range(ROCK_VARIANTS[1])}
 
 
 def grain_models() -> dict[str, dict]:
@@ -307,11 +322,34 @@ def blockstates(pack: str, models: dict[str, dict]) -> dict[str, dict]:
     }
 
 
+def item_model(block: str, model: str) -> dict:
+    """The item definition's model of a block: a tinted rock's item carries its home tint, as the block does where no depth tells (RockTint)."""
+    body: dict = {"type": "minecraft:model", "model": shapes.model_id(model)}
+    if block in HOME_TINT:
+        body["tints"] = [{"type": "minecraft:constant", "value": HOME_TINT[block]}]
+    return body
+
+
+def map_icons() -> dict[Path, bytes]:
+    """The feature map icons of the tinted rock (#1551): the first texture of each rock times its home tint, since the rock's own textures are
+    neutral grey. One PNG each, under textures/map/."""
+    grids = rock_grids(1) | rock_grids(2) | column_grids() | {name: grid for block in STRATA for name, grid in stratum_grids(block).items()}
+    out: dict[Path, bytes] = {}
+    for block, tint in HOME_TINT.items():
+        grey = image(grids[f"{block}_0"])
+        pixels = bytearray(grey.pixels)
+        for at in range(0, len(pixels), 4):
+            for channel in range(3):
+                pixels[at + channel] = round(pixels[at + channel] * ((tint >> (16 - 8 * channel)) & 0xFF) / 255)
+        out[MOD_ASSETS / f"deepcharter/textures/map/{block}_tinted.png"] = pngio.encode(pngio.Rgba(grey.width, grey.height, bytes(pixels)))
+    return out
+
+
 def shipped_files() -> dict[Path, bytes]:
     """The files of the mod's rock blocks of layers 1 to 3 under src/main: the recipes of their textures, and each block's blockstate (a plain cube,
     never turned or mirrored: see the model guard; layer 3's columns are hexagons, turned about the vertical as the Grain pack turns them), its
     models and its item."""
-    files = {SHIPPED_RECIPES: _json({"recipes": shipped_recipes()})}
+    files = {SHIPPED_RECIPES: _json({"recipes": shipped_recipes()}), **map_icons()}
     for layer in SHIPPED_LAYERS:
         models = shipped_models(layer)
         for name, body in models.items():
@@ -319,13 +357,15 @@ def shipped_files() -> dict[Path, bytes]:
         for block in BLOCKS[layer]:
             names = [n for n in models if re.fullmatch(rf"{block}_\d", n)]
             files[MOD_ASSETS / f"deepcharter/blockstates/{block}.json"] = _json({"variants": {"": shapes.variants(names, (0,))}})
-            files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(f"{block}_0")}})
+            files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": item_model(block, f"{block}_0")})
     for block in STRATA:
         names = [f"{block}_{i}" for i in range(ROCK_VARIANTS[1])]
         for i, name in enumerate(names):
-            files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(shapes.cube(name, f"{block}_end_{i % END_VARIANTS}"))
+            files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(
+                shapes.cube(name, f"{block}_end_{i % END_VARIANTS}", tinted=True))
         files[MOD_ASSETS / f"deepcharter/blockstates/{block}.json"] = _json({"variants": {"": shapes.variants(names, (0,))}})
-        files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(names[0])}})
+        files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": item_model(block, names[0])})
+    files[MOD_ASSETS / "deepcharter/models/block/tinted_cube_column.json"] = _json(shapes.tinted_cube_column())
     models = column_models()
     for name, body in models.items():
         files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(body)
@@ -334,7 +374,7 @@ def shipped_files() -> dict[Path, bytes]:
     cores = [n for n in models if n.startswith(f"{CORE}_")]
     files[MOD_ASSETS / f"deepcharter/blockstates/{CORE}.json"] = _json({"variants": {"": shapes.variants(cores, (0,))}})
     for block, model in ((COLUMNS, columns[0]), (CORE, cores[0])):
-        files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(model)}})
+        files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": item_model(block, model)})
     return files
 
 

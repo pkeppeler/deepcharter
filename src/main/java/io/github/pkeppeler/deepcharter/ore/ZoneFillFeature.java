@@ -115,15 +115,12 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
         // shipped level holds whole bands, so this changes nothing there.
         low = Math.max(low, chunk.getMinY());
         high = Math.min(high, chunk.getMinY() + chunk.getHeight() - 1);
-        // The rolls and the states they place do not change from block to block, and the rock hardly does: a layer is
-        // mostly one state, so its ore states are worked out once for each new rock. A section that holds nothing but
-        // ground is not read block by block: its blocks are only rolled for, and the few that place something are read.
+        // The rolls and the states they place do not change from block to block, and a zone holds few rocks, so each
+        // rock's ore states are worked out once (Hosts). A section that holds nothing but ground is not read
+        // block by block: its blocks are only rolled for, and the few that place something are read.
         double[] oreFloors = floors(ores);
         double[] hazardFloors = floors(hazards);
-        @Nullable BlockState[] oreStates = new BlockState[ores.size()];
-        @Nullable BlockState[] hazardStates = new BlockState[hazards.size()];
-        @Nullable BlockState lastRock = null;
-        boolean lastIsGround = false;
+        Hosts hosts = new Hosts(ores.size(), hazards.size());
         for (int index = chunk.getSectionIndex(low); index <= chunk.getSectionIndex(high); index++) {
             LevelChunkSection section = chunk.getSection(index);
             if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(LayerBlocks.GROUND))) {
@@ -137,13 +134,7 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
                         @Nullable BlockState rock = null;
                         if (!onlyGround) {
                             rock = section.getBlockState(x, y & 15, z);
-                            if (rock != lastRock) {
-                                lastRock = rock;
-                                lastIsGround = rock.is(LayerBlocks.GROUND);
-                                Arrays.fill(oreStates, null);
-                                Arrays.fill(hazardStates, null);
-                            }
-                            if (!lastIsGround) {
+                            if (!hosts.select(rock)) {
                                 continue;
                             }
                         }
@@ -154,21 +145,18 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
                         }
                         if (rock == null) {
                             rock = section.getBlockState(x, y & 15, z);
-                            if (rock != lastRock) {
-                                lastRock = rock;
-                                lastIsGround = true;
-                                Arrays.fill(oreStates, null);
-                                Arrays.fill(hazardStates, null);
-                            }
+                            hosts.select(rock);
                         }
                         BlockState state;
                         if (ore >= 0) {
+                            @Nullable BlockState[] oreStates = hosts.oreStates();
                             state = oreStates[ore];
                             if (state == null) {
                                 state = ores.get(ore).block().in(rock);
                                 oreStates[ore] = state;
                             }
                         } else {
+                            @Nullable BlockState[] hazardStates = hosts.hazardStates();
                             state = hazardStates[hazard];
                             if (state == null) {
                                 Block block = hazards.get(hazard).block();
@@ -185,6 +173,65 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
             }
         }
         return placed;
+    }
+
+    /**
+     * The last few rocks the fill read, each with whether it is ground and the ore and hazard states placed in it, so
+     * each is worked out once per chunk. One rock is not enough: a gradient dithers two rocks block by block (#1551),
+     * and a cache of one missed on about every other block, each miss a tag lookup.
+     */
+    private static final class Hosts {
+        /** Rocks kept: a gradient's two, with room for the odd placed block in between. */
+        private static final int SLOTS = 4;
+
+        private final @Nullable BlockState[] rocks = new BlockState[SLOTS];
+        private final boolean[] ground = new boolean[SLOTS];
+        private final @Nullable BlockState[][] oreStates;
+        private final @Nullable BlockState[][] hazardStates;
+        /** The slot of the rock last selected. */
+        private int current;
+        /** The slot the next new rock replaces, round robin. */
+        private int replace;
+
+        Hosts(int ores, int hazards) {
+            oreStates = new BlockState[SLOTS][ores];
+            hazardStates = new BlockState[SLOTS][hazards];
+        }
+
+        /** Makes {@code rock} the current rock and says whether it is ground. */
+        boolean select(BlockState rock) {
+            if (rocks[current] != rock) {
+                current = slotOf(rock);
+            }
+            return ground[current];
+        }
+
+        private int slotOf(BlockState rock) {
+            for (int slot = 0; slot < SLOTS; slot++) {
+                if (rocks[slot] == rock) {
+                    return slot;
+                }
+            }
+            int slot = replace;
+            replace = (replace + 1) % SLOTS;
+            rocks[slot] = rock;
+            ground[slot] = rock.is(LayerBlocks.GROUND);
+            Arrays.fill(oreStates[slot], null);
+            Arrays.fill(hazardStates[slot], null);
+            return slot;
+        }
+
+        /** The ore states worked out so far in the current rock, by entry. */
+        @Nullable
+        BlockState[] oreStates() {
+            return oreStates[current];
+        }
+
+        /** The hazard states worked out so far in the current rock, by entry. */
+        @Nullable
+        BlockState[] hazardStates() {
+            return hazardStates[current];
+        }
     }
 
     /** The running totals of the entries' chances, so that a roll finds its entry the way a sum over the list would. */

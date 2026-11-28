@@ -245,6 +245,62 @@ class GridTest(unittest.TestCase):
         self.assertAlmostEqual(grid.WALL["pixels"], focal / distances["wide-wall"], delta=0.3)
 
 
+class RockTintTest(unittest.TestCase):
+    """#1551: the layers' rock is drawn in one grey and the client multiplies it by RockTint's colour for the depth, so the numbers of the
+    tooling, the Java and the data must be one set."""
+
+    JAVA = ROOT / "src/main/java/io/github/pkeppeler/deepcharter/layer/RockTint.java"
+    LAYER_BLOCKS = ROOT / "src/main/java/io/github/pkeppeler/deepcharter/layer/LayerBlocks.java"
+    STRATA_RULE = ROOT / "src/main/resources/data/deepcharter/worldgen/material_rule/claim_strata.json"
+    OLD_RAMP = {"hardpan": "hardpan_rock", "packed_shale": "shale1", "black_shale": "shale_black", "green_shale": "shale2",
+                "basalt_core": "basalt3"}
+    # Green shale and the basalt core take their home colour from the zone they head, the Upper Levels and the Garden.
+    JAVA_NAME = {"hardpan": "HARDPAN", "packed_shale": "PACKED_SHALE", "black_shale": "BLACK_SHALE", "green_shale": "UPPER_LEVELS",
+                 "basalt_core": "GARDEN"}
+    # The shade a rock's texture sits on: a layer's MID, and the core's middle tone (art.core draws shades 1 to 3).
+    MID_SHADE = {"hardpan": make.MID[1], "packed_shale": make.MID[1], "black_shale": make.MID[1], "green_shale": make.MID[2], "basalt_core": 2}
+
+    def test_the_tints_of_the_tooling_are_the_javas(self):
+        text = self.JAVA.read_text()
+        for block, tint in make.HOME_TINT.items():
+            found = re.search(rf"static final int {self.JAVA_NAME[block]} = 0x([0-9A-F]{{6}});", text)
+            self.assertIsNotNone(found, block)
+            self.assertEqual(tint, int(found.group(1), 16), block)
+
+    def test_a_rocks_grey_times_its_home_tint_is_the_middle_shade_it_had(self):
+        colours = make.palette()
+
+        def rgb(name):
+            return [int(colours[name].lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]
+
+        for block, tint in make.HOME_TINT.items():
+            grey = rgb(f"{make.CLAIM_GREY}.{self.MID_SHADE[block]}")
+            old = rgb(f"{self.OLD_RAMP[block]}.{self.MID_SHADE[block]}")
+            tinted = [round(grey[c] * ((tint >> (16 - 8 * c)) & 0xFF) / 255) for c in range(3)]
+            with self.subTest(block=block):
+                for got, want in zip(tinted, old):
+                    self.assertLessEqual(abs(got - want), 2, f"{tinted} against {old}")
+
+    def test_no_tint_brightens_a_channel_and_every_strata_texture_is_grey(self):
+        for block, tint in make.HOME_TINT.items():
+            self.assertLessEqual(max(tint >> 16, (tint >> 8) & 0xFF, tint & 0xFF), 255, block)
+        for name in [f"{b}_{i}" for b in make.HOME_TINT for i in range(make.ROCK_VARIANTS[1])]:
+            image = pngio.decode((SHIPPED_TEXTURES / f"{name}.png").read_bytes(), name)
+            for at in range(0, len(image.pixels), 4):
+                r, g, b = image.pixels[at:at + 3]
+                self.assertTrue(r == g == b, f"{name} has a coloured pixel {(r, g, b)}")
+        # A column is not tinted, so the core inside it keeps basalt's own ramp.
+        image = pngio.decode((SHIPPED_TEXTURES / f"{make.COLUMN_CORE}.png").read_bytes(), make.COLUMN_CORE)
+        self.assertTrue(any(len(set(image.pixels[at:at + 3])) > 1 for at in range(0, len(image.pixels), 4)), "the columns' core is grey")
+
+    def test_the_gradient_length_of_the_data_is_the_javas(self):
+        found = re.search(r"CLAIM_GRADIENT_LENGTH = (\d+);", self.LAYER_BLOCKS.read_text())
+        self.assertIsNotNone(found)
+        contacts = json.loads(self.STRATA_RULE.read_text())["contacts"]
+        self.assertEqual(["long_gradient", "long_gradient", "short_gradient"], [c["style"] for c in contacts])
+        self.assertEqual([int(found.group(1))] * 2, [c["length"] for c in contacts[:2]])
+
+
 class LayerConceptsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -331,7 +387,8 @@ class LayerConceptsTest(unittest.TestCase):
         """A face is culled by its neighbour's occlusion shape and not by its model: with cullface, the gap between two stepped blocks is open
         to the world behind them."""
         for path, body in self.files.items():
-            if "/models/block/" in path.as_posix():
+            # The tinted cube's parent keeps vanilla cube_column's culling: a rock block's faces on its neighbours are never drawn.
+            if "/models/block/" in path.as_posix() and path.name != "tinted_cube_column.json":
                 with self.subTest(model=path.name):
                     self.assertNotIn("cullface", body.decode())
 

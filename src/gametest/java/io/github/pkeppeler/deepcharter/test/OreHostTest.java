@@ -70,8 +70,23 @@ public class OreHostTest {
         };
     }
 
-    /** The rocks the zone fill finds in {@code layer}: layer 1's strata (#1277), and elsewhere the layer's one rock. */
+    /**
+     * The rocks the zone fill finds in {@code layer}: layer 1's strata (#1277) and its floor's green shale (#1551),
+     * layer 3's basalt and the green shale interbedded in its top rows, and elsewhere the layer's one rock.
+     */
     static Set<Host> generatedHosts(int layer) {
+        return switch (layer) {
+            case 1 -> Set.of(Host.HARDPAN, Host.PACKED_SHALE, Host.BLACK_SHALE, Host.GREEN_SHALE);
+            case 3 -> Set.of(Host.BASALT_CORE, Host.GREEN_SHALE);
+            default -> Set.of(expectedHost(layer));
+        };
+    }
+
+    /**
+     * The rocks of {@code layer} that hold most of its ore, so ore must be found in each: the rows of green shale at
+     * layer 1's floor and layer 3's top are few, so a sample may hold none.
+     */
+    private static Set<Host> mainHosts(int layer) {
         return layer == 1 ? Set.of(Host.HARDPAN, Host.PACKED_SHALE, Host.BLACK_SHALE) : Set.of(expectedHost(layer));
     }
 
@@ -131,7 +146,7 @@ public class OreHostTest {
             Set<Host> hosts = generatedHosts(layer);
             int right =
                     hosts.stream().mapToInt(host -> found.getOrDefault(host, 0)).sum();
-            if (total < AT_LEAST || right != total || !found.keySet().containsAll(hosts)) {
+            if (total < AT_LEAST || right != total || !found.keySet().containsAll(mainHosts(layer))) {
                 throw failure(
                         helper,
                         "layer_%s should hold at least %s ores, all in %s and some in each, it holds %s",
