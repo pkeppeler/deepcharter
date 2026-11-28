@@ -43,13 +43,14 @@ import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The cases of #1371's client GameTests: the Continuity Event always lets the dead person go. A dead person teleported to another
- * dimension (a command block's {@code /tp @a}) keeps the one sequence they died in, and RETURN TO WORK brings them back. A death after
- * RETURN TO WORK, before the client saw the person alive, is a new sequence. A resource pack whose laugh envelope is broken and whose
- * skull line is blank neither crashes the client nor holds the person on the screen: the skull still draws, and RETURN TO WORK comes as
- * soon as the steady fallback laugh ends, well inside {@code ContinuityScreen}'s cap, with Esc showing DISCONNECT after it. Two classes
- * run them, so neither outweighs a client shard (gradle/ci-budget.txt, #1695): {@link ContinuityPackClientTest} and
- * {@link ContinuityPackEnvelopesClientTest}.
+ * The cases of #1371's client GameTests: the Continuity Event always lets the dead person go. A dead person teleported
+ * to another dimension (a command block's {@code /tp @a}) keeps the one sequence they died in, and RETURN TO WORK
+ * brings them back. A death after RETURN TO WORK, before the client saw the person alive, is a new sequence. A resource
+ * pack whose laugh envelope is broken and whose skull line is blank neither crashes the client nor holds the person on
+ * the screen: the skull still draws, and RETURN TO WORK comes as soon as the steady fallback laugh ends, well inside
+ * {@code ContinuityScreen}'s cap, with Esc showing DISCONNECT after it. Two classes run them, so neither outweighs a
+ * client shard (gradle/ci-budget.txt, #1695): {@link ContinuityPackClientTest} and {@link
+ * ContinuityPackEnvelopesClientTest}.
  */
 final class ContinuityPackCases {
     private static final String PACK = "continuity-broken";
@@ -59,14 +60,15 @@ final class ContinuityPackCases {
     private static final String RETURN = "RETURN TO WORK";
     private static final String DISCONNECT = "DISCONNECT";
     /**
-     * The latest the button may come for a broken envelope, from the death: the cut, the skip and the steady fallback laugh (3.68 s) take
-     * under 5 s, with room for a slow machine. An envelope read as it is would put the button well past this, at the cap, or never.
+     * The latest the button may come for a broken envelope, from the death: the cut, the skip and the steady fallback
+     * laugh (3.68 s) take under 5 s, with room for a slow machine. An envelope read as it is would put the button well
+     * past this, at the cap, or never.
      */
     private static final double FALLBACK_BUTTON_SECONDS = 10.0;
 
     /**
-     * Broken envelope lengths, each a pack's {@code continuity/laugh_envelope.json}: not a number, endless, negative, absurdly long, just
-     * over the bound, and missing.
+     * Broken envelope lengths, each a pack's {@code continuity/laugh_envelope.json}: not a number, endless, negative,
+     * absurdly long, just over the bound, and missing.
      */
     static final List<String> BROKEN_LENGTHS = List.of(
             "{\"framesPerSecond\": 25, \"seconds\": NaN, \"values\": [0.5, 0.5]}",
@@ -78,8 +80,8 @@ final class ContinuityPackCases {
             "{\"framesPerSecond\": 25, \"values\": [0.5, 0.5]}");
 
     /**
-     * Other broken envelopes: no values a second and a value that is not a number, with lengths a valid envelope may have, so the button
-     * would come late if these were read as they are; and not JSON.
+     * Other broken envelopes: no values a second and a value that is not a number, with lengths a valid envelope may
+     * have, so the button would come late if these were read as they are; and not JSON.
      */
     static final List<String> BROKEN_VALUES = List.of(
             "{\"framesPerSecond\": 0, \"seconds\": 15, \"values\": [0.5, 0.5]}",
@@ -89,8 +91,8 @@ final class ContinuityPackCases {
     private ContinuityPackCases() {}
 
     /**
-     * In one world: the two sequence cases when {@code sequences} is set, then a death with each of {@code broken} as the pack's laugh
-     * envelope.
+     * In one world: the two sequence cases when {@code sequences} is set, then a death with each of {@code broken} as
+     * the pack's laugh envelope.
      */
     static void runCases(ClientGameTestContext context, boolean sequences, List<String> broken) {
         Path pack = context.computeOnClient(
@@ -127,8 +129,8 @@ final class ContinuityPackCases {
     }
 
     /**
-     * A dead person teleported to the Nether gets a new player on the client, still dead: the same sequence carries on over the loading
-     * screen, the silence holds, and RETURN TO WORK brings them back alive.
+     * A dead person teleported to the Nether gets a new player on the client, still dead: the same sequence carries on
+     * over the loading screen, the silence holds, and RETURN TO WORK brings them back alive.
      */
     private static void teleportedWhileDead(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         kill(context, singleplayer);
@@ -159,10 +161,11 @@ final class ContinuityPackCases {
     }
 
     /**
-     * Once RETURN TO WORK is pressed, a dead player the client is given next has died again: a respawn and a death handled in one batch,
-     * as a deadly spawn or a repeating {@code /kill} makes them while the client stalls. That death is a sequence of its own, never the
-     * old one with its button spent, which would leave the person only DISCONNECT. The second death is staged on the client, a new player
-     * handed to {@link ContinuityClient#screenFor} dead, because the server cannot be made to batch the two packets.
+     * Once RETURN TO WORK is pressed, a dead player the client is given next has died again: a respawn and a death
+     * handled in one batch, as a deadly spawn or a repeating {@code /kill} makes them while the client stalls. That
+     * death is a sequence of its own, never the old one with its button spent, which would leave the person only
+     * DISCONNECT. The second death is staged on the client, a new player handed to {@link ContinuityClient#screenFor}
+     * dead, because the server cannot be made to batch the two packets.
      */
     private static void diedAgainAfterReturn(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         kill(context, singleplayer);
