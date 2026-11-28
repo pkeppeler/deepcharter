@@ -8,10 +8,8 @@
   "deepcharter.pod.screen.refusal.not_a_unit": "Only a %s fits here",
   "deepcharter.pod.screen.refusal.not_fuel": "Only pod fuel goes in the fuel slot",
   "deepcharter.pod.screen.refusal.not_yours": "That pod belongs to another charter",
-  "deepcharter.pod.screen.refusal.ore_stays": "Ore can't go in your pack. %s dumps it under the pod",
   "deepcharter.pod.screen.refusal.other_track": "That's a %s: this slot takes a %s",
   "deepcharter.pod.screen.refusal.past_the_bay": "The cargo bay has %s slots",
-  "key.deepcharter.pod_screen": "Open the pod screen (aboard)",
   "screen.deepcharter.pod.bricks": "Bricks %s",
   "screen.deepcharter.pod.condition.capped": "Works at the chassis' best tier",
   "screen.deepcharter.pod.condition.void": "Void: stamped for another charter",
@@ -27,5 +25,6 @@
   "screen.deepcharter.pod.pack": "Pack",
   "screen.deepcharter.pod.spoil": "Spoil %s",
   "screen.deepcharter.pod.stock": "Stock %s",
-  "screen.deepcharter.pod.dump_tip": "%s: dump one under the pod, Ctrl+%s: the stack"
+  "screen.deepcharter.pod.dump_tip": "%s: dump one under the pod, Ctrl+%s: the stack",
+  "screen.deepcharter.pod.loose": "Loose ore: weighs x%s, slows the drill and steering, rattles"
 }

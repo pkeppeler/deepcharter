@@ -1,0 +1,55 @@
+# What counts as gate code, and what runs it: the one copy of the gate sweep's mapping rules (#1639; tools/gate-sweep.sh,
+# tools/lib/gate-paths.sh, tools/lib/pr-body-checks.sh read it). Edit it when a gate is added, moved or split (#1572 splits
+# gradle/gametest.gradle.kts into per-gate files: replace its rule with the new files' `gradle/*gate*` match).
+#
+# One rule per line: <glob> <actions>. The first rule whose glob matches the path decides (`*` also spans `/`). A path no rule
+# matches, or one that matches `ignore`, is not gate code. <actions> are `;`-separated:
+#   ignore            not gate code (a gate's own fixture test: it decides nothing about other PRs)
+#   script            the `check*` Gradle tasks the file registers by a literal name (`tasks.register("checkX")`,
+#                     `tasks.register<T>("checkX")`); a name built at runtime is not seen: list it with `tasks`
+#   named             the `check*` tasks of every gradle/*.gradle.kts script that names this file (a
+#                     gradle/ file by its name, a config/ file by its directory)
+#   tasks T...        these Gradle tasks
+#   tool [file]       run `tools/py <file>` (default: the changed file)
+#   unittest [file]   run `tools/py -m unittest discover -s tools/tests -p <file's name>` (default: the changed file)
+#   shell [file]      run `bash <file>` (default: the changed file)
+#   unswept <text>    nothing to run: reported as UNSWEPT with <text> as the manual step
+# A gate path whose actions yield nothing runnable is reported UNSWEPT too. tools/tests/gate-sweep.test.sh fails when a Gradle
+# script registers a `check*` task that no rule covers.
+
+tools/tests/*_gate_check.py  ignore
+tools/tests/gate_checks.py  unswept run tools/py tools/tests/gate_checks.py under the Gradle slot lock on each open PR merged with this one
+tools/tests/gate_batch.py  unswept run tools/py tools/tests/gate_checks.py under the Gradle slot lock on each open PR merged with this one
+tools/tests/conflict_markers.py  tool
+tools/tests/test_conflict_markers.py  unittest
+tools/tests/test_docs.py  unittest
+tools/tests/test_unused_check.py  unittest
+tools/tests/test_loot_table_format.py  unittest
+tools/tests/no-*.test.sh  shell
+tools/tests/portable-shell.test.sh  shell
+tools/tests/ci-gradle-resolve-gate.test.sh  shell
+tools/tests/ci-merge-main-uses.test.sh  shell
+tools/tests/gradle-worktree-isolation.test.sh  shell
+tools/tests/*  ignore
+
+.githooks/pre-push  unswept a hook, not a build task: read its diff against each open PR by hand
+.github/workflows/*  unswept CI config: merge the PR with this one, push the result and read its CI run
+.github/actions/*  unswept CI config: merge the PR with this one, push the result and read its CI run
+
+build.gradle.kts  script; tasks compileJava compileClientJava compileGametestJava spotlessCheck
+settings.gradle.kts  unswept settings change: run ./gradlew check -x runGameTest on each open PR merged with this one
+config/checkstyle/*  tasks checkstyleMain checkstyleClient checkstyleGametest
+config/*  named
+gradle/gametest.gradle.kts  script; tasks generateGametestModJson
+gradle/server-test-weights.txt  unswept the server shard gate: run tools/py tools/tests/gate_checks.py under the Gradle slot lock
+gradle/client-test-weights.txt  unittest tools/tests/test_client_weights.py
+gradle/lang.gradle.kts  script
+gradle/run-jvm.gradle.kts  script
+gradle/literals.gradle.kts  script
+gradle/*gate*.gradle.kts  script
+gradle/*allowlist*.txt  named
+gradle/banned-*.txt  named
+
+tools/check-homage.py  tool
+tools/*Gate.java  named
+tools/*gate*.py  tool
