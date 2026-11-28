@@ -96,7 +96,10 @@ public class PodRackOffhandScenario extends EvidenceScenario {
             hold(context);
             screenshot(context, "pod-screen-rack");
 
-            SlotClicks.hover(context, pod, context.computeOnClient(client -> pod.getMenu().offhandSlot()));
+            SlotClicks.hover(
+                    context,
+                    pod,
+                    context.computeOnClient(client -> pod.getMenu().offhandSlot()));
             hold(context);
             screenshot(context, "offhand-empty-tooltip");
 

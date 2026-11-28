@@ -120,9 +120,8 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
      * the brick; on a screen too narrow for it beside the title, the short form.
      */
     public String bricksLine() {
-        ProcessorView.Bricks bricks = view.feature(ProcessorView.class)
-                .map(ProcessorView::bricks)
-                .orElse(new ProcessorView.Bricks(0, 0, 0));
+        ProcessorView.Bricks bricks =
+                view.feature(ProcessorView.class).map(ProcessorView::bricks).orElse(new ProcessorView.Bricks(0, 0, 0));
         String full = bricksLine(bricks, "");
         int room = contentWidth(MARGIN) - CrtText.width(font, title.getString().toUpperCase(Locale.ROOT)) - GAP;
         return CrtText.width(font, full) <= room ? full : bricksLine(bricks, "_short");
