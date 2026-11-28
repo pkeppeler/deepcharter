@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
 import java.util.Optional;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -28,6 +29,12 @@ public final class SuitShop {
 
     static void init() {
         TerminalActions.register(TerminalTypes.REPAIR_STATION, SUIT_BUY, SuitShop::buy);
+        for (SuitTrack track : SuitTrack.values()) {
+            TerminalWares.register(
+                    TerminalTypes.REPAIR_STATION,
+                    "suit:" + track.id(),
+                    "screen.deepcharter.repair.about.suit." + track.id());
+        }
     }
 
     private static Optional<Component> buy(TerminalAction.Context context) {

@@ -14,6 +14,8 @@
   "message.deepcharter.fuel.reserve_unreadable": "This pod has data from another version of the mod",
   "message.deepcharter.fuel.tank_full": "The tank is full",
   "screen.deepcharter.fuel_pump.buy": "BUY %s L",
+  "screen.deepcharter.fuel_pump.about.buy": "Fuel for the pod parked here, by the litre. Cheaper than a tow.",
+  "screen.deepcharter.fuel_pump.about.fill": "Fills the tank to the brim, or as far as your account reaches.",
   "screen.deepcharter.fuel_pump.fill": "FILL UP",
   "screen.deepcharter.fuel_pump.no_pod": "NO POD PARKED AT THE PUMP",
   "screen.deepcharter.fuel_pump.online": "FUEL PUMP ONLINE. $%s A LITRE.",

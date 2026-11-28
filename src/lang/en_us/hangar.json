@@ -21,6 +21,8 @@
   "item.deepcharter.rotor_hub": "Rotor Hub",
   "item.deepcharter.tread_assembly": "Tread Assembly",
   "screen.deepcharter.hangar.advance": "THE COMPANY ADVANCES %s %s FOR A FIRST PROSPECTOR, AGAINST YOUR CONTRACT.",
+  "screen.deepcharter.hangar.about.buy_mole": "A refurbished Mole for your bay. The registration fee rises with every pod you own.",
+  "screen.deepcharter.hangar.about.restore_wreck": "Restores the nearest wreck to a working pod, for money and the catalyst ore.",
   "screen.deepcharter.hangar.buy": "BUY REFURBISHED MOLE: $%s + $%s PER POD",
   "screen.deepcharter.hangar.restore": "RESTORE NEAREST WRECK",
   "screen.deepcharter.hangar.restore_prices": "RESTORE PRICES: MOLE $%s + %s, PROSPECTOR $%s + %s (%s)",

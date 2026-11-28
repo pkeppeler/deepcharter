@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeatures;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.Comparator;
@@ -63,6 +64,8 @@ public final class HangarTerminal {
     static void register() {
         TerminalActions.register(TYPE, BUY_MOLE, HangarTerminal::buyMole);
         TerminalActions.register(TYPE, RESTORE_WRECK, HangarTerminal::restoreWreck);
+        TerminalWares.register(TYPE, "buy_mole", "screen.deepcharter.hangar.about.buy_mole");
+        TerminalWares.register(TYPE, "restore_wreck", "screen.deepcharter.hangar.about.restore_wreck");
         TerminalFeatures.register(TYPE, HangarView.STREAM_CODEC, HangarTerminal::view);
     }
 

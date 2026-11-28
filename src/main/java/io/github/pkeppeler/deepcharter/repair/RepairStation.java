@@ -12,8 +12,10 @@ import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -60,6 +62,23 @@ public final class RepairStation {
         TerminalActions.register(TerminalTypes.REPAIR_STATION, SCRAPE_FLUE, RepairStation::scrapeFlue);
         TerminalActions.register(TerminalTypes.REPAIR_STATION, BUY, RepairStation::buy);
         ParkedPodView.register(TerminalTypes.REPAIR_STATION);
+        declareWares();
+    }
+
+    /**
+     * What the station sells, each with the line that says what it does before the buy (#1645): the hull repairs,
+     * the engine's soot and the suit tracks (see {@code SuitShop}) have a line of their own, an item has its spec
+     * sheet's.
+     */
+    private static void declareWares() {
+        String about = "screen.deepcharter.repair.about.";
+        for (String ware : List.of("repair", "repair_total", "service_engine", "scrape_flue")) {
+            TerminalWares.register(TerminalTypes.REPAIR_STATION, ware, about + ware);
+        }
+        for (Consumable consumable : Consumable.values()) {
+            String path = consumable.itemId().getPath();
+            TerminalWares.register(TerminalTypes.REPAIR_STATION, "item:" + path, "deepcharter.spec.item." + path);
+        }
     }
 
     private static Optional<Component> repair(TerminalAction.Context context, Optional<Integer> requested) {
