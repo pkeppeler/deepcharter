@@ -461,6 +461,26 @@ logged_part "stale: the first batch PR is retired with the reason" "Rebuilding o
 logged_part "stale: the rebuild is a new branch" "head=batch/S-2"
 count "stale: the CI gate ran twice" "merge-pr --ci" 2
 
+# --- #1723: a batch retired while its CI still runs has those runs cancelled; finished ones are left alone ---
+reset
+mkpr 1; mkpr 2
+printf '1\nERROR: the gate broke\n' >"$ST/ci.1"
+printf '%s\n' "701|CI|in_progress|" "702|Client tests|queued|" "703|Record evidence|completed|skipped" | tr '|' '\t' >"$ST/wfruns"
+run_b 1 2
+exited "stop with CI running: stops" 1
+logged_part "stop with CI running: retires the batch" "Closed: the batch tool stopped before this batch merged."
+logged "stop with CI running: cancels the running CI run" "gh api -X POST repos/pkeppeler/deepcharter/actions/runs/701/cancel"
+logged "stop with CI running: cancels the queued client run" "gh api -X POST repos/pkeppeler/deepcharter/actions/runs/702/cancel"
+not_logged "stop with CI running: leaves a finished run" "runs/703/cancel"
+
+reset
+mkpr 1; mkpr 2
+printf '1\nREFUSED: PR #100 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run [stale-base] (the head sha is unchanged)\n' >"$ST/ci.1"
+printf '%s\n' "711|CI|completed|success" | tr '|' '\t' >"$ST/wfruns"
+run_b 1 2
+exited "stale, CI finished: exit 0" 0
+not_logged "stale, CI finished: nothing to cancel" "/cancel"
+
 # --- main moving between the check and the push: non-fast-forward is stale, so rebuild; up to the limit ---
 reset
 mkpr 1; mkpr 2

@@ -12,10 +12,13 @@ on:
 # per PR, so a PR opened with `gameplay` set runs the client tests once, not once
 # for `opened` and once for `labeled`. Runs that will skip (any other label, added
 # mid-run by the pipeline) get a group of their own, so they cannot cancel a real run.
+# A batch PR (head ref `batch/*`) runs them from `opened`: tools/merge-batch.sh adds its
+# `gameplay` label a second later, and that run would only cancel and repeat this one (#1723).
 concurrency:
   group: >-
     ${{ (!github.event.pull_request.draft
-    && (github.event.action != 'labeled' || github.event.label.name == 'gameplay'))
+    && (github.event.action != 'labeled'
+    || (github.event.label.name == 'gameplay' && !startsWith(github.event.pull_request.head.ref, 'batch/'))))
     && format('client-{0}', github.event.pull_request.number)
     || format('client-{0}-skip-{1}', github.event.pull_request.number, github.run_id) }}
   cancel-in-progress: true
@@ -30,10 +33,11 @@ env:
 jobs:
   changes:
     name: client-changes
-    # Not a draft, and for a label event, the label added is gameplay.
+    # Not a draft, and for a label event, the label added is gameplay on a PR that is not a batch.
     if: >-
       ${{ !github.event.pull_request.draft
-      && (github.event.action != 'labeled' || github.event.label.name == 'gameplay') }}
+      && (github.event.action != 'labeled'
+      || (github.event.label.name == 'gameplay' && !startsWith(github.event.pull_request.head.ref, 'batch/'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -57,7 +61,8 @@ jobs:
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
       - id: decide
         env:
-          GAMEPLAY_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'gameplay') && '1' || '0' }}
+          # A batch PR counts as labelled: its label lands after `opened`, the one run it gets.
+          GAMEPLAY_LABEL: ${{ (contains(github.event.pull_request.labels.*.name, 'gameplay') || startsWith(github.event.pull_request.head.ref, 'batch/')) && '1' || '0' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |

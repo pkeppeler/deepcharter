@@ -73,7 +73,14 @@ case "$1 $method" in
           *) echo "false open" ;;
         esac ;;
       .head.ref) cat "$ST/branch.$n" 2>/dev/null || echo "$n-slug" ;;
-      .head.sha) echo "sha$n" ;;
+      .head.sha)
+        # $ST/heads.N: one head per read, popped (a push mid-run); then sha<N>.
+        if [[ -s $ST/heads.$n ]]; then
+          head -n 1 "$ST/heads.$n"
+          sed -i.bak 1d "$ST/heads.$n"
+        else
+          echo "sha$n"
+        fi ;;
     esac ;;
   "api PATCH") exit 0 ;;
   # a run rerun POST fails (the API refuses) when $ST/rerun_fail.<run id> exists. A single-job rerun always fails:
@@ -505,6 +512,23 @@ logged "stale in progress: re-runs the Client tests run" "$(run_url 302)"
 no_job_rerun "stale in progress"
 not_logged "stale in progress: never cancels" "cancel"
 printed "stale in progress: says it skipped" "run 301 (CI) is still in progress"
+
+# --- #1723: the head moved after the gate read it: never re-run the old head's runs ---
+# A re-run joins the PR's concurrency group, so it would cancel the new head's run and test a head nobody merges.
+reset
+wfruns "301|CI|completed|success" "302|Client tests|completed|success"
+jobs 301 "401|build|completed|success" "402|tool-tests|completed|success"
+jobs 302 "502|client-gametest|completed|success"
+printf 'sha7\nsha8\nsha8\n' >"$ST/heads.7"
+gate 7 1 "1" "$(stale_msg 7)"
+gate 7 2 "0 merged"
+run_q 7
+exited "stale moved head: exit 0" 0
+count "stale moved head: no rerun of the old head" "/rerun" 0
+not_logged "stale moved head: does not list the old head's runs" "runs?head_sha=sha7"
+printed "stale moved head: says why" "PR #7 moved to sha8: not re-running the runs of sha7"
+count "stale moved head: waits for the new head's CI" 'select(.headSha == "sha8"' 1
+count "stale moved head: gate ran twice" "merge-pr 7" 2
 
 # --- every run still in progress: nothing to re-run, wait and retry ---
 reset

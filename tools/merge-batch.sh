@@ -47,6 +47,7 @@ build_wt=
 land_wt=
 open_bpr=
 open_branch=
+open_sha=
 release() {
   if [[ -n $open_bpr ]]; then retire_batch "$open_bpr" "$open_branch" "Closed: the batch tool stopped before this batch merged."; fi
   if [[ -n $build_wt ]]; then git worktree remove --force "$build_wt" >/dev/null 2>&1 || true; fi
@@ -299,6 +300,7 @@ open_batch_pr() {
   [[ $bpr =~ ^[0-9]+$ ]] || { stopped="the batch PR for $b_branch has no readable number"; return 1; }
   open_bpr=$bpr
   open_branch=$b_branch
+  open_sha=$b_sha
   gh api -X POST "repos/$repo/issues/$bpr/labels" -f 'labels[]=gameplay' -f 'labels[]=no-demo' >/dev/null \
     || { stopped="could not label batch PR #$bpr (it must carry gameplay and no-demo)"; return 1; }
   say "opened batch PR #$bpr from $b_branch"
@@ -307,6 +309,9 @@ open_batch_pr() {
 # retire_batch <bpr> <branch> <why>: close a batch PR that will not merge, delete its branches.
 retire_batch() {
   open_bpr=
+  # A stop (CI timeout, Ctrl-C) can retire a batch whose CI still runs; its branch is about to go, so free the runners.
+  [[ -z $open_sha ]] || cancel_unfinished "$open_sha"
+  open_sha=
   comment "$1" "$3"$'\n\n'"$footer" || true
   close_pr "$1" || true
   delete_remote_branch "$2"

@@ -28,11 +28,18 @@ wait_ci() {
 # Per job it takes the newest non-skipped one across the head sha's runs (#1092), then re-runs each distinct run whole.
 # Returns 1 and sets $rerun_err when a non-optional job has no such job, a listing fails or the API refuses a re-run.
 # An unfinished run is skipped (the API refuses to re-run into it); if it finishes stale, the next retry re-runs it.
+# Nothing is re-run once the PR's head has moved past <sha> (#1723): the re-run would join the PR's concurrency group and
+# cancel the new head's run, then test a head nobody merges. The caller's next pass reads the new head.
 rerun_ci() {
-  local pr=$1 sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit handled=","
+  local pr=$1 sha=$2 rows target workflow job optional picks="" run_id run_status jobs_rows hit handled="," head
   shift 2
   (($#)) || set -- "CI|build|0" "CI|tool-tests|0" "Client tests|client-gametest|1"
   rerun_err=
+  head=$(pr_get "$pr" .head.sha 2>/dev/null || true)
+  if [[ -n $head && $head != "$sha" ]]; then
+    say "PR #$pr moved to ${head:0:9}: not re-running the runs of ${sha:0:9}"
+    return 0
+  fi
   rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" --paginate \
     --jq '.workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
     || { rerun_err="PR #$pr: could not list the workflow runs of ${sha:0:9}"; return 1; }
@@ -72,4 +79,17 @@ rerun_ci() {
         return 1
       }
   done <<<"$picks"
+}
+
+# cancel_unfinished <sha>: cancel every unfinished workflow run of a head that is being abandoned (a retired batch PR,
+# whose branch is deleted), so it stops holding runners nobody will read (#1723). Best effort: a failure is only said.
+cancel_unfinished() {
+  local sha=$1 rows run_id
+  rows=$(gh api "repos/$repo/actions/runs?head_sha=$sha&per_page=100" --paginate \
+    --jq '.workflow_runs[] | [.id, .name, .status, .conclusion] | @tsv' 2>/dev/null) \
+    || { say "could not list the runs of ${sha:0:9} to cancel them"; return 0; }
+  for run_id in $(awk -F'\t' '$3 != "completed" { print $1 }' <<<"$rows"); do
+    say "cancelling run $run_id of the retired head ${sha:0:9}"
+    gh api -X POST "repos/$repo/actions/runs/$run_id/cancel" >/dev/null 2>&1 || say "could not cancel run $run_id"
+  done
 }
