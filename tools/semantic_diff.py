@@ -1,44 +1,44 @@
 #!/usr/bin/env python3
-"""Decide whether a commit changes nothing a reviewer judges (#1640, ADR 0118).
+"""Decide whether a commit changes only comments (#1640, ADR 0118).
 
 Usage: tools/py tools/semantic_diff.py <old rev> <new rev>
 
-Exit 0 and one line on stdout (`comment-only`, `whitespace-only`, `comment- and whitespace-only` or `no-op`) when every
-path that differs between the two revisions is semantically empty. Exit 1 and the reason on stderr otherwise, and on
-anything it cannot read: the check fails closed. tools/lib/pass-carry.sh calls it for each commit after a passed one.
+Exit 0 and one line on stdout (`comment-only`, or `no-op` when no path differs) when every path that differs between
+the two revisions is a `.java` file whose code is untouched. Exit 1 and the reason on stderr otherwise, and on anything
+it cannot read: the check fails closed. tools/lib/pass-carry.sh calls it for each commit after a passed one.
 
-A path is semantically empty when it is
-- a `.java` file whose token stream is identical once comments and whitespace are dropped (string, char and text-block
-  literals are tokens, so a changed literal is a change; an annotation is tokens too), and every comment that holds a
-  suppression marker a gate reads is kept as a token, with the newlines between it and the code around it, because the
-  gates read those comments and where they sit; or
-- a `.json` file whose tokens, strings included, are identical once whitespace is dropped.
+"Code untouched" means: with every comment replaced by nothing, the lines of the file are equal byte for byte, ignoring
+only lines that are wholly blank or wholly comment, before and after. So a comment rewrap, added or deleted comment
+lines and blank lines carry, and a whitespace reflow of code does not (a gate that scans lines would see it). String,
+char and text-block literals are code, so `//` inside one is not a comment and a changed literal is a change.
 
-Everything else voids: an added, removed, renamed, mode-changed or type-changed path, docs and markdown, any other file
-type (a trailing space can matter in a shell heredoc, a properties value or a Python string), and an unparseable file.
+A comment that a gate or another tool reads is code too, and stays in the compared lines with its text and the count
+of blank or comment lines on each side (the gates read a marker on the line or in the contiguous `//` lines above):
+see MARKER.
+
+Everything else voids: an added, removed, renamed, mode- or type-changed path, any file type but Java (markdown, JSON
+and docs included), a file with a backslash-u escape anywhere (Java reads it before it lexes, so it can hide a comment end or a
+quote), a lone carriage return (a Java line end that a `//` comment does not stop at), and an unparseable file.
 """
 
-import json
 import re
 import subprocess
 import sys
 
-# Comments the gates read (.claude/skills/deepcharter-conventions/SKILL.md, "Suppressions"). Any `<word>-ok` covers the
-# family; the rest are listed by name. A comment that merely names one counts: that voids, which is the safe side.
+# Comments the gates and tools read. The gates' markers are in .claude/skills/deepcharter-conventions/SKILL.md
+# ("Suppressions"): any `<word>-ok` covers a family and the rest are listed by name;
+# tools/tests/test_semantic_diff.py fails when a marker the gates define is missing here. The others are read by javac
+# (`@deprecated`, fall-through), formatters, static analysers and the IDE. A comment that merely names one counts: that
+# voids, which is the safe side.
 MARKER = re.compile(
-    r"[A-Za-z][\w]*-ok\b"
-    r"|\b(?:seats-pod|input-literal|tick-wait|sync-load|world-clock|hud-toggle|entity-query|test-seam|const-param"
-    r"|enum-default|fixed-pos|level-height)\b"
+    r"[a-z][\w]*-ok\b"
+    r"|\b(?:seats-pod|input-literal|tick-wait|sync-load|world-clock|world-data|room-carver|hud-toggle|entity-query"
+    r"|test-seam|const-param|enum-default|fixed-pos|level-height)\b"
+    r"|fall(?:s|ing)?[ -]?through|@deprecated|nopmd|nosonar|noinspection|spotless:|@formatter|checkstyle|language=",
+    re.IGNORECASE,
 )
 
-OPERATORS = [
-    ">>>=", "<<=", ">>=", ">>>", "...", "->", "::", "++", "--", "&&", "||", "==", "!=", "<=", ">=", "+=", "-=", "*=",
-    "/=", "&=", "|=", "^=", "%=", "<<", ">>",
-]  # fmt: skip
-SINGLE = "(){}[];,.@=<>!~?:+-*/&|^%"
-NUMBER = re.compile(r"\.?[0-9](?:[eEpP][+-]|[0-9A-Za-z_.])*")
-WORD = re.compile(r"[\w$]+")
-JSON_TOKEN = re.compile(r'"(?:[^"\\\n]|\\.)*"|[\[\]{},:]|[^\s"\[\]{},:]+')
+SPACE = " "
 
 
 class Void(Exception):
@@ -61,100 +61,95 @@ def _skip_literal(text: str, i: int, quote: str) -> int:
     raise Void("unterminated string or char literal")
 
 
-def _close_markers(tokens: list[tuple], slots: list[tuple[int, int]], newlines: int) -> None:
-    """Record, on each marker waiting for it, the newlines between the marker and the next code token (or the end)."""
-    for index, at_end in slots:
-        kind, body, before, _ = tokens[index]
-        tokens[index] = (kind, body, before, newlines - at_end)
-    slots.clear()
+def _skip_text_block(text: str, i: int) -> int:
+    j = i + 3
+    while j < len(text):
+        if text[j] == "\\":
+            j += 2
+        elif text.startswith('"""', j):
+            return j + 3
+        else:
+            j += 1
+    raise Void("unterminated text block")
 
 
-def java_tokens(text: str) -> tuple[list[tuple], list[str]]:
-    """The code tokens (markers included), and the comment texts in order, of a Java source."""
-    tokens: list[tuple] = []
-    comments: list[str] = []
-    marker_slots: list[tuple[int, int]] = []  # (token index, newline count at its end) of markers awaiting code
-    newlines = 0  # newlines since the last code token
-    i = 0
-    n = len(text)
+def java_code(text: str) -> list:
+    """The compared form of a Java source: its code lines with comments removed (see the module docstring)."""
+    if "\\u" in text:
+        raise Void("a unicode escape")
+    if re.search(r"\r(?!\n)", text):
+        raise Void("a carriage return that is not part of a line end")
+    text = text.replace("\r\n", "\n")
+    lines: list[list] = []  # [line, run of dropped lines before it, run after it, holds a marker]
+    state = {"buf": [], "cut": False, "marker": False, "run": 0}
+
+    def end_line() -> None:
+        line = "".join(state["buf"])
+        if state["cut"]:
+            line = line.rstrip()
+        if line.strip():
+            lines.append([line, state["run"], 0, state["marker"]])
+            state["run"] = 0
+        else:
+            state["run"] += 1
+            if lines:
+                lines[-1][2] = state["run"]
+        state["buf"], state["cut"], state["marker"] = [], False, False
+
+    def comment(body: str) -> None:
+        state["cut"] = True
+        if MARKER.search(body):
+            state["marker"] = True
+            state["buf"].append("\0" + re.sub(r"\s+", SPACE, body) + "\0")
+        else:
+            state["buf"].append(SPACE)
+
+    i, n = 0, len(text)
     while i < n:
         c = text[i]
         if c == "\n":
-            newlines += 1
+            end_line()
             i += 1
-        elif c in " \t\r\f":
-            i += 1
-        elif text.startswith("//", i) or text.startswith("/*", i):
-            if text.startswith("//", i):
-                end = text.find("\n", i)
-                end = n if end < 0 else end
-            else:
-                end = text.find("*/", i + 2)
-                if end < 0:
-                    raise Void("unterminated comment")
-                end += 2
+        elif text.startswith("//", i):
+            end = text.find("\n", i)
+            end = n if end < 0 else end
+            comment(text[i:end])
+            i = end
+        elif text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            if end < 0:
+                raise Void("unterminated comment")
+            end += 2
             body = text[i:end]
-            if "\\u" in body:
-                raise Void("a unicode escape in a comment")
-            comments.append(re.sub(r"\s+", " ", body))
-            if MARKER.search(body):
-                tokens.append(("marker", re.sub(r"\s+", " ", body), newlines, None))
-                marker_slots.append((len(tokens) - 1, newlines + body.count("\n")))
-            newlines += body.count("\n")
+            comment(body)
+            for _ in range(body.count("\n")):
+                end_line()
+                state["cut"] = True
             i = end
         else:
             if text.startswith('"""', i):
-                j = i + 3
-                while True:
-                    if j >= n:
-                        raise Void("unterminated text block")
-                    if text[j] == "\\":
-                        j += 2
-                    elif text.startswith('"""', j):
-                        j += 3
-                        break
-                    else:
-                        j += 1
-                end = j
+                end = _skip_text_block(text, i)
             elif c in "\"'":
                 end = _skip_literal(text, i, c)
-            elif NUMBER.match(text, i):
-                end = NUMBER.match(text, i).end()
-            elif WORD.match(text, i):
-                end = WORD.match(text, i).end()
             else:
-                op = next((o for o in OPERATORS if text.startswith(o, i)), None)
-                if op is None and c in SINGLE:
-                    op = c
-                if op is None:
-                    raise Void(f"a character the lexer does not know: {c!r}")
-                end = i + len(op)
-            _close_markers(tokens, marker_slots, newlines)
-            tokens.append(("code", text[i:end]))
-            newlines = 0
+                end = i + 1
+            state["buf"].append(text[i:end])
             i = end
-    _close_markers(tokens, marker_slots, newlines)
-    return tokens, comments
+    if state["buf"]:
+        end_line()
+    out: list = [
+        (line, before, after) if marker else line for line, before, after, marker in lines
+    ]
+    out.append(text.endswith("\n"))
+    return out
 
 
-def json_tokens(text: str) -> list[str]:
-    json.loads(text)  # raises ValueError on anything that is not JSON
-    return JSON_TOKEN.findall(text)
-
-
-def compare(path: str, old: str, new: str) -> str:
-    """The kind of an empty change to one path (`comment`, `whitespace`), or raise Void."""
-    if path.endswith(".java"):
-        old_tokens, old_comments = java_tokens(old)
-        new_tokens, new_comments = java_tokens(new)
-        if old_tokens != new_tokens:
-            raise Void(f"{path}: the code tokens or a suppression marker differ")
-        return "comment" if old_comments != new_comments else "whitespace"
-    if path.endswith(".json"):
-        if json_tokens(old) != json_tokens(new):
-            raise Void(f"{path}: the JSON tokens differ")
-        return "whitespace"
-    raise Void(f"{path}: not a Java or JSON file, so its change counts as code or reviewed content")
+def compare(path: str, old: str, new: str) -> None:
+    """Return when the change to one path leaves its code untouched, else raise Void."""
+    if not path.endswith(".java"):
+        raise Void(f"{path}: not a Java file, so its change counts as code or reviewed content")
+    if java_code(old) != java_code(new):
+        raise Void(f"{path}: the code, a literal or a comment a gate or tool reads differs")
 
 
 def git_bytes(*args: str) -> bytes:
@@ -181,19 +176,15 @@ def changed_paths(old: str, new: str) -> list[tuple[str, str, str]]:
 
 
 def classify(old: str, new: str) -> str:
-    kinds = set()
-    for path, old_blob, new_blob in changed_paths(old, new):
+    paths = changed_paths(old, new)
+    for path, old_blob, new_blob in paths:
         try:
             old_text = git_bytes("cat-file", "blob", old_blob).decode("utf-8")
             new_text = git_bytes("cat-file", "blob", new_blob).decode("utf-8")
-            kinds.add(compare(path, old_text, new_text))
         except UnicodeDecodeError as err:
             raise Void(f"{path}: not valid UTF-8 ({err})") from err
-    if not kinds:
-        return "no-op"
-    if kinds == {"comment", "whitespace"}:
-        return "comment- and whitespace-only"
-    return f"{kinds.pop()}-only"
+        compare(path, old_text, new_text)
+    return "comment-only" if paths else "no-op"
 
 
 def main(argv: list[str]) -> int:

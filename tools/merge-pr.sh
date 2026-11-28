@@ -25,8 +25,8 @@
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` first-line comment from the trusted account for the
-# current head (see tools/mark-review-passed.sh; a head that is only clean merges of origin/main and comment- or
-# whitespace-only commits on a passed commit carries that pass, tools/lib/pass-carry.sh, #1568, #1640), closes exactly its branch's
+# current head (see tools/mark-review-passed.sh; a head that is only clean merges of origin/main and comment-only
+# commits on a passed commit carries that pass, tools/lib/pass-carry.sh, #1568, #1640), closes exactly its branch's
 # issue (the body's closing keywords name {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
 # mergeable, shows a demo if it changes in-game code (see the demo check below), changes docs/feature-map/map.json

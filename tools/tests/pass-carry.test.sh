@@ -236,9 +236,20 @@ carries "carried: two comment-only commits in a row" 0 "$passed"
 
 pass_on_feat
 base_java | sed 's|    int f() { return 1; }|    int f() {\n        return 1;\n    }|' | java_commit "reflow"
-carries "carried: a whitespace reflow" 0 "$passed"
+carries "voided: a whitespace reflow of code (a line-scan gate would see it)" 1
+pass_on_feat
 base_java | sed 's|    int f() { return 1; }|    int   f ( )   {return 1 ;}|' | java_commit "squeeze"
-carries "carried: spaces added and removed between tokens" 0 "$passed"
+carries "voided: spaces added and removed between tokens" 1
+pass_on_feat
+base_java | sed 's|    int f() { return 1; }|    int f() { return 1; } |' | java_commit "trailing space"
+carries "voided: trailing whitespace on a code line" 1
+pass_on_feat
+base_java | sed 's|    // plain comment|\n    // plain comment\n\n|' | java_commit "blank lines around a comment"
+carries "carried: blank lines added around a comment" 0 "$passed"
+base_java | grep -v 'plain comment' | java_commit "comment deleted"
+carries "carried: a whole comment line deleted" 0 "$passed"
+base_java | sed 's|    int f() { return 1; }|    int f() { return 1; } // explained|' | java_commit "trailing comment"
+carries "carried: a trailing comment added to a code line" 0 "$passed"
 
 pass_on_feat
 base_java | sed 's|return 1;|return 3;|' | java_commit "change code"
@@ -269,11 +280,12 @@ base_java | sed 's|return 1;|return - -1;|' | java_commit "tokens differ"
 carries "voided: tokens differ although the characters match" 1
 
 # A comment that holds a suppression marker is code to the gates: adding, changing or removing one voids the pass.
-for marker in '// force-ok: because' '// vanilla-ok: because' '// arrived-ok: because' '// seats-pod: because' '// no-world-ok' \
-  '// colour-ok: because' '/* sync-load: because */'; do
+for marker in '// world-data: because' '// room-carver: because' '// force-ok: because' '// vanilla-ok: because' '// arrived-ok: because' '// seats-pod: because' '// no-world-ok' \
+  '// colour-ok: because' '/* sync-load: because */' '// falls through' '// fall through' '/** @deprecated use g */' '// NOPMD' \
+  '// NOSONAR' '// spotless:off' '// noinspection unused'; do
   pass_on_feat
   base_java | sed "s|    // plain comment|    $marker|" | java_commit "marker"
-  carries "voided: a comment turned into '$marker'" 1
+  carries "voided: a comment turned into the marker '$marker'" 1
 done
 pass_on_feat
 base_java | sed 's|// force-ok: reason|// force-ok: another reason|' | java_commit "marker reason"
@@ -288,20 +300,11 @@ pass_on_feat
 base_java | sed 's|    // plain comment|    // plain comment, but longer: see tick-wait|' | java_commit "marker word mentioned"
 carries "voided: a comment that names a marker (fail closed)" 1
 
-# A file that is not Java: whitespace only (JSON), nothing else.
+# A file that is not Java never carries, even for whitespace: JSON, markdown, text.
 pass_on_feat
 printf '{"k":[1,2],\n\n  "v":   "x  y"}\n' >data.json
 git add -A; git commit -q -m "json reflow"
-carries "carried: a JSON reflow" 0 "$passed"
-kinds_say "kinds: whitespace is named" "whitespace"
-pass_on_feat
-printf '{\n  "k": [1, 2],\n  "v": "x y"\n}\n' >data.json
-git add -A; git commit -q -m "json string"
-carries "voided: a JSON string changed" 1
-pass_on_feat
-printf '{\n  "v": "x  y",\n  "k": [1, 2]\n}\n' >data.json
-git add -A; git commit -q -m "json order"
-carries "voided: JSON keys reordered" 1
+carries "voided: a JSON reflow" 1
 pass_on_feat
 printf '# Doc\n\ntext \n' >notes.md
 git add -A; git commit -q -m "md trailing space"
@@ -337,6 +340,28 @@ carries "voided: an unterminated comment" 1
 pass_on_feat
 base_java | sed 's|    // plain comment|    // plain \\u000a int x;|' | java_commit "unicode escape in a comment"
 carries "voided: a unicode escape outside a literal" 1
+
+# A backslash-u escape and a lone carriage return hide a comment's end or a quote from the lexer: both void.
+# pass_on_java: stdin is the Foo.java the passed commit holds, so the later commit changes only a comment. It runs in the
+# right side of a pipe, so the passed sha is read back from $PASSES.
+pass_on_java() {
+  start
+  on_feat a.txt feat1
+  cat >Foo.java
+  git add -A
+  git commit -q -m "passed variant"
+  git rev-parse HEAD >"$PASSES"
+  passed=$(git rev-parse HEAD)
+}
+printf '%s\n' 'class A {' '    String s = "\u0022 // a";' '    int x;' '}' | pass_on_java
+printf '%s\n' 'class A {' '    String s = "\u0022 // b";' '    int x;' '}' | java_commit "comment-looking text after a unicode quote"
+carries "voided: a unicode escape in a string literal, whatever the edit" 1
+printf 'class A {\n    // a\rint hidden;\n}\n' | pass_on_java
+printf 'class A {\n    // b\rint hidden;\n}\n' | java_commit "text after a lone CR"
+carries "voided: a lone carriage return ends a line the comment scan does not" 1
+base_java | sed 's/$/\r/' | pass_on_java
+base_java | sed 's/$/\r/' | sed 's|// plain comment|// plain comment, reworded|' | java_commit "crlf rewrap"
+carries "carried: a comment change in a CRLF file" 0 "$(<"$PASSES")"
 
 # Mixed with clean merges of main, in either order.
 pass_on_feat

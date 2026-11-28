@@ -1,8 +1,7 @@
 # Sourced by tools/merge-pr.sh and tools/mark-review-passed.sh: carry a review pass across a clean merge of main (#1568).
 # Any push voids a pass, because the `review-passed <sha>` comment names one head. A merge of origin/main into the
 # passed head adds nothing a reviewer judged, so the pass survives it when git can prove that. So does a commit that
-# changes no token of the code (a comment rewrap, a whitespace reflow), which tools/semantic_diff.py proves (#1640, ADR
-# 0118). The caller sets $repo and $pr and sources tools/lib/gh-rest.sh (TRUSTED_LOGIN, gh_list) first.
+# leaves the code untouched and changes only comments (a rewrap), which tools/semantic_diff.py proves (#1640, ADR 0118). The caller sets $repo and $pr and sources tools/lib/gh-rest.sh (TRUSTED_LOGIN, gh_list) first.
 
 # A chain of merges is followed back to a commit with a pass; more than this many steps voids the carry.
 PASS_CARRY_MAX_MERGES=20
@@ -14,9 +13,9 @@ pass_carry_py=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/py
 # the trusted account, of links that are each one of:
 #   - a merge commit whose second parent is on origin/main and whose tree is exactly what `git merge-tree` makes of its
 #     two parents (a conflict-free merge, nothing resolved by hand, nothing added);
-#   - a commit with one parent that tools/semantic_diff.py calls semantically empty against it (Java with the same
-#     tokens, JSON with the same tokens; a suppression-marker comment, a string, an annotation, any other file, an
-#     added or removed path, and anything unparseable void it).
+#   - a commit with one parent that tools/semantic_diff.py calls comment-only against it (Java whose code lines are
+#     byte-for-byte equal once comments are removed; a whitespace reflow of code, a marker comment a gate reads, any
+#     other file type, an added or removed path and anything unparseable void it).
 # Anything else, and any read that fails, returns 1. Sets $carried_from, the commit whose pass is carried, and
 # $carried_kinds, what the chain held (for the log line).
 carry_review_pass() {
