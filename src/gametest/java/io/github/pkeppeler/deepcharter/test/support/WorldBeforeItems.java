@@ -61,9 +61,10 @@ public final class WorldBeforeItems {
         }
         boolean joining = level == null && client.getConnection() != null;
         if (client.isSameThread() && !joining) {
-            throw new IllegalStateException(test + " reads an item's components before it has joined a world; the client"
-                    + " JVM keeps them bound after an earlier class's world, so this passes only behind one. Join a"
-                    + " world first (context.worldBuilder().create()) (#1574).");
+            throw new IllegalStateException(
+                    test + " reads an item's components before it has joined a world; the client"
+                            + " JVM keeps them bound after an earlier class's world, so this passes only behind one. Join a"
+                            + " world first (context.worldBuilder().create()) (#1574).");
         }
     }
 }
