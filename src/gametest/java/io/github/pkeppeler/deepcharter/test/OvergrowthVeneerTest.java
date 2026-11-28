@@ -309,11 +309,13 @@ public class OvergrowthVeneerTest {
                             new BlockPos(x - 8, FLOOR - 4, Z - 8),
                             new BlockPos(x - 1, FLOOR + BORE_LENGTH + 1, Z + 7),
                             Identifier.withDefaultNamespace("plains"));
+                },
+                (level, x) -> {
+                    // The water goes in with the body, not the setup: the far chunk can take hundreds of ticks to
+                    // become entity-ticking, and the water spreads over the one-block cave the whole time (#1682).
                     for (BlockPos cell : occupiedCells(x)) {
                         level.setBlock(cell, occupant(cell).defaultBlockState(), Block.UPDATE_ALL);
                     }
-                },
-                (level, x) -> {
                     growPlugs(level, x, List.of(new int[] {0, 0}));
                     List<BlockPos> film = planeCells(x, 3, 2).stream()
                             .filter(cell -> level.getBlockState(cell).is(LayerBlocks.OVERGROWTH_VENEER))
