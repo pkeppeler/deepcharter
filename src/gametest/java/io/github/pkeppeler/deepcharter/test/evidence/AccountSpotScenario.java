@@ -70,9 +70,11 @@ public class AccountSpotScenario extends EvidenceScenario {
                 stage(context, singleplayer);
                 settle(context);
                 screenshot(context, "account-spot-foot-gui2");
+                frame(context);
                 ride(context, singleplayer, true);
                 settle(context);
                 screenshot(context, "account-spot-seated-gui2");
+                frame(context);
                 context.runOnClient(client -> client.getWindow().setWindowed(BIG_WINDOW_WIDTH, BIG_WINDOW_HEIGHT));
                 context.waitTicks(WINDOW_SETTLE_TICKS); // tick-wait: the window resizes over a few frames
                 try {
@@ -112,7 +114,7 @@ public class AccountSpotScenario extends EvidenceScenario {
                     new BlockPos(X + 5, FLOOR_Y + 4, Z));
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
-            player.teleportTo(one, X + 0.5, FLOOR_Y, Z + 2.5, Set.of(), FACING_NORTH, 0f, true);
+            player.teleportTo(one, X + 0.5, FLOOR_Y, Z + 4.5, Set.of(), FACING_NORTH, 0f, true);
         });
         ClientWait.arrived(context, singleplayer.getServer());
         singleplayer.getServer().runOnServer(server -> {
@@ -147,7 +149,7 @@ public class AccountSpotScenario extends EvidenceScenario {
                 }
             } else {
                 player.stopRiding();
-                player.teleportTo(X + 0.5, FLOOR_Y, Z + 2.5);
+                player.teleportTo(X + 0.5, FLOOR_Y, Z + 4.5);
             }
         });
         ClientWait.until(
