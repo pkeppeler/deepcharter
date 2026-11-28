@@ -30,7 +30,15 @@ val clientInstanceCpus = providers.gradleProperty("clientInstanceCpus").orNull?.
 if (clientInstances > 1) {
 	val heap = "-Xmx${clientInstanceHeapMb(clientInstances)}m"
 	val instanceTasks = (1..clientInstances).map { k ->
-		copyClientGameTestRun("clientGameTest$k", "build/run/clientGameTest-$k", listOf(heap, "-Ddeepcharter.clientInstance=$k") + listOfNotNull(clientInstanceCpus?.let { "-XX:ActiveProcessorCount=$it" }))
+		// LWJGL extracts its natives to one /tmp/lwjgl_<user>/<version> per machine: JVMs starting together raced there and loaded a
+		// half-written library (FileAlreadyExistsException, or SIGABRT, exit 134, on the CI runners). Each instance extracts into its run dir.
+		val runDir = layout.buildDirectory.dir("run/clientGameTest-$k").get().asFile
+		copyClientGameTestRun(
+			"clientGameTest$k",
+			"build/run/clientGameTest-$k",
+			listOf(heap, "-Ddeepcharter.clientInstance=$k", "-Dorg.lwjgl.system.SharedLibraryExtractPath=${runDir.resolve("natives").path}")
+				+ listOfNotNull(clientInstanceCpus?.let { "-XX:ActiveProcessorCount=$it" }),
+		)
 		val task = "runClientGameTest$k"
 		tasks.named<JavaExec>(task) {
 			val log = layout.buildDirectory.file("client-instance-$k.log")
