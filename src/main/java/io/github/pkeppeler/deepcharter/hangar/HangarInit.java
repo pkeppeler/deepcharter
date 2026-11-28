@@ -9,5 +9,6 @@ public final class HangarInit {
 
     public static void init() {
         HangarRegistry.register();
+        HangarCommands.init();
     }
 }

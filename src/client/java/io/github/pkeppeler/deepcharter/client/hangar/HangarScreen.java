@@ -34,7 +34,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
     private static final int MARGIN = 24;
     private static final int BUTTON_WIDTH = 260;
     private static final int BUTTON_HEIGHT = 20;
-    private static final int GAP = 6;
+    private static final int GAP = 4;
     private static final int CLOSE_WIDTH = 90;
     private static final int TICKS_PER_MINUTE = 1200;
     private static final int HALF_WIDTH = (BUTTON_WIDTH - GAP) / 2;
@@ -92,7 +92,6 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
         String prices = Component.translatable(
                         "screen.deepcharter.hangar.restore_prices",
                         mole.money(),
-                        mole.catalysts(),
                         prospector.money(),
                         prospector.catalysts(),
                         catalyst)
@@ -109,7 +108,8 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
         List<String> wrapped = wrap(prices);
         int lineHeight = font.lineHeight + CrtTuning.current().lineSpacing();
         int moleY = closeY - GAP - status.size() * lineHeight;
-        int pricesY = moleY - (wrapped.size() + advance.size()) * lineHeight;
+        // A blank line's gap above the status, so it reads apart from the prices and the advance.
+        int pricesY = moleY - GAP - (wrapped.size() + advance.size()) * lineHeight;
         priceLines = placed(wrapped, pricesY, lineHeight);
         advanceLines = placed(advance, pricesY + wrapped.size() * lineHeight, lineHeight);
         moleLines = placed(status, moleY, lineHeight);

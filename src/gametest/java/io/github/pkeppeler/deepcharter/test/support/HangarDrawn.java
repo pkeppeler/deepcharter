@@ -14,7 +14,7 @@ import net.minecraft.network.chat.Component;
 public final class HangarDrawn {
     private static final String ARGUMENT = "\u0000";
     private static final String PRICES_KEY = "screen.deepcharter.hangar.restore_prices";
-    private static final int PRICES_ARGUMENTS = 5;
+    private static final int PRICES_ARGUMENTS = 4;
     private static final String ADVANCE_KEY = "screen.deepcharter.hangar.advance";
     private static final int ADVANCE_ARGUMENTS = 2;
 

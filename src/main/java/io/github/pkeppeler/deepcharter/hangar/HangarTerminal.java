@@ -22,9 +22,13 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -64,6 +68,12 @@ public final class HangarTerminal {
     public static final TerminalType TYPE = TerminalTypes.register(
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hangar_console"), HangarParts.ALL);
 
+    private static final int TICKS_PER_MINUTE = 1200;
+    /** How long a first press on Write Off stays armed for the second, in ticks: thirty seconds. */
+    private static final int ARM_WINDOW_TICKS = 600;
+    /** Players who pressed Write Off once, by the game time they did. Forgotten when the server stops; a lapsed one is ignored. */
+    private static final Map<UUID, Long> ARMED = new HashMap<>();
+
     private HangarTerminal() {}
 
     static void register() {
@@ -72,6 +82,7 @@ public final class HangarTerminal {
         TerminalActions.register(TYPE, SCRAP_WRECK, HangarTerminal::scrapWreck);
         TerminalActions.register(TYPE, WRITE_OFF, HangarTerminal::writeOff);
         TerminalFeatures.register(TYPE, HangarView.STREAM_CODEC, HangarTerminal::view);
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> ARMED.clear());
     }
 
     /** What the Prospector's advance has left for the viewing charter, and the state of the viewing player's Mole. Never throws: unreadable records show none. */
@@ -96,6 +107,11 @@ public final class HangarTerminal {
                 slot.flatMap(HangarData.Slot::writeOffDue)
                         .map(due -> (int) Math.max(0, Math.min(Integer.MAX_VALUE, due - now)))
                         .orElse(0));
+    }
+
+    /** The write-off's wait in real minutes, the one unit every line about it uses: a Minecraft day is 24,000 ticks, 20 minutes. */
+    static long writeOffMinutes(HangarTuning tuning) {
+        return tuning.writeOffTicks() / TICKS_PER_MINUTE;
     }
 
     private static Optional<Component> refuse(String reason, Object... args) {
@@ -124,10 +140,11 @@ public final class HangarTerminal {
         ServerPlayer player = context.player();
         Optional<HangarData.Slot> held = data.get().slotOf(player.getUUID());
         if (held.isPresent()) {
-            return refuse(
-                    held.get().writeOffDue().isPresent()
-                            ? "mole_writing_off"
-                            : held.get().wrecked() ? "mole_wrecked" : "mole_held");
+            if (held.get().writeOffDue().isPresent()) {
+                long left = held.get().writeOffDue().get() - server.overworld().getGameTime();
+                return refuse("mole_writing_off", Math.max(1, (left + TICKS_PER_MINUTE - 1) / TICKS_PER_MINUTE));
+            }
+            return refuse(held.get().wrecked() ? "mole_wrecked" : "mole_held");
         }
         for (Item part : HangarParts.ALL) {
             if (count(player.getInventory(), part) < 1) {
@@ -215,18 +232,34 @@ public final class HangarTerminal {
         if (refusal.isPresent()) {
             return refusal;
         }
-        PodEntity wreck = inReach.stream()
-                .filter(pod -> PodComponents.mayAccess(pod, Optional.of(charter)))
-                .findFirst()
-                .orElseThrow();
-        if (PodComponents.registration(wreck).isEmpty()) {
+        // Only registered wrecks the charter may use count, so a nearer wreck nobody owns never blocks the scrap of one
+        // that is owned.
+        List<PodEntity> owned = inReach.stream()
+                .filter(pod -> PodComponents.registration(pod).isPresent()
+                        && PodComponents.mayAccess(pod, Optional.of(charter)))
+                .toList();
+        if (owned.isEmpty()) {
             return refuse("no_scrappable_wreck");
         }
-        if (data.get()
-                .slotHolding(wreck.getUUID())
-                .flatMap(HangarData.Slot::writeOffDue)
-                .isPresent()) {
-            return refuse("written_off");
+        UUID caller = context.player().getUUID();
+        // The caller's own Mole first, wherever it lies among the wrecks in reach; otherwise the nearest wreck that
+        // holds no
+        // member's place, or that the Director may scrap as a fallback.
+        PodEntity wreck = owned.stream()
+                .filter(pod -> data.get()
+                        .slotHolding(pod.getUUID())
+                        .map(held -> held.player().equals(caller))
+                        .orElse(false))
+                .findFirst()
+                .or(() -> owned.stream()
+                        .filter(pod -> data.get()
+                                .slotHolding(pod.getUUID())
+                                .map(held -> charter.isDirector(caller))
+                                .orElse(true))
+                        .findFirst())
+                .orElse(null);
+        if (wreck == null) {
+            return refuse("not_your_place");
         }
         if (!wreck.cargo().isReadable()) {
             return refuse("wreck_unreadable");
@@ -242,6 +275,7 @@ public final class HangarTerminal {
                                     ComponentItems.stackOf(track, label))));
         }
         Wrecks.salvage(context.player(), wreck);
+        Hangar.cancelWriteOff(server, data.get(), wreck.getUUID());
         data.get().release(wreck.getUUID());
         wreck.discard();
         context.player().sendOverlayMessage(Component.translatable("deepcharter.hangar.scrapped"));
@@ -276,14 +310,25 @@ public final class HangarTerminal {
         if (charter.account() < cost) {
             return refuse("insufficient_funds", cost);
         }
+        // Press once to arm, with the terms in full; press again within the window to file.
+        long now = server.overworld().getGameTime();
+        Long armedAt = ARMED.get(context.player().getUUID());
+        if (armedAt == null || now - armedAt > ARM_WINDOW_TICKS) {
+            ARMED.put(context.player().getUUID(), now);
+            return refuse("write_off_confirm", cost, writeOffMinutes(HangarTuning.DEFAULT), ARM_WINDOW_TICKS / 20);
+        }
+        ARMED.remove(context.player().getUUID());
         Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), cost);
         if (refusal.isPresent()) {
             throw new IllegalStateException("a write-off that passed the funds check was refused: " + refusal.get());
         }
         data.get()
                 .fileWriteOff(
-                        held.get().pod(), server.overworld().getGameTime() + HangarTuning.DEFAULT.writeOffTicks());
-        context.player().sendOverlayMessage(Component.translatable("deepcharter.hangar.write_off_filed", cost));
+                        held.get().pod(),
+                        new HangarData.WriteOff(now + HangarTuning.DEFAULT.writeOffTicks(), charter.id(), cost));
+        context.player()
+                .sendOverlayMessage(Component.translatable(
+                        "deepcharter.hangar.write_off_filed", cost, writeOffMinutes(HangarTuning.DEFAULT)));
         return Optional.empty();
     }
 
@@ -307,12 +352,6 @@ public final class HangarTerminal {
                 .filter(pod -> PodComponents.mayAccess(pod, Optional.of(charter)))
                 .findFirst()
                 .orElseThrow();
-        if (data.get()
-                .slotHolding(wreck.getUUID())
-                .flatMap(HangarData.Slot::writeOffDue)
-                .isPresent()) {
-            return refuse("written_off");
-        }
         HangarTuning.RestoreCost cost = tuning.restoreCost(wreck.chassis());
         // A wreck nobody owns is registered to the charter that restores it. The lore wreck keeps its own serial; any
         // other takes one.
@@ -350,6 +389,10 @@ public final class HangarTerminal {
                 // The name a wreck was given is the wreck's: the registration names the pod now.
                 wreck.setCustomName(null);
             }
+        }
+        int packed = Wrecks.returnPack(player, wreck);
+        if (packed > 0) {
+            player.sendSystemMessage(Component.translatable("deepcharter.hangar.pack_returned", packed));
         }
         take(player.getInventory(), catalyst, fromPack);
         if (advanced > 0) {

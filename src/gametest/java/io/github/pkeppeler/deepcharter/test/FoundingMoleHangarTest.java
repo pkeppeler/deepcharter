@@ -639,7 +639,7 @@ public class FoundingMoleHangarTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void aRestoreRefusesWithoutTheCatalystOrTheMoneyAndChangesNothing(GameTestHelper helper) {
+    public void aRestoreRefusesWithoutTheMoneyOrForAnotherChartersWreckAndChangesNothing(GameTestHelper helper) {
         inTheHangar(
                 helper,
                 before -> withFreshWorld(helper, () -> {
@@ -652,18 +652,9 @@ public class FoundingMoleHangarTest {
                     PodEntity wreck = pod(helper, Optional.of(charter), true);
                     long money = HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).money();
 
-                    // Money but no catalyst.
                     deposit(helper, owner, RICH);
-                    expectRefused(
-                            helper,
-                            act(owner.player(), console, HangarTerminal.RESTORE_WRECK),
-                            "restoring without the catalyst");
-                    expect(
-                            helper,
-                            Wrecks.isWreck(wreck) && balance(helper, owner) == RICH,
-                            "a restore without the catalyst changes nothing");
 
-                    // A catalyst but a dollar short.
+                    // A dollar short.
                     MockPlayer poor = member(helper, "Poor");
                     stand(helper, poor, console);
                     PodEntity poorWreck =

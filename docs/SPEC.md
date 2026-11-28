@@ -235,10 +235,10 @@ A pod is a vehicle with seats. There is no walkable interior while it moves. See
 
 - **One crafted Mole each:** every charter member can craft one base Mole, from the four crafted hangar parts (the bootstrap tier: iron, copper and redstone), at the hangar console. A crafted Mole pays no registration fee and needs no catalyst. The founding pod counts as its founder's one Mole. There is no refurbished Mole to buy.
 - **The wreck keeps the place:** a Mole that is wrecked keeps its owner's one place, and a second cannot be crafted while it exists. Only the wreck frees the place: towed home and restored or scrapped at the hangar, or repaired where it lies (the field kit, [#1608](https://github.com/pkeppeler/deepcharter/issues/1608)). Nothing scraps a wreck from afar, so money cannot buy a way out of a rescue.
-- **The wreck keeps what was in it:** the fitted upgrades and the hold's ore stay in the wreck, and the crew's packs drop where they died. A new Mole starts bare, so recovering a wreck is worth more than replacing it.
-- **Write-off:** for a wreck that cannot be reached (lava, the void), the hangar console can write it off. It costs a lot and frees the place after one in-game day, and the wreck is destroyed with its parts and cargo. A Mole that still works cannot be written off.
+- **The wreck keeps what was in it:** the fitted upgrades and the hold's ore stay in the wreck, and what the crew carried moves into the wreck with them, so it is not lost to a fall or a fire. A new Mole starts bare, so recovering a wreck is worth more than replacing it.
+- **Write-off:** for a wreck that cannot be reached (lava, the void), the hangar console can write it off. It costs a lot and, after you confirm it, frees the place after one in-game day (20 minutes of real time), and the wreck is destroyed with its parts and cargo. A Mole that still works cannot be written off.
 - **No wreck decay:** a wreck stays until someone restores, scraps or writes it off.
-- **Wrecks:** more chassis come from salvaging wrecks in specific layers (see the chassis table). Tow one home and pay to restore it: fees still apply to wreck chassis (money, and catalysts for every chassis after the Mole).
+- **Wrecks:** more chassis come from salvaging wrecks in specific layers (see the chassis table). Tow one home and pay to restore it: fees still apply to wreck chassis (money, and catalysts for every chassis after the Mole: restoring a Mole wreck takes money only).
 - Each pod buys its own components.
 - Together these keep a free Mole from being a cheap deep miner: a crafted Mole is a capped Mole, a shallow helper, and the chassis above it come only from wrecks.
 

@@ -52,6 +52,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -99,12 +100,13 @@ public class M2SliceTest {
             mock.teleportTo(campaign, new Vec3(X, TestLayers.worldY(1, 40), Z), 0, 0);
             PodEntity pod = TestEntities.create(PodRegistry.POD, campaign);
             BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, campaign, 1, 2);
-            AssertionError inPlace = endStateFailure(server, pod);
+            CharterId charter = foundFor(helper, server, mock);
+            AssertionError inPlace = endStateFailure(server, charter, pod);
             if (inPlace instanceof M2SliceEndState.PlayerMoved) {
                 throw failure(helper, "a crossing in place counted as a move: %s", inPlace.getMessage());
             }
             BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, server.overworld(), 1, 2);
-            AssertionError moved = endStateFailure(server, pod);
+            AssertionError moved = endStateFailure(server, charter, pod);
             if (!(moved instanceof M2SliceEndState.PlayerMoved)) {
                 throw failure(helper, "a crossing that moved a player passed: %s", moved);
             }
@@ -115,10 +117,25 @@ public class M2SliceTest {
         helper.succeed();
     }
 
+    /** A charter for the mock, so the end state, which looks only at that charter's players, sees it. */
+    private static CharterId foundFor(GameTestHelper helper, MinecraftServer server, MockPlayer mock) {
+        if (Charters.found(
+                        server,
+                        mock.player().getUUID(),
+                        "End State " + UUID.randomUUID().toString().substring(0, 8))
+                .isPresent()) {
+            throw failure(helper, "founding a charter for the end state's player should succeed");
+        }
+        return Charters.charterOfOrThrow(server, mock.player().getUUID())
+                .orElseThrow()
+                .id();
+    }
+
     /** The end state's failure for a world where nothing of the slice was done; null when it does not fail. */
-    private static @Nullable AssertionError endStateFailure(MinecraftServer server, PodEntity prospector) {
+    private static @Nullable AssertionError endStateFailure(
+            MinecraftServer server, CharterId charter, PodEntity prospector) {
         try {
-            M2SliceEndState.require(server, CharterId.random(), prospector);
+            M2SliceEndState.require(server, charter, prospector);
             return null;
         } catch (AssertionError failure) {
             return failure;

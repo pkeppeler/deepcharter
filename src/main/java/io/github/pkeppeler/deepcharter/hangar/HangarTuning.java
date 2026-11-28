@@ -12,7 +12,7 @@ import net.minecraft.resources.Identifier;
  * invented; the SPEC (section 7) says only "a modest fee". Why each is what it is (EconomyAffordabilityTest has the income):
  * <ul>
  * <li>A crafted Mole pays no fee: its price is the four parts ({@link HangarParts}), and each member has one (ADR 0117).
- * <li>A Mole wreck's restore, $100: the fee for the tow it takes.
+ * <li>A Mole wreck's restore, $100 and no catalyst: the Mole is exempt from the catalyst rule (SPEC section 4).
  * <li>The Prospector's restore, $1,390: about four layer 2 runs of a Mole with tier 2 parts (a run pays for the braked drive down the shaft first, #319), which is what is left to earn after
  * the onboarding's other buys, so it ends the onboarding as the SPEC intends. The three Cicatrium are the longer wait
  * in the ore (about 50 runs in the deepest zone), so the Company advances them, once per charter, against its contract.
@@ -40,7 +40,7 @@ public record HangarTuning(
     public static final HangarTuning DEFAULT = new HangarTuning(
             Map.of(
                     "mole",
-                    new RestoreCost(100, 1, 0, Optional.empty()),
+                    new RestoreCost(100, 0, 0, Optional.empty()),
                     "prospector",
                     new RestoreCost(
                             1_390, 3, 3, Optional.of(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t17")))),

@@ -61,7 +61,7 @@ Settled 2026-10-07. Canon and context: [LORE.md](../LORE.md); the handbook's rul
 
 ### 3. Meet the Mole (repairing the founding pod)
 
-> In the hangar you'll find the Mole, the first pod Prosperity ever put to work. She needs a little love before she flies again. Each repair the hangar lists brings her closer. (If another charter has already repaired her, build your own: four of the same parts at the hangar console make one Mole for each of us, at no fee. A wrecked Mole keeps its owner's place, so tow her home to restore or scrap her.)
+> In the hangar you'll find the Mole, the first pod Prosperity ever put to work. She needs a little love before she flies again. Each repair the hangar lists brings her closer. (If another charter has already repaired her, build your own: a tread assembly, a rotor hub, a drill head and a fuel injector, crafted from iron, copper and redstone, make one Mole for each of us at the hangar console, at no fee. A wrecked Mole keeps its owner's place, so tow her home to restore or scrap her. If you cannot bring her home, the console can write her off.)
 >
 > *Directives (draft):* Repair the Mole. · Board the Mole.
 >
