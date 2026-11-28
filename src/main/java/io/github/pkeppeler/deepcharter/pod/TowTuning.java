@@ -14,6 +14,8 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param gravity        blocks a tick, each tick, that a towed pod gains in falling; the line holds it up once it is taut
  * @param drag           share of its speed a towed pod keeps each tick; it is what damps a swing, so it is under 1
  * @param groundFriction share of its speed a towed pod keeps each tick that it rests on a floor
+ * @param pickTicks      ticks a person's first click with the cable stays picked before it slips off the pod (the second click must come
+ *                       within it)
  */
 public record TowTuning(
         double reach,
@@ -22,8 +24,9 @@ public record TowTuning(
         float baseMass,
         double gravity,
         double drag,
-        double groundFriction) {
-    public static final TowTuning DEFAULT = new TowTuning(8.0, 5.0, 0.5, 25f, 0.08, 0.97, 0.6);
+        double groundFriction,
+        int pickTicks) {
+    public static final TowTuning DEFAULT = new TowTuning(8.0, 5.0, 0.5, 25f, 0.08, 0.97, 0.6, 600);
 
     public TowTuning {
         if (!(lineLength > 0)) {
@@ -47,6 +50,9 @@ public record TowTuning(
         }
         if (!(groundFriction >= 0 && groundFriction <= 1)) {
             throw new IllegalArgumentException("the ground friction must be from 0 to 1, got " + groundFriction);
+        }
+        if (pickTicks < 1) {
+            throw new IllegalArgumentException("the pick must last at least a tick, got " + pickTicks);
         }
     }
 

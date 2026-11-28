@@ -1,16 +1,21 @@
 {
   "item.deepcharter.tow_cable": "Tow Cable",
-  "message.deepcharter.towing.attached": "Cable fitted: your pod is towing it",
+  "message.deepcharter.towing.attached": "Cable hooked: the first pod now tows the second",
   "message.deepcharter.towing.being_towed": "Your pod is being towed",
   "message.deepcharter.towing.detached": "Cable taken off",
+  "message.deepcharter.towing.lapsed": "The cable slipped off the pod. Right-click a pod to start again",
+  "message.deepcharter.towing.picked": "Cable on this pod. Right-click the pod it should tow",
+  "message.deepcharter.towing.put_away": "Cable put away",
   "message.deepcharter.towing.refused.already_towed": "That pod is on another cable already",
-  "message.deepcharter.towing.refused.already_towing": "Your pod is towing a pod already",
+  "message.deepcharter.towing.refused.already_towing": "That pod is towing a pod already",
   "message.deepcharter.towing.refused.not_allowed_to_free": "Only the pod's owner or the tower's crew can take that cable off",
-  "message.deepcharter.towing.refused.not_allowed_to_tow": "That pod belongs to another charter, so you cannot tow it",
-  "message.deepcharter.towing.refused.not_riding": "Sit in a pod to fit a cable from it",
+  "message.deepcharter.towing.refused.not_allowed_to_tow": "That pod belongs to another charter, so you cannot hook a cable to it",
+  "message.deepcharter.towing.refused.not_on_foot": "Get out of the pod to hook a cable: right-click one pod, then the other",
   "message.deepcharter.towing.refused.same_pod": "A pod cannot tow itself",
-  "message.deepcharter.towing.refused.too_far": "That pod is out of reach of the cable",
-  "message.deepcharter.towing.refused.tower_is_towed": "Your pod is being towed, so it cannot tow",
+  "message.deepcharter.towing.refused.too_far": "The pods are too far apart for the cable",
   "message.deepcharter.towing.refused.towed_tows": "That pod is towing a pod, so it cannot be towed",
-  "message.deepcharter.towing.refused.unreadable": "A pod here has data from another version of the mod"
+  "message.deepcharter.towing.refused.tower_is_towed": "That pod is being towed, so it cannot tow",
+  "message.deepcharter.towing.refused.tower_is_wreck": "A wreck cannot tow. Right-click the working pod first, then the wreck",
+  "message.deepcharter.towing.refused.unreadable": "A pod here has data from another version of the mod",
+  "message.deepcharter.towing.towing_now": "Your pod is towing another pod now"
 }

@@ -23,6 +23,7 @@ import java.util.WeakHashMap;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
@@ -53,11 +54,16 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * The tow cable between two pods. A player riding a pod uses a {@link PodRegistry#TOW_CABLE} on another pod within
- * {@link TowTuning#reachFor} to make it the towed pod of theirs, and uses it on a towed pod to take the cable off. A pod moved
- * where its owner did not choose needs a rule for who may do it: a player may tow a pod only when {@link PodComponents#mayAccess}
- * lets their charter at it, and the tower's charter or the towed pod's owner charter may free it, so an owner can always recover a
- * pod someone else towed.
+ * The tow cable between two pods. A person on foot, holding a {@link PodRegistry#TOW_CABLE}, right-clicks one pod to pick it and then
+ * another within {@link TowTuning#reachFor} of it: the first pod tows the second. Right-clicking a towed pod with the cable takes it
+ * off. A person in a pod cannot work the cable (#1605): the crosshair of a seated player meets their own hull, so the click only ever
+ * picked the pod they sat in. A pod moved where its owner did not choose needs a rule for who may do it: a player may hook a pod only
+ * when {@link PodComponents#mayAccess} lets their charter at it, and the tower's charter or the towed pod's owner charter may free it,
+ * so an owner can always recover a pod someone else towed. A wreck is towed home the same way, but cannot be the tower.
+ *
+ * <p>The first click is a person's attachment, {@link #PICK}, synced to that person only (the client draws a line from the pod to them)
+ * and never saved. It ends by the hook, a click on nothing with the cable ({@link TowCableItem}), the cable leaving the hands, the
+ * person boarding a pod, the pod going, or {@link TowTuning#pickTicks}; a refused second click keeps it.
  *
  * <p>The link is one versioned attachment on the towed pod, {@link #STATE}, holding the tower's UUID. It is saved and synced, and a
  * pod keeps its UUID when a breach recreates it, so the link outlives unloading and crossing. While the tower is in the towed pod's
@@ -179,6 +185,9 @@ public final class PodTowing {
         }
     }
 
+    /** Server only, not saved: the game tick each person picked their pod at. Weak, and holds no entity, so a person who leaves keeps nothing. */
+    private static final Map<ServerPlayer, Long> PICKED_AT = Collections.synchronizedMap(new WeakHashMap<>());
+
     /** The pod this one is towed by, if any. */
     public record State(Optional<UUID> tower) {
         public static final State EMPTY = new State(Optional.empty());
@@ -195,9 +204,28 @@ public final class PodTowing {
                     .initializer(() -> Versioned.of(State.EMPTY))
                     .syncWith(Versioned.streamCodec(VERSION, State.STREAM), AttachmentSyncPredicate.all()));
 
+    /** The pod a person has picked with the cable, the first click of a hook. */
+    public record Pick(Optional<UUID> pod) {
+        public static final Pick EMPTY = new Pick(Optional.empty());
+        public static final StreamCodec<ByteBuf, Pick> STREAM =
+                ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC).map(Pick::new, Pick::pod);
+    }
+
+    public static final int PICK_VERSION = 1;
+
+    /**
+     * Not persistent: a pick is a session's, and a new session starts with none. {@link Versioned} is for the sync, so that a client on
+     * another build reads it as a marker. Synced to the person only: nobody else draws the line.
+     */
+    public static final AttachmentType<Versioned<Pick>> PICK = AttachmentRegistry.create(
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tow_pick"),
+            builder -> builder.initializer(() -> Versioned.of(Pick.EMPTY))
+                    .syncWith(Versioned.streamCodec(PICK_VERSION, Pick.STREAM), AttachmentSyncPredicate.targetOnly()));
+
     /** Why a cable cannot be fitted from one pod to another. */
     public enum Refusal {
-        NOT_RIDING,
+        NOT_ON_FOOT,
+        TOWER_IS_WRECK,
         NOT_ALLOWED_TO_TOW,
         NOT_ALLOWED_TO_FREE,
         SAME_POD,
@@ -222,6 +250,79 @@ public final class PodTowing {
         PodEvents.AFTER_TICK.register(PodTowing::keepTowedChunksTicking);
         BreachEvents.CROSSED.register(PodTowing::carryAcross);
         UseEntityCallback.EVENT.register(PodTowing::onUse);
+        ServerTickEvents.END_SERVER_TICK.register(PodTowing::lapsePicks);
+    }
+
+    /** The UUID of the pod the person has picked with the cable, whether or not it is in the world. Safe on either side. */
+    public static Optional<UUID> pickedPodId(Player person) {
+        return Versioned.readable(person, PICK).flatMap(Pick::pod);
+    }
+
+    /** Server only: the person picks {@code pod} as the first of the two to hook. */
+    private static void pick(ServerPlayer person, PodEntity pod) {
+        person.setAttached(PICK, Versioned.of(new Pick(Optional.of(pod.getUUID()))));
+        PICKED_AT.put(person, person.level().getGameTime());
+    }
+
+    /** Server only: forgets the person's pick. Returns false, and changes nothing, when they had none. */
+    static boolean clearPick(ServerPlayer person) {
+        if (pickedPodId(person).isEmpty()) {
+            return false;
+        }
+        person.removeAttached(PICK);
+        PICKED_AT.remove(person);
+        return true;
+    }
+
+    /** Server only: a click on nothing with the cable. Returns false, and says nothing, when there was no pick to put away. */
+    static boolean putAway(ServerPlayer person) {
+        if (!clearPick(person)) {
+            return false;
+        }
+        person.sendOverlayMessage(Component.translatable("message.deepcharter.towing.put_away"));
+        return true;
+    }
+
+    /** The pod the person has picked, when it is in their level and still there. A pick of a pod that is gone is dropped. */
+    private static Optional<PodEntity> picked(ServerPlayer person) {
+        Optional<UUID> id = pickedPodId(person);
+        if (id.isEmpty()) {
+            return Optional.empty();
+        }
+        // entity-query: a picked pod not loaded in the person's level reads as gone, and dropping the pick is the
+        // intended outcome, since the person was told to hook a pod they can see
+        if (person.level().getEntity(id.get()) instanceof PodEntity pod && !pod.isRemoved()) {
+            return Optional.of(pod);
+        }
+        clearPick(person);
+        person.sendOverlayMessage(Component.translatable("message.deepcharter.towing.lapsed"));
+        return Optional.empty();
+    }
+
+    /** Ends a pick that has outlived {@link TowTuning#pickTicks}, whose cable left the hands, whose person boarded a pod, or whose pod is gone. */
+    private static void lapsePicks(MinecraftServer server) {
+        for (ServerPlayer person : server.getPlayerList().getPlayers()) {
+            if (pickedPodId(person).isEmpty()) {
+                continue;
+            }
+            Long pickedAt = PICKED_AT.get(person);
+            boolean holding = person.getMainHandItem().is(PodRegistry.TOW_CABLE)
+                    || person.getOffhandItem().is(PodRegistry.TOW_CABLE);
+            if (person.isPassenger() || !holding) {
+                clearPick(person);
+            } else if (pickedAt == null || person.level().getGameTime() - pickedAt > TowTuning.DEFAULT.pickTicks()) {
+                clearPick(person);
+                person.sendOverlayMessage(Component.translatable("message.deepcharter.towing.lapsed"));
+            } else {
+                picked(person);
+            }
+        }
+    }
+
+    /** Lets a test in another package age a pick, which {@link #lapsePicks} then ends. */
+    // test-seam: ages a pick so a test need not wait out TowTuning.pickTicks (30 s) in the shared server's clock
+    static void agePick(ServerPlayer person, long ticks) {
+        PICKED_AT.computeIfPresent(person, (key, at) -> at - ticks);
     }
 
     /** The UUID of the pod towing this one, whether or not it is in the world. An unreadable cable reads as none (logged once). Never throws. */
@@ -753,46 +854,87 @@ public final class PodTowing {
                 || player.isSpectator()) {
             return InteractionResult.PASS;
         }
-        if (!(player instanceof ServerPlayer serverPlayer)) {
+        if (!(player instanceof ServerPlayer person)) {
             // The client guesses a hit and the server settles it.
             return InteractionResult.SUCCESS;
         }
-        MinecraftServer server = serverPlayer.level().getServer();
-        if (!Charters.isReadable(server)) {
-            serverPlayer.sendOverlayMessage(Refusal.UNREADABLE.message());
-            return InteractionResult.FAIL;
+        if (person.isPassenger()) {
+            return refuse(person, Refusal.NOT_ON_FOOT);
         }
-        Optional<Charter> charter = Charters.readableCharterOf(server, serverPlayer.getUUID());
+        MinecraftServer server = person.level().getServer();
+        if (!Charters.isReadable(server)) {
+            return refuse(person, Refusal.UNREADABLE);
+        }
+        Optional<Charter> charter = Charters.readableCharterOf(server, person.getUUID());
         if (isTowed(target)) {
             if (!mayFree(target, charter)) {
-                serverPlayer.sendOverlayMessage(Refusal.NOT_ALLOWED_TO_FREE.message());
-                return InteractionResult.FAIL;
+                return refuse(person, Refusal.NOT_ALLOWED_TO_FREE);
             }
+            clearPick(person);
             detach(target);
-            serverPlayer.sendOverlayMessage(Component.translatable("message.deepcharter.towing.detached"));
+            person.sendOverlayMessage(Component.translatable("message.deepcharter.towing.detached"));
             return InteractionResult.SUCCESS;
         }
-        if (!(player.getVehicle() instanceof PodEntity tower)) {
-            serverPlayer.sendOverlayMessage(Refusal.NOT_RIDING.message());
-            return InteractionResult.FAIL;
+        Optional<PodEntity> first = picked(person);
+        return first.isEmpty() ? pickFirst(person, target, charter) : hookSecond(person, first.get(), target, charter);
+    }
+
+    /** The first click: picks {@code target} as the tower, if it may tow. */
+    private static InteractionResult pickFirst(ServerPlayer person, PodEntity target, Optional<Charter> charter) {
+        Optional<Refusal> refusal = Optional.empty();
+        if (Versioned.readable(target, STATE).isEmpty()) {
+            refusal = Optional.of(Refusal.UNREADABLE);
+        } else if (!PodComponents.mayAccess(target, charter)) {
+            refusal = Optional.of(Refusal.NOT_ALLOWED_TO_TOW);
+        } else if (PodTether.isWrecked(target)) {
+            refusal = Optional.of(Refusal.TOWER_IS_WRECK);
+        } else if (!towedBy(target, TowTuning.DEFAULT).isEmpty()) {
+            refusal = Optional.of(Refusal.ALREADY_TOWING);
+        }
+        if (refusal.isPresent()) {
+            return refuse(person, refusal.get());
+        }
+        pick(person, target);
+        person.sendOverlayMessage(Component.translatable("message.deepcharter.towing.picked"));
+        return InteractionResult.SUCCESS;
+    }
+
+    /** The second click: hooks {@code target} to the pod picked first. A refusal keeps the pick. */
+    private static InteractionResult hookSecond(
+            ServerPlayer person, PodEntity tower, PodEntity target, Optional<Charter> charter) {
+        if (tower == target) {
+            return refuse(person, Refusal.SAME_POD);
         }
         if (!PodComponents.mayAccess(target, charter)) {
-            serverPlayer.sendOverlayMessage(Refusal.NOT_ALLOWED_TO_TOW.message());
-            return InteractionResult.FAIL;
+            return refuse(person, Refusal.NOT_ALLOWED_TO_TOW);
+        }
+        if (PodTether.isWrecked(tower)) {
+            return refuse(person, Refusal.TOWER_IS_WRECK);
         }
         Optional<Refusal> refusal = refusal(tower, target);
         if (refusal.isPresent()) {
-            serverPlayer.sendOverlayMessage(refusal.get().message());
-            return InteractionResult.FAIL;
+            return refuse(person, refusal.get());
         }
         attach(tower, target);
-        serverPlayer.sendOverlayMessage(Component.translatable("message.deepcharter.towing.attached"));
-        for (Entity rider : target.getPassengers()) {
-            if (rider instanceof ServerPlayer pilot) {
-                pilot.sendOverlayMessage(Component.translatable("message.deepcharter.towing.being_towed"));
+        clearPick(person);
+        person.sendOverlayMessage(Component.translatable("message.deepcharter.towing.attached"));
+        tell(tower, "towing_now");
+        tell(target, "being_towed");
+        return InteractionResult.SUCCESS;
+    }
+
+    private static InteractionResult refuse(ServerPlayer person, Refusal refusal) {
+        person.sendOverlayMessage(refusal.message());
+        return InteractionResult.FAIL;
+    }
+
+    /** Tells the players seated in {@code pod}. */
+    private static void tell(PodEntity pod, String message) {
+        for (Entity rider : pod.getPassengers()) {
+            if (rider instanceof ServerPlayer crew) {
+                crew.sendOverlayMessage(Component.translatable("message.deepcharter.towing." + message));
             }
         }
-        return InteractionResult.SUCCESS;
     }
 
     /** The towed pod's owner can always take the cable off, and so can whoever may use the tower. */

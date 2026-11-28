@@ -85,6 +85,24 @@ public final class TetherLineRenderer {
         if (podId == null) {
             return null;
         }
+        return chainBetween(CHAINS, level, person, podId, pods, partial, cameraX, cameraY, cameraZ);
+    }
+
+    /**
+     * The chain from the pod {@code podId} to {@code person}, kept in {@code chains} (one cache for each kind of line, so two lines to
+     * one person do not share a curve), or null when the pod is not among {@code pods} or the person is farther from the camera than
+     * {@link #DRAW_DISTANCE}. The tow cable's pick line ({@link TowPickLineRenderer}) is this line too.
+     */
+    static TowChainRenderer.@Nullable Chain chainBetween(
+            Map<Player, TowChainRenderer.Chain> chains,
+            ClientLevel level,
+            Player person,
+            UUID podId,
+            List<PodEntity> pods,
+            float partial,
+            double cameraX,
+            double cameraY,
+            double cameraZ) {
         PodEntity pod = null;
         for (PodEntity other : pods) {
             if (other.getUUID().equals(podId)) {
@@ -107,7 +125,7 @@ public final class TetherLineRenderer {
         if (distanceX * distanceX + distanceY * distanceY + distanceZ * distanceZ > DRAW_DISTANCE * DRAW_DISTANCE) {
             return null;
         }
-        TowChainRenderer.Chain chain = CHAINS.computeIfAbsent(person, key -> new TowChainRenderer.Chain());
+        TowChainRenderer.Chain chain = chains.computeIfAbsent(person, key -> new TowChainRenderer.Chain());
         TowChainLook look = TowChainLook.current();
         chain.look = look;
         chain.cameraX = cameraX;

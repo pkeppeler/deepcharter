@@ -1257,6 +1257,9 @@ A full rack of 24 buys about 10 s of lava at tier 1, 14 s at tier 2 and 19 s at 
 
 **Knobs.** `TowTuning`: `lineLength` (5), `reachSpare` (0.5), `gravity` (0.08), `drag` (0.97), `groundFriction` (0.6). The chain's own look is `theme/tow.json` (`linkLength` 0.28, `linkWidth` 0.2, `linkOverlap` 1.35, `tint`, `minBlockLight` 7).
 
+**Hooked on foot (#1605, A).** The cable used to be fitted from the seat, and in the friends playtest it never hooked: a seated player's crosshair meets their own hull, so the click only ever picked the pod they sat in ("a pod cannot tow itself"). The user's call: the player gets out and connects the two pods on foot ([ADR 0118](../adr/0118-the-tow-cable-is-hooked-on-foot-by-right-clicking-one-pod-then-the-other.md)). With the cable in hand, a right-click picks the **tower** (a chain is drawn from it to the person, and the action bar says what to click next) and a second right-click on another pod hooks it as the towed pod, a wreck too; a wreck cannot be picked first. A click on empty ground, the cable leaving the hands, boarding a pod or 30 seconds (`TowTuning.pickTicks`) ends the pick, and a refused second click says why and keeps it. Right-clicking a towed pod frees it, as before. The cable does nothing from a seat, and says so. Pins: `TowCableOnFootTest`, `TowingClientTest` (real right-clicks, a crewmate seated in the tow).
+
+
 **Open questions.**
 - The towed pod does not turn to face its tower. A wreck hanging from a Mole could pitch and yaw with the line.
 - A pilot in the towed pod cannot steer it. A tow that a rider can brake (a drag on the line) would be a counter to a tower that outpaces its tow.
