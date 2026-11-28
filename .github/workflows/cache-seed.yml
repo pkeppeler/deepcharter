@@ -62,7 +62,10 @@ jobs:
           ASSETS: ${{ steps.assets.outputs.path }}
           RESTORED: ${{ steps.assets.outputs.objects }}
         run: |
-          objects=$(find "$ASSETS/objects" -type f 2>/dev/null | wc -l)
+          objects=0
+        if [[ -d $ASSETS/objects ]]; then
+          objects=$(find "$ASSETS/objects" -type f | wc -l)
+        fi
           echo "::notice title=Loom assets::downloadAssets fetched $((objects - RESTORED)) objects from Mojang ($RESTORED restored from the cache, $objects on disk)"
       # A hit saves nothing: the key is the Minecraft version, and its asset set does not change.
       - name: Save the Loom assets
