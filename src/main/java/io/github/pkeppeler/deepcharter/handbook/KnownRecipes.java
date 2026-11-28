@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterEvents;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -29,7 +30,8 @@ import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 /**
  * The recipes a charter knows, and what the server sends each player of them (ADR 0070, ADR 0066). A recipe becomes
  * known when a quest step that asks for its item becomes current ({@link HandbookChapters#current}), or when anyone on
- * the charter holds the recipe's result or one of its ingredients. Every loaded recipe follows the rule, vanilla's too;
+ * the charter holds the recipe's result or one of its ingredients; a known recipe of ours also makes known the recipes
+ * that make each item it takes, one step down. Every loaded recipe follows the rule, vanilla's too;
  * one that needs or makes an item the campaign world does not yield is not loaded at all ({@link ObtainableItems}, ADR
  * 0093). A player on no charter has recipes of their own ({@link KnownRecipesData}), which {@link ProgressCarry} moves
  * into a charter they found or join. Unknown recipes still craft: nothing here limits crafting.
@@ -133,6 +135,13 @@ public final class KnownRecipes {
         HandbookChapters.current(server, HandbookProgress.completedFor(server, player.getUUID()))
                 .ifPresent(step -> step.targets()
                         .forEach(slot -> slot.items().forEach(item -> found.addAll(index.producing(item)))));
+        // A recipe of ours also shows how to make what it takes, one step down, so a crew that can see the tow cable
+        // sees the lead it needs (#1602). Vanilla recipes keep the plain rule: this would otherwise unlock the tree.
+        Set<Identifier> ours = new LinkedHashSet<>();
+        found.stream()
+                .filter(id -> id.getNamespace().equals(DeepCharter.MOD_ID))
+                .forEach(ours::add);
+        ours.forEach(id -> index.ingredientsOf(id).forEach(item -> found.addAll(index.producing(item))));
         return found;
     }
 
