@@ -61,6 +61,7 @@ public final class CatalogueScreens {
             } else if (screen instanceof AbstractContainerScreen<?> container) {
                 SlotLookup.attach(container);
             }
+            SpecSheetOpener.attach(screen);
         });
     }
 
@@ -181,6 +182,7 @@ public final class CatalogueScreens {
             }
         });
         ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> !panel.keyPressed(event));
+        ScreenKeyboardEvents.afterKeyRelease(screen).register((s, event) -> panel.keyReleased(event));
         ScreenKeyboardEvents.allowCharType(screen).register((s, event) -> !panel.charTyped(event));
         ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> !panel.mouseClicked(event));
         ScreenMouseEvents.allowMouseRelease(screen).register((s, event) -> !panel.mouseReleased());

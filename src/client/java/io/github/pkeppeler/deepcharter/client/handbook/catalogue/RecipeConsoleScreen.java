@@ -102,6 +102,20 @@ public final class RecipeConsoleScreen extends Screen {
         }
     }
 
+    /** The item under the cursor on the console, or null. */
+    @Nullable
+    Item hoveredItem() {
+        return itemAt(mouseX, mouseY);
+    }
+
+    /** The item drawn at ({@code x}, {@code y}) on the console, or null. */
+    // test-seam: the client test finds an item on the console to put the cursor on
+    public @Nullable Item itemAt(int x, int y) {
+        CatalogueLayout.Console now = layout;
+        RecipeConsole.Hit hit = now == null ? null : console.hitAt(now.card(), x, y);
+        return hit == null ? null : hit.item();
+    }
+
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (event.isEscape() || Minecraft.getInstance().options.keyInventory.matches(event)) {

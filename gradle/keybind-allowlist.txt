@@ -4,7 +4,7 @@ key.deepcharter.handbook  opens the handbook from the world with no item held or
 key.deepcharter.catalogue.recipes  copies EMI's R on a hovered item, which recipe-viewer players already know; vanilla has no item-lookup key and a click on a slot picks the item up
 key.deepcharter.catalogue.uses  copies EMI's U, the pair of R, for what a hovered item is used in; a click on a slot already picks the item up
 key.deepcharter.catalogue.favourite  copies EMI's A to star a hovered item; a click on a slot already picks the item up or moves it
-key.deepcharter.catalogue.spec_sheet  opens the latest spec sheet the server offered, from the world or a screen; vanilla has no such key and the offer has no on-screen target to click
+key.deepcharter.catalogue.spec_sheet  opens the hovered item's spec sheet, or the latest offered with none hovered; vanilla has no such key, a click already opens recipes (EMI's rule), and the offer has no on-screen target
 key.deepcharter.catalogue.toggle  shows or hides the catalogue panels on any inventory screen; no vanilla key does this and the panels leave no room for a button on every screen
 key.deepcharter.catalogue.back  copies EMI's Backspace to return to the recipe shown before; vanilla has no history on a panel and a click would need a button on a cramped panel
 key.deepcharter.catalogue.materials  switches the recipe console between the recipe and its total materials while the pointer is on the recipe; no vanilla key applies

@@ -73,18 +73,22 @@ final class SpecSheetView {
     record Placed(SpecSheetLayout layout, Plan plan) {}
 
     /** Places {@code sheet} on a screen {@code width} by {@code height}: a console as tall as the text needs, centred. */
-    static Placed place(SpecSheet sheet, int width, int height, CatalogueLook look, CrtTuning crt, Font font) {
+    static Placed place(
+            SpecSheet sheet, boolean latest, int width, int height, CatalogueLook look, CrtTuning crt, Font font) {
         // The text is planned once in the tallest console to see how much room it takes, then again in the console
         // that size.
         SpecSheetLayout tallest = SpecSheetLayout.of(width, height, look, crt, font.lineHeight, Integer.MAX_VALUE / 2);
-        Plan measured = plan(sheet, tallest, look, font);
+        Plan measured = plan(sheet, latest, tallest, look, font);
         int needed = measured.usedBottom() - tallest.glass().y() + look.pad();
         SpecSheetLayout layout = SpecSheetLayout.of(width, height, look, crt, font.lineHeight, needed);
-        return new Placed(layout, plan(sheet, layout, look, font));
+        return new Placed(layout, plan(sheet, latest, layout, look, font));
     }
 
-    /** Lays the text of {@code sheet} out inside {@code layout}. */
-    static Plan plan(SpecSheet sheet, SpecSheetLayout layout, CatalogueLook look, Font font) {
+    /**
+     * Lays the text of {@code sheet} out inside {@code layout}. A {@code latest} sheet, the key's fallback with no item
+     * under the cursor, says LATEST at the right of its kind line.
+     */
+    static Plan plan(SpecSheet sheet, boolean latest, SpecSheetLayout layout, CatalogueLook look, Font font) {
         boolean complete = true;
         int width = layout.right() - layout.left();
         List<String> title = TextWrap.lines(
@@ -98,11 +102,16 @@ final class SpecSheetView {
         int bodyTop = layout.bodyTop() + (title.size() - 1) * font.lineHeight;
         Rect cell = new Rect(layout.left(), bodyTop, look.slotSize(), look.slotSize());
         int kindX = cell.right() + look.sheetGap();
-        lines.add(new Line(
-                fit(font, sheet.kind().getString(), layout.right() - kindX),
-                kindX,
-                cell.y() + (cell.height() - font.lineHeight) / 2,
-                Style.DIM));
+        int kindY = cell.y() + (cell.height() - font.lineHeight) / 2;
+        int kindRight = layout.right();
+        if (latest) {
+            String mark =
+                    Component.translatable("deepcharter.catalogue.sheet.latest").getString();
+            int markX = layout.right() - termWidth(font, mark);
+            lines.add(new Line(mark, markX, kindY, Style.BRIGHT));
+            kindRight = markX - look.sheetValueGap();
+        }
+        lines.add(new Line(fit(font, sheet.kind().getString(), kindRight - kindX), kindX, kindY, Style.DIM));
         int y = cell.bottom() + look.sheetGap();
 
         for (String text : wrap(font, sheet.blurb().getString(), width)) {
