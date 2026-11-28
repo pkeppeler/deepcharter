@@ -421,6 +421,7 @@ public class LamplessFigureTest {
     /** A level holds {@code maxPerBand} figures however many sites ask. The End has no fades, no tick spawns and no other figure test. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void aLevelHoldsNoMoreFiguresThanItsCap(GameTestHelper helper) {
+        // cap-shared: it runs in the End, where no other figure test counts.
         ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), Level.END);
         List<StructureSite> sites = new ArrayList<>();
         for (int i = 0; i <= TUNING.maxPerBand(); i++) {

@@ -10,5 +10,11 @@ public final class IsolatedBatches {
     public static final String STRUCTURE_DRAIN_STARTED = "deepcharter-test:isolated_structure_drain_started";
     public static final String STRUCTURE_DRAIN_BEGUN = "deepcharter-test:isolated_structure_drain_begun";
 
+    /**
+     * A test that fills a level's whole band of figures ({@code maxPerBand}): every figure test of that level, in any class, sees the
+     * band full while it runs, so none of them can share its batch (#1694). It is a batch of its own.
+     */
+    public static final String FIGURE_BAND_CAP = "deepcharter-test:isolated_figure_band_cap";
+
     private IsolatedBatches() {}
 }

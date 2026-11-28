@@ -871,6 +871,7 @@ public class RetainedTest {
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void theRailsFigureIsNotHeldBackByTheFiguresOfTheCaverns(GameTestHelper helper) {
+        // cap-shared: the figures are made, counted and discarded in one callback, so no other test sees the full band.
         ServerLevel nether = ClientLight.serverLevel(helper.getLevel().getServer(), Level.NETHER);
         BlockPos spot = slot(12);
         FarChunks.awaitEntityTicking(helper, nether, spot, () -> {
