@@ -97,6 +97,30 @@ for f in "$repo"/gradle/*gate*.gradle.kts; do
 done
 if [[ -z $silent ]]; then pass "every shipped gate file maps to a task or is reported"; else fail "gate files that map to nothing:$silent"; fi
 
+# Failure parsing: a recorded Gradle failure (tools/tests/fixtures/gate-sweep/README.md says where it is from).
+# shellcheck source=../lib/gradle-failure.sh
+source "$tools/lib/gradle-failure.sh"
+log=$tools/tests/fixtures/gate-sweep/vanilla-sound-gate-failure.gradle.log
+got=$(gradle_failed_tasks "$log")
+if [[ $got == "checkVanillaSoundGate" ]]; then pass "the failed task is named without its colon"; else fail "the failed task is named (got: $got)"; fi
+msg=$(gradle_failure_message "$log")
+case $msg in
+  "Banned vanilla sounds. "*"HangarTerminal.java:94 banned vanilla sound 'MoleState.WRECKED'"*) pass "the message keeps the gate's text and the offending line" ;;
+  *) fail "the message keeps the gate's text and the offending line (got: $msg)" ;;
+esac
+case $msg in
+  *"Execution failed for task"*|*"* Try"*|*"--stacktrace"*|*$'\n'*) fail "the message drops Gradle's boilerplate and stays on one line (got: $msg)" ;;
+  *) pass "the message drops Gradle's boilerplate and stays on one line" ;;
+esac
+printf 'FAILURE: Build failed with an exception.\n\n* What went wrong:\nCould not resolve all files.\n\n* Try:\n' >"$work/nogate.log"
+if [[ -z $(gradle_failed_tasks "$work/nogate.log") && $(gradle_failure_message "$work/nogate.log") == "Could not resolve all files." ]]; then
+  pass "a build that failed before any task names no task and keeps its message"
+else
+  fail "a build that failed before any task"
+fi
+: >"$work/empty.log"
+if [[ -z $(gradle_failed_tasks "$work/empty.log") && -z $(gradle_failure_message "$work/empty.log") ]]; then pass "an empty log parses to nothing"; else fail "an empty log parses to nothing"; fi
+
 # Usage errors.
 rc=0
 "$sweep" >/dev/null 2>&1 || rc=$?
