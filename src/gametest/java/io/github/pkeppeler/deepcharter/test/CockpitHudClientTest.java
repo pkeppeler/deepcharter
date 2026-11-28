@@ -1633,7 +1633,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
         if (!context.computeOnClient(CockpitHud::showsReadout)) {
             throw new AssertionError(
-                    "The pilot's seat shows the readout on the plate, so the plain readout stays" + " quiet");
+                    "The pilot's seat shows the readout on the plate, so the plain readout stays quiet");
         }
     }
 }
