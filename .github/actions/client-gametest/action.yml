@@ -51,16 +51,21 @@ runs:
     # failure only, clears the module cache and retries once with --refresh-dependencies; when a
     # repository fails to answer (Maven Central's 429s, #1358), it waits and retries with backoff. It is
     # work the client run would do anyway, moved ahead of it, so a healthy run costs about nothing.
-    # Skipped when the compile job's classes were downloaded (skip-compile): the shard has nothing to compile, the compile job has
-    # resolved the classpaths and saved the Gradle cache, and the run resolves the runtime itself.
+    # Never skipped: ci-gradle-resolve.sh is every job's first Gradle call and installs the Central mirror the build refuses to run
+    # without (tools/tests/ci-gradle-resolve-gate.test.sh). With the compile job's classes downloaded (skip-compile) it resolves
+    # only the run's runtime classpaths, with the compile tasks off.
     - name: Resolve dependencies
-      if: inputs.skip-compile == ''
       shell: bash
       env:
         SKIP_COMPILE: ${{ inputs.skip-compile }}
       # SKIP_COMPILE is word-split on purpose: `-x compileJava -x ...`.
       # shellcheck disable=SC2086
-      run: tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime $SKIP_COMPILE
+      run: |
+        if [ -n "$SKIP_COMPILE" ]; then
+          tools/ci-gradle-resolve.sh resolveClientGameTestRuntime $SKIP_COMPILE
+        else
+          tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime
+        fi
     # The GL libraries install in the background while Gradle resolves (the step below waits for them). `apt-get update` runs only
     # if the install fails on a stale index, which costs about 50 s a job otherwise.
     - name: Install the GL libraries (background)
