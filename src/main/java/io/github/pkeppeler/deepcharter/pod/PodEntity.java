@@ -327,9 +327,9 @@ public class PodEntity extends Entity implements HasCustomInventoryScreen {
     }
 
     /**
-     * The inventory key aboard, as for a horse or a chest boat: vanilla's client sends the open-inventory command when the
-     * rider sits in a {@link HasCustomInventoryScreen}, and the server calls this. {@link PodMenu#open} decides, and
-     * says why when it refuses.
+     * The inventory key aboard, as for a horse or a chest boat: vanilla's client sends the open-inventory command when
+     * the rider sits in a {@link HasCustomInventoryScreen}, and the server calls this. {@link PodMenu#open} decides,
+     * and says why when it refuses.
      */
     @Override
     public void openCustomInventoryScreen(Player player) {
