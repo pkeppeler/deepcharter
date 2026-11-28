@@ -27,6 +27,15 @@ Merge only through `tools/merge-pr.sh <n>`, which refuses and gives the reason. 
 - **Red.** The batch PR is closed and the PRs split into two halves, each a new batch; a batch of one PR (also one a build shrinks to) that is red is refused with the CI reason and left open. Another failure of the gate (no checks, an unreadable run) stops the tool instead.
 - Exit status is 0 only when every PR merged; the summary lists merged, dropped, refused and stopped PRs.
 
+## CI tiers
+
+[ADR 0116](../../../docs/adr/0116-ci-runs-the-affected-tests-on-a-pr-push-and-the-full-suites-on-a-batch.md). A PR push runs the build, the tool tests and only the GameTest classes its change can affect (`tools/ci_affected.py`, which the `ci-plan` and `client-changes` jobs run); a batch PR (head ref `batch/*`), a PR labelled `full-ci` when it is pushed, and a change that can reach every test (build files, workflows, mixins, data, lang, or an affected set over half a suite) run the full suites. The `build` and `client-gametest` aggregates each record a `ci-tier` notice, `full` or `pr`, and the gate reads it (a head with no notice is CI from before the tiers, which ran everything).
+
+- `tools/merge-pr.sh --check <n>` takes either tier and prints `ci tier: <tier> (server suite: .., client suite: ..)`. Reviewers and the stage labels run on PR-tier green.
+- Landing needs the full tier: `tools/merge-pr.sh --direct <n>` and `--ci <batch pr>` refuse a PR-tier head with `[pr-tier]`. `tools/merge-pr.sh <n>` (a batch of one) and `tools/merge-batch.sh <n>...` land through a batch PR, whose head ref `batch/*` runs the full suites; `tools/merge-queue.sh` stops on the refusal and names those tools. To land a PR directly with its own CI, label it `full-ci` before the push that runs CI.
+- With no class selected the shard jobs are skipped (their template run shows as skipped) and the aggregate passes with the PR-tier notice; the gate accepts that only for a PR-tier head.
+- The jobs of one run can merge different mains when `max-parallel` queues the later shards: the aggregate then fails ("merged different mains") and the queue re-runs the whole run.
+
 ## Gate sweep
 
 A new or tightened gate can fail open review-passed PRs that never touched it (the keybind allow-list, #1580, and the comment-length gate, #1224, each broke open PRs after landing). A PR that changes gate code therefore sweeps the open PRs before cycle 2, and fixes or notes the ones it would break (#1639).

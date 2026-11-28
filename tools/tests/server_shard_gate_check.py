@@ -6,11 +6,14 @@ repo's Gradle wrapper on JDK 25, like client_filter_gate_check.py.
 Usage: tools/py tools/tests/gate_checks.py server_shard
 """
 import re
+import sys
 import unittest
 
-import ci_shards
 import gate_batch
 from gate_batch import REPO, Case
+
+sys.path.insert(0, str(REPO / "tools"))
+import ci_shards  # noqa: E402
 
 PREFIX = "io.github.pkeppeler.deepcharter.test."
 REAL_TREE = REPO / "src/gametest/java"
@@ -73,6 +76,12 @@ CASES = {
     **{f"real shard {i}/{CI_SHARDS}": Case(REAL_TREE, None, server_shard=f"{i}/{CI_SHARDS}", server_weights=real_weights(), server_unit_limit=UNIT_LIMIT)
        for i in range(1, CI_SHARDS + 1)},
     "real whole": Case(REAL_TREE, None),
+    "filter two": Case(FILES, None, server_filter="AlphaTest,GolfTest"),
+    "filter by full name": Case(FILES, None, server_filter=PREFIX + "HotelTest"),
+    "filter no such class": Case(FILES, None, server_filter="AlphaTest,NoSuchTest"),
+    "filter empty term": Case(FILES, None, server_filter="AlphaTest,"),
+    "filter then shard 1/2": Case(FILES, None, server_filter="AlphaTest,BridgeTest,DeltaTest,GolfTest", server_shard="1/2"),
+    "filter then shard 2/2": Case(FILES, None, server_filter="AlphaTest,BridgeTest,DeltaTest,GolfTest", server_shard="2/2"),
     # The three classes that name B or C weigh 18 s: over a limit of 12 they are broken apart, under 18 they stay together.
     **{f"limited shard {i}/3": Case(FILES, None, server_shard=f"{i}/3", server_unit_limit=12) for i in (1, 2, 3)},
     **{f"unlimited shard {i}/3": Case(FILES, None, server_shard=f"{i}/3", server_unit_limit=18) for i in (1, 2, 3)},
@@ -188,6 +197,23 @@ class ServerShardTest(unittest.TestCase):
         server, _client, environments = ci_shards.scan()
         mirror = ci_shards.shards(ci_shards.campaign_units(server, environments), CI_SHARDS, real_weights(), DEFAULT_WEIGHT, UNIT_LIMIT)
         self.assertEqual(sorted(sorted(part) for part in mirror), sorted(sorted(part) for part in self.shards("real shard ", CI_SHARDS)))
+
+    def test_a_filter_keeps_only_the_named_classes(self):
+        self.assertEqual(outcome("filter two").server, (PREFIX + "AlphaTest", PREFIX + "GolfTest"))
+        self.assertEqual(outcome("filter by full name").server, (PREFIX + "HotelTest",))
+
+    def test_a_filter_naming_no_class_or_an_empty_term_fails_and_says_so(self):
+        for label, message in (("filter no such class", "'NoSuchTest' match no server GameTest class"), ("filter empty term", "-PgametestClasses")):
+            with self.subTest(label):
+                result = outcome(label)
+                self.assertFalse(result.ok)
+                self.assertIn(message, result.message)
+
+    def test_a_shard_applies_after_the_filter_and_keeps_the_environment_group_together(self):
+        halves = [outcome(f"filter then shard {i}/2").server for i in (1, 2)]
+        self.assert_partition(halves, tuple(PREFIX + n for n in ("AlphaTest", "BridgeTest", "DeltaTest", "GolfTest")))
+        holding = [half for half in halves if JOINED & set(half)]
+        self.assertEqual(len(holding), 1, f"the B and C classes are split: {halves}")
 
     def test_a_malformed_shard_fails_and_says_so(self):
         for spec in BAD_SPECS:

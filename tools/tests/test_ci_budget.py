@@ -5,13 +5,15 @@ workflows must keep each shard's weight under the budget in gradle/ci-budget.txt
 partition itself is mirrored from gradle/gametest.gradle.kts in ci_shards.py. The standard library only: no YAML parser, so a job is
 a key at two spaces under `jobs:` and its settings are at four, which the workflow files here keep."""
 import re
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-import ci_shards as shards
-
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "tools"))
+
+import ci_shards as shards  # noqa: E402
 JOB_KEY = re.compile(r"^  ([A-Za-z0-9_-]+):\s*$")
 TIMEOUT = re.compile(r"^    timeout-minutes:\s*(\S+)\s*(#.*)?$")
 

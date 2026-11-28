@@ -13,8 +13,8 @@
 set -euo pipefail
 
 # Paths the compile cannot read: a path in this list that it does read is the one way to a stale build, so the list is short and
-# names directories and prose only.
-DENY=$'^[^\t]*\t(docs/|tools/|\\.github/|\\.claude/|\\.githooks/|prompts/|\\.papercuts\\.jsonl$|[^/]*\\.md$|LICENSE$)'
+# names directories and two prose files only: CREDITS.md and LICENSE go into the jar, so they are not on it.
+DENY=$'^[^\t]*\t(docs/|tools/|\\.github/|\\.claude/|\\.githooks/|prompts/|\\.papercuts\\.jsonl$|(README|CONTEXT)\\.md$)'
 
 inputs() {
   git ls-tree -r HEAD | grep -Ev "$DENY" | git hash-object --stdin

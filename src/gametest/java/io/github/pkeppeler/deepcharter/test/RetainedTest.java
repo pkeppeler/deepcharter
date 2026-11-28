@@ -867,10 +867,14 @@ public class RetainedTest {
 
     /**
      * The rail's figure of Prospector's Run is fixed lore: a level full of the game's own figures, or one that just lost one, still takes it.
-     * Run in the Nether, where no other figure test counts and the spawner does not tick.
+     * The fill is made, counted and discarded in one callback, so no other test sees the Nether's band full (the
+     * natural figures are
+     * counted apart from the rail's, which {@code LamplessFigureTest}'s Nether test reads). The spawner does not tick
+     * there.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void theRailsFigureIsNotHeldBackByTheFiguresOfTheCaverns(GameTestHelper helper) {
+        // cap-shared: the figures are made, counted and discarded in one callback, so no other test sees the full band.
         ServerLevel nether = ClientLight.serverLevel(helper.getLevel().getServer(), Level.NETHER);
         BlockPos spot = slot(12);
         FarChunks.awaitEntityTicking(helper, nether, spot, () -> {

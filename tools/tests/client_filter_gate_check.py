@@ -6,12 +6,16 @@ Usage: tools/py tools/tests/gate_checks.py client_filter
 """
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 import gate_batch
 from gate_batch import REPO, Case
+
+sys.path.insert(0, str(REPO / "tools"))
+import ci_shards  # noqa: E402
 
 PREFIX = "io.github.pkeppeler.deepcharter.test."
 
@@ -167,8 +171,6 @@ class ClientShardTest(unittest.TestCase):
 
     def test_the_python_mirror_of_the_partition_is_the_scans(self):
         # ci_shards.py is what tools/tests/test_ci_budget.py sizes the CI shard counts with: it must pick the scan's shards.
-        import ci_shards
-
         _server, client, _environments = ci_shards.scan()
         weights = real_weights()
         mirror = ci_shards.shards([[name] for name in client], 3, weights, 10)

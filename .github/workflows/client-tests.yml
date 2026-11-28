@@ -24,6 +24,7 @@ permissions:
   contents: read
 
 env:
+  # The shards of a full run; a PR-tier run takes as many as its classes need (the changes job).
   CLIENT_SHARDS: 34
 
 jobs:
@@ -39,6 +40,11 @@ jobs:
       run: ${{ steps.decide.outputs.run }}
       # The one main this run tests: every other job merges exactly this commit (#1571).
       main-sha: ${{ steps.merge.outputs.main-sha }}
+      client-full: ${{ steps.plan.outputs.client-full }}
+      client-classes: ${{ steps.plan.outputs.client-classes }}
+      client-count: ${{ steps.plan.outputs.client-count }}
+      client-matrix: ${{ steps.plan.outputs.client-matrix }}
+      cache-warm: ${{ steps.seeded.outputs.cache-matched-key != '' }}
     steps:
       # The PR head merged with the real main (#979): main-sha..HEAD is exactly the PR's changes.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,17 +58,39 @@ jobs:
       - id: decide
         env:
           GAMEPLAY_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'gameplay') && '1' || '0' }}
-          MAIN_SHA: ${{ steps.merge.outputs.main-sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          git diff --no-renames --name-only "$MAIN_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
+          # What the PR changed since it left its base branch (main for a PR into main): the same paths as main..merged head.
+          git diff --no-renames --name-only "$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
           echo "run=$(tools/ci-client-needed.sh "$GAMEPLAY_LABEL" < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
+      # Is main's Gradle cache seeded (cache-seed.yml saves a marker)? A cold PR-tier compile does not fit a job's five minutes, so the jobs
+      # take the compile job's output instead (ADR 0116). A lookup only: nothing is downloaded.
+      - id: seeded
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/seed-marker
+          key: deepcharter-seed-marker-v1-none
+          restore-keys: deepcharter-seed-marker-v1-
+          lookup-only: true
+      - uses: ./.github/actions/setup-python-uv
+      # Which client classes the change can affect, or the whole suite (tools/ci_affected.py, ADR 0116). Unread when `run` is false.
+      - id: plan
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          tools/py tools/ci_affected.py --head-ref "$HEAD_REF" --labels "$LABELS" \
+            --server-shards 1 --client-shards "$CLIENT_SHARDS" < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
 
   # Compiles every source set once and hands build/ and .gradle/ to the shards (.github/actions/upload-compiled), so no shard spends a
   # minute or two of its five compiling and the client's run tasks have their launch files ready.
   compile:
     name: client-compile
     needs: changes
-    if: needs.changes.outputs.run == 'true'
+    # For a full run, whose shards download one compile, and for a PR-tier run on a cold cache (a shard that compiled for itself would not
+    # fit its five minutes); a PR-tier shard on a warm cache compiles for itself from the Gradle build cache.
+    if: needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0' && (needs.changes.outputs.client-full == 'true' || needs.changes.outputs.cache-warm != 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -100,7 +128,7 @@ jobs:
   client-shard:
     name: client-gametest-shard ${{ matrix.shard }}
     needs: [changes, compile]
-    if: needs.changes.outputs.run == 'true'
+    if: ${{ always() && needs.changes.outputs.run == 'true' && needs.changes.outputs.client-count != '0' && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
     runs-on: ubuntu-latest
     # One shard holds at most gradle/ci-budget.txt's client-shard seconds of tests by measured weight (tools/tests/test_ci_budget.py checks it).
     # The action's own deadline (270 s from the job's start) ends the run with a message before this limit would kill it silently.
@@ -110,7 +138,7 @@ jobs:
       # At most this many shards at once, so a full run leaves runners for other PRs' runs (ADR 0115).
       max-parallel: 10
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
+        shard: ${{ fromJSON(needs.changes.outputs.client-matrix) }}
     steps:
       # The client action's deadline counts from here, the job's start (a few seconds after "Set up job").
       - run: echo "JOB_START=$(date +%s)" >> "$GITHUB_ENV"
@@ -129,6 +157,7 @@ jobs:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: ${{ matrix.shard }}
       - id: compiled
+        if: needs.compile.result == 'success'
         uses: ./.github/actions/download-compiled
         with:
           name: compiled-client
@@ -136,7 +165,8 @@ jobs:
         with:
           job-start: ${{ env.JOB_START }}
           skip-compile: ${{ steps.compiled.outputs.skip }}
-          client-shard: ${{ matrix.shard }}/${{ env.CLIENT_SHARDS }}
+          client-shard: ${{ matrix.shard }}/${{ needs.changes.outputs.client-count }}
+          client-tests: ${{ needs.changes.outputs.client-classes }}
           gradle-cache-read-only: "true"
           artifact-suffix: -${{ matrix.shard }}
 
@@ -151,12 +181,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # With no class selected (the PR tier, ADR 0116) the compile job and the shards are skipped, and that is a pass.
       - env:
+          COUNT: ${{ needs.changes.outputs.client-count }}
+          FULL: ${{ needs.changes.outputs.client-full }}
+          WARM: ${{ needs.changes.outputs.cache-warm }}
           COMPILE: ${{ needs.compile.result }}
           SHARDS: ${{ needs.client-shard.result }}
         run: |
-          if [ "$COMPILE" != success ] || [ "$SHARDS" != success ]; then
-            echo "::error::client-compile finished as '$COMPILE' and the client shards as '$SHARDS', not both success"
+          if [ "$COUNT" != 0 ] && { { [ "$COMPILE" != success ] && { [ "$COMPILE" != skipped ] || [ "$FULL" = true ] || [ "$WARM" != true ]; }; } || [ "$SHARDS" != success ]; }; then
+            echo "::error::client-compile finished as '$COMPILE' and the client shards as '$SHARDS' ($COUNT selected), not both success"
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -178,16 +212,30 @@ jobs:
             cp tools/ci-shard-main.sh .ci-main/tools/
           fi
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.changes.outputs.client-count != '0'
         with:
           pattern: merged-main-*
           merge-multiple: true
           path: ${{ runner.temp }}/shard-main
-      # ci-shard-main.sh counts the numbered shards; the compile job's sha must be the same one.
-      - run: |
-          read -r compile < "$RUNNER_TEMP/shard-main/main-sha-compile" || true
-          read -r first < "$RUNNER_TEMP/shard-main/main-sha-1" || true
-          if [ -z "$compile" ] || [ "$compile" != "$first" ]; then
-            echo "::error::client-compile merged main '$compile' but client-gametest-shard 1 merged '$first'"
-            exit 1
+      # The shards that ran merged one main; with none, the changes job's main is the one this run tested.
+      - env:
+          COUNT: ${{ needs.changes.outputs.client-count }}
+          MAIN_SHA: ${{ needs.changes.outputs.main-sha }}
+        run: |
+          if [ "$COUNT" = 0 ]; then
+            echo "::notice title=merged-main::$MAIN_SHA"
+          else
+            # ci-shard-main.sh counts the numbered shards; the compile job's sha must be the same one.
+            read -r first < "$RUNNER_TEMP/shard-main/main-sha-1" || true
+            compile=$first
+            [ ! -f "$RUNNER_TEMP/shard-main/main-sha-compile" ] || read -r compile < "$RUNNER_TEMP/shard-main/main-sha-compile" || true
+            if [ -z "$compile" ] || [ "$compile" != "$first" ]; then
+              echo "::error::client-compile merged main '$compile' but client-gametest-shard 1 merged '$first'"
+              exit 1
+            fi
+            .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"
           fi
-      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$CLIENT_SHARDS"
+      # What ran, for tools/merge-pr.sh: it lands only a head whose client suite ran whole (ADR 0116).
+      - env:
+          FULL: ${{ needs.changes.outputs.client-full }}
+        run: echo "::notice title=ci-tier::$([ "$FULL" = true ] && echo full || echo pr)"

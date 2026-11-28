@@ -9,6 +9,7 @@ WORKFLOWS = Path(__file__).resolve().parents[2] / ".github/workflows"
 
 # (workflow, job, the job that picks main)
 PINNED = [
+    ("ci.yml", "plan", "setup"),
     ("ci.yml", "compile", "setup"),
     ("ci.yml", "build", "setup"),
     ("ci.yml", "checks", "setup"),
@@ -52,7 +53,7 @@ class MainPinTest(unittest.TestCase):
     def test_the_check_flags_removed_wiring(self):
         text = (WORKFLOWS / "ci.yml").read_text()
         no_input = re.sub(r"^\s+main-sha: \$\{\{ needs\.setup.*\n", "", text, flags=re.M)
-        no_needs = text.replace("    needs: [setup, compile]\n", "    needs: compile\n")
+        no_needs = text.replace("    needs: [setup, plan, compile]\n", "    needs: [plan, compile]\n")
         self.assertEqual(
             ["build: does not pass main-sha from needs.setup.outputs.main-sha"], problems(no_input, "build", "setup")[:1]
         )
