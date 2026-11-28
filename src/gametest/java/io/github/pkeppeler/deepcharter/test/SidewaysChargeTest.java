@@ -33,17 +33,13 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for charges set sideways (#1613, ADR 0120): a pod square to the compass in front of a Company rock
-  * face sets a blasting charge
- * that clears the bore's face 2 slabs deep along the facing, or a shaped charge that clears Company rock along the
-  * facing up to 8 slabs; backing
- * out of {@code chargeReach} spares the hull, and the refusals of a charge under the pod hold. The depths are
-  * literals here, apart from the tuning.
+ * face sets a blasting charge that clears the bore's face 2 slabs deep along the facing, or a shaped charge that
+ * clears Company rock along the facing up to 8 slabs; backing out of {@code chargeReach} spares the hull, and the
+ * refusals of a charge under the pod hold. The depths are literals here, apart from the tuning.
  *
  * <p>The scene: a Mole 2 x 2 x 3 resting on a stone bed at {@code (x, FLOOR, Z)}, its footprint {@code x - 1 .. x}
-  * and {@code Z - 1 .. Z}. A
- * test cell is {@code (depth, lateral, up)}: {@code depth} slabs out from the pod's face along the facing, {@code
-  * lateral} 0 or 1 across it, {@code up}
- * rows over the pod's feet.
+ * and {@code Z - 1 .. Z}. A test cell is {@code (depth, lateral, up)}: {@code depth} slabs out from the pod's face
+ * along the facing, {@code lateral} 0 or 1 across it, {@code up} rows over the pod's feet.
  */
 public class SidewaysChargeTest {
     private static final RepairTuning TUNING = RepairTuning.DEFAULT;
@@ -92,8 +88,8 @@ public class SidewaysChargeTest {
 
     /**
      * Builds the scene at {@code x}, seats a pilot in a pod that rests on it and is turned {@code yawOff} degrees off
-      * {@code facing}, uses {@code
-     * charge}, lets {@code afterUse} move the pod, waits until the fuse has run out and runs {@code verify}.
+     * {@code facing}, uses {@code charge}, lets {@code afterUse} move the pod, waits until the fuse has run out and
+     * runs {@code verify}.
      */
     private static void scene(
             GameTestHelper helper,

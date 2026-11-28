@@ -27,10 +27,9 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Evidence scenario "pod-charge-sideways" (#1613): a pod faces a band of Company rock in a sealed stone room. The
-  * pilot sets a blasting charge on the face
- * ahead (a right click), the fuse counts down on the action bar with "BACK AWAY", the pod backs out of the reach, and
-  * the charge blows: the 2 slabs of the
- * bore's face go and the rock behind them stays; a spectator then looks at the hole from the side.
+ * pilot sets a blasting charge on the face ahead (a right click), the fuse counts down on the action bar with "BACK
+ * AWAY", the pod backs out of the reach, and the charge blows: the 2 slabs of the bore's face go and the rock behind
+ * them stays; a spectator then looks at the hole from the side.
  */
 public class PodChargeSidewaysScenario extends EvidenceScenario {
     private static final int X = 5500;

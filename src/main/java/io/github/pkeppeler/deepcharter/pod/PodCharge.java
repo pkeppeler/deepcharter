@@ -50,14 +50,12 @@ import net.minecraft.world.phys.Vec3;
  * hovers through both.
  * The fuse belongs to the pod and is neither saved nor synced: a pod that is discarded or unloaded before the blast loses it.
  *
- * <p>Sideways (#1613, ADR 0120): a pod square to the compass with Company rock on the face of its next bore slab sets
-  * the same charges on that face
- * instead of under it: a blasting charge clears {@code chargeSideDepth} slabs along the facing, a shaped charge the
-  * Company rock along the facing to
- * the first other block, at most {@code shapedSideDepth}. The hull guard counts the blast alone, as nothing opens
-  * under the pod, and the pilot gets clear
- * by backing out of {@code chargeReach}. Every blast is computed from a {@link ChargeSite}, a volume and a facing,
-  * not from the pod.
+ * <p>Sideways (#1613, ADR 0120): a pod square to the compass with Company rock on the face of its next bore slab
+ * sets the same charges on that face instead of under it. A blasting charge clears {@code chargeSideDepth} slabs along
+ * the facing; a shaped charge clears the Company rock along the facing to the first other block, at most
+ * {@code shapedSideDepth}. The hull guard counts the blast alone, as nothing opens under the pod, and the pilot gets
+ * clear by backing out of {@code chargeReach}. Every blast is computed from a {@link ChargeSite}, a volume and a
+ * facing, not from the pod.
  */
 public final class PodCharge {
     private static final int TICKS_PER_SECOND = 20;
@@ -71,8 +69,10 @@ public final class PodCharge {
         SHAPED
     }
 
-    /** A burning fuse: the site it will clear, the kind of charge, the numbers of the tuning it was set with, and the
-     * charter that set it. */
+    /**
+     * A burning fuse: the site it will clear, the kind of charge, the numbers of the tuning it was set with, and the
+     * charter that set it.
+     */
     record Fuse(
             Kind kind,
             ChargeSite site,
@@ -103,8 +103,7 @@ public final class PodCharge {
 
     /**
      * Server only: sets a charge for {@code pod}, under it or, when it is square to the compass in front of Company
-      * rock, on the face ahead. Empty when it
-     * is set (the caller uses the item up), or the reason it was not.
+     * rock, on the face ahead. Empty when it is set (the caller uses the item up), or the reason it was not.
      */
     public static Optional<Component> set(PodEntity pod, RepairTuning tuning, Kind kind) {
         if (pod.fuse() != null) {
