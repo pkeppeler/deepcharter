@@ -6,10 +6,12 @@ import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.pod.PodScreen;
+import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLooseOre;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -26,14 +28,13 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Client GameTest for #1456: dumping cargo, driven with the real keyboard and cursor from the seat. A tap of the dump
- * key dumps nothing; holding it a second and a half drops the whole hold under the pod; and Q on a hold stack in the
- * pod screen drops that stack. No ore reaches the seated pilot's pack.
+ * Client GameTest for #1456 and #1540: the pod screen driven with the real keyboard and cursor from the seat. The
+ * retired dump key dumps nothing; shift-click moves ore from the hold to the pack and back, and the pack's ore reads
+ * LOOSE on the cockpit; Q on a hold stack in the pod screen drops that stack under the pod, and none of it reaches the
+ * seated pilot's pack.
  */
 public class PodDumpClientTest implements FabricClientGameTest {
-    /** Ticks a tap holds the key: well short of the second the dump needs. */
-    private static final int TAP_TICKS = 5;
-    /** Ticks a full hold keeps the key down: past the second, with room for a slow tick. */
+    /** Ticks the retired key is held: past the second it once needed, with room for a slow tick. */
     private static final int HOLD_TICKS = 30;
 
     @Override
@@ -56,38 +57,58 @@ public class PodDumpClientTest implements FabricClientGameTest {
                     "the pilot in the pod on the client",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
 
-            RealInput.hold(context, InputConstants.KEY_B, TAP_TICKS);
-            context.waitTicks(HOLD_TICKS); // tick-wait: a dump the tap wrongly sent would land within these ticks
+            // The dump key is gone: B does nothing, held for as long as it took.
+            RealInput.hold(context, InputConstants.KEY_B, HOLD_TICKS);
+            context.waitTicks(HOLD_TICKS); // tick-wait: a dump the retired key sent would land by now
             require(
                     singleplayer
                                     .getServer()
                                     .computeOnServer(server -> pod(server).cargoUsed())
                             == 2,
-                    "a tap of the dump key dumps nothing");
+                    "the retired dump key dumps nothing");
 
-            RealInput.hold(context, InputConstants.KEY_B, HOLD_TICKS);
-            ClientWait.until(
-                    context,
-                    "the whole hold dumped under the pod",
-                    () -> singleplayer
-                            .getServer()
-                            .computeOnServer(server -> pod(server).cargoUsed() == 0 && oreLying(server) == 2),
-                    () -> singleplayer
-                            .getServer()
-                            .computeOnServer(
-                                    server -> "hold " + pod(server).cargoUsed() + ", lying " + oreLying(server)));
-
-            singleplayer
-                    .getServer()
-                    .runOnServer(
-                            server -> pod(server).cargo().tryAdd(pod(server), OreRegistry.stack(OreType.BRONZIUM)));
-            RealInput.key(context, InputConstants.KEY_I, 0);
+            context.getInput().pressKey(options -> options.keyInventory);
             ClientWait.screen(context, PodScreen.class);
             PodScreen screen = context.computeOnClient(client -> ClientSession.screen(client, PodScreen.class));
             ClientWait.until(
                     context,
-                    "the new ore in hold slot 0",
+                    "the ore in hold slot 0",
                     client -> !screen.getMenu().holdSlot(0).getItem().isEmpty());
+            // Ore moves to the pack like any item, and the pod says it is loose.
+            SlotClicks.shiftClick(context, screen, screen.getMenu().holdSlot(0));
+            ClientWait.until(
+                    context,
+                    "the ore in the pack and the pod reading it loose",
+                    () -> singleplayer
+                            .getServer()
+                            .computeOnServer(server -> pod(server).cargoUsed() == 1
+                                    && oreHeld(player(server)) == 1
+                                    && PodLooseOre.of(pod(server)).ore() == 1),
+                    () -> singleplayer
+                            .getServer()
+                            .computeOnServer(server -> "hold " + pod(server).cargoUsed() + ", pack "
+                                    + oreHeld(player(server)) + ", loose "
+                                    + PodLooseOre.of(pod(server)).ore()));
+            ClientWait.until(
+                    context,
+                    "the cockpit readout saying LOOSE",
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity ridden
+                            && PodStatusHud.looseLine(ridden).isPresent());
+            // And back: the same click on the pack's ore puts it in the hold.
+            SlotClicks.shiftClick(
+                    context, screen, SlotClicks.inventorySlot(context, screen, OreRegistry.item(OreType.GOLDIUM)));
+            ClientWait.until(
+                    context,
+                    "the ore back in the hold",
+                    () -> singleplayer
+                            .getServer()
+                            .computeOnServer(server -> pod(server).cargoUsed() == 2 && oreHeld(player(server)) == 0),
+                    () -> singleplayer
+                            .getServer()
+                            .computeOnServer(
+                                    server -> "hold " + pod(server).cargoUsed() + ", pack " + oreHeld(player(server))));
+
+            // Q on a hold stack dumps it under the pod, to the ground and not to a pack.
             SlotClicks.hover(context, screen, screen.getMenu().holdSlot(0));
             RealInput.key(context, InputConstants.KEY_Q, 0);
             ClientWait.until(
@@ -95,7 +116,7 @@ public class PodDumpClientTest implements FabricClientGameTest {
                     "the stack dumped from the screen",
                     () -> singleplayer
                             .getServer()
-                            .computeOnServer(server -> pod(server).cargoUsed() == 0 && oreLying(server) == 3),
+                            .computeOnServer(server -> pod(server).cargoUsed() == 1 && oreLying(server) == 1),
                     () -> singleplayer
                             .getServer()
                             .computeOnServer(

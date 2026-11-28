@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.LooseOreTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -87,13 +88,15 @@ public class PodLoadClientTest implements FabricClientGameTest {
             expectGauge(near, 8, false, "two einsteinium in the bay");
             // Over it, with no key held: a third.
             State over = load(context, singleplayer, 3, 0, true);
-            expectGauge(over, 12, true, "three einsteinium in the bay");
+            int overSegments = 12;
+            expectGauge(over, overSegments, true, "three einsteinium in the bay");
             // A dump takes ore out of the bay: back under, and the lamp goes out.
             State dumped = load(context, singleplayer, 2, 0, false);
             expectGauge(dumped, 8, false, "a dump of one einsteinium");
-            // The pilot's pack weighs on the client too: two ironium on top of the bay reach the limit.
+            // The pilot's pack weighs on the client too, double as loose ore: two ironium weigh what the third
+            // einsteinium does, so the gauge reads as it did over the limit.
             State pack = load(context, singleplayer, 2, 2, true);
-            expectGauge(pack, 10, true, "two einsteinium in the bay and two ironium in the pack");
+            expectGauge(pack, overSegments, true, "two einsteinium in the bay and two ironium in the pack");
             load(context, singleplayer, 0, 0, false);
         }
     }
@@ -114,7 +117,9 @@ public class PodLoadClientTest implements FabricClientGameTest {
             int einsteinium,
             int ironium,
             boolean overloaded) {
-        float expected = einsteinium * OreType.EINSTEINIUM.mass() + ironium * OreType.IRONIUM.mass();
+        // Ore in the pack is loose ore, which weighs double (ADR 0110).
+        float expected = einsteinium * OreType.EINSTEINIUM.mass()
+                + ironium * OreType.IRONIUM.mass() * LooseOreTuning.DEFAULT.weightFactor();
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
