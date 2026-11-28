@@ -94,14 +94,25 @@ public class PodSprintTest {
     /** {@code LivingEntity.aiStep}'s {@code noJumpDelay}: ticks after a jump before a held jump key jumps again. */
     private static final int JUMP_DELAY = 10;
 
-    /** "About 40%": the sprint's top speed over the cruise's, on the ground and in the air. */
-    private static final double MIN_SPRINT_RATIO = 1.35;
+    /** "About double": the sprint's top speed over the cruise's, on the ground and in the air (#1594). */
+    private static final double MIN_SPRINT_RATIO = 1.95;
 
-    private static final double MAX_SPRINT_RATIO = 1.45;
+    private static final double MAX_SPRINT_RATIO = 2.05;
+
+    /** The stock engine's cruise and sprint in blocks a second, as the user set them (#1594), independent of tuning. */
+    private static final double STOCK_CRUISE = 4.0;
+
+    private static final double STOCK_SPRINT = 8.0;
+
+    /** Blocks a second of slack on a measured speed. */
+    private static final double SPEED_SLACK = 0.05;
+
+    /** Sprint with a bare D: it turns the pod in place and is no W, so it never boosts. */
+    private static final Input RIGHT_SPRINT = new Input(false, false, false, true, false, false, true);
 
     private static final String FIRST_SPRINT_KEY = "deepcharter.pod.first_sprint";
 
-    /** Litres of soot just short of limp mode: the most fouled engine the outrun rule still holds for. */
+    /** Litres of soot just short of limp mode: the most fouled engine that is not yet limp. */
     private static final float SOOT_SHORT_OF_LIMP = FuelTuning.DEFAULT.soot().limpLitres() - 0.01f;
 
     /** What the pods do in a phase: a cruise or a sprint, on the ground or in the air. */
@@ -202,14 +213,15 @@ public class PodSprintTest {
     }
 
     /**
-     * The outrun rule and the boost, every shipped chassis at every engine tier it takes, on the ground and in the
-     * air: a clean engine's cruise beats a player's sprint and sprint-jump, the sprint is about 40% faster, and it
-     * burns more fuel a block. A stock Mole with soot just short of limp mode still cruises past a sprinting player and
-     * sprints past a sprint-jumping one, and its boost multiplies with the soot's loss. Sprint with W never drills on
-     * open ground, and the pilot is told once.
+     * The cruise and the boost, every shipped chassis at every engine tier it takes, on the ground and in the air: a
+     * stock engine cruises at 4 blocks a second and sprints at 8 (#1594), the sprint is about double the cruise and
+     * burns more fuel a block, and a clean engine's sprint outruns a sprint-jumping player. A stock Mole with soot just
+     * short of limp mode keeps the ratio, and its boost multiplies with the soot's loss, which is half the speed there
+     * (#1594: the cap went back to 50%, since a cruise no longer has a runner to stay ahead of). Sprint with W never
+     * drills on open ground, and the pilot is told once.
      */
     @GameTest(maxTicks = MAX_TICKS)
-    public void cruiseOutrunsAPlayerOnFootAndSprintIsFasterForMoreFuelABlock(GameTestHelper helper) {
+    public void sprintIsDoubleTheCruiseForMoreFuelABlockAndOutrunsAPlayerOnFoot(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
         List<Lane> lanes = new ArrayList<>();
         int index = 0;
@@ -380,7 +392,6 @@ public class PodSprintTest {
                 Math.abs(sprint * TICKS_PER_SECOND - 5.612) < 0.05,
                 "a vanilla sprint is 5.612 b/s, measured %.3f: the runner is not moved as a player is",
                 sprint * TICKS_PER_SECOND);
-        double onFoot = Math.max(sprint, sprintJump);
         List<String> wrong = new ArrayList<>();
         for (Lane lane : lanes) {
             for (Phase phase : Phase.values()) {
@@ -396,33 +407,48 @@ public class PodSprintTest {
                 Run cruise = lane.run(air ? Phase.AIR_CRUISE : Phase.GROUND_CRUISE);
                 Run boost = lane.run(air ? Phase.AIR_SPRINT : Phase.GROUND_SPRINT);
                 String where = air ? "in the air" : "on the ground";
+                if (lane.soot == 0) {
+                    check(
+                            wrong,
+                            boost.speed() > sprintJump,
+                            "%s %s sprints at %.2f b/s, not faster than a sprint-jumping player (%.2f)",
+                            lane.name(),
+                            where,
+                            boost.blocksPerSecond(),
+                            sprintJump * TICKS_PER_SECOND);
+                }
                 if (lane.soot > 0) {
                     check(
                             wrong,
-                            cruise.speed() > sprint && boost.speed() > sprintJump,
-                            "%s %s cruises at %.2f b/s and sprints at %.2f: short of limp mode the cruise should beat"
-                                    + " a player's sprint (%.2f) and the sprint a sprint-jump (%.2f)",
+                            Math.abs(cruise.blocksPerSecond() - STOCK_CRUISE / 2) < SPEED_SLACK
+                                    && Math.abs(boost.blocksPerSecond() - STOCK_SPRINT / 2) < SPEED_SLACK,
+                            "%s %s should lose half its speed just short of limp mode: %.1f and %.1f b/s, measured"
+                                    + " %.2f and %.2f",
                             lane.name(),
                             where,
+                            STOCK_CRUISE / 2,
+                            STOCK_SPRINT / 2,
                             cruise.blocksPerSecond(),
-                            boost.blocksPerSecond(),
-                            sprint * TICKS_PER_SECOND,
-                            sprintJump * TICKS_PER_SECOND);
+                            boost.blocksPerSecond());
                 }
-                check(
-                        wrong,
-                        lane.soot > 0 || cruise.speed() > onFoot,
-                        "%s %s cruises at %.2f b/s, not faster than a player on foot (sprint %.2f, sprint-jump %.2f)",
-                        lane.name(),
-                        where,
-                        cruise.blocksPerSecond(),
-                        sprint * TICKS_PER_SECOND,
-                        sprintJump * TICKS_PER_SECOND);
+                if (lane.soot == 0 && lane.tier == 0) {
+                    check(
+                            wrong,
+                            Math.abs(cruise.blocksPerSecond() - STOCK_CRUISE) < SPEED_SLACK
+                                    && Math.abs(boost.blocksPerSecond() - STOCK_SPRINT) < SPEED_SLACK,
+                            "%s %s should cruise at %.1f b/s and sprint at %.1f, measured %.2f and %.2f",
+                            lane.name(),
+                            where,
+                            STOCK_CRUISE,
+                            STOCK_SPRINT,
+                            cruise.blocksPerSecond(),
+                            boost.blocksPerSecond());
+                }
                 double ratio = boost.speed() / cruise.speed();
                 check(
                         wrong,
                         ratio >= MIN_SPRINT_RATIO && ratio <= MAX_SPRINT_RATIO,
-                        "%s %s sprints at %.2f times its cruise (%.2f against %.2f b/s), not about 1.4",
+                        "%s %s sprints at %.2f times its cruise (%.2f against %.2f b/s), not about 2",
                         lane.name(),
                         where,
                         ratio,
@@ -572,17 +598,18 @@ public class PodSprintTest {
     }
 
     /**
-     * The boost is the pilot's, on W: S with sprint backs up at the reverse speed, and a navigator who holds sprint
-     * and W in a Prospector whose pilot holds W does not boost it.
+     * The boost is the pilot's, on W: S with sprint backs up at the reverse speed, a bare D with sprint does not boost
+     * (#1420), and a navigator who holds sprint and W in a Prospector whose pilot holds W does not boost it.
      */
     @GameTest(maxTicks = MAX_TICKS)
-    public void reverseAndANavigatorsSprintGetNoBoost(GameTestHelper helper) {
+    public void reverseATurnAndANavigatorsSprintGetNoBoost(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
         int x = X + 400;
-        RoomCarver.carve(level, x - 30, x + 30, FLOOR - 2, FLOOR - 1, Z - LANE, Z + 3 * LANE, Blocks.STONE);
-        RoomCarver.carve(level, x - 30, x + 30, FLOOR, FLOOR + 8, Z - LANE, Z + 3 * LANE, Blocks.AIR);
-        List<Input> inputs = List.of(BACK, BACK_SPRINT, FORWARD);
-        List<EntityType<PodEntity>> types = List.of(PodRegistry.POD, PodRegistry.POD, PodRegistry.PROSPECTOR);
+        RoomCarver.carve(level, x - 30, x + 30, FLOOR - 2, FLOOR - 1, Z - LANE, Z + 4 * LANE, Blocks.STONE);
+        RoomCarver.carve(level, x - 30, x + 30, FLOOR, FLOOR + 8, Z - LANE, Z + 4 * LANE, Blocks.AIR);
+        List<Input> inputs = List.of(BACK, BACK_SPRINT, FORWARD, RIGHT_SPRINT);
+        List<EntityType<PodEntity>> types =
+                List.of(PodRegistry.POD, PodRegistry.POD, PodRegistry.PROSPECTOR, PodRegistry.POD);
         List<MockPlayer> pilots = new ArrayList<>();
         List<Vec3> starts = new ArrayList<>();
         List<Arrival<PodEntity>> pods = new ArrayList<>();
@@ -596,7 +623,7 @@ public class PodSprintTest {
         }
         MockPlayer navigator = MockPlayers.join(helper, "sprint-navigator");
         navigator.teleportTo(level, starts.get(2), EAST, 0f);
-        List<BlockPos> columns = columns(x - 30, x + 30, Z - LANE, Z + 3 * LANE);
+        List<BlockPos> columns = columns(x - 30, x + 30, Z - LANE, Z + 4 * LANE);
         FarChunks.awaitAllEntityTicking(helper, level, columns, () -> {
             for (int i = 0; i < inputs.size(); i++) {
                 PodEntity pod = TestEntities.create(types.get(i), level);

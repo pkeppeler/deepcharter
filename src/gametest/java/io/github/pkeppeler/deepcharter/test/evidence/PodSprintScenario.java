@@ -29,8 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Evidence scenario "pod-sprint" (#1276): the player sprints down a lit hall with the real keys while a pilot drives a
- * pod beside them, twice. At the cruise the pod pulls away from the running player; with sprint it pulls away faster.
+ * Evidence scenario "pod-sprint" (#1276, #1594): the player sprints down a lit hall with the real keys while a pilot
+ * drives a pod beside them, twice. At the cruise the running player pulls away from the pod; with sprint the pod
+ * pulls away from the player.
  * Then the player takes the seat and sprints: the readout shows the SPRINT line and the chat the one-time line.
  */
 public class PodSprintScenario extends EvidenceScenario {
@@ -44,7 +45,7 @@ public class PodSprintScenario extends EvidenceScenario {
     private static final int HEIGHT = 8;
     private static final int LAMP_GAP = 6;
     private static final int TICKS_PER_FRAME = 2;
-    /** Ticks of a race: the sprinting pod covers about 28 blocks of the hall. */
+    /** Ticks of a race: the sprinting pod covers about 20 blocks of the hall. */
     private static final int RACE_TICKS = 50;
 
     private static final float SOUTH = 0f;
@@ -133,8 +134,10 @@ public class PodSprintScenario extends EvidenceScenario {
                 what,
                 to[0].z - from[0].z,
                 to[1].z - from[1].z);
-        if (to[1].z - from[1].z <= to[0].z - from[0].z) {
-            throw new AssertionError("the pod should outrun the sprinting player in the " + what + " race");
+        boolean podAhead = to[1].z - from[1].z > to[0].z - from[0].z;
+        if (podAhead != (input == FORWARD_SPRINT)) {
+            throw new AssertionError(
+                    "the " + what + " race should be won by the " + (input == FORWARD_SPRINT ? "pod" : "player"));
         }
         context.waitTicks(20);
     }

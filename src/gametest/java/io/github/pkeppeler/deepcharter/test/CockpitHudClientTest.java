@@ -1431,7 +1431,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("lining", 5),
                 line("brace_working"),
                 line("soot", 11, 44, 44),
-                line("sprint", 40, 80));
+                line("sprint", 100));
         // The tally as the cockpit draws it, each number after its icon.
         List<CockpitHud.Row> head = List.of(
                 new CockpitHud.Row(List.of(
