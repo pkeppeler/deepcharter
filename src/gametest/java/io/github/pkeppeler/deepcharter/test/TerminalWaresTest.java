@@ -45,6 +45,9 @@ public class TerminalWaresTest {
             Map.entry("contract_terminal/charter_leave", "leaving or withdrawing, no price"),
             Map.entry("contract_terminal/charter_share_outposts", "a Director's setting, no price"),
             Map.entry("contract_terminal/charter_keep_outposts", "a Director's setting, no price"),
+            Map.entry(
+                    "hangar_console/scrap_wreck",
+                    "takes the player's own wreck apart into its parts and hold, for no money either way"),
             Map.entry("ore_processor/sell_cargo", "the terminal buys the player's ore"),
             Map.entry("ore_processor/sell_inventory", "the terminal buys the player's ore"),
             Map.entry("ore_processor/fuse_spoil", "turns spoil the player brings into ore, nothing is bought"),
