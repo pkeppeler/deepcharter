@@ -2,6 +2,8 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
+import io.github.pkeppeler.deepcharter.hangar.Hangar;
+import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -28,10 +30,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "m2-hangar" for #77: the derelict Mole stands dark in the colony hangar. A charter puts the four parts into the
- * hangar console, which repairs the Mole and gives it to the charter as MOLE-0001. The console's screen then sells a refurbished
- * Mole, which stands in the bay beside the first. Stills of the derelict, the repaired Mole, the screen and the new Mole. Last, a
- * Prospector wreck is restored with no Cicatrium in the pack, on the Company's advance (issue 209).
+ * Evidence scenario "m2-hangar" for #77 and #1595: the derelict Mole stands dark in the colony hangar. A charter puts
+ * the four parts into the hangar console, which repairs the Mole and gives it to the charter as MOLE-0001, the
+ * founder's one Mole. A second Mole is refused, and still refused when the first is a wreck. The wreck is written off,
+ * its place is free, and a new Mole is assembled from four parts. Last, a Prospector wreck is restored with no
+ * Cicatrium in the pack, on the Company's advance (issue 209).
  */
 public class HangarScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
@@ -99,24 +102,71 @@ public class HangarScenario extends EvidenceScenario {
             screenshot(context, "hangar-console");
 
             HangarTuning tuning = HangarTuning.DEFAULT;
-            // Read now, not from the deposit: repairing the console fired T06 and paid its bonus.
-            long beforeBuying = singleplayer.getServer().computeOnServer(HangarScenario::balance);
-            context.clickScreenButton("BUY REFURBISHED MOLE: $" + tuning.refurbishedMole() + " + $"
-                    + tuning.registrationFee() + " PER POD");
-            long price = tuning.refurbishedPrice(1);
-            await(context, singleplayer, server -> balance(server) == beforeBuying - price);
+            // The founder has their one Mole: a second is refused, with the reason on the screen.
+            singleplayer.getServer().runOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                for (Item part : HangarParts.ALL) {
+                    player.getInventory().add(new ItemStack(part));
+                }
+            });
+            context.clickScreenButton("ASSEMBLE MOLE");
+            context.waitTicks(10);
             hold(context);
-            screenshot(context, "bought-a-refurbished-mole");
+            screenshot(context, "a-second-mole-is-refused");
+
+            // The Mole is wrecked: the wreck keeps the place, so a second is still refused. Reopen to show it.
+            singleplayer.getServer().runOnServer(server -> {
+                PodEntity mole = HangarPods.derelict(server).orElseThrow();
+                mole.damageHull(mole.maxHull());
+            });
+            context.setScreen(() -> null);
+            context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(console)));
+            ClientWait.screen(context, HangarScreen.class);
+            HangarScreen wrecked = context.computeOnClient(client -> ClientSession.screen(client, HangarScreen.class));
+            for (int i = 0; i < TYPING_FRAMES && !wrecked.typewriter().done(); i++) {
+                context.waitTicks(TICKS_PER_FRAME);
+                frame(context);
+            }
+            context.clickScreenButton("ASSEMBLE MOLE");
+            context.waitTicks(10);
+            hold(context);
+            screenshot(context, "a-wreck-keeps-the-place");
+
+            // The wreck cannot be reached: write it off. The place is free a day later, and the wreck is destroyed.
+            long beforeWriteOff = singleplayer.getServer().computeOnServer(HangarScenario::balance);
+            // The first press only arms it: the screen then shows the terms and the button asks to confirm.
+            context.clickScreenButton("WRITE OFF: $" + tuning.writeOffCost());
+            context.waitTicks(20);
+            hold(context);
+            screenshot(context, "write-off-asks-to-confirm");
+            context.clickScreenButton("CONFIRM: $" + tuning.writeOffCost());
+            await(context, singleplayer, server -> balance(server) == beforeWriteOff - tuning.writeOffCost());
+            // The server's answer is a new view, which the screen takes in place.
+            context.waitTicks(20);
+            hold(context);
+            screenshot(context, "write-off-filed");
+            // The day passes (the evidence cannot wait a day), and the wreck is destroyed with its parts and cargo.
+            singleplayer.getServer().runOnServer(server -> Hangar.settleWriteOffs(server, Long.MAX_VALUE));
+            await(context, singleplayer, server -> HangarPods.derelict(server).isEmpty());
+            context.clickScreenButton("ASSEMBLE MOLE");
+            await(
+                    context,
+                    singleplayer,
+                    server -> HangarData.get(server)
+                            .slotOf(server.getPlayerList()
+                                    .getPlayers()
+                                    .getFirst()
+                                    .getUUID())
+                            .isPresent());
+            context.waitTicks(20);
+            hold(context);
+            screenshot(context, "a-new-mole-after-the-write-off");
             context.setScreen(() -> null);
 
-            Vec3 bay = singleplayer
-                    .getServer()
-                    .computeOnServer(
-                            server -> HangarPods.derelict(server).orElseThrow().position());
-            lookAt(singleplayer, console, bay.add(0, 0, 3));
+            lookAt(singleplayer, console, derelict.add(0, 0, 3));
             context.waitTicks(40);
             hold(context);
-            screenshot(context, "two-moles-in-the-bay");
+            screenshot(context, "the-new-mole-in-the-bay");
 
             // Issue 209: a Prospector wreck beside the console, restored on the Company's advance with no Cicatrium in
             // the pack.
@@ -142,7 +192,7 @@ public class HangarScenario extends EvidenceScenario {
             screenshot(context, "the-company-advance-on-the-console");
             long restorePrice = tuning.restoreCost(Chassis.PROSPECTOR).money();
             long before = singleplayer.getServer().computeOnServer(HangarScenario::balance);
-            context.clickScreenButton("RESTORE NEAREST WRECK");
+            context.clickScreenButton("RESTORE WRECK");
             // Restoring the Prospector fires T17, which pays B3.
             await(
                     context,

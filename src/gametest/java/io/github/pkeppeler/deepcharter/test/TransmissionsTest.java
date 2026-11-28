@@ -1038,12 +1038,12 @@ public class TransmissionsTest {
                         "the colony repairs send t02 to t05 in order, and a restore sends nothing: %s",
                         deliveredTo(crew));
             }
-            TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.BUY_MOLE);
-            TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.BUY_MOLE);
+            TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.ASSEMBLE_MOLE);
+            TransmissionTriggers.onActed(server, HangarTerminal.TYPE, crew.player(), HangarTerminal.ASSEMBLE_MOLE);
             if (!deliveredTo(crew).equals(ids("t02", "t03", "t04", "t05", "t06"))
                     || account(helper, id) != 3 * Transmission.Bonus.B1.amount()) {
                 throw helper.assertionException(
-                        "a bought Mole sends t06 once, and the repairs pay B1 for the pump and the upgrade terminal and"
+                        "an assembled Mole sends t06 once, and the repairs pay B1 for the pump and the upgrade terminal and"
                                 + " the Mole: %s, account %s",
                         deliveredTo(crew), account(helper, id));
             }
