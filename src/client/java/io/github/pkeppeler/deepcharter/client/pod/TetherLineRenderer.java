@@ -17,6 +17,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -85,6 +86,42 @@ public final class TetherLineRenderer {
         if (podId == null) {
             return null;
         }
+        Vec3 middle = new Vec3(
+                Mth.lerp(partial, person.xo, person.getX()),
+                Mth.lerp(partial, person.yo, person.getY()) + person.getBbHeight() / 2.0,
+                Mth.lerp(partial, person.zo, person.getZ()));
+        return chainBetween(
+                CHAINS,
+                person,
+                TowChainLook.current(),
+                level,
+                podId,
+                pods,
+                partial,
+                new Vec3(cameraX, cameraY, cameraZ),
+                middle,
+                person.getBbWidth() / 2.0);
+    }
+
+    /**
+     * The chain from the pod {@code podId} to {@code end}, kept in {@code chains} for {@code owner} (one cache for each
+     * kind of line, so two lines to one person do not share a curve), drawn in {@code look}. Null when the pod is not
+     * among {@code pods} or {@code end} is farther from the camera than {@link #DRAW_DISTANCE}. The tow cable's pick
+     * line ({@link TowPickLineRenderer}) is this line too.
+     *
+     * @param endRadius blocks round {@code end} that the chain stops short by
+     */
+    static TowChainRenderer.@Nullable Chain chainBetween(
+            Map<Player, TowChainRenderer.Chain> chains,
+            Player owner,
+            TowChainLook look,
+            ClientLevel level,
+            UUID podId,
+            List<PodEntity> pods,
+            float partial,
+            Vec3 camera,
+            Vec3 end,
+            double endRadius) {
         PodEntity pod = null;
         for (PodEntity other : pods) {
             if (other.getUUID().equals(podId)) {
@@ -92,44 +129,23 @@ public final class TetherLineRenderer {
                 break;
             }
         }
-        if (pod == null) {
+        if (pod == null || end.distanceToSqr(camera) > DRAW_DISTANCE * DRAW_DISTANCE) {
             return null;
         }
         double podX = Mth.lerp(partial, pod.xo, pod.getX());
         double podY = Mth.lerp(partial, pod.yo, pod.getY()) + pod.getBbHeight() / 2.0;
         double podZ = Mth.lerp(partial, pod.zo, pod.getZ());
-        double personX = Mth.lerp(partial, person.xo, person.getX());
-        double personY = Mth.lerp(partial, person.yo, person.getY()) + person.getBbHeight() / 2.0;
-        double personZ = Mth.lerp(partial, person.zo, person.getZ());
-        double distanceX = personX - cameraX;
-        double distanceY = personY - cameraY;
-        double distanceZ = personZ - cameraZ;
-        if (distanceX * distanceX + distanceY * distanceY + distanceZ * distanceZ > DRAW_DISTANCE * DRAW_DISTANCE) {
-            return null;
-        }
-        TowChainRenderer.Chain chain = CHAINS.computeIfAbsent(person, key -> new TowChainRenderer.Chain());
-        TowChainLook look = TowChainLook.current();
+        TowChainRenderer.Chain chain = chains.computeIfAbsent(owner, key -> new TowChainRenderer.Chain());
         chain.look = look;
-        chain.cameraX = cameraX;
-        chain.cameraY = cameraY;
-        chain.cameraZ = cameraZ;
+        chain.cameraX = camera.x;
+        chain.cameraY = camera.y;
+        chain.cameraZ = camera.z;
         double radius = pod.chassis().width() / 2.0;
-        double between = Math.sqrt((personX - podX) * (personX - podX)
-                + (personY - podY) * (personY - podY)
-                + (personZ - podZ) * (personZ - podZ));
-        double chord = Math.max(0.0, between - radius - person.getBbWidth() / 2.0);
+        double between = Math.sqrt(
+                (end.x - podX) * (end.x - podX) + (end.y - podY) * (end.y - podY) + (end.z - podZ) * (end.z - podZ));
+        double chord = Math.max(0.0, between - radius - endRadius);
         double rope = Math.min(TetherTuning.DEFAULT.length(), chord * (1.0 + SAG_SHARE) + SAG_BASE);
-        chain.curve.build(
-                podX,
-                podY,
-                podZ,
-                radius,
-                personX,
-                personY,
-                personZ,
-                person.getBbWidth() / 2.0,
-                rope,
-                look.linkLength());
+        chain.curve.build(podX, podY, podZ, radius, end.x, end.y, end.z, endRadius, rope, look.linkLength());
         TowChainRenderer.light(level, chain, look);
         return chain;
     }

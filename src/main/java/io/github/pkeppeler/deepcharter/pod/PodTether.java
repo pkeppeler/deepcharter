@@ -320,7 +320,7 @@ public final class PodTether {
         return strain != null && (strain.snagged > 0 || strain.taut);
     }
 
-    private static boolean isWrecked(PodEntity pod) {
+    static boolean isWrecked(PodEntity pod) {
         return Wrecks.isWreck(pod) || pod.hull() <= 0f;
     }
 
