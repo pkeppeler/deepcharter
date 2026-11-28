@@ -6,7 +6,9 @@ import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
 import io.github.pkeppeler.deepcharter.client.ui.AboutTip;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
+import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
+import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -44,6 +46,11 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
     private static final Set<String> NEEDS_A_POD =
             Set.of(RepairStation.ware(RepairStation.SERVICE_ENGINE), RepairStation.ware(RepairStation.SCRAPE_FLUE));
 
+    /** A minute of armed write-off, so the terms stay on the screen through the check. */
+    private static final List<HangarView> HANGAR_STATES = List.of(
+            new HangarView(0, HangarView.MoleState.NONE, 0, 0),
+            new HangarView(0, HangarView.MoleState.WRECKED, 0, 1200));
+
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
@@ -70,15 +77,19 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
                         context.computeOnClient(client ->
                                 problem(fuel, fuel.tipBounds(), fuel.tipReadouts(), TerminalTypes.FUEL_PUMP)));
 
-                TerminalView console = view(HangarTerminal.TYPE);
-                context.setScreen(() -> new HangarScreen(console));
-                HangarScreen hangar =
-                        context.computeOnClient(client -> ClientSession.screen(client, HangarScreen.class));
-                context.runOnClient(client -> hangar.resize(size[0], size[1]));
-                ClientChecks.requireNone(
-                        "the hangar console" + at,
-                        context.computeOnClient(client ->
-                                problem(hangar, hangar.tipBounds(), hangar.tipReadouts(), HangarTerminal.TYPE)));
+                // With no Mole yet, and with a write-off armed: its terms are the longest status the tip must spare.
+                for (HangarView state : HANGAR_STATES) {
+                    TerminalView console = new TerminalView(
+                            BlockPos.ZERO, HangarTerminal.TYPE.id(), Optional.<TerminalFeature>of(state), List.of());
+                    context.setScreen(() -> new HangarScreen(console));
+                    HangarScreen hangar =
+                            context.computeOnClient(client -> ClientSession.screen(client, HangarScreen.class));
+                    context.runOnClient(client -> hangar.resize(size[0], size[1]));
+                    ClientChecks.requireNone(
+                            "the hangar console (" + state.mole() + ", armed " + state.armedTicksLeft() + ")" + at,
+                            context.computeOnClient(client ->
+                                    problem(hangar, hangar.tipBounds(), hangar.tipReadouts(), HangarTerminal.TYPE)));
+                }
             }
             context.setScreen(() -> null);
         }

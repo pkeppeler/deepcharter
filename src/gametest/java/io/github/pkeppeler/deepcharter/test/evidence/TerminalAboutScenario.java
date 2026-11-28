@@ -85,18 +85,31 @@ public class TerminalAboutScenario extends EvidenceScenario {
             TerminalView view = new TerminalView(
                     BlockPos.ZERO,
                     HangarTerminal.TYPE.id(),
-                    Optional.<TerminalFeature>of(new HangarView(0)),
+                    Optional.<TerminalFeature>of(new HangarView(0, HangarView.MoleState.NONE, 0, 0)),
                     List.of());
             context.setScreen(() -> new HangarScreen(view));
             HangarScreen screen = context.computeOnClient(client -> ClientSession.screen(client, HangarScreen.class));
             typeOut(context, screen.typewriter()::done);
-            focusRow(context, screen, "BUY REFURBISHED MOLE: $");
-            screenshot(context, "hangar-buy");
-            focusRow(context, screen, "RESTORE NEAREST WRECK");
+            focusRow(context, screen, "ASSEMBLE MOLE");
+            screenshot(context, "hangar-assemble");
+            focusRow(context, screen, "RESTORE WRECK");
             screenshot(context, "hangar-restore");
-            context.runOnClient(client -> screen.resize(SMALL_WIDTH, SMALL_HEIGHT));
-            focusRow(context, screen, "RESTORE NEAREST WRECK");
-            screenshot(context, "hangar-320-restore");
+            focusRow(context, screen, "SCRAP");
+            screenshot(context, "hangar-scrap");
+            // Armed for a minute: the write-off terms stand in the status line, and the tip must leave them clear.
+            TerminalView armed = new TerminalView(
+                    BlockPos.ZERO,
+                    HangarTerminal.TYPE.id(),
+                    Optional.<TerminalFeature>of(new HangarView(0, HangarView.MoleState.WRECKED, 0, 1200)),
+                    List.of());
+            context.setScreen(() -> new HangarScreen(armed));
+            HangarScreen confirm = context.computeOnClient(client -> ClientSession.screen(client, HangarScreen.class));
+            typeOut(context, confirm.typewriter()::done);
+            focusRow(context, confirm, "CONFIRM: $");
+            screenshot(context, "hangar-write-off-armed");
+            context.runOnClient(client -> confirm.resize(SMALL_WIDTH, SMALL_HEIGHT));
+            focusRow(context, confirm, "CONFIRM: $");
+            screenshot(context, "hangar-320-write-off-armed");
             context.setScreen(() -> null);
         }
     }

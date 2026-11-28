@@ -22,8 +22,9 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.core.BlockPos;
 
 /**
- * Client GameTest for #222: the hangar console shows the price of every action inside the screen, at the GUI size of an
- * 854 by 480 window (about 427 by 240) and at 320 by 240, the smallest GUI.
+ * Client GameTest for #222 and #1595: the hangar console shows the price of every action and the state of the player's
+ * Mole inside the screen, at the GUI size of an 854 by 480 window (about 427 by 240) and at 320 by 240, the smallest
+ * GUI.
  */
 public class HangarClientTest implements FabricClientGameTest {
     @Override
@@ -33,11 +34,29 @@ public class HangarClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context, "the client in the world", client -> client.player != null && client.level != null);
             // The advance line shows while the charter has advance left, and is gone once it is used.
-            for (int advanceLeft : new int[] {3, 0}) {
+            // Each state of the player's Mole has its own status line, which must fit as the others do.
+            record Shown(
+                    int advanceLeft,
+                    HangarView.MoleState mole,
+                    int writeOffTicksLeft,
+                    int armedTicksLeft,
+                    String key,
+                    int arguments) {}
+            for (Shown shown : new Shown[] {
+                new Shown(3, HangarView.MoleState.NONE, 0, 0, "screen.deepcharter.hangar.mole.none", 0),
+                new Shown(0, HangarView.MoleState.WORKING, 0, 0, "screen.deepcharter.hangar.mole.working", 0),
+                new Shown(3, HangarView.MoleState.WRECKED, 0, 0, "screen.deepcharter.hangar.mole.wrecked", 0),
+                // Armed for five minutes, so the screen is still armed when the test has looked.
+                new Shown(3, HangarView.MoleState.WRECKED, 0, 6_000, "screen.deepcharter.hangar.mole.armed", 2),
+                new Shown(
+                        0, HangarView.MoleState.WRITING_OFF, 24_000, 0, "screen.deepcharter.hangar.mole.writing_off", 1)
+            }) {
+                int advanceLeft = shown.advanceLeft();
                 TerminalView view = new TerminalView(
                         BlockPos.ZERO,
                         HangarTerminal.TYPE.id(),
-                        Optional.<TerminalFeature>of(new HangarView(advanceLeft)),
+                        Optional.<TerminalFeature>of(new HangarView(
+                                advanceLeft, shown.mole(), shown.writeOffTicksLeft(), shown.armedTicksLeft())),
                         List.of());
                 for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                     context.setScreen(() -> new HangarScreen(view));
@@ -51,15 +70,19 @@ public class HangarClientTest implements FabricClientGameTest {
                             client -> "typewriter text '" + screen.typewriter().text() + "'");
                     ClientChecks.requireNone(
                             "with " + advanceLeft + " advance left, at " + size[0] + " by " + size[1],
-                            context.computeOnClient(client -> problem(screen, advanceLeft)));
+                            context.computeOnClient(
+                                    client -> problem(screen, advanceLeft, shown.key(), shown.arguments())));
                 }
             }
             context.setScreen(() -> null);
         }
     }
 
-    /** Every button and price or advance line lies inside the screen, a button holds its whole label, and no price line is under a button. */
-    private static Optional<String> problem(HangarScreen screen, int advanceLeft) {
+    /**
+     * Every button and price, advance or Mole status line lies inside the screen, a button holds its whole label, and
+     * no price line is under a button.
+     */
+    private static Optional<String> problem(HangarScreen screen, int advanceLeft, String moleKey, int moleArguments) {
         Font font = Minecraft.getInstance().font;
         List<Button> buttons = ClientChecks.buttons(screen);
         for (Button button : buttons) {
@@ -75,6 +98,10 @@ public class HangarClientTest implements FabricClientGameTest {
         }
         List<DrawnText.Drawn> priceLines = HangarDrawn.priceLines(screen);
         List<DrawnText.Drawn> advanceLines = HangarDrawn.advanceLines(screen);
+        List<DrawnText.Drawn> moleLines = HangarDrawn.moleLines(screen, moleKey, moleArguments);
+        if (moleLines.isEmpty()) {
+            return Optional.of("the screen shows no line for " + moleKey);
+        }
         if (priceLines.isEmpty()) {
             return Optional.of("the screen shows no restore prices");
         }
@@ -97,6 +124,7 @@ public class HangarClientTest implements FabricClientGameTest {
         }
         List<DrawnText.Drawn> drawn = new ArrayList<>(priceLines);
         drawn.addAll(advanceLines);
+        drawn.addAll(moleLines);
         for (DrawnText.Drawn line : drawn) {
             Optional<String> problem = ClientChecks.textLeavesScreen(
                             screen, "the price line", line.box().x(), line.box().y(), line.text())
