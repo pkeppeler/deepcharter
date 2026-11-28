@@ -42,8 +42,8 @@ public class PodDriveSmoothDrivesClientTest implements FabricClientGameTest {
     /** Long enough for three slabs of wall and the approach to it. */
     private static final int DRILL_TICKS = 190;
 
-    /** A stall across the pod's arrival at the wall, which it reaches about 20 ticks into the drive. */
-    private static final int WALL_STALL_AT_TICK = 16;
+    /** A stall across the pod's arrival at the wall, which it reaches about 38 ticks into the drive. */
+    private static final int WALL_STALL_AT_TICK = 34;
 
     private static final int WALL_STALL_TICKS = 6;
 

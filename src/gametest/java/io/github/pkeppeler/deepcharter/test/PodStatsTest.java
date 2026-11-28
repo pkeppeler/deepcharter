@@ -165,8 +165,7 @@ public class PodStatsTest {
         MockPlayer pilot = seatPilot(helper, pod);
         Vec3 start = pod.position();
         pilot.setInput(FORWARD);
-        // Five ticks keep the pod on the small floor at twice the cruise speed.
-        int ticks = 5;
+        int ticks = 10;
         helper.runAfterDelay(ticks, () -> {
             try {
                 double moved = pod.position().subtract(start).horizontalDistance();

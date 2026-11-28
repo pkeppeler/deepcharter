@@ -46,6 +46,9 @@ public class BlastingChargeTest {
     private static final double FAR = 9.5;
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 400;
+
+    /** A hull under every guard, so a refusal's numbers are told apart: the guard, then this. */
+    private static final float HULL_LOW = 15f;
     /** The lowest row the blast clears, under the pod's feet. */
     private static final int BOTTOM = -TUNING.chargeDepth();
 
@@ -245,8 +248,9 @@ public class BlastingChargeTest {
     }
 
     /**
-     * A charge is never a suicide button (#1458): a pod left sitting on a full-depth charge takes the blast and then falls the
-     * {@code chargeDepth} rows, braked only by the ground cushion. At exactly that cost the charge is refused; just over it the pod lives through both.
+     * A charge is never a suicide button (#1458): a pod left sitting on a full-depth charge takes the blast and then
+     * falls the {@code chargeDepth} rows, with no braking. At exactly that cost the charge is refused; just over it
+     * the pod lives through both.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodJustOverTheGuardSurvivesTheBlastAndTheDrop(GameTestHelper helper) {
@@ -258,6 +262,10 @@ public class BlastingChargeTest {
                 level -> {},
                 pod -> {
                     guard[0] = PodCharge.wreckingHull(pod, TUNING, TUNING.chargeDepth());
+                    // Independent literal: the blast's 20 and a 4 row fall's 1.2 (70 hull a block a tick over 0.7).
+                    if (Math.abs(guard[0] - 21.2f) > 0.05f) {
+                        throw failure(helper, "the guard of a 4 row hole should be 21.2 hull, it is %.2f", guard[0]);
+                    }
                     ChargeUse.refuseAtGuardThenClearIt(helper, pod, Consumable.BLASTING_CHARGE, guard[0]);
                 },
                 pod -> {},
@@ -368,9 +376,10 @@ public class BlastingChargeTest {
                 level.setBlock(cell(x, -1, 0), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
                 step[0] = 10;
             } else if (step[0] == 10) {
-                pod[0].setHull(PodCharge.wreckingHull(pod[0], TUNING, TUNING.chargeDepth()));
+                pod[0].setHull(HULL_LOW);
+                // The refusal says what the blast and the drop cost and what the pod has.
                 pending[0] = expectRefusedAndKept(
-                        helper, pilot, "a hull no more than the blast and the drop", "charge_hull_low");
+                        helper, pilot, "a hull no more than the blast and the drop", "charge_hull_low", "21.2", "15.0");
                 pod[0].setHull(pod[0].maxHull());
                 step[0] = 11;
             } else if (step[0] == 11) {
@@ -399,7 +408,8 @@ public class BlastingChargeTest {
     }
 
     /** Uses a charge that must be refused and stay in the pack; returns the message that the bar should show. */
-    private static Component expectRefusedAndKept(GameTestHelper helper, MockPlayer pilot, String what, String key) {
+    private static Component expectRefusedAndKept(
+            GameTestHelper helper, MockPlayer pilot, String what, String key, Object... args) {
         if (ChargeUse.use(pilot.player(), Consumable.BLASTING_CHARGE).consumesAction()) {
             throw failure(helper, "a charge should be refused with %s", what);
         }
@@ -407,6 +417,6 @@ public class BlastingChargeTest {
             throw failure(helper, "a refused charge (%s) must stay in the pack", what);
         }
         pilot.player().getInventory().clearContent();
-        return Component.translatable("message.deepcharter.repair." + key);
+        return Component.translatable("message.deepcharter.repair." + key, args);
     }
 }

@@ -49,6 +49,9 @@ public class ShapedChargeTest {
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 400;
 
+    /** A hull under every guard, so a refusal's numbers are told apart: the guard, then this. */
+    private static final float HULL_LOW = 15f;
+
     /** What a test checks once the charge has blown, with the pod and the hull it had when the charge was set. */
     private interface Verify {
         void check(GameTestHelper helper, ServerLevel level, PodEntity pod, float hullAtSet);
@@ -281,8 +284,9 @@ public class ShapedChargeTest {
     }
 
     /**
-     * A charge is never a suicide button (#1458): a pod left sitting on a shaped charge over a full {@code shapedDepth} column takes the blast
-     * and then falls the whole column, braked only by the ground cushion. At exactly that cost the charge is refused; just over it the pod lives through both.
+     * A charge is never a suicide button (#1458): a pod left sitting on a shaped charge over a full
+     * {@code shapedDepth} column takes the blast and then falls the whole column, with no braking. At exactly that
+     * cost the charge is refused; just over it the pod lives through both.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodJustOverTheGuardSurvivesTheBlastAndTheDropDownAFullColumn(GameTestHelper helper) {
@@ -301,10 +305,14 @@ public class ShapedChargeTest {
                 },
                 pod -> {
                     guard[0] = PodCharge.wreckingHull(pod, TUNING, depth);
+                    // Independent literal: the blast's 20 and a 12 row fall's 34.65 (70 hull a block a tick over 0.7).
+                    if (Math.abs(guard[0] - 54.65f) > 0.05f) {
+                        throw failure(helper, "the guard of a 12 row column should be 54.65, it is %.2f", guard[0]);
+                    }
                     if (guard[0] <= TUNING.chargeDamage()) {
                         throw failure(
                                 helper,
-                                "the %d row drop should cost hull over the cushion, the guard is only %.2f",
+                                "the %d row drop should cost hull over the blast alone, the guard is only %.2f",
                                 depth,
                                 guard[0]);
                     }
@@ -382,11 +390,11 @@ public class ShapedChargeTest {
             } else if (step[0] == 2) {
                 pending[0] = expectRefusedAndKept(helper, pilot, "a run that ends on lava", "charge_opens_lava");
                 level.setBlock(cell(x, -4, 0), Blocks.STONE.defaultBlockState(), 2);
-                pod[0].setHull(PodCharge.wreckingHull(pod[0], TUNING, 3)); // the 3 row run: a drop too short to hurt
+                pod[0].setHull(HULL_LOW); // below the blast alone: the 3 row run is a drop too short to hurt
                 step[0] = 3;
             } else if (step[0] == 3) {
                 pending[0] = expectRefusedAndKept(
-                        helper, pilot, "a hull no more than the blast and the drop", "charge_hull_low");
+                        helper, pilot, "a hull no more than the blast and the drop", "charge_hull_low", "20.0", "15.0");
                 pod[0].setHull(pod[0].maxHull());
                 pod[0].setPos(pod[0].getX(), pod[0].getY() + 3, pod[0].getZ());
                 step[0] = 4;
@@ -461,7 +469,8 @@ public class ShapedChargeTest {
     }
 
     /** Uses a shaped charge that must be refused and stay in the pack; returns the message that the bar should show. */
-    private static Component expectRefusedAndKept(GameTestHelper helper, MockPlayer pilot, String what, String key) {
+    private static Component expectRefusedAndKept(
+            GameTestHelper helper, MockPlayer pilot, String what, String key, Object... args) {
         if (ChargeUse.use(pilot.player(), Consumable.SHAPED_CHARGE).consumesAction()) {
             throw failure(helper, "a shaped charge should be refused with %s", what);
         }
@@ -469,6 +478,6 @@ public class ShapedChargeTest {
             throw failure(helper, "a refused charge (%s) must stay in the pack", what);
         }
         pilot.player().getInventory().clearContent();
-        return Component.translatable("message.deepcharter.repair." + key);
+        return Component.translatable("message.deepcharter.repair." + key, args);
     }
 }
