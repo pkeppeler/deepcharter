@@ -949,7 +949,7 @@ carried_m=$(printf 'd%.0s' {1..40})
 carry_env=("STUB_COMMENT=review-passed $carried_p" STUB_FETCH_HEAD=abc123 "STUB_REVLIST=abc123 $carried_p $carried_m" STUB_MTREE=tree1 STUB_TREE=tree1)
 run_check "${carry_env[@]}"
 exited "carry: a clean merge of main on a passed head passes the gate" 0
-printed "carry: the check says where the pass came from" "review-passed: yes (carried from ccccccccc across a clean merge of origin/main)"
+printed "carry: the check says where the pass came from" "review-passed: yes (carried from ccccccccc across: clean merge of origin/main)"
 run_script "${carry_env[@]}"
 exited "carry: the merge goes ahead" 0
 merged_via_rest "carry: merged through the pinned sha"
@@ -969,7 +969,7 @@ run_carry_mark() {
 }
 run_carry_mark "${carry_env[@]}"
 exited "mark --carry: a carriable head is marked" 0
-printed "mark --carry: names the carried pass" "Carrying the pass of ccccccccc to abc123"
+printed "mark --carry: names the carried pass" "Carrying the pass of ccccccccc to abc123 across: clean merge of origin/main"
 logged "mark --carry: comments the head's own pass" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed abc123"
 run_carry_mark "${carry_env[@]}" STUB_MTREE_RC=1
 exited "mark --carry: a conflicted merge is refused" 1
