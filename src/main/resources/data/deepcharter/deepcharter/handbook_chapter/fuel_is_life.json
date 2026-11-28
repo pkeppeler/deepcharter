@@ -8,10 +8,7 @@
       "id": "deepcharter:handbook/fuel_is_life/refuel_mole",
       "text": {
         "translate": "deepcharter.handbook.directive.fuel_is_life.refuel_mole"
-      },
-      "targets": [
-        { "item": "deepcharter:tow_cable", "count": 1 }
-      ]
+      }
     },
     {
       "id": "deepcharter:handbook/fuel_is_life/fly_mole",

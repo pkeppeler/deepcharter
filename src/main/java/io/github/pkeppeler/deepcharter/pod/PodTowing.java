@@ -246,9 +246,7 @@ public final class PodTowing {
 
         public Component message() {
             String key = "message.deepcharter.towing.refused." + name().toLowerCase(Locale.ROOT);
-            return this == TOO_FAR
-                    ? Component.translatable(key, (int) Math.floor(reach(TowTuning.DEFAULT)))
-                    : Component.translatable(key);
+            return this == TOO_FAR ? Component.translatable(key, reachBlocks()) : Component.translatable(key);
         }
     }
 
@@ -457,6 +455,11 @@ public final class PodTowing {
     /** Blocks from the tower within which a cable fits: {@link TowTuning#reachFor} for the widest chassis, so a wide chassis still trails within it. */
     private static double reach(TowTuning tuning) {
         return tuning.reachFor(Widest.CHASSIS);
+    }
+
+    /** Whole blocks within which two pods can be hooked, as the refusal says it and the handbook teaches it. */
+    public static int reachBlocks() {
+        return (int) Math.floor(reach(TowTuning.DEFAULT));
     }
 
     /** The pods on a cable from {@code tower} that are within its reach. */

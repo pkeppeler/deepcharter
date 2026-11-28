@@ -16,7 +16,6 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
-import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -387,7 +386,6 @@ public class QuestMapClientTest implements FabricClientGameTest {
                     "a click on the iron icon opens the inventory at iron's recipes, got " + lookup);
             context.setScreen(() -> null);
             everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(context);
-            theFuelChapterShowsTheTowCableOnItsFirstStep(context);
             anyOfStepIsOneSlotWhoseIconCyclesAndWhoseClickOpensTheShownRecipe(context);
         }
     }
@@ -398,7 +396,13 @@ public class QuestMapClientTest implements FabricClientGameTest {
      * parts catalogue (#1260).
      */
     private static void everyShippedItemStepShowsItsTargetsAndAClickOpensTheRecipe(ClientGameTestContext context) {
-        Map<Identifier, HandbookChapter> shipped = shippedChapters(context);
+        Map<Identifier, HandbookChapter> shipped = context.computeOnClient(client -> {
+            Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
+            HandbookChapters.all(Objects.requireNonNull(client.getConnection()).registryAccess()).stream()
+                    .filter(entry -> !entry.key().identifier().getPath().equals("sample"))
+                    .forEach(entry -> chapters.put(entry.key().identifier(), entry.value()));
+            return chapters;
+        });
         List<HandbookChapter.Entry> steps = shipped.values().iterator().next().directives();
         int clicked = 0;
         for (int i = 0; i < steps.size(); i++) {
@@ -408,84 +412,43 @@ public class QuestMapClientTest implements FabricClientGameTest {
             }
             Set<Identifier> before = new HashSet<>();
             steps.subList(0, i).forEach(earlier -> before.add(earlier.id()));
-            clickFirstTarget(context, shipped, 1, step, before);
+            context.runOnClient(client -> {
+                List<HandbookPage> pages = HandbookPages.of(shipped, before);
+                HandbookScreen screen =
+                        new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
+                screen.init(WIDTH, HEIGHT);
+                for (int index = 0; index < pages.size(); index++) {
+                    if (pages.get(index) instanceof HandbookPage.Chapter map && map.number() == 1) {
+                        screen.goTo(index);
+                    }
+                }
+                settle(screen);
+                List<Drawn> counts = DrawnText.of(screen).stream()
+                        .filter(entry -> entry.text().matches("\\d+/\\d+"))
+                        .toList();
+                require(
+                        counts.size() == step.targets().size(),
+                        step.id() + " shows one counted item for each target, " + step.targets() + ", got "
+                                + counts.stream().map(Drawn::text).toList());
+                Box count = counts.getFirst().box();
+                int iconSize = QuestMapTuning.current().itemIconSize();
+                screen.mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
+            });
+            ClientWait.screen(context, InventoryScreen.class);
+            context.waitTicks(3);
+            CataloguePanel panel = CatalogueScene.panel(context);
+            CatalogueState.Lookup lookup =
+                    context.computeOnClient(client -> panel.state().lookup());
+            List<Item> accepted = step.targets().getFirst().items();
+            require(
+                    lookup != null && accepted.contains(lookup.item()) && lookup.mode() == CatalogueState.Mode.RECIPES,
+                    step.id() + ": a click on its first item opens the recipes of one of " + accepted + ", got "
+                            + lookup);
+            context.setScreen(() -> null);
             clicked++;
         }
         int chapterOne = HandbookChaptersOneToFiveTest.chapterOne().size();
         require(clicked >= chapterOne, "chapter 1 has at least " + chapterOne + " item steps, clicked " + clicked);
-    }
-
-    /**
-     * #1600: the Fuel Is Life chapter teaches the tow cable on its first step. Its card shows the cable, and a click
-     * on it opens the cable's recipes in the parts catalogue, so a player meets the rescue before the first stranding.
-     */
-    private static void theFuelChapterShowsTheTowCableOnItsFirstStep(ClientGameTestContext context) {
-        Map<Identifier, HandbookChapter> shipped = shippedChapters(context);
-        HandbookChapter fuel = Objects.requireNonNull(
-                shipped.get(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "fuel_is_life")),
-                "chapter 4 is shipped");
-        HandbookChapter.Entry first = fuel.directives().getFirst();
-        require(
-                first.targets().stream().anyMatch(slot -> slot.items().contains(PodRegistry.TOW_CABLE)),
-                "the first Fuel Is Life step names the tow cable, got " + first.targets());
-        Set<Identifier> before = new HashSet<>();
-        shipped.entrySet().stream()
-                .takeWhile(entry -> entry.getValue() != fuel)
-                .forEach(entry -> entry.getValue().directives().forEach(step -> before.add(step.id())));
-        clickFirstTarget(context, shipped, 4, first, before);
-    }
-
-    private static Map<Identifier, HandbookChapter> shippedChapters(ClientGameTestContext context) {
-        return context.computeOnClient(client -> {
-            Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
-            HandbookChapters.all(Objects.requireNonNull(client.getConnection()).registryAccess()).stream()
-                    .filter(entry -> !entry.key().identifier().getPath().equals("sample"))
-                    .forEach(entry -> chapters.put(entry.key().identifier(), entry.value()));
-            return chapters;
-        });
-    }
-
-    /**
-     * Opens the handbook on chapter {@code number} with {@code before} done, checks {@code step}'s card shows one
-     * counted item for each target, clicks the first, and checks the catalogue opens on that item's recipes.
-     */
-    private static void clickFirstTarget(
-            ClientGameTestContext context,
-            Map<Identifier, HandbookChapter> shipped,
-            int number,
-            HandbookChapter.Entry step,
-            Set<Identifier> before) {
-        context.runOnClient(client -> {
-            List<HandbookPage> pages = HandbookPages.of(shipped, before);
-            HandbookScreen screen = new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
-            screen.init(WIDTH, HEIGHT);
-            for (int index = 0; index < pages.size(); index++) {
-                if (pages.get(index) instanceof HandbookPage.Chapter map && map.number() == number) {
-                    screen.goTo(index);
-                }
-            }
-            settle(screen);
-            List<Drawn> counts = DrawnText.of(screen).stream()
-                    .filter(entry -> entry.text().matches("\\d+/\\d+"))
-                    .toList();
-            require(
-                    counts.size() == step.targets().size(),
-                    step.id() + " shows one counted item for each target, " + step.targets() + ", got "
-                            + counts.stream().map(Drawn::text).toList());
-            Box count = counts.getFirst().box();
-            int iconSize = QuestMapTuning.current().itemIconSize();
-            screen.mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
-        });
-        ClientWait.screen(context, InventoryScreen.class);
-        context.waitTicks(3);
-        CataloguePanel panel = CatalogueScene.panel(context);
-        CatalogueState.Lookup lookup =
-                context.computeOnClient(client -> panel.state().lookup());
-        List<Item> accepted = step.targets().getFirst().items();
-        require(
-                lookup != null && accepted.contains(lookup.item()) && lookup.mode() == CatalogueState.Mode.RECIPES,
-                step.id() + ": a click on its first item opens the recipes of one of " + accepted + ", got " + lookup);
-        context.setScreen(() -> null);
     }
 
     /**

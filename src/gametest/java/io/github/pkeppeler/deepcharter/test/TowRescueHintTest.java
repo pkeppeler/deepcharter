@@ -9,6 +9,8 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -19,6 +21,7 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -79,6 +82,17 @@ public class TowRescueHintTest {
                 .count();
     }
 
+    /** The arguments of the first chat line with this key, or fail. */
+    private static Object[] firstArgs(GameTestHelper helper, MockPlayer player, String key) {
+        return player.chatMessages().stream()
+                .map(message -> message.getContents())
+                .filter(contents -> contents instanceof TranslatableContents translatable
+                        && translatable.getKey().equals(key))
+                .map(contents -> ((TranslatableContents) contents).getArgs())
+                .findFirst()
+                .orElseThrow(() -> failure(helper, "no chat line %s", key));
+    }
+
     /** What a test checks once the pod has ticked {@link #SETTLE_TICKS} after its set-up. */
     private interface Check {
         void run(PodEntity pod);
@@ -90,15 +104,23 @@ public class TowRescueHintTest {
     }
 
     /**
-     * Puts an owned pod in the layer at {@code x}, seats the director in it when {@code seated}, runs {@code act} on
-     * the first tick the chunk entity-ticks, and {@code check} {@link #SETTLE_TICKS} ticks later.
+     * Puts a pod in the layer at {@code x}, seats the director in it when {@code seated}, registers it to the
+     * charter when {@code owned}, runs {@code act} on the first tick the chunk entity-ticks, and {@code check}
+     * {@link #SETTLE_TICKS} ticks later.
      */
     private static void inLayer(GameTestHelper helper, Crew crew, double x, boolean seated, Check act, Check check) {
-        inLayer(helper, crew, x, seated, act, (pod, sinceSetUp) -> {}, check);
+        inLayer(helper, crew, x, seated, true, act, (pod, sinceSetUp) -> {}, check);
     }
 
     private static void inLayer(
-            GameTestHelper helper, Crew crew, double x, boolean seated, Check act, Script script, Check check) {
+            GameTestHelper helper,
+            Crew crew,
+            double x,
+            boolean seated,
+            boolean owned,
+            Check act,
+            Script script,
+            Check check) {
         double z = 120000.5;
         ServerLevel layer = TestLayers.level(helper.getLevel().getServer(), LAYER);
         crew.director().teleportTo(layer, TestLayers.vec(LAYER, x, 8, z), 0, 0);
@@ -109,7 +131,9 @@ public class TowRescueHintTest {
             pod[0] = TestEntities.create(PodRegistry.POD, layer);
             pod[0].setPos(x, TestLayers.worldY(LAYER, 8), z);
             layer.addFreshEntity(pod[0]);
-            PodComponents.register(pod[0], crew.charter().id());
+            if (owned) {
+                PodComponents.register(pod[0], crew.charter().id());
+            }
             if (seated) {
                 crew.director().player().startRiding(pod[0], true, false);
             }
@@ -131,20 +155,42 @@ public class TowRescueHintTest {
     public void aPodStrandedDeepTellsItsCharterOnceAndNobodyElse(GameTestHelper helper) {
         Crew crew = crew(helper, "stranded");
         // The pilot is seated with an empty tank: the pod's own tick strands it, as a real run dry does.
-        inLayer(helper, crew, 120000.5, true, pod -> pod.setFuel(0f), pod -> {
-            expect(helper, pod.stranded(), "the pod should have run dry and be stranded");
-            expect(
-                    helper,
-                    told(crew.director(), STRANDED) == 1,
-                    "the pilot is told once, was %d",
-                    told(crew.director(), STRANDED));
-            expect(
-                    helper,
-                    told(crew.crewmate(), STRANDED) == 1,
-                    "the crewmate is told once, was %d",
-                    told(crew.crewmate(), STRANDED));
-            expect(helper, told(crew.stranger(), STRANDED) == 0, "another charter is told nothing");
-        });
+        inLayer(
+                helper,
+                crew,
+                120000.5,
+                true,
+                pod -> {
+                    pod.setCustomName(Component.literal("Dauntless"));
+                    pod.setFuel(0f);
+                },
+                pod -> {
+                    expect(helper, pod.stranded(), "the pod should have run dry and be stranded");
+                    Object[] args = firstArgs(helper, crew.crewmate(), STRANDED);
+                    expect(
+                            helper,
+                            args[0] instanceof Component name
+                                    && name.getString().equals("Dauntless"),
+                            "the line names the pod, got %s",
+                            args[0]);
+                    expect(
+                            helper,
+                            Integer.valueOf(LAYER).equals(args[1]),
+                            "the line names layer %d, got %s",
+                            LAYER,
+                            args[1]);
+                    expect(
+                            helper,
+                            told(crew.director(), STRANDED) == 1,
+                            "the pilot is told once, was %d",
+                            told(crew.director(), STRANDED));
+                    expect(
+                            helper,
+                            told(crew.crewmate(), STRANDED) == 1,
+                            "the crewmate is told once, was %d",
+                            told(crew.crewmate(), STRANDED));
+                    expect(helper, told(crew.stranger(), STRANDED) == 0, "another charter is told nothing");
+                });
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 80)
@@ -160,16 +206,15 @@ public class TowRescueHintTest {
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 80)
-    public void aPilotWhoLeavesADeepPodTellsTheCharterOncePerStay(GameTestHelper helper) {
+    public void aPilotWhoLeavesALowPodDeepTellsTheCharterOncePerStay(GameTestHelper helper) {
         Crew crew = crew(helper, "left");
         inLayer(
                 helper,
                 crew,
                 120080.5,
                 true,
-                pod -> {
-                    pod.setFuel(50f);
-                },
+                true,
+                pod -> pod.setFuel(PodTuning.DEFAULT.fuel().lowFuelPercent() / 2),
                 (pod, sinceSetUp) -> {
                     // Out after the pod has ticked with the pilot aboard, back in, and out again.
                     switch (sinceSetUp) {
@@ -191,7 +236,136 @@ public class TowRescueHintTest {
                             told(crew.crewmate(), LEFT));
                     expect(helper, told(crew.stranger(), LEFT) == 0, "another charter is told nothing");
                     expect(helper, told(crew.crewmate(), STRANDED) == 0, "a pod with fuel is not stranded");
+                    Object[] args = firstArgs(helper, crew.crewmate(), LEFT);
+                    expect(
+                            helper,
+                            args[0] instanceof Component name
+                                    && name.getContents() instanceof TranslatableContents unnamed
+                                    && unnamed.getKey().equals("deepcharter.pod.rescue.unnamed"),
+                            "an unnamed pod is called a pod, got %s",
+                            args[0]);
                 });
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 80)
+    public void aPilotWhoLeavesAHealthyDeepPodTellsNothing(GameTestHelper helper) {
+        Crew crew = crew(helper, "healthy");
+        inLayer(
+                helper,
+                crew,
+                120200.5,
+                true,
+                true,
+                pod -> pod.setFuel(50f),
+                (pod, sinceSetUp) -> {
+                    if (sinceSetUp == 3) {
+                        crew.director().player().stopRiding();
+                    }
+                },
+                pod -> {
+                    for (String key : List.of(STRANDED, LEFT)) {
+                        expect(
+                                helper,
+                                told(crew.director(), key) == 0,
+                                "a healthy pod left deep says nothing: %s",
+                                key);
+                        expect(
+                                helper,
+                                told(crew.crewmate(), key) == 0,
+                                "a healthy pod left deep says nothing: %s",
+                                key);
+                    }
+                });
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 80)
+    public void aPodStrandedAgainAfterACableIsToldAgain(GameTestHelper helper) {
+        Crew crew = crew(helper, "again");
+        PodEntity[] tower = {null};
+        inLayer(
+                helper,
+                crew,
+                120240.5,
+                true,
+                true,
+                pod -> pod.setFuel(0f),
+                (pod, sinceSetUp) -> {
+                    switch (sinceSetUp) {
+                        case 5 -> {
+                            tower[0] = TestEntities.create(PodRegistry.POD, (ServerLevel) pod.level());
+                            tower[0].setPos(pod.getX() + 3, pod.getY(), pod.getZ());
+                            pod.level().addFreshEntity(tower[0]);
+                            PodTowing.attach(tower[0], pod);
+                        }
+                        case 10 -> PodTowing.detach(pod);
+                        default -> {}
+                    }
+                },
+                pod -> {
+                    expect(helper, pod.stranded() && !PodTowing.isTowed(pod), "the pod is stranded and off the cable");
+                    expect(
+                            helper,
+                            told(crew.crewmate(), STRANDED) == 2,
+                            "one line before the cable and one after it, got %d",
+                            told(crew.crewmate(), STRANDED));
+                });
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 80)
+    public void aPodRefuelledAndStrandedAgainInOneStayIsToldOnce(GameTestHelper helper) {
+        Crew crew = crew(helper, "refuel");
+        inLayer(
+                helper,
+                crew,
+                120280.5,
+                true,
+                true,
+                pod -> pod.setFuel(0f),
+                (pod, sinceSetUp) -> {
+                    switch (sinceSetUp) {
+                        case 5 -> {
+                            pod.setFuel(50f);
+                            pod.setStranded(false);
+                        }
+                        case 10 -> pod.setFuel(0f);
+                        default -> {}
+                    }
+                },
+                pod -> {
+                    expect(helper, pod.stranded(), "the pod ran dry again");
+                    expect(
+                            helper,
+                            told(crew.crewmate(), STRANDED) == 1,
+                            "the same stay is told once, got %d",
+                            told(crew.crewmate(), STRANDED));
+                });
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 80)
+    public void anUnownedPodStrandedDeepTellsNobody(GameTestHelper helper) {
+        Crew crew = crew(helper, "unowned");
+        inLayer(helper, crew, 120320.5, true, false, pod -> pod.setFuel(0f), (pod, sinceSetUp) -> {}, pod -> {
+            expect(helper, pod.stranded(), "the pod ran dry");
+            expect(helper, told(crew.director(), STRANDED) == 0, "a pod with no owner tells no charter");
+            expect(helper, told(crew.crewmate(), STRANDED) == 0, "a pod with no owner tells no charter");
+        });
+    }
+
+    /** The handbook's procedure quotes the tuned window and reach, so a retune that forgets the text fails here. */
+    @GameTest
+    public void theHandbookTeachesTheWindowAndReachTheCableHas(GameTestHelper helper) {
+        String page = HandbookChaptersOneToFiveTest.lang()
+                .get("deepcharter.handbook.chapter.deepcharter.fuel_is_life.text.3")
+                .getAsString();
+        int seconds = TowTuning.DEFAULT.pickTicks() / 20;
+        expect(helper, page.contains("within " + seconds + " seconds"), "the page says the %d second window", seconds);
+        expect(
+                helper,
+                page.contains("within " + PodTowing.reachBlocks() + " blocks"),
+                "the page says the %d block reach",
+                PodTowing.reachBlocks());
+        expect(helper, page.contains("holds the cable"), "the page says the cable is held");
+        helper.succeed();
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 80)
