@@ -137,7 +137,9 @@ public final class PodCharge {
         float wrecking = wreckingHull(pod, tuning, dropRows(level, blocks, kind, site));
         if (pod.hull() <= wrecking) {
             return Optional.of(Component.translatable(
-                    "message.deepcharter.repair.charge_hull_low",
+                    site.facing() == Direction.DOWN
+                            ? "message.deepcharter.repair.charge_hull_low"
+                            : "message.deepcharter.repair.charge_hull_low_sideways",
                     String.format(Locale.ROOT, "%.1f", wrecking),
                     String.format(Locale.ROOT, "%.1f", pod.hull())));
         }

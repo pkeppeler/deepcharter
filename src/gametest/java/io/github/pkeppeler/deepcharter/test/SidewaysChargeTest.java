@@ -406,6 +406,21 @@ public class SidewaysChargeTest {
             Consumer<ServerLevel> build,
             String key,
             BlockPos rock) {
+        refusal(helper, x, facing, yawOff, charge, build, pod -> {}, key, rock);
+    }
+
+    /** As {@link #refusal}, with {@code prepare} run on the resting pod before the use, and the refusal's arguments. */
+    private static void refusal(
+            GameTestHelper helper,
+            int x,
+            Direction facing,
+            float yawOff,
+            Consumable charge,
+            Consumer<ServerLevel> build,
+            Consumer<PodEntity> prepare,
+            String key,
+            BlockPos rock,
+            Object... args) {
         ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer pilot = MockPlayers.join(helper, "side-refused-" + x);
         Vec3 at = new Vec3(x, FLOOR, Z);
@@ -428,6 +443,7 @@ public class SidewaysChargeTest {
                 return;
             }
             if (step[0] == 0) {
+                prepare.accept(pod[0]);
                 if (ChargeUse.use(pilot.player(), charge).consumesAction()) {
                     throw failure(helper, "the charge should be refused with %s", key);
                 }
@@ -438,8 +454,8 @@ public class SidewaysChargeTest {
                 return;
             }
             // The mock records an action-bar message on its own tick, so a refusal is read on the next one.
-            String line =
-                    Component.translatable("message.deepcharter.repair." + key).getString();
+            String line = Component.translatable("message.deepcharter.repair." + key, args)
+                    .getString();
             if (pilot.actionBarMessages().isEmpty()
                     || !pilot.actionBarMessages().getLast().getString().equals(line)) {
                 throw failure(helper, "the refusal should read '%s', the bar says %s", line, pilot.actionBarMessages());
@@ -517,5 +533,27 @@ public class SidewaysChargeTest {
                 level -> fillSlab(level, x, facing, 0, HazardBlocks.COMPANY_ROCK),
                 "charge_not_square",
                 cell(x, facing, 0, 0, 0));
+    }
+
+    /**
+     * The hull guard of a sideways charge counts the blast alone, as nothing opens under the pod, and its line says
+     * so: no drop into a hole.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSidewaysChargeIsRefusedOnAHullNoMoreThanTheBlastAndTheLineNamesNoDrop(GameTestHelper helper) {
+        int x = 4864;
+        Direction facing = Direction.EAST;
+        refusal(
+                helper,
+                x,
+                facing,
+                0f,
+                Consumable.BLASTING_CHARGE,
+                level -> fillSlab(level, x, facing, 0, HazardBlocks.COMPANY_ROCK),
+                pod -> pod.setHull(15f),
+                "charge_hull_low_sideways",
+                cell(x, facing, 0, 0, 0),
+                "20.0",
+                "15.0");
     }
 }
