@@ -172,8 +172,9 @@ public final class OreProcessor {
     }
 
     /**
-     * The processor's view: the work orders, the ore in the cargo of the readable pods parked here that the player may use, and
-     * their spoil and slag brick beside the brick in the player's pack. Never throws on unreadable saved data.
+     * The processor's view: the work orders, the ore in the cargo of the readable pods parked here that the player
+     * may use, and their spoil and slag brick beside the brick in the player's pack. Never throws on unreadable saved
+     * data.
      */
     public static ProcessorView view(
             MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
@@ -190,7 +191,7 @@ public final class OreProcessor {
         return new ProcessorView(WorkOrders.view(server, player, charter, pos), cargo, bricks(player, parked));
     }
 
-    /** The spoil and the racked brick of the parked pods whose lining can be read, and the brick in the player's pack. */
+    /** The spoil and racked brick of the parked pods whose lining can be read, and the brick in the player's pack. */
     private static ProcessorView.Bricks bricks(ServerPlayer player, List<PodEntity> parked) {
         int spoil = 0;
         int racked = 0;

@@ -153,8 +153,8 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
     }
 
     /**
-     * The readouts right of the gauge: the hold's mass, the hopper's spoil and the rack's slag brick, each store against
-     * its size, so a fused brick has a place on screen (#1649).
+     * The readouts right of the gauge: the hold's mass, the hopper's spoil and the rack's slag brick, each store
+     * against its size, so a fused brick has a place on screen (#1649).
      */
     public List<String> readouts() {
         PodLiningTuning lining = PodLiningTuning.DEFAULT;
@@ -261,8 +261,8 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
     }
 
     /**
-     * An empty part slot names what is there: the stock part, or nothing yet. The empty offhand names itself and the key
-     * that fills it.
+     * An empty part slot names what is there: the stock part, or nothing yet. The empty offhand names itself and the
+     * key that fills it.
      */
     @Override
     protected void extractTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {

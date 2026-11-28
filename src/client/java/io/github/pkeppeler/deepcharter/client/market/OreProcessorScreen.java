@@ -38,9 +38,9 @@ import net.minecraft.world.level.Level;
 
 /**
  * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons
- * and, at the foot of the price column, the two buttons that use a pod's spoil: slag brick and salvage crates. Where the
- * slag brick is (the parked pods' racks and the pack) sits on the title's row, so the result of MAKE SLAG BRICK stays on
- * screen. A button
+ * and, at the foot of the price column, the two buttons that use a pod's spoil: slag brick and salvage crates. Where
+ * the slag brick is (the parked pods' racks and the pack) sits on the title's row, so the result of MAKE SLAG BRICK
+ * stays on screen. A button
  * only asks the server; the server decides, and the account shown is the one it last synced, so it changes when a sale goes through.
  *
  * <p>WITHDRAW ORE swaps the sheet for a list of the ores the parked pods hold, each with buttons that move 1, 10 or all of it into the pack (#536). BACK returns to the sheet.
@@ -115,9 +115,9 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     }
 
     /**
-     * Where the slag brick is, as the server last sent it: the parked pods' racks against their size, and the pack. MAKE SLAG
-     * BRICK changes it, so the result stays on screen after the passing line (#1649). The long form names the brick; on a
-     * screen too narrow for it beside the title, the short form.
+     * Where the slag brick is, as the server last sent it: the parked pods' racks against their size, and the pack.
+     * MAKE SLAG BRICK changes it, so the result stays on screen after the passing line (#1649). The long form names
+     * the brick; on a screen too narrow for it beside the title, the short form.
      */
     public String bricksLine() {
         ProcessorView.Bricks bricks = view.feature(ProcessorView.class)

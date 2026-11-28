@@ -8,13 +8,14 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
 /**
- * What the ore processor adds to its view: the charter's work orders, the ore in the cargo of the pods parked at it, which the
- * WITHDRAW ORE screen lists, and where the slag brick is. The server decides every action; this only tells the screen what to
- * offer and what came of the last one.
+ * What the ore processor adds to its view: the charter's work orders, the ore in the cargo of the pods parked at it,
+ * which the WITHDRAW ORE screen lists, and where the slag brick is. The server decides every action; this only tells
+ * the screen what to offer and what came of the last one.
  *
  * @param orders the work orders
  * @param cargo  the ore the readable pods the player may use hold between them, by ore in the enum's order; an ore none holds is absent
- * @param bricks the spoil and slag brick of those pods and the brick in the player's pack, which MAKE SLAG BRICK changes (#1649)
+ * @param bricks the spoil and slag brick of those pods and the brick in the player's pack, which MAKE SLAG BRICK
+ *               changes (#1649)
  */
 public record ProcessorView(WorkOrdersView orders, List<Hold> cargo, Bricks bricks) implements TerminalFeature {
     public static final StreamCodec<ByteBuf, ProcessorView> STREAM_CODEC = StreamCodec.composite(
@@ -37,7 +38,7 @@ public record ProcessorView(WorkOrdersView orders, List<Hold> cargo, Bricks bric
     }
 
     /**
-     * The spoil and the slag brick the parked pods whose lining can be read hold between them, and the brick in the pack.
+     * The spoil and slag brick the parked pods whose lining can be read hold between them, and the brick in the pack.
      *
      * @param spoil    the spoil in their hoppers
      * @param racked   the bricks in their racks
