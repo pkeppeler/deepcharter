@@ -76,9 +76,17 @@ public final class HangarTerminal {
      * Players who pressed Write Off once, by the game time they did. Forgotten when the server stops; a lapsed one is
      * ignored.
      */
-    private static final Map<UUID, Long> ARMED = new HashMap<>();
+    private static final Map<UUID, Armed> ARMED = new HashMap<>();
+
+    /** A first press on Write Off: the wreck it was for and the game time, so each wreck needs its own two presses. */
+    private record Armed(UUID pod, long at) {}
 
     private HangarTerminal() {}
+
+    /** Forgets a first press on Write Off for {@code pod}: restored and wrecked again, it needs two presses anew. */
+    static void disarm(UUID pod) {
+        ARMED.values().removeIf(armed -> armed.pod().equals(pod));
+    }
 
     static void register() {
         TerminalActions.register(TYPE, ASSEMBLE_MOLE, HangarTerminal::assembleMole);
@@ -129,10 +137,12 @@ public final class HangarTerminal {
      * The ticks left of the player's first press on Write Off, 0 unless their Mole is a wreck with no write-off filed.
      */
     private static int armedTicksLeft(ServerPlayer player, Optional<HangarData.Slot> slot, long now) {
-        Long armedAt = ARMED.get(player.getUUID());
+        Armed armed = ARMED.get(player.getUUID());
         boolean wreckedUnfiled =
                 slot.map(held -> held.wrecked() && held.writeOff().isEmpty()).orElse(false);
-        return armedAt == null || !wreckedUnfiled ? 0 : (int) Math.max(0, ARM_WINDOW_TICKS - (now - armedAt));
+        return armed == null || !wreckedUnfiled || !slot.orElseThrow().pod().equals(armed.pod())
+                ? 0
+                : (int) Math.max(0, ARM_WINDOW_TICKS - (now - armed.at()));
     }
 
     private static Optional<Component> refuse(String reason, Object... args) {
@@ -287,6 +297,11 @@ public final class HangarTerminal {
         if (!wreck.cargo().isReadable()) {
             return refuse("wreck_unreadable");
         }
+        // The pack stays in the wreck until its pilot or the Mole's owner is online to be handed it.
+        if (Wrecks.packHasNoRecipient(
+                server, wreck, data.get().slotHolding(wreck.getUUID()).map(HangarData.Slot::player))) {
+            return refuse("pack_owner_away");
+        }
         for (ComponentTrack track : ComponentTrack.values()) {
             PodComponents.partOf(wreck, track)
                     .ifPresent(label -> wreck.level()
@@ -298,7 +313,6 @@ public final class HangarTerminal {
                                     ComponentItems.stackOf(track, label))));
         }
         handBackPack(server, data.get(), wreck);
-        Wrecks.dropPack(wreck);
         Wrecks.salvage(context.player(), wreck);
         Hangar.cancelWriteOff(server, data.get(), wreck.getUUID());
         data.get().release(wreck.getUUID());
@@ -338,9 +352,9 @@ public final class HangarTerminal {
         }
         // Press once to arm, with the terms in full; press again within the window to file.
         long now = server.overworld().getGameTime();
-        Long armedAt = ARMED.get(context.player().getUUID());
-        if (armedAt == null || now - armedAt > ARM_WINDOW_TICKS) {
-            ARMED.put(context.player().getUUID(), now);
+        Armed armed = ARMED.get(context.player().getUUID());
+        if (armed == null || !armed.pod().equals(held.get().pod()) || now - armed.at() > ARM_WINDOW_TICKS) {
+            ARMED.put(context.player().getUUID(), new Armed(held.get().pod(), now));
             // The terms are on the console's screen while it is armed; this line only says it is.
             context.player()
                     .sendOverlayMessage(Component.translatable(
@@ -364,7 +378,7 @@ public final class HangarTerminal {
     }
 
     /**
-     * Gives the wreck's pack back to its pilots, or the place holder for a pilot who is away, and tells each player who
+     * Gives the wreck's pack back to its pilots, or the Mole's owner for a pilot who is away, and tells each player who
      * got stacks.
      */
     private static void handBackPack(MinecraftServer server, HangarData data, PodEntity wreck) {

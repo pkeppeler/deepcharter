@@ -82,6 +82,7 @@ public final class Hangar {
      * A wreck was made a working pod again: its place says so, and a write-off filed for it is cancelled and refunded.
      */
     private static void onRestored(PodEntity pod) {
+        HangarTerminal.disarm(pod.getUUID());
         markWrecked(pod, false);
         if (pod.level() instanceof ServerLevel level) {
             HangarData.readable(level.getServer())

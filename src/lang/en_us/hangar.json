@@ -20,7 +20,7 @@
   "deepcharter.hangar.refusal.no_wreck": "There is no wreck near the console. Tow one here, or write off your own wreck if you cannot bring it home",
   "deepcharter.hangar.refusal.not_your_place": "That wreck holds another member's place. Only its owner, or the charter's Director, can scrap it",
   "deepcharter.hangar.refusal.not_your_wreck": "%s belongs to another charter",
-  "deepcharter.hangar.refusal.pack_owner_away": "The pilot's pack is in the wreck. Wait until the pilot or the place holder is online to restore it",
+  "deepcharter.hangar.refusal.pack_owner_away": "The pilot's pack is in the wreck. Wait until the pilot or the Mole's owner is online",
   "deepcharter.hangar.refusal.pod_failed": "The hangar could not make the pod",
   "deepcharter.hangar.refusal.restore_failed": "The hangar could not restore the wreck",
   "deepcharter.hangar.refusal.serial_held": "%s is already held by another pod",

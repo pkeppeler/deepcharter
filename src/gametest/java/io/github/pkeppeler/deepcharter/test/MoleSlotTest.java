@@ -734,7 +734,7 @@ public class MoleSlotTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void aDyingPilotsPackStaysInTheWreckForThemAndANobodyHomeRestoreWaits(GameTestHelper helper) {
+    public void aDyingPilotsPackStaysInTheWreckForThemAndANobodyHomeRestoreOrScrapWaits(GameTestHelper helper) {
         List<Told> told = new ArrayList<>();
         inTheHangar(
                 helper,
@@ -759,7 +759,8 @@ public class MoleSlotTest {
                     expect(
                             helper,
                             saved.entries().stream()
-                                            .allMatch(entry -> entry.pilot().equals(pilot.player().getUUID()))
+                                            .allMatch(entry -> entry.pilot()
+                                                    .equals(pilot.player().getUUID()))
                                     && packed(mole, Items.DIAMOND) == 5,
                             "the wreck holds the pilot's 5 diamonds, under the pilot's name");
                     expect(
@@ -781,7 +782,7 @@ public class MoleSlotTest {
                                     && packed(mole, Items.DIAMOND) == 5,
                             "no one else salvaging the wreck takes the pilot's pack");
 
-                    // The pilot is dead and so is the place holder (the same player): the pack has no one to go to.
+                    // The pilot is dead and so is the Mole's owner (the same player): the pack has no one to go to.
                     expectRefused(
                             helper,
                             act(mate.player(), console, HangarTerminal.RESTORE_WRECK),
@@ -792,19 +793,24 @@ public class MoleSlotTest {
                             Wrecks.isWreck(mole) && packed(mole, Items.DIAMOND) == 5,
                             "the refused restore leaves the wreck and its pack");
 
-                    // A scrap frees the place and drops what no one could be handed.
-                    expectDone(helper, act(mate.player(), console, HangarTerminal.SCRAP_WRECK), "scrapping it");
-                    List<ItemEntity> drops = helper.getLevel()
-                            .getEntitiesOfClass(
-                                    ItemEntity.class, mole.getBoundingBox().inflate(8));
+                    // The Director's scrap waits too: the pack stays in the wreck, and the place stays held.
+                    expectRefused(
+                            helper,
+                            act(mate.player(), console, HangarTerminal.SCRAP_WRECK),
+                            "the Director scrapping the wreck of an absent pilot");
+                    told.add(new Told(mate, "pack_owner_away", "the scrap that waits"));
                     expect(
                             helper,
-                            mole.isRemoved()
-                                    && count(mate.player(), Items.DIAMOND) == 0
-                                    && drops.stream()
-                                            .anyMatch(drop -> drop.getItem().is(Items.DIAMOND)),
-                            "a scrap drops the pack that no one could be handed, and gives the mate none of it");
-                    drops.forEach(ItemEntity::discard);
+                            !mole.isRemoved()
+                                    && packed(mole, Items.DIAMOND) == 5
+                                    && data(helper).slotHolding(mole.getUUID()).isPresent()
+                                    && helper.getLevel()
+                                            .getEntitiesOfClass(
+                                                    ItemEntity.class,
+                                                    mole.getBoundingBox().inflate(8))
+                                            .isEmpty(),
+                            "the refused scrap leaves the wreck, its pack and the place, and drops nothing");
+                    mole.discard();
                     clearFloor(helper);
                     finish(helper, told);
                 }));

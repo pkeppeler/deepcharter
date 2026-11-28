@@ -27,7 +27,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -100,7 +99,7 @@ public final class Wrecks {
     /**
      * Server only: gives the pack back, which the hangar restore and the scrap do. Each stack goes to the player who
      * carried it, if they are online and alive. A stack whose pilot is offline, dead or gone goes to {@code holder}
-     * (the wreck's place holder) if they are online and alive; with neither it stays in the wreck. The hold is not
+     * (the Mole's owner) if they are online and alive; with neither it stays in the wreck. The hold is not
      * touched. Unreadable saved pack is left alone. Returns how many stacks each player was given.
      */
     public static Map<UUID, Integer> returnPack(MinecraftServer server, PodEntity pod, Optional<UUID> holder) {
@@ -121,24 +120,13 @@ public final class Wrecks {
 
     /**
      * True when the wreck's pack holds a stack that {@link #returnPack} could not give anyone now: its pilot and the
-     * place holder are both offline or dead.
+     * Mole's owner are both offline or dead.
      */
     public static boolean packHasNoRecipient(MinecraftServer server, PodEntity pod, Optional<UUID> holder) {
         Optional<ServerPlayer> fallback = holder.flatMap(id -> livePlayer(server, id));
         return Versioned.readable(pod, WreckRegistry.PACK).stream()
                 .flatMap(pack -> pack.entries().stream())
                 .anyMatch(entry -> recipient(server, entry.pilot(), fallback).isEmpty());
-    }
-
-    /**
-     * Server only: drops every stack left in the wreck's pack at the wreck, for a scrap that no one could be handed it.
-     */
-    public static void dropPack(PodEntity pod) {
-        for (WreckPack.Entry entry : takePack(pod, pilot -> true)) {
-            pod.level()
-                    .addFreshEntity(new ItemEntity(
-                            pod.level(), pod.getX(), pod.getY() + pod.getBbHeight(), pod.getZ(), entry.stack()));
-        }
     }
 
     /** The player who gets a pilot's stacks: the pilot if online and alive, else the fallback. */
