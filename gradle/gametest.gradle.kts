@@ -641,25 +641,17 @@ object GametestScan {
 		throw GradleException("${file.name} has no '$name' line")
 	}
 
-	/**
-	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [mainSources] and
-	 * [guardSource] are the files WorldDataGuard must list every saved-data record of the mod in, or it misses a swap of a new one.
-	 */
-	fun scan(
+	/** What one pass over a source tree finds: the lists before any filter or shard, and each server class's campaign environments. */
+	class ScannedTree(val server: List<String>, val client: List<String>, val environments: Map<String, Set<String>>)
+
+	/** One pass over a source tree: the entrypoint lists, or a GradleException naming every problem. */
+	private fun scanTree(
 		javaRoot: File,
-		clientFilter: String?,
-		clientShard: String?,
-		clientWeights: Map<String, Int>,
-		serverFilter: String?,
-		serverShard: String?,
-		serverWeights: Map<String, Int>,
-		serverUnitLimit: Int,
-		order: String,
 		mainSources: Collection<File>,
 		guardSource: File,
 		blankLiterals: (String) -> String,
 		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
-	): GametestFound {
+	): ScannedTree {
 		val javaFiles = javaRoot.walkTopDown().filter { it.isFile && it.name.endsWith(".java") }.toList().sorted()
 		var server = mutableListOf<String>()
 		// Server class to the campaign environments it names, for -PgametestShard.
@@ -818,6 +810,36 @@ object GametestScan {
 			throw GradleException("gametest entrypoints:\n  " + problems.joinToString("\n  "))
 		}
 
+		return ScannedTree(server, client, serverEnvironments)
+	}
+
+	/**
+	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [trees] holds the passes over
+	 * trees already scanned (the pass does not depend on the filter or the shard): the fixture runner, whose cases shard one real tree
+	 * in turn, passes one map for the whole run; a build's own scan passes none, since a Gradle daemon keeps this object between builds
+	 * and a map kept here would serve a tree from before the sources changed. [mainSources] and
+	 * [guardSource] are the files WorldDataGuard must list every saved-data record of the mod in, or it misses a swap of a new one.
+	 */
+	fun scan(
+		javaRoot: File,
+		clientFilter: String?,
+		clientShard: String?,
+		clientWeights: Map<String, Int>,
+		serverFilter: String?,
+		serverShard: String?,
+		serverWeights: Map<String, Int>,
+		serverUnitLimit: Int,
+		order: String,
+		mainSources: Collection<File>,
+		guardSource: File,
+		blankLiterals: (String) -> String,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+		trees: MutableMap<String, ScannedTree> = mutableMapOf(),
+	): GametestFound {
+		val tree = trees.getOrPut(javaRoot.canonicalPath) { scanTree(javaRoot, mainSources, guardSource, blankLiterals, markedNear) }
+		var server = tree.server.toMutableList()
+		var client = tree.client.toMutableList()
+		val serverEnvironments = tree.environments
 		if (clientFilter != null) {
 			val terms = clientFilter.split(",").map { it.trim() }
 			if (terms.any { it.isEmpty() }) {
@@ -971,6 +993,7 @@ tasks.register("checkGametestFixtures") {
 			throw GradleException("-PfixtureCases and -PfixtureResults are required: $cases")
 		}
 		val report = linkedMapOf<String, Map<String, Any>>()
+		val trees = mutableMapOf<String, GametestScan.ScannedTree>()
 		for (c in JsonSlurper().parse(cases) as List<*>) {
 			c as Map<*, *>
 			val name = c["name"] as String
@@ -1053,7 +1076,7 @@ tasks.register("checkGametestFixtures") {
 					continue
 				}
 				fun weights(key: String) = (c[key] as Map<*, *>? ?: emptyMap<String, Int>()).entries.associate { it.key as String to (it.value as Number).toInt() }
-				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, c["clientShard"] as String?, weights("clientWeights"), c["serverFilter"] as String?, c["serverShard"] as String?, weights("serverWeights"), (c["serverUnitLimit"] as Number?)?.toInt() ?: Int.MAX_VALUE, "name", mainSources.files, guardSource, blankLiterals, markedNear)
+				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, c["clientShard"] as String?, weights("clientWeights"), c["serverFilter"] as String?, c["serverShard"] as String?, weights("serverWeights"), (c["serverUnitLimit"] as Number?)?.toInt() ?: Int.MAX_VALUE, "name", mainSources.files, guardSource, blankLiterals, markedNear, trees)
 				report[name] = linkedMapOf("ok" to true, "message" to "", "server" to found.server, "client" to found.client)
 			} catch (e: GradleException) {
 				report[name] = linkedMapOf("ok" to false, "message" to e.message!!, "server" to emptyList<String>(), "client" to emptyList<String>())

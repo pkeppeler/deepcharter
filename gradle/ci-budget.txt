@@ -26,3 +26,11 @@ client-shard-seconds 115
 server-shard-seconds 100
 # Seconds of tool tests (tools/tests/ci-tool-test-weights.txt) one tool-test part holds, after about 40 s of setup: (40 + 100) * 1.3 = 182 s.
 tool-part-seconds 100
+# A gate-check job (tools/tests/gate_checks.py, one Gradle run over fixture trees) costs, at the measured speed: the job's setup and
+# Gradle's start-up, one scan of the real tree (the scan is cached per tree inside a run, so every case that shards the real tree shares it),
+# and a small scan per fixture tree. Measured on run 46126845034 (b3a2ae36), before the cache: the 480 fixture trees of the last
+# job took 45 s, and the client_filter job's 11 real-tree cases took 214 s (about 19 s each), server_shard's 17 over 280 s.
+# tools/tests/test_tool_test_parts.py prices each job from its cases and keeps it under worst-job-seconds at the slow-runner factor.
+gate-setup-seconds 85
+gate-real-tree-scan-seconds 20
+gate-fixture-case-seconds 0.2

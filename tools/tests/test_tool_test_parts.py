@@ -1,6 +1,7 @@
 """The tool tests run as parallel parts in .github/workflows/ci.yml (#1574): the matrix must cover every Python and shell test file
 exactly once, no part may outweigh gradle/ci-budget.txt's tool-part-seconds, and the `tool-tests` aggregate must wait for as many
 parts as the matrix has. The selection itself is tools/ci_tool_parts.py."""
+import importlib
 import re
 import sys
 import unittest
@@ -95,3 +96,49 @@ class ToolTestPartsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GateCheckJobsFitTheBudgetTest(unittest.TestCase):
+    """Each gate-check job is one Gradle run over every case of its checks, so its time is the cases it holds, priced in gradle/ci-budget.txt."""
+
+    GATES = re.search(r"^  tool-gates:\n(.*?)(?=^  \S|\Z)", WORKFLOW, re.M | re.S)[1]
+    EVERY = re.findall(r'"(\w+)"', re.search(r"CHECKS = \(([^)]*)\)", (REPO / "tools/tests/gate_checks.py").read_text())[1])
+
+    def jobs(self) -> dict[int, list[str]]:
+        found: dict[int, list[str]] = {}
+        for part, spec in re.findall(r'- \{ part: (\d+), checks: "([^"]+)" \}', self.GATES):
+            names = spec.split()
+            if names[0] == "--except":
+                names = [check for check in self.EVERY if check not in names[1:]]
+            found[int(part)] = names
+        return found
+
+    def cost(self, checks: list[str]) -> float:
+        budget = shards.budgets()
+        sys.path.insert(0, str(REPO / "tools/tests"))
+        fixtures = real_trees = 0
+        for check in checks:
+            for case in importlib.import_module(f"{check}_gate_check").CASES.values():
+                if isinstance(case.files, Path):
+                    real_trees += 1
+                else:
+                    fixtures += 1
+        # Cases on the real tree share one scan of it.
+        scans = 1 if real_trees else 0
+        return budget["gate-setup-seconds"] + scans * budget["gate-real-tree-scan-seconds"] + fixtures * budget["gate-fixture-case-seconds"]
+
+    def test_the_real_tree_is_scanned_once_per_run(self):
+        # The cost model above holds only while the fixture runner scans a tree once however many shards it is cut into.
+        kts = (REPO / "gradle/gametest.gradle.kts").read_text()
+        self.assertIn("trees.getOrPut(javaRoot.canonicalPath)", kts)
+        # One map per fixture run, never kept in the object: a Gradle daemon keeps it between builds, and a tree edited since would be served stale.
+        self.assertIn("val trees = mutableMapOf<String, GametestScan.ScannedTree>()", kts)
+        self.assertNotIn("private val scannedTrees", kts)
+
+    def test_no_gate_check_job_outweighs_the_worst_job_on_a_slow_runner(self):
+        budget = shards.budgets()
+        for part, checks in self.jobs().items():
+            with self.subTest(part=part):
+                slow = self.cost(checks) * budget["slow-runner-factor"]
+                self.assertLessEqual(slow, budget["worst-job-seconds"], f"gate-check job {part} ({' '.join(checks)}) is priced at {slow:.0f} s on a slow runner")
+
