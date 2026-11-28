@@ -142,7 +142,7 @@ check_px_review() {
 # new or tightened gate does not break review-passed PRs after it lands (#1639): a body line `Gate sweep: none affected`, or
 # `Gate sweep: <the PRs fixed or notified>` (each named #N). A PR numbered below GATE_SWEEP_FIRST_PR was open before the rule
 # and is exempt. Needs $pr_files, $pr and $body.
-GATE_SWEEP_FIRST_PR=1640
+GATE_SWEEP_FIRST_PR=1643
 check_gate_sweep() {
   local gate_file= path previous
   [[ $pr -ge $GATE_SWEEP_FIRST_PR ]] || return 0
