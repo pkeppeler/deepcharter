@@ -99,7 +99,7 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           # What the PR changed since it left its base branch (main for a PR into main): the same paths as main..merged head. The plan
-          # reads that commit's copies too, to narrow a change to the members and keys it touched (ADR 0120).
+          # reads that commit's copies too, to narrow a change to the members and keys it touched (ADR 0121).
           base=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
           git diff --no-renames --name-only "$base" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
           tools/py tools/ci_affected.py --head-ref "$HEAD_REF" --labels "$LABELS" --base "$base" \

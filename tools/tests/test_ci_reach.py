@@ -1,4 +1,4 @@
-"""tools/ci_reach.py and tools/ci_members.py: the reference graph CI selects GameTests with (ADR 0120), and the member diff it travels by.
+"""tools/ci_reach.py and tools/ci_members.py: the reference graph CI selects GameTests with (ADR 0121), and the member diff it travels by.
 
 The planner's rules are tested in test_ci_affected.py; this file pins the pieces under them: how a name resolves to a file, what a change
 to a file touches, and the parser over every file of the real tree."""

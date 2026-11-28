@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Usage: git diff --name-only BASE HEAD | tools/py tools/ci_affected.py --head-ref REF --labels A,B --server-shards N --client-shards M [--base BASE]
 
-Decides what CI runs for a pull request (ADR 0116, ADR 0120). Reads the changed paths on stdin and prints `key=value` lines for $GITHUB_OUTPUT:
+Decides what CI runs for a pull request (ADR 0116, ADR 0121). Reads the changed paths on stdin and prints `key=value` lines for $GITHUB_OUTPUT:
 
   server-full      `true` when the whole server suite runs (every shard), `false` for the affected classes only
   server-classes   comma-separated simple names of the server GameTest classes to run ('' when the suite runs whole or not at all)

@@ -1,5 +1,5 @@
 """tools/ci_affected.py: which GameTest classes a pull request's changed paths can affect, and when CI runs the suites whole (ADR 0116,
-ADR 0120).
+ADR 0121).
 
 The mapping is tested on a small fixture tree (every rule, and the conservative fall-backs), then on the real tree for what must hold
 whatever the code is: a docs change runs no GameTest, a batch PR runs everything, a change to a test class runs that class, no game file is

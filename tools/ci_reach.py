@@ -1,4 +1,4 @@
-"""Which GameTest classes a pull request's change can reach, for tools/ci_affected.py (ADR 0120, amending ADR 0116).
+"""Which GameTest classes a pull request's change can reach, for tools/ci_affected.py (ADR 0121, amending ADR 0116).
 
 The graph is a file-level reference graph over src/main, src/client and src/gametest: file A has an edge to file B when A imports B or
 names a type B declares, resolved the way javac would see it (A's own types, then its single-type imports, then its package, then its
@@ -39,7 +39,7 @@ ROOTS = ("src/main/java", "src/client/java", "src/gametest/java")
 # kit; below it sit the feature classes a change is about.
 HUB_FAN_IN = 40
 # How many files from a changed one a change is followed: a test that calls what calls what calls the change is reached, one further out is
-# not. Measured on the last 20 merged PRs (ADR 0120): at 4 the chains run through the feature cores (lava watch, lining, payloads) and
+# not. Measured on the last 20 merged PRs (ADR 0121): at 4 the chains run through the feature cores (lava watch, lining, payloads) and
 # select over half the suite; at 3 the tests selected are the ones about the change.
 MAX_HOPS = 2
 WHOLE = members_of.WHOLE
