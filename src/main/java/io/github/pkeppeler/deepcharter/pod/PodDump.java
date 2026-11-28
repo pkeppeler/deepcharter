@@ -126,8 +126,8 @@ public final class PodDump {
 
     /**
      * Whether the pod cannot climb and dumping would help: the load ({@link PodLoad}) reaches its climb limit, and
-     * without the cargo it would not (which also means the hold holds something). {@link PodCues} names how to dump only
-     * then, and names loose ore first ({@link PodLooseOre#overloadedByLoose}).
+     * without the cargo it would not (which also means the hold holds something). {@link PodCues} names how to dump
+     * only then, and names loose ore first ({@link PodLooseOre#overloadedByLoose}).
      */
     static boolean overloadedByCargo(PodEntity pod) {
         PodLoad load = PodLoad.of(pod);

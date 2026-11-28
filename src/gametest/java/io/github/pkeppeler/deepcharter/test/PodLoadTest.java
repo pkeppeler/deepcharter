@@ -42,7 +42,10 @@ public class PodLoadTest {
     private static final float LOOSE = LooseOreTuning.DEFAULT.weightFactor();
     /** Ticks of held jump in which an unloaded pod climbs well clear of its floor. */
     private static final int CLIMB_TICKS = 15;
-    /** Blocks a load under the climb limit rises in {@link #CLIMB_TICKS}: an einsteinium, a platinium and an ironium in the pack (45 of 50) rise well over this. */
+    /**
+     * Blocks a load under the climb limit rises in {@link #CLIMB_TICKS}: an einsteinium, a platinium and an ironium in
+     * the pack (45 of 50) rise well over this.
+     */
     private static final double CLIMBED = 0.1;
 
     /** A pod on a small stone floor with a mock pilot seated. */
@@ -88,8 +91,9 @@ public class PodLoadTest {
     }
 
     /**
-     * #1446: ore in a seated pilot's pack rode with no weight, so a pack was free cargo. It weighs on the pod now, double its mass (ADR 0110) and on
-     * top of the bay's (never counted twice), and a pack heavier than the engine keeps the pod on the ground.
+     * #1446: ore in a seated pilot's pack rode with no weight, so a pack was free cargo. It weighs on the pod now,
+     * double its mass (ADR 0110) and on top of the bay's (never counted twice), and a pack heavier than the engine keeps
+     * the pod on the ground.
      */
     @GameTest(maxTicks = 60)
     public void aSeatedPilotsPackOreWeighsOnThePodAndKeepsAHeavyPodDown(GameTestHelper helper) {
@@ -309,9 +313,9 @@ public class PodLoadTest {
     }
 
     /**
-     * The climb limit is where the held rotor stops climbing, well under the engine's power: a load under it climbs, a load over it stays on the
-     * ground while the engine still has lift left. An einsteinium and a platinium in the bay and {@code packIronium} in the pack,
-     * where ore weighs {@link #LOOSE} times its mass.
+     * The climb limit is where the held rotor stops climbing, well under the engine's power: a load under it climbs, a
+     * load over it stays on the ground while the engine still has lift left. An einsteinium and a platinium in the bay
+     * and {@code packIronium} in the pack, where ore weighs {@link #LOOSE} times its mass.
      */
     private static void climbs(GameTestHelper helper, int packIronium, boolean expected) {
         Rig rig = Rig.build(helper, "climb pilot " + packIronium);
