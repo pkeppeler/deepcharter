@@ -246,13 +246,18 @@ class FuelAlarmTest(unittest.TestCase):
     """#1597: the low-fuel alarms are our own harsh pulses, and critical is plainly more urgent than low."""
 
     @staticmethod
-    def rms(name):
-        left = recipes.render(name).left[: dsp.seconds(0.3)]  # the sounding part, not the klaxon's gap
+    def sounding(name):
+        """The sounding part, not the klaxon's gap."""
+        return recipes.render(name).left[: dsp.seconds(0.3)]
+
+    @classmethod
+    def rms(cls, name):
+        left = cls.sounding(name)
         return math.sqrt(sum(v * v for v in left) / len(left))
 
-    @staticmethod
-    def crossings(name):
-        left = recipes.render(name).left[: dsp.seconds(0.3)]
+    @classmethod
+    def crossings(cls, name):
+        left = cls.sounding(name)
         return sum(1 for a, b in zip(left, left[1:]) if (a < 0) != (b < 0)) / (len(left) / recipes.RATE)
 
     def test_critical_is_louder_denser_and_higher_than_low(self):
