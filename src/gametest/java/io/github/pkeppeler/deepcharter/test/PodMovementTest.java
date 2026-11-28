@@ -97,7 +97,8 @@ public class PodMovementTest {
                 if (moved.x > -1.0 || Math.abs(moved.z) > EPSILON) {
                     throw failure(
                             helper,
-                            "the pod faces west, so forward drives it west along x only, whatever the pilot looks at; moved %s",
+                            "the pod faces west, so forward drives it west along x only, whatever the pilot looks at;"
+                                    + " moved %s",
                             moved);
                 }
                 if (rig.pod.getYRot() != WEST) {
@@ -275,7 +276,8 @@ public class PodMovementTest {
                         if (turned < 10f || step.normalize().dot(facing) < 0.99) {
                             throw failure(
                                     helper,
-                                    "after turning right (%s degrees) the pod drives along its new facing %s, it moved %s",
+                                    "after turning right (%s degrees) the pod drives along its new facing %s, it moved"
+                                            + " %s",
                                     turned,
                                     facing,
                                     step);
@@ -518,7 +520,8 @@ public class PodMovementTest {
                 if (dropped < 2.5 || dropped > 3.1 || pod.getY() - (FLOOR_Y + 1) < 2) {
                     throw failure(
                             helper,
-                            "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y %s",
+                            "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y"
+                                    + " %s",
                             dropped,
                             pod.getY());
                 }

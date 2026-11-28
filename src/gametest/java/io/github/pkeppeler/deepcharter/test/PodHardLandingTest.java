@@ -97,6 +97,45 @@ public class PodHardLandingTest {
         freeFall(helper, SHAFT_X + 300, 12, true, 30f, 40f);
     }
 
+    /**
+     * Rotor braking is the soft landing (#1593): with nothing to cushion the last blocks, a pilot who feathers the
+     * rotor (jump for 2 ticks in every 5) from a hover 10 blocks up lands unhurt, where letting go would cost hull.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void aPodFeatheredDownFromTenBlocksLandsUnhurt(GameTestHelper helper) {
+        int x = SHAFT_X + 400;
+        ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
+        Vec3 start = new Vec3(x + 0.5, SHAFT_FLOOR_TOP_Y + 1 + 10, SHAFT_Z + 0.5);
+        MockPlayer pilot = MockPlayers.join(helper, "feather-pilot");
+        PodEntity[] pod = {null};
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(start), () -> {
+            shaft(helper, x, SHAFT_Z);
+            pod[0] = spawn(one, start);
+            pilot.player().setGameMode(GameType.SURVIVAL);
+            pilot.teleportTo(one, start, 0f, 0f);
+            if (!pilot.player().startRiding(pod[0], true, false)) {
+                throw failure(helper, "the pilot could not board the pod");
+            }
+        });
+        int[] ticks = {0};
+        TestTicks.each(helper, () -> {
+            if (pod[0] != null && !pod[0].onGround()) {
+                pilot.setInput(ticks[0]++ % 5 < 2 ? JUMP : Input.EMPTY);
+            }
+        });
+        helper.succeedWhen(() -> {
+            if (pod[0] == null || !pod[0].onGround() || pod[0].tickCount < 5) {
+                throw failure(helper, "the pod has not landed");
+            }
+            float lost = PodTuning.DEFAULT.shell().fullHull() - pod[0].hull();
+            if (lost != 0f) {
+                throw failure(helper, "a pod feathered down from 10 blocks should land unhurt, it lost %s hull", lost);
+            }
+            pilot.leave();
+            pod[0].discard();
+        });
+    }
+
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + SHAFT_TICKS)
     public void aPodBrakingWithItsRotorSurvivesTheLayerOneShaftAndBurnsFuel(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);

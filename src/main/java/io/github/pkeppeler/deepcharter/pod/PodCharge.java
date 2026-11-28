@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
@@ -113,8 +114,12 @@ public final class PodCharge {
         } else if (!hasCompanyRock(level, low, high)) {
             return refusal("charge_no_company_rock");
         }
-        if (pod.hull() <= wreckingHull(pod, tuning, dropRows(level, blocks, kind, low, high))) {
-            return refusal("charge_hull_low");
+        float wrecking = wreckingHull(pod, tuning, dropRows(level, blocks, kind, low, high));
+        if (pod.hull() <= wrecking) {
+            return Optional.of(Component.translatable(
+                    "message.deepcharter.repair.charge_hull_low",
+                    String.format(Locale.ROOT, "%.1f", wrecking),
+                    String.format(Locale.ROOT, "%.1f", pod.hull())));
         }
         Fuse fuse = new Fuse(
                 kind,
