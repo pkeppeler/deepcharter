@@ -11,7 +11,7 @@
 # reports which open PRs would fail and why, and prints the `Gate sweep:` line the gate PR's body needs (the merge gate checks it).
 # A gate file with nothing to run (the pre-push hook, a script that registers no check task) is listed as UNSWEPT: read it by hand.
 #
-# The gate PR's own head is the baseline: its CI is green, so a failure on the merged tree comes from the open PR. A PR that
+# The gate PR's own head (with main) is the baseline: its CI is green, so a failure on the merged tree comes from the open PR. A PR that
 # conflicts with the gate PR is listed apart; the gate did not decide it.
 #
 # Gradle runs with --max-workers=2 under the clone's shared slot lock (DEEPCHARTER_GRADLE_LOCK overrides the path) and
@@ -88,6 +88,16 @@ else
   git worktree add -q --detach "$tree" "$gate_head"
 fi
 
+# The base every open PR is merged into: the gate PR's head with the current main, as CI tests it. A gate PR that conflicts with
+# main is not swept: merge main into it first.
+git fetch -q origin main || die "could not fetch origin/main"
+git -C "$tree" clean -fdq
+if ! git -C "$tree" -c user.name=gate-sweep -c user.email=gate-sweep@example.invalid merge -q --no-edit "$(git rev-parse FETCH_HEAD)" >/dev/null 2>&1; then
+  git -C "$tree" merge --abort >/dev/null 2>&1 || true
+  die "PR #$pr conflicts with origin/main: merge main into its branch first"
+fi
+base=$(git -C "$tree" rev-parse HEAD)
+
 # The gates to run come from the gate PR's own head.
 gradle_tasks=()
 py_tools=()
@@ -127,17 +137,18 @@ failed=()
 conflicted=()
 ok=()
 report=
-while IFS=$'\t' read -r n sha; do
+while IFS=$'\t' read -r n _; do
   [[ -n $n ]] || continue
   echo "--- PR #$n"
-  git -C "$tree" checkout -q -f --detach "$gate_head"
+  git -C "$tree" checkout -q -f --detach "$base"
   git -C "$tree" clean -fdq
   if ! git fetch -q origin "refs/pull/$n/head"; then
     echo "  could not fetch it: skipped"
     conflicted+=("#$n (could not fetch)")
     continue
   fi
-  if ! git -C "$tree" -c user.name=gate-sweep -c user.email=gate-sweep@example.invalid merge -q --no-edit FETCH_HEAD >/dev/null 2>&1; then
+  # FETCH_HEAD is per worktree: name the fetched commit.
+  if ! git -C "$tree" -c user.name=gate-sweep -c user.email=gate-sweep@example.invalid merge -q --no-edit "$(git rev-parse FETCH_HEAD)" >/dev/null 2>&1; then
     git -C "$tree" merge --abort >/dev/null 2>&1 || true
     echo "  conflicts with the gate PR: not decided by the gate"
     conflicted+=("#$n")
@@ -153,7 +164,7 @@ while IFS=$'\t' read -r n sha; do
   fi
   for tool in ${py_tools[@]+"${py_tools[@]}"}; do
     args=()
-    [[ $tool != tools/comment_length_gate.py ]] || args=(--base "$gate_head" --head HEAD)
+    [[ $tool != tools/comment_length_gate.py ]] || args=(--base "$base" --head HEAD)
     if ! tool_out=$(cd "$tree" && tools/py "$tool" ${args[@]+"${args[@]}"} 2>&1); then
       why="${why}$tool: $(head -8 <<<"$tool_out" | tr '\n' ' ')"$'\n'
     fi
