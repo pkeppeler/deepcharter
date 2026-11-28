@@ -82,6 +82,10 @@ public class DynamiteUnderPodScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(TestLayers.level(server, 1), X, FLOOR_Y, Z, Set.of(), 0f, LOOK_DOWN, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = podAt(server);
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the player could not mount the pod");

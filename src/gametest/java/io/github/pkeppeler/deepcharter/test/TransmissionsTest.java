@@ -84,10 +84,10 @@ public class TransmissionsTest {
     private static final Set<UUID> THROWING = ConcurrentHashMap.newKeySet();
     /** Real ticks for a zone or breach trigger to fire: the zone poll every 20 ticks, or a fall and a crossing. */
     private static final int TRIGGER_TICKS = 400;
-    /** Columns of the two real-trigger tests. No other test class uses X or Z from 6000 to 6999. */
-    private static final double BREACH_COLUMN = 6400.5;
+    /** Columns of the two real-trigger tests. */
+    private static final double BREACH_COLUMN = 28400.5;
 
-    private static final double ZONE_COLUMN = 6600.5;
+    private static final double ZONE_COLUMN = 28600.5;
     private static final String LANG_RESOURCE = "/assets/deepcharter/lang/en_us.json";
 
     static {

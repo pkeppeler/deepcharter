@@ -46,7 +46,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Server GameTests for the empty surface (#915, ADR 0036, docs/CREATURES.md#surface): no vanilla monster spawns on the surface or in any
  * band of the campaign world, and the Retained keep their own spawns in layers 1 and 2. They run in {@code deepcharter:campaign_sample}.
- * Columns 25000 to 25999 are this class's. The spawners no biome list reaches (patrols, phantoms, wardens, the trader) are pinned in
+ * The spawners no biome list reaches (patrols, phantoms, wardens, the trader) are pinned in
  * {@code SurfaceTerrainTest}.
  */
 public class EmptySurfaceTest {

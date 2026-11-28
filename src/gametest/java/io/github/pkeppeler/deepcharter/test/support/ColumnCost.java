@@ -128,17 +128,17 @@ public final class ColumnCost {
                 idle(smoke);
                 return;
             }
-            if (current[0] == null && !smoke && !everyWorldIsUnloaded(helper, allWorlds)) {
+            Run active = current[0];
+            if (active == null && !smoke && !everyWorldIsUnloaded(helper, allWorlds)) {
                 idle(smoke);
                 return;
             }
-            Run active = current[0];
             if (active == null) {
                 if (queue.isEmpty()) {
                     return;
                 }
                 // Only a run that began is current: after a begin() that throws, the next tick must not read its level.
-                active = queue.poll();
+                active = queue.remove();
                 active.begin(helper);
                 current[0] = active;
             }
