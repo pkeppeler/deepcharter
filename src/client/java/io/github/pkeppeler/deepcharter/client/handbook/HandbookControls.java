@@ -18,10 +18,10 @@ import net.minecraft.network.chat.Component;
 
 /**
  * The controls pages of the handbook (#1260): one sheet each for the handbook, the parts catalogue, the pod, its screen
- * (#1270), its cargo (#1456), its towing (#1600), the cockpit's readouts (#1436), the scanner and the comms log
- * (#1615). Every key a line names is read from the player's own binding when the line is built, so a rebind shows on
- * the next draw and no key letter is written into the language file. A key the game does not let the player rebind
- * (Ctrl+F, the arrow keys) is written out in the line.
+ * (#1270), its cargo (#1456), its towing (#1600), its charges (#1613), the cockpit's readouts (#1436), the scanner
+ * and the comms log (#1615). Every key a line names is read from the player's own binding when the line is built, so
+ * a rebind shows on the next draw and no key letter is written into the language file. A key the game does not let
+ * the player rebind (Ctrl+F, the arrow keys) is written out in the line.
  */
 public final class HandbookControls {
     /**
@@ -94,6 +94,9 @@ public final class HandbookControls {
                     List.of(
                             new Row("down", List.of(options -> options.keySprint)),
                             new Row("side", List.of(options -> options.keyUp)))),
+            new Sheet(
+                    "blast",
+                    List.of(new Row("set", List.of(options -> options.keyUse)), new Row("ahead"), new Row("clear"))),
             new Sheet(
                     "crew",
                     List.of(

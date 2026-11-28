@@ -314,7 +314,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
   2. A pod-mounted charge launcher.
   3. Crewmates clearing from above.
   4. Emergency teleport items.
-- The original's dynamite and plastic explosives (3×3 and 5×5) return as consumables. Neither clears Company Rock. The blasting charge does: set from the seat under the pod, a fuse, a blast. So does its dearer cousin, the shaped charge, which clears the whole Company Rock column under the pod.
+- The original's dynamite and plastic explosives (3×3 and 5×5) return as consumables. Neither clears Company Rock. The blasting charge does: set from the seat under the pod, or on the face ahead of a pod square to the rock ([ADR 0121](adr/0121-a-charge-is-set-on-the-face-ahead-of-the-pod-as-well-as-under-it.md)), a fuse, a blast. So does its dearer cousin, the shaped charge, which clears the whole Company Rock column under the pod, or along the facing up to 8 slabs.
 - Hazards never delete player-built blocks. Creatures have their own rule (section 13).
 
 ## 11. Getting back up

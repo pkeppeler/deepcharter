@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -28,26 +29,37 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The blasting charge (#509, ADR 0015): set from the seat on the slab under the pod, a fuse, then a blast that clears
- * {@code deepcharter:undiggable} (Company rock) and the natural rock round it. It is the one thing that does. The blast
- * volume is the pod's bore square, {@code chargeDepth} slab rows deep.
+ * The blasting charge (#509, ADR 0050) and the shaped charge (#526, ADR 0052), set from the seat of a resting pod: a
+ * fuse, then a blast that clears {@code deepcharter:undiggable} (Company rock), the one thing that does.
  *
- * <p>The shaped charge (#526) is the same set-up with a directed blast: in each column of the bore square it clears the Company rock from the slab under the
- * pod down to the first block that is not Company rock, at most {@code shapedDepth} rows, and nothing else (stone is the drill's). It will not be set when a
- * column's run ends on lava, because the jet would open it; the blasting charge, whose hole is {@code chargeDepth} rows deep and no wider than
- * the bore, still can, and lets the lava flow as a bore does. Counterplay for the rest of what
- * it may open is the pilot's: a gas pocket under the run is not cleared (the sounder is the answer), and a cavern under it is a drop.
+ * <p>Where it blasts is a {@link ChargeSite}, a volume and a facing, chosen by {@link ChargeSite#forPod} (ADR 0121):
+ * the face of the pod's next sideways slab when that face holds Company rock and the pod is square to the compass,
+ * else the slab under the pod. A pod off the compass facing Company rock is refused, and told to square up or turn off
+ * the wall. The blast, the fuse's joints and sparks, and the refusals read only the site, so another way of placing a
+ * charge (dropped in flight, #1644; by hand, #1656) builds a site and adds no blast.
  *
- * <p>Rules: only blocks of {@link HazardBlocks#UNDIGGABLE} and {@link HazardBlocks#NATURAL_ROCK} go (so bricks, lining,
- * liner rings, structures, bedrock, crust and every fluid stay), and only in loaded chunks. A gas pocket in the volume
- * goes with the blast and vents no more, as in a gas blast. Lava next to the hole is not touched; the hole lets it
- * flow, as a bore does. Every pod within {@code chargeReach} of the volume takes {@code chargeDamage} less its distance share, the setter's too
- * unless it climbs clear (a wreck takes nothing; another charter's pod in reach is hurt, the risk of a shared shaft). A charge is never a suicide
- * button: a pod cannot set one with no more hull than {@code chargeDamage} plus the hard landing of a free fall to the bottom of the hole it
- * opens ({@link #dropRows}), since a pod left sitting on its charge takes the blast and then drops into the hole (a cavern already below the hole is a
- * drop of its own, as under the drill's last slab). A pilot who holds the rotor
- * hovers through both.
- * The fuse belongs to the pod and is neither saved nor synced: a pod that is discarded or unloaded before the blast loses it.
+ * <ul>
+ *   <li>A blasting charge clears the bore's face, Company rock and the natural rock round it, {@code chargeDepth} rows
+ *       down or {@code chargeSideDepth} slabs ahead. Its hole may open onto lava, which then flows as into a bore.
+ *   <li>A shaped charge is directed: from each cell of the face it clears Company rock along the facing to the first
+ *       other block, at most {@code shapedDepth} rows down or {@code shapedSideDepth} slabs ahead, and nothing else
+ *       (stone is the drill's). It is refused when a run ends on lava, which the jet would open. A gas pocket past a
+ *       run is not cleared (the sounder is the answer), and a cavern under one is a drop.
+ * </ul>
+ *
+ * <p>Rules: only blocks of {@link HazardBlocks#UNDIGGABLE} and {@link HazardBlocks#NATURAL_ROCK} go (so bricks,
+ * lining, liner rings, structures, bedrock, crust and every fluid stay), and only in loaded chunks. A gas pocket in
+ * the volume goes with the blast and vents no more, as in a gas blast. Every pod within {@code chargeReach} of the
+ * volume takes {@code chargeDamage} less its distance share, the setter's too unless it gets clear: it climbs from a
+ * charge below and backs away from one ahead (a wreck takes nothing; another charter's pod in reach is hurt, the risk
+ * of a shared shaft).
+ *
+ * <p>A charge is never a suicide button: a pod cannot set one with no more hull than {@code chargeDamage} plus the
+ * hard landing of a free fall to the bottom of the hole it opens under itself ({@link #dropRows}; none for a charge
+ * ahead), since a pod left sitting on its charge takes the blast and then drops into the hole (a cavern already below
+ * the hole is a drop of its own, as under the drill's last slab). A pilot who holds the rotor hovers through both. The
+ * fuse belongs to the pod and is neither saved nor synced: a pod that is discarded or unloaded before the blast loses
+ * it.
  */
 public final class PodCharge {
     private static final int TICKS_PER_SECOND = 20;
@@ -61,22 +73,24 @@ public final class PodCharge {
         SHAPED
     }
 
-    /** A burning fuse: the volume it will clear (inclusive corners), the kind of charge, the numbers of the tuning it was set with, and the charter that set it. */
+    /**
+     * A burning fuse: the site it will clear, the kind of charge, the numbers of the tuning it was set with, and the
+     * charter that set it.
+     */
     record Fuse(
             Kind kind,
-            BlockPos low,
-            BlockPos high,
+            ChargeSite site,
             int ticksLeft,
             int startTicks,
             float damage,
             double reach,
             Optional<CharterId> blaster) {
         Fuse burned() {
-            return new Fuse(kind, low, high, ticksLeft - 1, startTicks, damage, reach, blaster);
+            return new Fuse(kind, site, ticksLeft - 1, startTicks, damage, reach, blaster);
         }
 
         AABB volume() {
-            return new AABB(low.getX(), low.getY(), low.getZ(), high.getX() + 1, high.getY() + 1, high.getZ() + 1);
+            return site.volume();
         }
     }
 
@@ -91,7 +105,10 @@ public final class PodCharge {
                 .map(Charter::id);
     }
 
-    /** Server only: sets a charge under {@code pod}. Empty when it is set (the caller uses the item up), or the reason it was not. */
+    /**
+     * Server only: sets a charge for {@code pod}, under it or, when it is square to the compass in front of Company
+     * rock, on the face ahead. Empty when it is set (the caller uses the item up), or the reason it was not.
+     */
     public static Optional<Component> set(PodEntity pod, RepairTuning tuning, Kind kind) {
         if (pod.fuse() != null) {
             return refusal("charge_burning");
@@ -99,32 +116,34 @@ public final class PodCharge {
         if (!pod.onGround()) {
             return refusal("charge_not_resting");
         }
-        PodFootprint foot = PodFootprint.of(pod);
-        int top = Mth.ceil(pod.getY() - PodFootprint.EPSILON) - 1;
-        int depth = kind == Kind.SHAPED ? tuning.shapedDepth() : tuning.chargeDepth();
-        BlockPos low = new BlockPos(foot.lowX(), top - depth + 1, foot.lowZ());
-        BlockPos high = new BlockPos(foot.lowX() + foot.width() - 1, top, foot.lowZ() + foot.width() - 1);
         ServerLevel level = (ServerLevel) pod.level();
         LoadedBlocks blocks = new LoadedBlocks(level);
-        if (kind == Kind.SHAPED) {
-            Optional<Component> refused = checkShaped(level, blocks, low, high);
-            if (refused.isPresent()) {
-                return refused;
-            }
-        } else if (!hasCompanyRock(level, low, high)) {
-            return refusal("charge_no_company_rock");
+        boolean shaped = kind == Kind.SHAPED;
+        Optional<ChargeSite> chosen = ChargeSite.forPod(
+                pod,
+                blocks,
+                shaped ? tuning.shapedDepth() : tuning.chargeDepth(),
+                shaped ? tuning.shapedSideDepth() : tuning.chargeSideDepth());
+        if (chosen.isEmpty()) {
+            return refusal("charge_not_square");
         }
-        float wrecking = wreckingHull(pod, tuning, dropRows(level, blocks, kind, low, high));
+        ChargeSite site = chosen.get();
+        Optional<Component> refused = refuse(level, blocks, kind, site);
+        if (refused.isPresent()) {
+            return refused;
+        }
+        float wrecking = wreckingHull(pod, tuning, dropRows(level, blocks, kind, site));
         if (pod.hull() <= wrecking) {
             return Optional.of(Component.translatable(
-                    "message.deepcharter.repair.charge_hull_low",
+                    site.facing() == Direction.DOWN
+                            ? "message.deepcharter.repair.charge_hull_low"
+                            : "message.deepcharter.repair.charge_hull_low_sideways",
                     String.format(Locale.ROOT, "%.1f", wrecking),
                     String.format(Locale.ROOT, "%.1f", pod.hull())));
         }
         Fuse fuse = new Fuse(
                 kind,
-                low,
-                high,
+                site,
                 tuning.chargeFuseTicks(),
                 tuning.chargeFuseTicks(),
                 tuning.chargeDamage(),
@@ -133,8 +152,34 @@ public final class PodCharge {
         pod.setFuse(fuse);
         level.playSound(
                 null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.DRILL_DYNAMITE.event(), SoundSource.PLAYERS);
-        count(pod, fuse, "charge_set");
+        if (pod.getControllingPassenger() instanceof ServerPlayer pilot) {
+            double reach = tuning.chargeReach();
+            pilot.sendOverlayMessage(Component.translatable(
+                    site.facing() == Direction.DOWN
+                            ? "message.deepcharter.repair.charge_set"
+                            : "message.deepcharter.repair.charge_set_sideways",
+                    reach == Math.rint(reach)
+                            ? String.valueOf((long) reach)
+                            : String.format(Locale.ROOT, "%.1f", reach),
+                    seconds(fuse)));
+        }
         return Optional.empty();
+    }
+
+    /**
+     * Why {@code kind} may not be set at {@code site}, or empty when it may: the refusals every way of placing a
+     * charge shares. A blasting charge needs Company rock somewhere in its volume; a shaped charge needs some column
+     * to start in Company rock and none to end on lava.
+     */
+    private static Optional<Component> refuse(ServerLevel level, LoadedBlocks blocks, Kind kind, ChargeSite site) {
+        if (kind == Kind.SHAPED) {
+            return checkShaped(level, blocks, site);
+        }
+        return hasCompanyRock(level, site.low(), site.high()) ? Optional.empty() : refusal("charge_no_company_rock");
+    }
+
+    private static boolean holdsCompanyRock(LoadedBlocks blocks, BlockPos cell) {
+        return blocks.getBlockState(cell).is(HazardBlocks.UNDIGGABLE);
     }
 
     /**
@@ -147,34 +192,35 @@ public final class PodCharge {
     }
 
     /**
-     * The rows a pod sitting on the charge drops once it blows: a blasting charge's whole depth, or a shaped charge's deepest column run. Both
-     * count the deepest the hole may be: a shallower column may hold the pod sooner, but the refusal must never let a charge wreck the pod.
+     * The rows a pod sitting on the charge drops once it blows: a blasting charge's whole depth, or a shaped charge's
+     * deepest column run, and none when the charge bores sideways, as nothing opens under the pod. Both count the
+     * deepest the hole may be: a shallower column may hold the pod sooner, but the refusal must never let a charge
+     * wreck the pod.
      */
-    private static int dropRows(ServerLevel level, LoadedBlocks blocks, Kind kind, BlockPos low, BlockPos high) {
+    private static int dropRows(ServerLevel level, LoadedBlocks blocks, Kind kind, ChargeSite site) {
+        if (site.facing() != Direction.DOWN) {
+            return 0;
+        }
         if (kind == Kind.BLASTING) {
-            return high.getY() - low.getY() + 1;
+            return site.depth();
         }
         int deepest = 0;
-        for (int x = low.getX(); x <= high.getX(); x++) {
-            for (int z = low.getZ(); z <= high.getZ(); z++) {
-                deepest = Math.max(deepest, runLength(level, blocks, x, z, high.getY(), low.getY()));
-            }
+        for (BlockPos start : site.faceCells()) {
+            deepest = Math.max(deepest, runLength(level, blocks, start, site));
         }
         return deepest;
     }
 
-    /** Refuses a shaped charge that has no Company rock to start in, or that would open onto lava: some column's run must start under the pod and none may end on lava. */
-    private static Optional<Component> checkShaped(
-            ServerLevel level, LoadedBlocks blocks, BlockPos low, BlockPos high) {
+    /** Refuses a shaped charge that has no Company rock to start in, or that would open onto lava: some column's run
+     * must start at the face and none may end on lava. */
+    private static Optional<Component> checkShaped(ServerLevel level, LoadedBlocks blocks, ChargeSite site) {
         boolean anyRock = false;
-        for (int x = low.getX(); x <= high.getX(); x++) {
-            for (int z = low.getZ(); z <= high.getZ(); z++) {
-                int run = runLength(level, blocks, x, z, high.getY(), low.getY());
-                anyRock |= run > 0;
-                BlockPos below = new BlockPos(x, high.getY() - run, z);
-                if (run > 0
-                        && below.getY() >= low.getY()
-                        && blocks.getBlockState(below).getFluidState().is(FluidTags.LAVA)) {
+        for (BlockPos start : site.faceCells()) {
+            int run = runLength(level, blocks, start, site);
+            anyRock |= run > 0;
+            if (run > 0 && run < site.depth()) {
+                BlockPos end = start.relative(site.facing(), run);
+                if (blocks.getBlockState(end).getFluidState().is(FluidTags.LAVA)) {
                     return refusal("charge_opens_lava");
                 }
             }
@@ -182,12 +228,13 @@ public final class PodCharge {
         return anyRock ? Optional.empty() : refusal("charge_no_company_rock");
     }
 
-    /** Rows of Company rock the column {@code (x, z)} holds from {@code top} down, as far as {@code bottom} and no further. */
-    private static int runLength(ServerLevel level, LoadedBlocks blocks, int x, int z, int top, int bottom) {
+    /** Cells of Company rock in a row along the site's facing from {@code start}, as far as the site goes and no
+     * further. */
+    private static int runLength(ServerLevel level, LoadedBlocks blocks, BlockPos start, ChargeSite site) {
         int run = 0;
-        for (int y = top; y >= bottom; y--) {
-            BlockPos cell = new BlockPos(x, y, z);
-            if (!changeable(level, blocks, cell) || !blocks.getBlockState(cell).is(HazardBlocks.UNDIGGABLE)) {
+        for (int row = 0; row < site.depth(); row++) {
+            BlockPos cell = start.relative(site.facing(), row);
+            if (!changeable(level, blocks, cell) || !holdsCompanyRock(blocks, cell)) {
                 break;
             }
             run++;
@@ -208,30 +255,15 @@ public final class PodCharge {
             return;
         }
         if (fuse.ticksLeft() % TICKS_PER_SECOND == 0 && fuse.ticksLeft() < fuse.startTicks()) {
-            count(pod, fuse, "charge_count");
+            count(pod, fuse);
         }
         if (fuse.ticksLeft() % SPARK_EVERY_TICKS == 0) {
-            AABB volume = fuse.volume();
+            Vec3 spark = fuse.site().sparkPoint();
+            Vec3 back =
+                    Vec3.atLowerCornerOf(fuse.site().facing().getUnitVec3i()).scale(-0.2);
+            level.sendParticles(ParticleTypes.FLAME, spark.x, spark.y, spark.z, 3, 0.4, 0.4, 0.4, 0.01);
             level.sendParticles(
-                    ParticleTypes.FLAME,
-                    volume.getCenter().x,
-                    volume.maxY,
-                    volume.getCenter().z,
-                    3,
-                    0.4,
-                    0.1,
-                    0.4,
-                    0.01);
-            level.sendParticles(
-                    ParticleTypes.SMOKE,
-                    volume.getCenter().x,
-                    volume.maxY + 0.2,
-                    volume.getCenter().z,
-                    2,
-                    0.3,
-                    0.1,
-                    0.3,
-                    0.01);
+                    ParticleTypes.SMOKE, spark.x + back.x, spark.y + back.y, spark.z + back.z, 2, 0.3, 0.3, 0.3, 0.01);
         }
         widenJoints(level, fuse);
         pod.setFuse(fuse.burned());
@@ -255,11 +287,14 @@ public final class PodCharge {
     }
 
     /** The seconds left, on the pilot's action bar. */
-    private static void count(PodEntity pod, Fuse fuse, String key) {
+    private static void count(PodEntity pod, Fuse fuse) {
         if (pod.getControllingPassenger() instanceof ServerPlayer pilot) {
-            pilot.sendOverlayMessage(Component.translatable(
-                    "message.deepcharter.repair." + key, Mth.ceil(fuse.ticksLeft() / (double) TICKS_PER_SECOND)));
+            pilot.sendOverlayMessage(Component.translatable("message.deepcharter.repair.charge_count", seconds(fuse)));
         }
+    }
+
+    private static int seconds(Fuse fuse) {
+        return Mth.ceil(fuse.ticksLeft() / (double) TICKS_PER_SECOND);
     }
 
     /**
@@ -278,7 +313,7 @@ public final class PodCharge {
             Optional<CharterId> blaster) {
         blast(
                 level,
-                new Fuse(Kind.BLASTING, low, high, 0, 0, damage, reach, blaster),
+                new Fuse(Kind.BLASTING, new ChargeSite(low, high, Direction.DOWN), 0, 0, damage, reach, blaster),
                 hasCompanyRock(level, low, high),
                 hurts);
     }
@@ -324,18 +359,16 @@ public final class PodCharge {
     /** The cells this fuse's blast clears: a shaped charge's runs of Company rock, or a blasting charge's volume of rock that may go. */
     private static List<BlockPos> cleared(ServerLevel level, LoadedBlocks blocks, Fuse fuse) {
         List<BlockPos> cells = new ArrayList<>();
+        ChargeSite site = fuse.site();
         if (fuse.kind() == Kind.SHAPED) {
-            for (int x = fuse.low().getX(); x <= fuse.high().getX(); x++) {
-                for (int z = fuse.low().getZ(); z <= fuse.high().getZ(); z++) {
-                    int run = runLength(
-                            level, blocks, x, z, fuse.high().getY(), fuse.low().getY());
-                    for (int row = 0; row < run; row++) {
-                        cells.add(new BlockPos(x, fuse.high().getY() - row, z));
-                    }
+            for (BlockPos start : site.faceCells()) {
+                int run = runLength(level, blocks, start, site);
+                for (int row = 0; row < run; row++) {
+                    cells.add(start.relative(site.facing(), row));
                 }
             }
         } else {
-            for (BlockPos cell : BlockPos.betweenClosed(fuse.low(), fuse.high())) {
+            for (BlockPos cell : BlockPos.betweenClosed(site.low(), site.high())) {
                 if (clears(level, blocks, cell)) {
                     cells.add(cell.immutable());
                 }

@@ -16,10 +16,13 @@ package io.github.pkeppeler.deepcharter.repair;
  * @param chargeFuseTicks   ticks from setting a blasting charge to its blast (3 s: time to climb clear, not time to wait)
  * @param chargeDepth       slab rows below the pod that a blasting charge clears: 4 since issue 1458, deeper than the plastic explosives
  *                          reach below a pod, and no wider than the bore, because a wider chamber is more air for the liner to ring
+ * @param chargeSideDepth   slabs along the facing that a blasting charge set sideways clears: 2 (#1613, ADR 0121)
  * @param chargeDamage      hull points a pod takes from a blast that touches it; less with distance
  * @param chargeReach       blocks from the blast, at most, that a pod is hurt; the damage falls to 0 there
  * @param shapedDepth       slab rows below the pod, at most, that a shaped charge clears down a Company rock column: 12, the three
  *                          blasting charges it replaces
+ * @param shapedSideDepth   slabs along the facing, at most, that a shaped charge set sideways clears: 8, as ADR 0052
+ *                          first set the downward run (#1613)
  * @param arrivalTicketTicks ticks a teleporter's hold on its landing chunk lasts, counted as
  *                          {@link RepairRegistry#TELEPORT_ARRIVAL} says (#1353)
  */
@@ -33,9 +36,12 @@ public record RepairTuning(
         double quantumScatter,
         int chargeFuseTicks,
         int chargeDepth,
+        int chargeSideDepth,
         float chargeDamage,
         double chargeReach,
         int shapedDepth,
+        int shapedSideDepth,
         int arrivalTicketTicks) {
-    public static final RepairTuning DEFAULT = new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 4, 20f, 3.0, 12, 100);
+    public static final RepairTuning DEFAULT =
+            new RepairTuning(1L, 10, 25f, 30f, 1, 2, 8.0, 60, 4, 2, 20f, 3.0, 12, 8, 100);
 }

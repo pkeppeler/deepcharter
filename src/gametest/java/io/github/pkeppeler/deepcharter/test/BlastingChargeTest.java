@@ -308,7 +308,7 @@ public class BlastingChargeTest {
                 level -> {},
                 pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()),
                 (helper2, level, pod, pilot, hull) -> {
-                    String first = Component.translatable("message.deepcharter.repair.charge_set", 3)
+                    String first = Component.translatable("message.deepcharter.repair.charge_set", "3", 3)
                             .getString();
                     String second = Component.translatable("message.deepcharter.repair.charge_count", 2)
                             .getString();

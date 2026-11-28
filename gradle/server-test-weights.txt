@@ -181,6 +181,7 @@ SeamStreamingTest 3
 SeamSwapTest 4
 ShapedChargeTest 11
 ShippedChassisTest 21
+SidewaysChargeTest 10
 SignalDecayTest 2
 SkinAssetsTest 1
 SkyTimelineTest 1
