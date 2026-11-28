@@ -1498,7 +1498,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 new CockpitHud.Cell(line("tally_hull", 100, 100), CockpitHud.Meter.HULL.icon()),
                 new CockpitHud.Cell(line("tally_fuel", 78), CockpitHud.Meter.FUEL.icon()),
                 new CockpitHud.Cell(line("tally_cargo", 24), CockpitHud.Icon.CART),
-                new CockpitHud.Cell(line("tally_depth", -420), CockpitHud.Meter.DEPTH.icon()))));
+                new CockpitHud.Cell(line("tally_depth", "-12,345"), CockpitHud.Meter.DEPTH.icon()))));
         List<List<CockpitHud.Row>> cases = new ArrayList<>();
         for (PodStatusHud.Line alert : alerts) {
             cases.add(rowsOf(head, List.of(alert)));

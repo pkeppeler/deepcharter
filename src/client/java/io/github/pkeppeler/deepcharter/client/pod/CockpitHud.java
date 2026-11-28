@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Kind;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Line;
@@ -696,7 +697,9 @@ public final class CockpitHud {
                         Icon.CART),
                 new Cell(
                         new Line(
-                                Component.translatable("hud.deepcharter.pod.tally_depth", Math.round(pod.getY())),
+                                Component.translatable(
+                                        "hud.deepcharter.pod.tally_depth",
+                                        Altimeter.readingNumber(pod.level(), pod.getBlockY())),
                                 look.depthColor()),
                         Meter.DEPTH.icon())))));
         readout.stream().filter(line -> line.kind() != Kind.BASE).map(Row::of).forEach(rows::add);

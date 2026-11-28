@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
@@ -61,7 +62,9 @@ public final class PodStatusHud {
         lines.add(
                 new Line(Component.translatable("hud.deepcharter.pod.cargo", pod.cargoUsed()), look.podStatusColor()));
         lines.add(new Line(
-                Component.translatable("hud.deepcharter.pod.depth", Math.round(pod.getY())), look.podStatusColor()));
+                Component.translatable(
+                        "hud.deepcharter.pod.depth", Altimeter.readingNumber(pod.level(), pod.getBlockY())),
+                look.podStatusColor()));
         float soot = EngineSoot.soot(pod);
         long slower = Math.round((1 - EngineSoot.output(soot)) * 100);
         if (EngineSoot.isLimp(soot)) {

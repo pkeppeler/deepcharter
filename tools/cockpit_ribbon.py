@@ -442,16 +442,16 @@ def write() -> None:
 
 # The states the stills are shot in: the pod's real values, the numbers the plate shows and the alert lines (the plain readout's lines after the first four).
 STATES = {
-    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "Y150"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
-             "lines": ["Hull 100/100", "Fuel 78%", "Cargo 0", "Y 150"]},
-    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "cargo": 0.25, "tally": ["90/100", "12%", "3", "Y150"], "alerts": [], "lamps": [1, 0, 0, 0, 0],
-                 "lines": ["Hull 90/100", "Fuel 12%", "Cargo 3", "Y 150"]},
-    "burning": {"fuel": 0.7, "hull": 0.45, "depth": 0.18, "heat": 1.0, "cargo": 0.25, "tally": ["45/100", "70%", "3", "Y150"], "alerts": ["HULL BURNING"],
-                "lamps": [0, 0, 1, 1, 0], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Y 150", "HULL BURNING"]},
-    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.69, "tally": ["80/100", "50%", "5", "Y-420"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
-             "lines": ["Hull 80/100", "Fuel 50%", "Cargo 5", "Y -420"]},
-    "overloaded": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.85, "tally": ["80/100", "50%", "7", "Y-420"], "alerts": ["OVERLOADED"],
-                   "lamps": [0, 0, 0, 1, 1], "lines": ["Hull 80/100", "Fuel 50%", "Cargo 7", "Y -420", "OVERLOADED"]},
+    "calm": {"fuel": 0.78, "hull": 1.0, "depth": 0.18, "heat": 0.0, "cargo": 0.0, "tally": ["100/100", "78%", "0", "-87 m"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
+             "lines": ["Hull 100/100", "Fuel 78%", "Cargo 0", "Depth -87 m"]},
+    "low-fuel": {"fuel": 0.12, "hull": 0.9, "depth": 0.18, "heat": 0.0, "cargo": 0.25, "tally": ["90/100", "12%", "3", "-87 m"], "alerts": [], "lamps": [1, 0, 0, 0, 0],
+                 "lines": ["Hull 90/100", "Fuel 12%", "Cargo 3", "Depth -87 m"]},
+    "burning": {"fuel": 0.7, "hull": 0.45, "depth": 0.18, "heat": 1.0, "cargo": 0.25, "tally": ["45/100", "70%", "3", "-87 m"], "alerts": ["HULL BURNING"],
+                "lamps": [0, 0, 1, 1, 0], "lines": ["Hull 45/100", "Fuel 70%", "Cargo 3", "Depth -87 m", "HULL BURNING"]},
+    "deep": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.69, "tally": ["80/100", "50%", "5", "-483 m"], "alerts": [], "lamps": [0, 0, 0, 0, 0],
+             "lines": ["Hull 80/100", "Fuel 50%", "Cargo 5", "Depth -483 m"]},
+    "overloaded": {"fuel": 0.5, "hull": 0.8, "depth": 0.92, "heat": 0.0, "cargo": 0.85, "tally": ["80/100", "50%", "7", "-483 m"], "alerts": ["OVERLOADED"],
+                   "lamps": [0, 0, 0, 1, 1], "lines": ["Hull 80/100", "Fuel 50%", "Cargo 7", "Depth -483 m", "OVERLOADED"]},
 }
 FONT_W = 6  # the preview's glyphs, and the width the coverage assumes for a character of the game's font
 
