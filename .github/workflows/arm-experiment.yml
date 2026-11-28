@@ -1,12 +1,16 @@
 # Experiment for #1725, removed once the issue has its answer: are GitHub's free arm64 runners (ubuntu-24.04-arm) a pool separate
 # from the x64 standard runners' concurrent-job limit, and do the server and client GameTests run on them, how fast? Started by hand
-# only (workflow_dispatch); never on a pull request.
+# only (workflow_dispatch); never on a pull request. The push trigger exists only because GitHub dispatches a workflow it has seen run: a
+# push run has no inputs, so every job skips.
 #   mode=probe: 24 x64 jobs and 24 arm jobs at once, each printing its arch and start time and sleeping 120 s. The jobs' started_at
 #               times (REST) show how many ran at once.
 #   mode=tests: the same server and client GameTest shards on both arches, side by side, from one compile per arch.
 name: ARM runner experiment
 
 on:
+  push:
+    branches: [1725-arm-runners]
+    paths: [.github/workflows/arm-experiment.yml]
   workflow_dispatch:
     inputs:
       mode:
