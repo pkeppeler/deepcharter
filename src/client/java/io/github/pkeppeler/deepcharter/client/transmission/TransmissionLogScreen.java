@@ -57,6 +57,7 @@ public final class TransmissionLogScreen extends CrtScreen {
     }
 
     /** The transmissions listed, oldest first. */
+    // test-seam: the comms log test checks which rows are listed and in what order, which the rows' labels do not say
     public List<Transmission> entries() {
         return entries;
     }

@@ -173,9 +173,8 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
                     .formatted(sky.name(), room, roomSky));
             table.add(
                     "campaign type, sky timeline at %s, open shaft, surface biome: %s".formatted(sky.name(), control));
-            // The surface is held at the deep night (#1606), as dark as the room, so the surface control's luma no
-            // longer
-            // tells the two apart: the factors above do. The shaft must still render at the room's brightness.
+            // The surface is held at the deep night (#1606), as dark as the room, so the surface control's luma
+            // no longer tells the two apart: the factors above do. The shaft must still render as the room does.
             ClientChecks.require(
                     Math.abs(shaft.luma() - room.luma()) <= SAME_LUMA,
                     "the bottom of a layer shaft under open sky renders at layer brightness (the sealed room's " + room

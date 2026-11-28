@@ -183,9 +183,8 @@ public class CampaignAtmosphereTest {
                         expect(helper, compared > 10, "only %s visual attributes were compared", compared);
                     }));
         }
-        // The comparison would pass if the clocks and the weather moved nothing. The sky is held (#1606), so the clock
-        // moves
-        // nothing; the thunder still darkens it.
+        // The comparison would pass if the clocks and the weather moved nothing. The sky is held (#1606), so the
+        // clock moves nothing; the thunder still darkens it.
         List<Object> clear = new ArrayList<>();
         List<Object> thunder = new ArrayList<>();
         at(
