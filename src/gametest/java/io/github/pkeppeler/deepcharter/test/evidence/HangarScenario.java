@@ -32,9 +32,9 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Evidence scenario "m2-hangar" for #77 and #1595: the derelict Mole stands dark in the colony hangar. A charter puts
  * the four parts into the hangar console, which repairs the Mole and gives it to the charter as MOLE-0001, the
- * founder's one Mole. A second Mole is refused, and still refused when the first is a wreck. The wreck is written off, its place is free, and
- * a new Mole is assembled from four parts. Last, a Prospector wreck is restored with no Cicatrium in the pack, on the Company's
- * advance (issue 209).
+ * founder's one Mole. A second Mole is refused, and still refused when the first is a wreck. The wreck is written off,
+ * its place is free, and a new Mole is assembled from four parts. Last, a Prospector wreck is restored with no Cicatrium in the pack, on the
+ * Company's advance (issue 209).
  */
 public class HangarScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;

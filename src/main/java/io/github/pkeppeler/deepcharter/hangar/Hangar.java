@@ -308,7 +308,8 @@ public final class Hangar {
     /**
      * A founding Mole repaired before the one-Mole rule (data of version 1) has no place on record, because the repair
      * kept only the charter. It is given to the Director of the founding charter, once, unless they have a place
-     * already. Other Moles of an older world hold no place: the rule counts only what is crafted after it (ADR 0117). Never throws.
+     * already. Other Moles of an older world hold no place: the rule counts only what is crafted after it (ADR 0117).
+     * Never throws.
      */
     private static void giveLegacyFoundingPlace(MinecraftServer server, HangarData data, PodEntity pod) {
         HangarData.State state = data.state();
