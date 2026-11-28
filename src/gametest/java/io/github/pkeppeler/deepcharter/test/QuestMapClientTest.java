@@ -387,7 +387,8 @@ public class QuestMapClientTest implements FabricClientGameTest {
         ClientWait.screen(context, InventoryScreen.class);
         context.waitTicks(3);
         CataloguePanel panel = CatalogueScene.panel(context);
-        CatalogueState.Lookup lookup = context.computeOnClient(client -> panel.state().lookup());
+        CatalogueState.Lookup lookup =
+                context.computeOnClient(client -> panel.state().lookup());
         require(
                 lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.RECIPES,
                 "a click on the iron icon opens the inventory at iron's recipes, got " + lookup);

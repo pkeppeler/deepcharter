@@ -37,7 +37,6 @@ import net.minecraft.resources.Identifier;
  * they draw ({@link DrawnText}); the real game is in the pencil paths scenario.
  */
 public class PencilSheetClientTest implements FabricClientGameTest {
-    // no-world-ok: the pages are built from steps with no item targets, so no item stack is drawn.
     private static final int LEFT_MOUSE = 1;
     private static final int WIDTH = 427;
     private static final int HEIGHT = 240;
