@@ -158,7 +158,7 @@ public final class PodCharge {
 
     /**
      * Why {@code kind} may not be set at {@code site}, or empty when it may: the refusals every way of placing a
-      * charge shares. A blasting charge needs Company rock
+     * charge shares. A blasting charge needs Company rock
      * somewhere in its volume; a shaped charge needs some column to start in Company rock and none to end on lava.
      */
     static Optional<Component> refuse(ServerLevel level, LoadedBlocks blocks, Kind kind, ChargeSite site) {
@@ -183,9 +183,9 @@ public final class PodCharge {
 
     /**
      * The rows a pod sitting on the charge drops once it blows: a blasting charge's whole depth, or a shaped charge's
-      * deepest column run, and none when the
+     * deepest column run, and none when the
      * charge bores sideways, as nothing opens under the pod. Both count the deepest the hole may be: a shallower
-      * column may hold the pod sooner, but the
+     * column may hold the pod sooner, but the
      * refusal must never let a charge wreck the pod.
      */
     private static int dropRows(ServerLevel level, LoadedBlocks blocks, Kind kind, ChargeSite site) {
