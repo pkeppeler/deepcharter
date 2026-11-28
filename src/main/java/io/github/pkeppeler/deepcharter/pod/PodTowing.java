@@ -103,7 +103,7 @@ public final class PodTowing {
     /** The motion of each towed pod on its line. Server only and not saved: a loaded pod starts at rest with no path behind its tower. */
     private static final Map<PodEntity, Line> LINES = Collections.synchronizedMap(new WeakHashMap<>());
 
-    /** Ticks after a pick in which the item use of the same click is not a click on nothing: well under a person's next click. */
+    /** Ticks after a pick in which the item use of the same click is not a click on nothing; under a next click. */
     private static final int PICK_GRACE_TICKS = 5;
 
     private static final double EPSILON = 1e-7;
