@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Usage: tools/merge-pr.sh <pr-number>
+# Usage: tools/merge-pr.sh --solo <reason> <pr-number>
 #        tools/merge-pr.sh --direct <pr-number>
 #        tools/merge-pr.sh --check <pr-number>
 #        tools/merge-pr.sh --preflight <pr-number>
 #        tools/merge-pr.sh --ci <pr-number>
 #
-# Without a flag the PR merges as a batch of one (tools/merge-batch.sh, #1567): this script's --preflight, one CI run on
-# the merged tree, then a fast-forward push with the roadmap folded in; its own CI need only be green, not current.
+# With --solo the PR merges as a batch of one (tools/merge-batch.sh --solo, #1567; <reason> says why it cannot wait for a
+# bigger batch, #1723): this script's --preflight, one CI run on the merged tree, then a fast-forward push with the roadmap
+# folded in; its own CI need only be green, not current. Without a flag it refuses with exit 2 and names the batch rule.
 # That tool takes the merge lock: exit 3 means another batch or queue holds it, nothing merged, retry later.
 # The checks described below are shared by --preflight, --ci, --check and --direct.
 # --direct is the old merge (below): it squash-merges through GitHub's merge endpoint so the PR shows as merged, and
@@ -51,21 +52,34 @@ set -euo pipefail
 repo=pkeppeler/deepcharter
 gate_only=0
 mode='batch'
+solo=
+# A batch of one needs the reason it cannot wait for a bigger batch (tools/merge-batch.sh --solo, #1723).
+if [[ ${1-} == --solo ]]; then
+  solo=${2-}
+  shift 2 || true
+  [[ $solo =~ [^[:space:]] ]] || { echo "usage: tools/merge-pr.sh --solo <reason> <pr-number> (--solo needs a reason)" >&2; exit 2; }
+fi
 case ${1-} in
   --check) gate_only=1 && mode=merge && shift ;;
   --direct) mode=merge && shift ;;
   --preflight | --ci) mode=${1#--} && shift ;;
 esac
 if [[ $# -ne 1 || ! $1 =~ ^[0-9]+$ ]]; then
-  echo "usage: tools/merge-pr.sh [--direct|--check|--preflight|--ci] <pr-number>" >&2
+  echo "usage: tools/merge-pr.sh --solo <reason> <pr-number> | [--direct|--check|--preflight|--ci] <pr-number>" >&2
   exit 2
 fi
 pr=$1
+[[ -z $solo || $mode == batch ]] || { echo "usage: --solo goes only with a batch of one (tools/merge-pr.sh --solo <reason> <pr-number>)" >&2; exit 2; }
 
 cd "$(dirname "$0")/.."
 # A batch of one: the batch tool runs this script's --preflight and --ci itself.
 if [[ $mode == batch ]]; then
-  exec "${MERGE_BATCH:-tools/merge-batch.sh}" "$pr"
+  if [[ -z $solo ]]; then
+    echo "merge-pr: a batch of one needs --solo <reason> (P0 or P0.5, it unblocks other work, or nothing else passes within about" >&2
+    echo "merge-pr: 30 minutes); otherwise hold it and merge 3 to 5 review-passed PRs with tools/merge-batch.sh <n>..." >&2
+    exit 2
+  fi
+  exec "${MERGE_BATCH:-tools/merge-batch.sh}" --solo "$solo" "$pr"
 fi
 # shellcheck source=lib/generated-paths.sh
 source tools/lib/generated-paths.sh
@@ -221,7 +235,7 @@ $body") || refuse "could not check the title and body for long URLs"
   [[ $is_draft == false ]] || pending="draft"
   [[ -z $review_pass_refusal ]] || pending="${pending:+$pending, }no review pass"
   tier_note=
-  [[ ${ci_tier:-full} != pr ]] || tier_note="; ci tier: pr, lands only as a batch (tools/merge-batch.sh $pr)"
+  [[ ${ci_tier:-full} != pr ]] || tier_note="; ci tier: pr, lands only as a batch (tools/merge-batch.sh $pr <n>..., or --solo <reason> $pr)"
   if [[ -z $pending ]]; then
     echo "GATE OK: PR #$pr at $sha passes the merge gate (check only, nothing changed$tier_note)"
   else

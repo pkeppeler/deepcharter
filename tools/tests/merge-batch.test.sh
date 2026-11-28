@@ -356,7 +356,7 @@ if [[ $(grep -c . "$ST/state.100") -eq 1 && $(cat "$ST/state.100") == CLOSED ]];
 # --- a batch of one: CI on the merged tree, a fast-forward push, the roadmap folded into it (#1567) ---
 reset
 mkpr 1
-run_b 1
+run_b --solo "a test batch of one" 1
 exited "single: exit 0" 0
 printed "single: merged" "merged:  #1"
 count "single: a batch PR is opened for it" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
@@ -382,7 +382,7 @@ if [[ $(grep -c '^Regenerate roadmap' <<<"$landed_subjects") -eq 1 ]]; then pass
 reset
 mkpr 1
 : >"$ST/roadmap_fail"
-run_b 1
+run_b --solo "a test batch of one" 1
 exited "roadmap failure: the batch still lands" 0
 printed "roadmap failure: warns" "WARNING: the roadmap could not be generated; landing batch PR #100 without it"
 if [[ $(main_subjects) == "Title 1 (#1)|" && $(git --git-dir="$ORIGIN" log -1 --format=%s refs/heads/main) == "Title 1 (#1)" ]]; then pass "roadmap failure: main has the squash commit and no roadmap commit"; else fail "roadmap failure: $(git --git-dir="$ORIGIN" log --format=%s "$base..refs/heads/main")"; fi
@@ -510,7 +510,7 @@ printed "push error: nothing merged" "merged:  none"
 reset
 mkpr 1
 : >"$ST/batch_push_deny"
-run_b 1
+run_b --solo "a test batch of one" 1
 exited "batch push error: exit 1" 1
 printed "batch push error: the message names the failed push" "could not push batch/S"
 printed "batch push error: it carries the end of git's output" "hook line 30"
@@ -520,7 +520,7 @@ if [[ $out == *"hook line 10"* ]]; then fail "batch push error: only the last li
 reset
 mkpr 1
 printf '1\nREFUSED: PR #100 build run 1 merged main aaaa but origin/main is bbbb: x changed since: re-run [stale-base] (the head sha is unchanged)\n' >"$ST/ci.1"
-run_b 1
+run_b --solo "a test batch of one" 1
 exited "single stale: exit 0 after a rebuild" 0
 printed "single stale: merged" "merged:  #1"
 count "single stale: two batch PRs" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 2
@@ -529,7 +529,7 @@ reset
 mkpr 1
 stale_line='REFUSED: PR #100 x [stale-base] y'
 for k in 1 2 3; do printf '1\n%s\n' "$stale_line" >"$ST/ci.$k"; done
-BENV=MERGE_BATCH_STALE_RETRIES=2 run_b 1
+BENV=MERGE_BATCH_STALE_RETRIES=2 run_b --solo "a test batch of one" 1
 exited "single stale: exit 1 when it stays stale" 1
 printed "single stale: stopped after the limit" "base still stale after 2 rebuilds"
 count "single stale: CI ran three times (one try and two rebuilds)" "merge-pr --ci" 3
@@ -669,6 +669,28 @@ run_b
 exited "usage: no PRs" 2
 run_b seven
 exited "usage: non-numeric PR" 2
+
+# --- #1723: one PR needs --solo <reason>; review-passed PRs merge 3 to 5 at a time ---
+reset
+mkpr 1
+run_b 1
+exited "solo: one PR without --solo is refused" 2
+printed "solo: the refusal names the rule" "Hold review-passed PRs and merge 3 to 5 together"
+not_logged "solo: refused before the gate" "merge-pr"
+not_logged "solo: refused before any batch PR" "repos/pkeppeler/deepcharter/pulls "
+run_b --solo "" 1
+exited "solo: a blank reason is a usage error" 2
+run_b --solo "   " 1
+exited "solo: a whitespace reason is a usage error" 2
+run_b --solo "P0" 1 2
+exited "solo: --solo with two PRs is a usage error" 2
+not_logged "solo: usage errors never reach the gate" "merge-pr"
+reset
+mkpr 1
+run_b --solo "P0 crash on login" 1
+exited "solo: with a reason, one PR merges" 0
+printed "solo: the reason is said" "a batch of one (--solo): P0 crash on login"
+printed "solo: merged" "merged:  #1"
 
 echo "$cases cases, $failures failures"
 [[ $failures -eq 0 ]]

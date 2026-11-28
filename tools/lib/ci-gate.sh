@@ -207,7 +207,7 @@ check_ci_gate() {
   [[ $build_tier == full && $client_tier == full ]] || ci_tier=pr
   [[ $gate_only -eq 0 ]] || echo "ci tier: $ci_tier (server suite: $build_tier, client suite: $client_tier)"
   if [[ ${require_full_tier:-1} -eq 1 && $ci_tier == pr ]]; then
-    refuse "[pr-tier] has CI of the PR tier only (the GameTest classes its change can affect: server suite $build_tier, client suite $client_tier), and landing needs the full suites: land it with tools/merge-batch.sh $pr (a batch PR runs them), or label it full-ci and push again"
+    refuse "[pr-tier] has CI of the PR tier only (the GameTest classes its change can affect: server suite $build_tier, client suite $client_tier), and landing needs the full suites: land it with tools/merge-batch.sh $pr <n>... (a batch PR runs them; alone only with --solo <reason>), or label it full-ci and push again"
   fi
 }
 

@@ -806,7 +806,7 @@ exited "tier: --check accepts a PR-tier build that ran no server shard" 0
 refusal "tier: that PR-tier build is still not landable" "$tier_hint" \
   "STUB_RUNS=$(runs build:2:success tool-tests:3:success build-checks:13:success)" STUB_TIER=pr
 run_check STUB_TIER=pr
-printed "tier: --check's last line says a PR-tier head lands only as a batch" "ci tier: pr, lands only as a batch (tools/merge-batch.sh 7)"
+printed "tier: --check's last line says a PR-tier head lands only as a batch" "ci tier: pr, lands only as a batch (tools/merge-batch.sh 7 <n>..., or --solo <reason> 7)"
 run_check STUB_TIER=
 printed "tier: a head with no ci-tier notice is logged as [pre-tier]" "[pre-tier]"
 run_check STUB_TIER=full
@@ -1045,8 +1045,9 @@ rc=0
 out=$(PATH="$work/bin:$PATH" bash "$mark" --carry 2>&1) || rc=$?
 exited "mark --carry without a PR is a usage error" 2
 
-# Without a flag the PR merges as a batch of one (#1567): the script hands the PR to the batch tool and touches neither
-# GitHub nor git itself. MERGE_BATCH is the test seam.
+# With --solo the PR merges as a batch of one (#1567): the script hands the PR and the reason to the batch tool and touches
+# neither GitHub nor git itself. Without a flag it refuses (#1723: review-passed PRs merge in batches of 3 to 5). MERGE_BATCH
+# is the test seam.
 cat >"$work/batch" <<'STUB'
 #!/usr/bin/env bash
 echo "batch $*" >>"$LOG"
@@ -1055,14 +1056,32 @@ STUB
 chmod +x "$work/batch"
 reset
 rc=0
-out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" 7 2>&1) || rc=$?
-exited "no flag: merges as a batch of one" 0
-logged "no flag: the batch tool gets the PR" "batch 7"
-not_logged "no flag: the script itself calls neither gh nor git" "^gh\|^git"
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --solo "P0 crash fix" 7 2>&1) || rc=$?
+exited "solo: merges as a batch of one" 0
+logged "solo: the batch tool gets the reason and the PR" "batch --solo P0 crash fix 7"
+not_logged "solo: the script itself calls neither gh nor git" "^gh\|^git"
 reset
 rc=0
-out=$(env MERGE_BATCH="$work/batch" STUB_BATCH_RC=1 PATH="$work/bin:$PATH" bash "$script" 7 2>&1) || rc=$?
-exited "no flag: the batch tool's refusal is the exit status" 1
+out=$(env MERGE_BATCH="$work/batch" STUB_BATCH_RC=1 PATH="$work/bin:$PATH" bash "$script" --solo "unblocks #9" 7 2>&1) || rc=$?
+exited "solo: the batch tool's refusal is the exit status" 1
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" 7 2>&1) || rc=$?
+exited "no flag: refused" 2
+printed "no flag: names the batch rule" "merge 3 to 5 review-passed PRs with tools/merge-batch.sh"
+not_logged "no flag: never reaches the batch tool" "^batch"
+for bad in "" " "; do
+  reset
+  rc=0
+  out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --solo "$bad" 7 2>&1) || rc=$?
+  exited "solo '$bad': a blank reason is a usage error" 2
+  not_logged "solo '$bad': never reaches the batch tool" "^batch"
+done
+reset
+rc=0
+out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --solo "P0" --check 7 2>&1) || rc=$?
+exited "solo with --check: a usage error" 2
+not_logged "solo with --check: never reaches the batch tool" "^batch"
 reset
 rc=0
 out=$(env MERGE_BATCH="$work/batch" PATH="$work/bin:$PATH" bash "$script" --direct 7 2>&1) || rc=$?
