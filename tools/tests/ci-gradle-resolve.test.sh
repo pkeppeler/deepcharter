@@ -3,11 +3,10 @@
 # modules-2 and retries once with --refresh-dependencies, and a second one fails the step; a download failure
 # (#1358), Loom's asset download included (#1703), is retried with backoff up to the attempt bound and then fails
 # with a clear message; any other failure, including a download-looking line in the build's own output before
-# Gradle's failure report, is not retried. Each
-# download failure prints diagnostics (a retry's --info lines about HTTP statuses and cached results, and curl probes,
-# whose failure never fails the script), and the last retry adds --refresh-dependencies. On GitHub Actions only, the
-# script installs the Central mirror init script into the Gradle home's init.d before the first run (#1365), and the
-# probes ask the mirror too.
+# Gradle's failure report, is not retried. Each download failure prints diagnostics (a retry's --info lines about
+# HTTP statuses and cached results, and curl probes, whose failure never fails the script), and the last retry adds
+# --refresh-dependencies. On GitHub Actions only, the script installs the Central mirror init script into the Gradle
+# home's init.d before the first run (#1365), and the probes ask the mirror too.
 # Usage: tools/tests/ci-gradle-resolve.test.sh
 set -euo pipefail
 
