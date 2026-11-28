@@ -27,7 +27,8 @@ final class PodSteering {
 
     /** Turns the pod by one tick of tank steering: the turn speed while A or D is held, nothing once let go. */
     static void steer(PodEntity pod, Input input) {
-        float speed = PodSteeringTuning.DEFAULT.turnSpeed();
+        // Loose ore in a rider's pack cramps the cab: the pod turns more slowly while A or D is held.
+        float speed = PodSteeringTuning.DEFAULT.turnSpeed() * (1f - PodLooseOre.cramp(pod));
         float turn = input.left() == input.right() ? 0f : input.right() ? speed : -speed;
         pod.setTurnRate(turn);
         pod.setYRot(Mth.wrapDegrees(pod.getYRot() + turn));

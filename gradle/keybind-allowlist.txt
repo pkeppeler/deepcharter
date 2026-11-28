@@ -11,4 +11,3 @@ key.deepcharter.catalogue.materials  switches the recipe console between the rec
 key.deepcharter.line_slab  the pilot lines the slab or stops lining, in a pod with no screen open; vanilla has no action for it and every click on a pod is already spent
 key.deepcharter.sonar_ping  the navigator pings the sonar on demand; vanilla has no sonar action and the clicks aboard belong to piloting
 key.deepcharter.sonar_mark  marks or clears the echo being looked at, beside the ping key; vanilla has no equivalent and the clicks aboard belong to piloting
-key.deepcharter.dump_cargo  dumps the whole hold and must be held for a second so a brush dumps nothing; a click is too easy to do by accident and vanilla has no key for it

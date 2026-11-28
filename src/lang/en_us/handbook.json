@@ -143,7 +143,6 @@
   "deepcharter.handbook.controls.crew.line": "Pilot: %s lines the slab with slag brick.",
   "deepcharter.handbook.controls.crew.sonar": "Navigator: %s pings the sonar, %s marks an echo.",
   "deepcharter.handbook.controls.cargo.title": "The Mole: dumping cargo",
-  "deepcharter.handbook.controls.cargo.dump": "Too heavy to lift? Aboard, hold %s to dump the whole hold under her.",
   "deepcharter.handbook.controls.cargo.dump_stack": "In her screen, %s on a stack dumps one; with Ctrl, the stack.",
   "deepcharter.handbook.controls.pod_screen.title": "The Mole: her screen",
   "deepcharter.handbook.controls.pod_screen.open": "Hold %s and press %s on her for her screen.",

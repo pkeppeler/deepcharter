@@ -4,6 +4,8 @@ status: accepted
 
 # The pod screen holds any item, keeps ore until a terminal, and feeds the tank from a fuel slot
 
+Amended by [ADR 0110](0110-ore-moves-freely-between-hold-and-pack-and-loose-ore-costs-the-pod.md): ore moves between the hold and the pack, loose pack ore costs the pod, and the dump key is gone. Where this record says ore stays out of the pack, or names the dump key, ADR 0110 replaces it.
+
 Playtest 4 asked for one inventory screen on the pod ([#1270](https://github.com/pkeppeler/deepcharter/issues/1270)): what is fitted, the fuel, and what the pod hauls, used like a chest. It builds on [ADR 0099](0099-a-slotted-menu-is-a-server-authoritative-container-of-typed-slots-and-an-offline-terminal-is-one.md)'s `SlottedMenu`. Two things here persist and are hard to reverse: the hold's saved format, and the fuel slot's attachment.
 
 ## Decision
