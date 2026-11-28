@@ -9,7 +9,10 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 
-/** Sounds the cockpit alarm for the pilot of a pod at or below the low-fuel threshold; the harsher, faster klaxon when nearly dry. Silent once stranded (powered off). */
+/**
+ * Sounds the cockpit alarm for the pilot of a pod at or below the low-fuel threshold; the harsher, faster klaxon when
+ * nearly dry. Silent once stranded (powered off).
+ */
 public final class LowFuelBeep {
     private static final int SLOW_INTERVAL_TICKS = 30;
     private static final int FAST_INTERVAL_TICKS = 10;
