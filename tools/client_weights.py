@@ -2,16 +2,24 @@
 """Writes gradle/client-test-weights.txt and gradle/client-overhead.txt from client GameTest job logs (#1553, #1695).
 
 A class's seconds are the gap between its `CLIENT-GAMETEST START` line and the next one in the shard's log; a shard's
-last class runs to the log's final `BUILD SUCCESSFUL` line. Each run's times are scaled so its total over the classes
+last class runs to the log's final `BUILD SUCCESSFUL` line. A shard that failed or ran out of time has no such line: its
+last class did not finish, so that class's seconds are left out (said on stderr) and the rest count. Each run's times are scaled so its total over the classes
 every run ran equals the mean of those totals (runner speed varies about 1.3x), then each class gets the mean over the
 runs that ran it, rounded, at least 1 (the least the file accepts). Use at least three runs, and give every shard's log
 of a run under one --run.
 
 A shard's overhead is the seconds from the job's start (the `JOB_START: <epoch>` the client action's deadline counts from) to
 its first START line: setup, Gradle's start-up and Minecraft's. The overhead file holds their distribution over every log,
-which tools/tests/test_ci_budget.py holds gradle/ci-budget.txt's client-overhead-seconds to.
+which tools/tests/test_ci_budget.py holds gradle/ci-budget.txt's client-overhead-seconds to. Give the red and timed-out
+shards' logs too, or the slow tail is missing (#1695): a shard the deadline ended before its first test counts its time to
+the deadline's message, a lower bound. A log with neither a START line nor that message (a shard that broke for another
+reason) is refused, and the run it belongs to is left out by whoever runs this.
 
-Usage: tools/py tools/client_weights.py [--out FILE] [--overhead-out FILE] --run LABEL LOG... [--run LABEL LOG...]...
+A class whose body changed under the same name (a split keeps one half's name) takes `--changed CLASS LABEL...`: only
+those runs count for it, so the older runs' times of the old body do not.
+
+Usage: tools/py tools/client_weights.py [--out FILE] [--overhead-out FILE] [--changed CLASS LABEL...]...
+         --run LABEL LOG... [--run LABEL LOG...]...
   LABEL names the run in the file header, for example "46042722092 (7b52fef1)".
   Fetch a shard's log with: gh api repos/pkeppeler/deepcharter/actions/jobs/<job id>/logs > shard1.log
 """
@@ -22,10 +30,13 @@ import argparse
 import datetime
 import math
 import re
+import sys
 from pathlib import Path
 
 START = "CLIENT-GAMETEST START "
 END = "BUILD SUCCESSFUL"
+# The client action's message when the job deadline ends the run (.github/actions/client-gametest).
+OUT_OF_TIME = "##[error]Client GameTests out of time"
 JOB_START = re.compile(r"JOB_START: (\d+)")
 # 26 characters cover the date, the time and six fractional digits of a log line's timestamp.
 STAMP_LENGTH = 26
@@ -51,27 +62,29 @@ def stamp(line: str) -> datetime.datetime:
     return datetime.datetime.fromisoformat(line.lstrip("\ufeff")[:STAMP_LENGTH])
 
 
-def class_seconds(log: str) -> dict[str, float]:
-    """Seconds per class in one shard's job log."""
+def class_seconds(log: str) -> tuple[dict[str, float], str | None]:
+    """Seconds per finished class in one shard's job log, and the class that did not finish (no final BUILD SUCCESSFUL
+    line: the shard failed or ran out of time), or None."""
     lines = log.splitlines()
     starts = [(stamp(line), line.split(START, 1)[1].strip()) for line in lines if START in line]
     ends = [stamp(line) for line in lines if END in line]
     if not starts:
-        raise ValueError("no CLIENT-GAMETEST START line in the log")
-    if not ends:
-        raise ValueError(f"no {END} line in the log, so its last class has no end")
-    boundaries = [when for when, _ in starts[1:]] + [ends[-1]]
-    return {name: (end - begin).total_seconds() for (begin, name), end in zip(starts, boundaries)}
+        return {}, None
+    unfinished = None if ends and ends[-1] > starts[-1][0] else starts[-1][1]
+    boundaries = [when for when, _ in starts[1:]] + ([] if unfinished else [ends[-1]])
+    return {name: (end - begin).total_seconds() for (begin, name), end in zip(starts, boundaries)}, unfinished
 
 
 def overhead_seconds(log: str) -> float:
-    """Seconds from the job's start to the first class in one shard's job log."""
+    """Seconds from the job's start to the first class in one shard's job log; for a shard the deadline ended before its
+    first class, to the deadline's message."""
     job_start = JOB_START.search(log)
     if not job_start:
         raise ValueError("no JOB_START line in the log, so the job's start is unknown")
-    first = next((line for line in log.splitlines() if START in line), None)
+    lines = log.splitlines()
+    first = next((line for line in lines if START in line), None) or next((line for line in lines if OUT_OF_TIME in line), None)
     if first is None:
-        raise ValueError("no CLIENT-GAMETEST START line in the log")
+        raise ValueError(f"neither a CLIENT-GAMETEST START line nor '{OUT_OF_TIME}' in the log: the shard broke for another reason")
     return stamp(first).replace(tzinfo=datetime.UTC).timestamp() - int(job_start[1])
 
 
@@ -87,6 +100,13 @@ def overhead(seconds: list[float]) -> dict[str, int]:
 
 def render_overhead(found: dict[str, int], labels: list[str]) -> str:
     return OVERHEAD_HEADER.format(runs=" and ".join(labels)) + "".join(f"{name} {value}\n" for name, value in found.items())
+
+
+def only_from(name: str, only: set[str], labels: list[str], runs: list[dict[str, float]]) -> None:
+    """Drops class `name` from every run whose label is not in `only` (--changed)."""
+    for label, run in zip(labels, runs):
+        if label not in only:
+            run.pop(name, None)
 
 
 def weights(runs: list[dict[str, float]]) -> dict[str, int]:
@@ -112,6 +132,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=Path("gradle/client-test-weights.txt"))
     parser.add_argument("--overhead-out", type=Path, default=Path("gradle/client-overhead.txt"))
+    parser.add_argument("--changed", action="append", nargs="+", default=[], metavar=("CLASS", "LABEL"))
     parser.add_argument("--run", action="append", nargs="+", metavar=("LABEL", "LOG"), required=True)
     args = parser.parse_args()
     labels = []
@@ -123,10 +144,20 @@ def main() -> None:
         merged: dict[str, float] = {}
         for log in logs:
             text = Path(log).read_text(errors="replace")
-            merged.update(class_seconds(text))
-            overheads.append(overhead_seconds(text))
+            try:
+                overheads.append(overhead_seconds(text))
+            except ValueError as e:
+                parser.error(f"{log}: {e}")
+            finished, unfinished = class_seconds(text)
+            if unfinished:
+                print(f"{log}: {unfinished} did not finish (no final {END}): left out of the weights", file=sys.stderr)
+            merged.update(finished)
         labels.append(label)
         runs.append(merged)
+    for name, *only in args.changed:
+        if not only or not set(only) <= set(labels):
+            parser.error(f"--changed {name} names no run, or a run not given with --run: {only}")
+        only_from(name, set(only), labels, runs)
     if len(runs) < 3:
         parser.error("average at least three runs, so one loaded runner does not skew a class")
     args.out.write_text(render(weights(runs), labels))
