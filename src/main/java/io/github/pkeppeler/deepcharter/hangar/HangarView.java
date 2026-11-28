@@ -15,10 +15,13 @@ import net.minecraft.network.codec.StreamCodec;
  *                          cannot be read
  * @param mole              the state of the viewing player's Mole, {@link MoleState#NONE} when they have none or the
  * records cannot be read
+ * @param armedTicksLeft    the ticks left of the player's first press on Write Off, which the second must come within; 0
+ *                          unless {@code mole} is {@link MoleState#WRECKED}
  * @param writeOffTicksLeft the game ticks until a filed write-off takes effect: 0 unless {@code mole} is {@link
  * MoleState#WRITING_OFF}
  */
-public record HangarView(int advanceLeft, MoleState mole, int writeOffTicksLeft) implements TerminalFeature {
+public record HangarView(int advanceLeft, MoleState mole, int writeOffTicksLeft, int armedTicksLeft)
+        implements TerminalFeature {
     /** Where a player's one Mole stands, for the screen's status line. */
     public enum MoleState {
         NONE,
@@ -34,6 +37,8 @@ public record HangarView(int advanceLeft, MoleState mole, int writeOffTicksLeft)
             HangarView::mole,
             ByteBufCodecs.VAR_INT,
             HangarView::writeOffTicksLeft,
+            ByteBufCodecs.VAR_INT,
+            HangarView::armedTicksLeft,
             HangarView::new);
 
     public HangarView {
@@ -43,6 +48,10 @@ public record HangarView(int advanceLeft, MoleState mole, int writeOffTicksLeft)
         if (writeOffTicksLeft < 0 || (writeOffTicksLeft > 0 && mole != MoleState.WRITING_OFF)) {
             throw new IllegalArgumentException(
                     "a Mole that is " + mole + " cannot have " + writeOffTicksLeft + " ticks of write-off left");
+        }
+        if (armedTicksLeft < 0 || (armedTicksLeft > 0 && mole != MoleState.WRECKED)) {
+            throw new IllegalArgumentException(
+                    "a Mole that is " + mole + " cannot have a write-off armed for " + armedTicksLeft + " ticks");
         }
     }
 }

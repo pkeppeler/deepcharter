@@ -59,13 +59,14 @@ public final class HangarData extends SavedData {
      * A filed write-off.
      *
      * @param due   the game time at which it takes effect
-     * @param payer the charter that paid for it, to be refunded if the wreck is restored first
+     * @param payer the charter that paid for it, to be refunded if the wreck is restored first; empty for a filing read
+     *              from the earlier shape (a bare due time), which has nobody to refund
      * @param paid  what it cost, in dollars
      */
-    public record WriteOff(long due, CharterId payer, long paid) {
+    public record WriteOff(long due, Optional<CharterId> payer, long paid) {
         private static final Codec<WriteOff> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                         Codec.LONG.fieldOf("due").forGetter(WriteOff::due),
-                        CharterId.CODEC.fieldOf("payer").forGetter(WriteOff::payer),
+                        CharterId.CODEC.optionalFieldOf("payer").forGetter(WriteOff::payer),
                         Codec.LONG.fieldOf("paid").forGetter(WriteOff::paid))
                 .apply(instance, WriteOff::new));
     }
@@ -85,8 +86,16 @@ public final class HangarData extends SavedData {
                         UUIDUtil.CODEC.fieldOf("player").forGetter(Slot::player),
                         UUIDUtil.CODEC.fieldOf("pod").forGetter(Slot::pod),
                         Codec.BOOL.fieldOf("wrecked").forGetter(Slot::wrecked),
-                        WriteOff.CODEC.optionalFieldOf("write_off").forGetter(Slot::writeOff))
-                .apply(instance, Slot::new));
+                        WriteOff.CODEC.optionalFieldOf("write_off").forGetter(Slot::writeOff),
+                        // The shape of the first build of this rule: a bare due time. Read, never written.
+                        Codec.LONG.optionalFieldOf("write_off_due").forGetter(slot -> Optional.empty()))
+                .apply(
+                        instance,
+                        (player, pod, wrecked, writeOff, legacyDue) -> new Slot(
+                                player,
+                                pod,
+                                wrecked,
+                                writeOff.or(() -> legacyDue.map(due -> new WriteOff(due, Optional.empty(), 0))))));
 
         /** The game time at which the filed write-off takes effect, if one is filed. */
         public Optional<Long> writeOffDue() {

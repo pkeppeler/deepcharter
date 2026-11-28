@@ -776,8 +776,9 @@ public class WreckTest {
             if (!items.isEmpty()) {
                 throw failure(helper, "nothing should drop: the pack stays in the wreck, items: %s", items);
             }
-            List<ItemStack> pack =
-                    Versioned.readable(pod, WreckRegistry.PACK).orElseThrow().items();
+            List<ItemStack> pack = Versioned.readable(pod, WreckRegistry.PACK).orElseThrow().entries().stream()
+                    .map(entry -> entry.stack())
+                    .toList();
             if (pack.stream().noneMatch(stack -> stack.is(Items.DIRT))) {
                 throw failure(helper, "the dirt should be in the wreck's pack, it holds %s", pack);
             }

@@ -69,6 +69,7 @@ public final class HangarTerminal {
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hangar_console"), HangarParts.ALL);
 
     private static final int TICKS_PER_MINUTE = 1200;
+    private static final int TICKS_PER_SECOND = 20;
     /** How long a first press on Write Off stays armed for the second, in ticks: thirty seconds. */
     private static final int ARM_WINDOW_TICKS = 600;
     /**
@@ -96,7 +97,7 @@ public final class HangarTerminal {
             MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
         Optional<HangarData> data = HangarData.readable(server);
         if (data.isEmpty() || charter.isEmpty()) {
-            return new HangarView(0, HangarView.MoleState.NONE, 0);
+            return new HangarView(0, HangarView.MoleState.NONE, 0, 0);
         }
         int advanceLeft = data.get()
                 .advanceLeft(
@@ -112,7 +113,8 @@ public final class HangarTerminal {
                         .orElse(HangarView.MoleState.NONE),
                 slot.flatMap(HangarData.Slot::writeOffDue)
                         .map(due -> (int) Math.max(0, Math.min(Integer.MAX_VALUE, due - now)))
-                        .orElse(0));
+                        .orElse(0),
+                armedTicksLeft(player, slot, now));
     }
 
     /**
@@ -121,6 +123,14 @@ public final class HangarTerminal {
      */
     static long writeOffMinutes(HangarTuning tuning) {
         return tuning.writeOffTicks() / TICKS_PER_MINUTE;
+    }
+
+    /** The ticks left of the player's first press on Write Off, 0 unless their Mole is a wreck with no write-off filed. */
+    private static int armedTicksLeft(ServerPlayer player, Optional<HangarData.Slot> slot, long now) {
+        Long armedAt = ARMED.get(player.getUUID());
+        boolean wreckedUnfiled =
+                slot.map(held -> held.wrecked() && held.writeOff().isEmpty()).orElse(false);
+        return armedAt == null || !wreckedUnfiled ? 0 : (int) Math.max(0, ARM_WINDOW_TICKS - (now - armedAt));
     }
 
     private static Optional<Component> refuse(String reason, Object... args) {
@@ -285,6 +295,8 @@ public final class HangarTerminal {
                                     wreck.getZ(),
                                     ComponentItems.stackOf(track, label))));
         }
+        handBackPack(server, data.get(), wreck);
+        Wrecks.dropPack(wreck);
         Wrecks.salvage(context.player(), wreck);
         Hangar.cancelWriteOff(server, data.get(), wreck.getUUID());
         data.get().release(wreck.getUUID());
@@ -327,7 +339,11 @@ public final class HangarTerminal {
         Long armedAt = ARMED.get(context.player().getUUID());
         if (armedAt == null || now - armedAt > ARM_WINDOW_TICKS) {
             ARMED.put(context.player().getUUID(), now);
-            return refuse("write_off_confirm", cost, writeOffMinutes(HangarTuning.DEFAULT), ARM_WINDOW_TICKS / 20);
+            // The terms are on the console's screen while it is armed; this line only says it is.
+            context.player()
+                    .sendOverlayMessage(Component.translatable(
+                            "deepcharter.hangar.write_off_armed", ARM_WINDOW_TICKS / TICKS_PER_SECOND));
+            return Optional.empty();
         }
         ARMED.remove(context.player().getUUID());
         Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), cost);
@@ -337,11 +353,26 @@ public final class HangarTerminal {
         data.get()
                 .fileWriteOff(
                         held.get().pod(),
-                        new HangarData.WriteOff(now + HangarTuning.DEFAULT.writeOffTicks(), charter.id(), cost));
+                        new HangarData.WriteOff(
+                                now + HangarTuning.DEFAULT.writeOffTicks(), Optional.of(charter.id()), cost));
         context.player()
                 .sendOverlayMessage(Component.translatable(
                         "deepcharter.hangar.write_off_filed", cost, writeOffMinutes(HangarTuning.DEFAULT)));
         return Optional.empty();
+    }
+
+    /**
+     * Gives the wreck's pack back to its pilots, or the place holder for a pilot who is away, and tells each player who
+     * got stacks.
+     */
+    private static void handBackPack(MinecraftServer server, HangarData data, PodEntity wreck) {
+        Wrecks.returnPack(server, wreck, data.slotHolding(wreck.getUUID()).map(HangarData.Slot::player))
+                .forEach((id, count) -> {
+                    ServerPlayer recipient = server.getPlayerList().getPlayer(id);
+                    if (recipient != null) {
+                        recipient.sendSystemMessage(Component.translatable("deepcharter.hangar.pack_returned", count));
+                    }
+                });
     }
 
     /** Restores the nearest wreck in reach of the console that the charter may access, for money and the catalyst. */
@@ -378,6 +409,12 @@ public final class HangarTerminal {
         if (charter.account() < cost.money()) {
             return refuse("insufficient_funds", cost.money());
         }
+        // A restore ends the wreck, and a stack in its pack goes to the one who carried it: wait for them or the
+        // holder.
+        if (Wrecks.packHasNoRecipient(
+                server, wreck, data.get().slotHolding(wreck.getUUID()).map(HangarData.Slot::player))) {
+            return refuse("pack_owner_away");
+        }
         Item catalyst = OreRegistry.item(tuning.catalyst());
         int fromPack = Math.min(count(player.getInventory(), catalyst), cost.catalysts());
         int advanced = Math.min(cost.catalysts() - fromPack, data.get().advanceLeft(charter.id(), cost.advance()));
@@ -402,10 +439,7 @@ public final class HangarTerminal {
                 wreck.setCustomName(null);
             }
         }
-        int packed = Wrecks.returnPack(player, wreck);
-        if (packed > 0) {
-            player.sendSystemMessage(Component.translatable("deepcharter.hangar.pack_returned", packed));
-        }
+        handBackPack(server, data.get(), wreck);
         take(player.getInventory(), catalyst, fromPack);
         if (advanced > 0) {
             data.get().spendAdvance(charter.id(), advanced);

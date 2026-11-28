@@ -32,6 +32,7 @@ import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
+import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -47,6 +48,7 @@ import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import io.github.pkeppeler.deepcharter.wreck.WreckPack;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.ArrayList;
@@ -58,14 +60,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -139,7 +145,7 @@ public class MoleSlotTest {
 
     /** Presses Write Off twice, as the console asks: the first arms it, the second files it. */
     private static void fileWriteOff(GameTestHelper helper, MockPlayer owner, BlockPos console) {
-        expectRefused(helper, act(owner.player(), console, HangarTerminal.WRITE_OFF), "the arming press");
+        expectDone(helper, act(owner.player(), console, HangarTerminal.WRITE_OFF), "the arming press");
         expectDone(helper, act(owner.player(), console, HangarTerminal.WRITE_OFF), "the confirming press");
     }
 
@@ -427,10 +433,17 @@ public class MoleSlotTest {
 
                     mole.damageHull(mole.maxHull());
                     long funds = balance(helper, owner);
-                    expectRefused(
+                    expectDone(
                             helper,
                             act(owner.player(), console, HangarTerminal.WRITE_OFF),
-                            "the first press only arms");
+                            "the first press, which only arms it");
+                    HangarView armed =
+                            HangarTerminal.view(server, owner.player(), Optional.of(charterOf(helper, owner)), console);
+                    expect(
+                            helper,
+                            armed.mole() == HangarView.MoleState.WRECKED && armed.armedTicksLeft() > 0,
+                            "the console's view shows the write-off armed, with %s ticks left",
+                            armed.armedTicksLeft());
                     expect(
                             helper,
                             balance(helper, owner) == funds
@@ -440,7 +453,6 @@ public class MoleSlotTest {
                                             .writeOff()
                                             .isEmpty(),
                             "the first press takes nothing and files nothing");
-                    told.add(new Told(owner, "write_off_confirm", "the first press on Write Off"));
                     expectDone(helper, act(owner.player(), console, HangarTerminal.WRITE_OFF), "writing off the wreck");
                     expect(helper, funds - balance(helper, owner) == cost, "the write-off costs $%s", cost);
                     long due = data(helper)
@@ -706,17 +718,33 @@ public class MoleSlotTest {
                 }));
     }
 
+    private static void stash(PodEntity pod, UUID pilot, ItemStack stack) {
+        Versioned.modifyOrThrow(pod, WreckRegistry.PACK, pack -> {
+            List<WreckPack.Entry> entries = new ArrayList<>(pack.entries());
+            entries.add(new WreckPack.Entry(pilot, stack));
+            return new WreckPack(entries);
+        });
+    }
+
+    private static int packed(PodEntity pod, Item item) {
+        return Versioned.readable(pod, WreckRegistry.PACK).orElseThrow().entries().stream()
+                .filter(entry -> entry.stack().is(item))
+                .mapToInt(entry -> entry.stack().getCount())
+                .sum();
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
-    public void thePilotsPackStaysInTheWreckAndComesBackWithIt(GameTestHelper helper) {
+    public void aDyingPilotsPackStaysInTheWreckForThemAndANobodyHomeRestoreWaits(GameTestHelper helper) {
         List<Told> told = new ArrayList<>();
         inTheHangar(
                 helper,
                 before -> withFreshWorld(helper, () -> {
                     repairTheConsole(helper);
-                    MockPlayer pilot = member(helper, "Pack Pilot");
-                    BlockPos console = console(helper, pilot);
-                    deposit(helper, pilot, RICH);
-                    MockPlayer mate = crewOf(helper, pilot, console, "Pack Mate");
+                    MockPlayer director = member(helper, "Pack Director");
+                    BlockPos console = console(helper, director);
+                    deposit(helper, director, RICH);
+                    MockPlayer pilot = crewOf(helper, director, console, "Pack Pilot");
+                    MockPlayer mate = director;
                     MockPlayer stranger = member(helper, "Pack Stranger");
                     stand(helper, stranger, console);
                     PodEntity mole = assemble(helper, before, pilot, console, "the Mole");
@@ -726,11 +754,17 @@ public class MoleSlotTest {
 
                     mole.damageHull(mole.maxHull());
                     expect(helper, Wrecks.isWreck(mole), "the Mole is a wreck");
-                    int packed = Versioned.readable(mole, WreckRegistry.PACK).orElseThrow().items().stream()
-                            .filter(stack -> stack.is(Items.DIAMOND))
-                            .mapToInt(ItemStack::getCount)
-                            .sum();
-                    expect(helper, packed == 5, "the wreck holds the pilot's 5 diamonds, it holds %s", packed);
+                    WreckPack saved =
+                            Versioned.readable(mole, WreckRegistry.PACK).orElseThrow();
+                    expect(
+                            helper,
+                            saved.entries().size() == 1
+                                    && saved.entries()
+                                            .getFirst()
+                                            .pilot()
+                                            .equals(pilot.player().getUUID())
+                                    && packed(mole, Items.DIAMOND) == 5,
+                            "the wreck holds the pilot's 5 diamonds, under the pilot's name");
                     expect(
                             helper,
                             count(pilot.player(), Items.DIAMOND) == 0
@@ -742,20 +776,86 @@ public class MoleSlotTest {
                             "the crew die with empty hands and nothing drops where they fell");
 
                     Wrecks.salvage(stranger.player(), mole);
+                    Wrecks.salvage(mate.player(), mole);
                     expect(
                             helper,
-                            count(stranger.player(), Items.DIAMOND) == 0,
-                            "a stranger salvaging the wreck is not given the pack");
-                    expectDone(
-                            helper, act(mate.player(), console, HangarTerminal.RESTORE_WRECK), "restoring the wreck");
+                            count(stranger.player(), Items.DIAMOND) == 0
+                                    && count(mate.player(), Items.DIAMOND) == 0
+                                    && packed(mole, Items.DIAMOND) == 5,
+                            "no one else salvaging the wreck takes the pilot's pack");
+
+                    // The pilot is dead and so is the place holder (the same player): the pack has no one to go to.
+                    expectRefused(
+                            helper,
+                            act(mate.player(), console, HangarTerminal.RESTORE_WRECK),
+                            "a charter-mate restoring a wreck whose pilot is away");
+                    told.add(new Told(mate, "pack_owner_away", "the restore that waits"));
                     expect(
                             helper,
-                            count(mate.player(), Items.DIAMOND) == 5
-                                    && Versioned.readable(mole, WreckRegistry.PACK)
-                                            .orElseThrow()
-                                            .items()
-                                            .isEmpty(),
-                            "a restore gives the pack to the one who restores it, and the wreck holds none");
+                            Wrecks.isWreck(mole) && packed(mole, Items.DIAMOND) == 5,
+                            "the refused restore leaves the wreck and its pack");
+
+                    // A scrap frees the place and drops what no one could be handed.
+                    expectDone(helper, act(mate.player(), console, HangarTerminal.SCRAP_WRECK), "scrapping it");
+                    List<ItemEntity> drops = helper.getLevel()
+                            .getEntitiesOfClass(
+                                    ItemEntity.class, mole.getBoundingBox().inflate(8));
+                    expect(
+                            helper,
+                            mole.isRemoved()
+                                    && count(mate.player(), Items.DIAMOND) == 0
+                                    && drops.stream()
+                                            .anyMatch(drop -> drop.getItem().is(Items.DIAMOND)),
+                            "a scrap drops the pack that no one could be handed, and gives the mate none of it");
+                    drops.forEach(ItemEntity::discard);
+                    clearFloor(helper);
+                    finish(helper, told);
+                }));
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aRestoreGivesEachPlayerTheirOwnStacksAndTheHolderThoseOfAnAbsentPilot(GameTestHelper helper) {
+        List<Told> told = new ArrayList<>();
+        inTheHangar(
+                helper,
+                before -> withFreshWorld(helper, () -> {
+                    repairTheConsole(helper);
+                    MockPlayer holder = member(helper, "Pack Holder");
+                    BlockPos console = console(helper, holder);
+                    deposit(helper, holder, RICH);
+                    MockPlayer pilot = crewOf(helper, holder, console, "Pack Rider");
+                    MockPlayer restorer = crewOf(helper, holder, console, "Pack Restorer");
+                    PodEntity mole = assemble(helper, before, holder, console, "the holder's Mole");
+                    bringHome(helper, mole);
+                    stash(mole, pilot.player().getUUID(), new ItemStack(Items.DIAMOND, 3));
+                    stash(mole, holder.player().getUUID(), new ItemStack(Items.EMERALD, 2));
+                    stash(mole, UUID.randomUUID(), new ItemStack(Items.COAL, 4));
+                    mole.damageHull(mole.maxHull());
+
+                    Wrecks.salvage(pilot.player(), mole);
+                    expect(
+                            helper,
+                            count(pilot.player(), Items.DIAMOND) == 3 && packed(mole, Items.DIAMOND) == 0,
+                            "a salvage gives a player their own stacks");
+                    stash(mole, pilot.player().getUUID(), new ItemStack(Items.DIAMOND, 3));
+
+                    expectDone(helper, act(restorer.player(), console, HangarTerminal.RESTORE_WRECK), "restoring");
+                    expect(
+                            helper,
+                            count(pilot.player(), Items.DIAMOND) == 6
+                                    && count(holder.player(), Items.EMERALD) == 2
+                                    && count(holder.player(), Items.COAL) == 4
+                                    && count(restorer.player(), Items.DIAMOND) == 0
+                                    && count(restorer.player(), Items.EMERALD) == 0
+                                    && count(restorer.player(), Items.COAL) == 0,
+                            "each stack goes to its pilot, a gone pilot's to the holder, and none to the restorer");
+                    expect(
+                            helper,
+                            Versioned.readable(mole, WreckRegistry.PACK)
+                                    .orElseThrow()
+                                    .entries()
+                                    .isEmpty(),
+                            "the restored Mole holds no pack");
                     mole.discard();
                     clearFloor(helper);
                     finish(helper, told);
@@ -763,42 +863,99 @@ public class MoleSlotTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void salvageAndScrapGiveTheCrewPackToTheOwnersCharter(GameTestHelper helper) {
+    public void anUnreadableWreckPackIsKeptAndNeverDestroyed(GameTestHelper helper) {
         List<Told> told = new ArrayList<>();
         inTheHangar(
                 helper,
                 before -> withFreshWorld(helper, () -> {
                     repairTheConsole(helper);
-                    MockPlayer pilot = member(helper, "Scrap Pilot");
+                    MockPlayer pilot = member(helper, "Unreadable Pilot");
                     BlockPos console = console(helper, pilot);
                     deposit(helper, pilot, RICH);
-                    MockPlayer mate = crewOf(helper, pilot, console, "Salvage Mate");
-                    PodEntity first = assemble(helper, before, pilot, console, "the Mole");
-                    bringHome(helper, first);
-                    pilot.player().getInventory().add(new ItemStack(Items.DIAMOND, 3));
-                    expect(helper, pilot.player().startRiding(first, true, false), "the pilot boards");
-                    first.damageHull(first.maxHull());
-                    Wrecks.salvage(mate.player(), first);
-                    expect(
-                            helper,
-                            count(mate.player(), Items.DIAMOND) == 3,
-                            "a member of the owner charter salvaging the wreck is given the pack");
+                    PodEntity mole = assemble(helper, before, pilot, console, "the Mole");
+                    bringHome(helper, mole);
+                    CompoundTag raw = new CompoundTag();
+                    raw.putString("future", "pack");
+                    mole.setAttached(WreckRegistry.PACK, new Versioned.Unreadable<>(raw));
+                    pilot.player().getInventory().add(new ItemStack(Items.DIAMOND, 5));
+                    expect(helper, pilot.player().startRiding(mole, true, false), "the pilot boards");
 
-                    PodEntity second = assemble(helper, before, mate, console, "the mate's Mole");
-                    bringHome(helper, second);
-                    MockPlayer rider = crewOf(helper, pilot, console, "Scrap Rider");
-                    rider.player().getInventory().add(new ItemStack(Items.EMERALD, 2));
-                    expect(helper, rider.player().startRiding(second, true, false), "the rider boards the mate's Mole");
-                    second.damageHull(second.maxHull());
-                    first.discard();
-                    expectDone(helper, act(mate.player(), console, HangarTerminal.SCRAP_WRECK), "scrapping the wreck");
+                    mole.damageHull(mole.maxHull());
                     expect(
                             helper,
-                            count(mate.player(), Items.EMERALD) == 2 && second.isRemoved(),
-                            "a scrap gives the crew's pack back with the hold");
+                            mole.getAttached(WreckRegistry.PACK) instanceof Versioned.Unreadable<WreckPack> kept
+                                    && kept.raw().equals(raw),
+                            "the unreadable saved pack is written back as it was read");
+                    expect(
+                            helper,
+                            count(pilot.player(), Items.DIAMOND) == 0
+                                    && helper
+                                            .getLevel()
+                                            .getEntitiesOfClass(
+                                                    ItemEntity.class,
+                                                    mole.getBoundingBox().inflate(8))
+                                            .stream()
+                                            .anyMatch(drop -> drop.getItem().is(Items.DIAMOND)),
+                            "the pilot's pack drops as it did before, since nothing may be written over the saved one");
+                    helper.getLevel()
+                            .getEntitiesOfClass(
+                                    ItemEntity.class, mole.getBoundingBox().inflate(8))
+                            .forEach(ItemEntity::discard);
+                    MockPlayer other = crewOf(helper, pilot, console, "Unreadable Mate");
+                    Wrecks.salvage(other.player(), mole);
+                    expect(
+                            helper,
+                            Wrecks.returnPack(
+                                                    server(helper),
+                                                    mole,
+                                                    Optional.of(other.player().getUUID()))
+                                            .isEmpty()
+                                    && mole.getAttached(WreckRegistry.PACK) instanceof Versioned.Unreadable<WreckPack>,
+                            "salvage and return leave an unreadable pack alone and do not throw");
+                    mole.discard();
                     clearFloor(helper);
                     finish(helper, told);
                 }));
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aWriteOffOfTheFirstBuildsShapeStillDecodes(GameTestHelper helper) {
+        UUID player = UUID.randomUUID();
+        UUID pod = UUID.randomUUID();
+        CompoundTag slot = new CompoundTag();
+        slot.put("player", UUIDUtil.CODEC.encodeStart(NbtOps.INSTANCE, player).getOrThrow());
+        slot.put("pod", UUIDUtil.CODEC.encodeStart(NbtOps.INSTANCE, pod).getOrThrow());
+        slot.putBoolean("wrecked", true);
+        slot.putLong("write_off_due", 4_242L);
+        CompoundTag saved = ((CompoundTag) HangarData.CODEC
+                        .encodeStart(NbtOps.INSTANCE, new HangarData())
+                        .getOrThrow())
+                .copy();
+        saved.putInt("version", 1);
+        ListTag moles = new ListTag();
+        moles.add(slot);
+        saved.put("moles", moles);
+        HangarData old = HangarData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
+        HangarData.Slot read = old.slotOf(player).orElseThrow();
+        expect(
+                helper,
+                old.isReadable()
+                        && read.writeOffDue().equals(Optional.of(4_242L))
+                        && read.writeOff().orElseThrow().payer().isEmpty()
+                        && read.writeOff().orElseThrow().paid() == 0,
+                "a bare due time reads as a write-off with nobody to refund, it read %s",
+                read);
+        Tag again = HangarData.CODEC.encodeStart(NbtOps.INSTANCE, old).getOrThrow();
+        expect(
+                helper,
+                HangarData.CODEC
+                        .parse(NbtOps.INSTANCE, again)
+                        .getOrThrow()
+                        .slotOf(player)
+                        .orElseThrow()
+                        .equals(read),
+                "it is saved in the current shape and reads back the same");
+        helper.succeed();
     }
 
     @GameTest(maxTicks = MAX_TICKS)

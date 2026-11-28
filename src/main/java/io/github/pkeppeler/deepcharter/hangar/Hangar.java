@@ -99,8 +99,9 @@ public final class Hangar {
             return;
         }
         data.cancelWriteOff(pod);
-        Optional<CharterRefusal> refused = Charters.readableFind(
-                        server, filed.get().payer())
+        Optional<CharterRefusal> refused = filed.get()
+                .payer()
+                .flatMap(payer -> Charters.readableFind(server, payer))
                 .flatMap(charter ->
                         Charters.deposit(server, charter.id(), filed.get().paid()));
         if (refused.isPresent()) {

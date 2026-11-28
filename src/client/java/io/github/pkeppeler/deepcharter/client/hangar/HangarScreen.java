@@ -38,6 +38,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
     private static final int GAP = 4;
     private static final int CLOSE_WIDTH = 90;
     private static final int TICKS_PER_MINUTE = 1200;
+    private static final int MILLIS_PER_TICK = 50;
     private static final int HALF_WIDTH = (BUTTON_WIDTH - GAP) / 2;
 
     /** One wrapped line of the restore prices, where it is drawn. */
@@ -47,11 +48,15 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
     private List<PriceLine> priceLines = List.of();
     private List<PriceLine> advanceLines = List.of();
     private List<PriceLine> moleLines = List.of();
+    /** The wall-clock time at which the armed Write Off lapses, 0 when it is not armed. */
+    private long armedUntilMillis;
+
     private final Typewriter typewriter;
 
     public HangarScreen(TerminalView view) {
         super(Component.translatable(HangarTerminal.TYPE.block().getDescriptionId()));
         this.view = view;
+        this.armedUntilMillis = armedUntil(view);
         this.typewriter =
                 typewriter(Component.translatable("screen.deepcharter.hangar.welcome"), new TypewriterSound());
     }
@@ -64,6 +69,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
     @Override
     public void update(TerminalView newer) {
         view = newer;
+        armedUntilMillis = armedUntil(newer);
         rebuildWidgets();
     }
 
@@ -104,7 +110,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                 ? wrap(Component.translatable("screen.deepcharter.hangar.advance", advanceLeft, catalyst)
                         .getString())
                 : List.of();
-        HangarView hangar = view.feature(HangarView.class).orElse(new HangarView(0, HangarView.MoleState.NONE, 0));
+        HangarView hangar = view.feature(HangarView.class).orElse(new HangarView(0, HangarView.MoleState.NONE, 0, 0));
         List<String> status = wrap(moleLine(hangar));
         List<String> wrapped = wrap(prices);
         int lineHeight = font.lineHeight + CrtTuning.current().lineSpacing();
@@ -146,12 +152,21 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                 lowerY,
                 HALF_WIDTH,
                 BUTTON_HEIGHT,
-                Component.translatable("screen.deepcharter.hangar.write_off", tuning.writeOffCost()),
+                armed()
+                        ? Component.translatable("screen.deepcharter.hangar.write_off_confirm", tuning.writeOffCost())
+                        : Component.translatable("screen.deepcharter.hangar.write_off", tuning.writeOffCost()),
                 button -> send(HangarTerminal.WRITE_OFF)));
     }
 
     /** One sentence on where the player's one Mole stands, so a refused button has its reason on the screen. */
-    private static String moleLine(HangarView hangar) {
+    private String moleLine(HangarView hangar) {
+        if (armed()) {
+            return Component.translatable(
+                            "screen.deepcharter.hangar.mole.armed",
+                            HangarTuning.DEFAULT.writeOffCost(),
+                            HangarTuning.DEFAULT.writeOffTicks() / TICKS_PER_MINUTE)
+                    .getString();
+        }
         return switch (hangar.mole()) {
             case NONE ->
                 Component.translatable("screen.deepcharter.hangar.mole.none").getString();
@@ -165,6 +180,18 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                                 (hangar.writeOffTicksLeft() + TICKS_PER_MINUTE - 1) / TICKS_PER_MINUTE)
                         .getString();
         };
+    }
+
+    /** The wall-clock time at which the armed Write Off in {@code shown} lapses, 0 when it is not armed. */
+    private static long armedUntil(TerminalView shown) {
+        int ticks =
+                shown.feature(HangarView.class).map(HangarView::armedTicksLeft).orElse(0);
+        return ticks > 0 ? System.currentTimeMillis() + ticks * (long) MILLIS_PER_TICK : 0;
+    }
+
+    /** True from the first press on Write Off until the second must come: the screen then shows the terms. */
+    private boolean armed() {
+        return armedUntilMillis > System.currentTimeMillis();
     }
 
     private List<String> wrap(String text) {
@@ -200,6 +227,11 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        if (armedUntilMillis != 0 && !armed()) {
+            // The window lapsed: the button and the status go back to what they were.
+            armedUntilMillis = 0;
+            rebuildWidgets();
+        }
         CrtTuning tuning = CrtTuning.current();
         CrtDraw.header(
                 graphics,

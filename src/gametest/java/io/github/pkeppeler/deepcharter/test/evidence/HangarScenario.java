@@ -134,12 +134,12 @@ public class HangarScenario extends EvidenceScenario {
 
             // The wreck cannot be reached: write it off. The place is free a day later, and the wreck is destroyed.
             long beforeWriteOff = singleplayer.getServer().computeOnServer(HangarScenario::balance);
-            // The first press only arms it, with the terms in full on the action bar; the second files it.
+            // The first press only arms it: the screen then shows the terms and the button asks to confirm.
             context.clickScreenButton("WRITE OFF: $" + tuning.writeOffCost());
-            context.waitTicks(10);
+            context.waitTicks(20);
             hold(context);
             screenshot(context, "write-off-asks-to-confirm");
-            context.clickScreenButton("WRITE OFF: $" + tuning.writeOffCost());
+            context.clickScreenButton("CONFIRM: $" + tuning.writeOffCost());
             await(context, singleplayer, server -> balance(server) == beforeWriteOff - tuning.writeOffCost());
             // The server's answer is a new view, which the screen takes in place.
             context.waitTicks(20);

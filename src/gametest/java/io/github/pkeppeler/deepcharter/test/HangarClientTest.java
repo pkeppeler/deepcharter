@@ -36,19 +36,27 @@ public class HangarClientTest implements FabricClientGameTest {
             // The advance line shows while the charter has advance left, and is gone once it is used.
             // Each state of the player's Mole has its own status line, which must fit as the others do.
             record Shown(
-                    int advanceLeft, HangarView.MoleState mole, int writeOffTicksLeft, String key, int arguments) {}
+                    int advanceLeft,
+                    HangarView.MoleState mole,
+                    int writeOffTicksLeft,
+                    int armedTicksLeft,
+                    String key,
+                    int arguments) {}
             for (Shown shown : new Shown[] {
-                new Shown(3, HangarView.MoleState.NONE, 0, "screen.deepcharter.hangar.mole.none", 0),
-                new Shown(0, HangarView.MoleState.WORKING, 0, "screen.deepcharter.hangar.mole.working", 0),
-                new Shown(3, HangarView.MoleState.WRECKED, 0, "screen.deepcharter.hangar.mole.wrecked", 0),
-                new Shown(0, HangarView.MoleState.WRITING_OFF, 24_000, "screen.deepcharter.hangar.mole.writing_off", 1)
+                new Shown(3, HangarView.MoleState.NONE, 0, 0, "screen.deepcharter.hangar.mole.none", 0),
+                new Shown(0, HangarView.MoleState.WORKING, 0, 0, "screen.deepcharter.hangar.mole.working", 0),
+                new Shown(3, HangarView.MoleState.WRECKED, 0, 0, "screen.deepcharter.hangar.mole.wrecked", 0),
+                // Armed for five minutes, so the screen is still armed when the test has looked.
+                new Shown(3, HangarView.MoleState.WRECKED, 0, 6_000, "screen.deepcharter.hangar.mole.armed", 2),
+                new Shown(
+                        0, HangarView.MoleState.WRITING_OFF, 24_000, 0, "screen.deepcharter.hangar.mole.writing_off", 1)
             }) {
                 int advanceLeft = shown.advanceLeft();
                 TerminalView view = new TerminalView(
                         BlockPos.ZERO,
                         HangarTerminal.TYPE.id(),
-                        Optional.<TerminalFeature>of(
-                                new HangarView(advanceLeft, shown.mole(), shown.writeOffTicksLeft())),
+                        Optional.<TerminalFeature>of(new HangarView(
+                                advanceLeft, shown.mole(), shown.writeOffTicksLeft(), shown.armedTicksLeft())),
                         List.of());
                 for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                     context.setScreen(() -> new HangarScreen(view));

@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.UUID;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -25,6 +27,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -68,9 +71,10 @@ public final class Wrecks {
     }
 
     /**
-     * Server only: moves everything in the wreck's hold and the pack its crew carried to {@code player}, ore and the
-     * crew's stores alike, dropping what does not fit. Anyone may do this. Tells the player what happened, and returns
-     * how many stacks moved. Unreadable cargo is left alone and reported, not thrown.
+     * Server only: moves everything in the wreck's hold to {@code player}, ore and the crew's stores alike, dropping what
+     * does not fit, and the stacks that {@code player} themselves carried when the hull ran out. Anyone may take the
+     * hold; no one takes another player's pack. Tells the player what happened, and returns how many stacks moved.
+     * Unreadable cargo is left alone and reported, not thrown.
      */
     public static int salvage(ServerPlayer player, PodEntity pod) {
         if (!isWreck(pod)) {
@@ -78,33 +82,72 @@ public final class Wrecks {
         }
         PodCargo cargo = pod.cargo();
         List<ItemStack> held = cargo.isReadable() ? cargo.takeAll(pod) : List.of();
-        // The hold is anyone's; the crew's pack goes only to the owner charter.
-        List<ItemStack> pack = mayTakePack(player, pod) ? takePack(pod) : List.of();
-        if (held.isEmpty() && pack.isEmpty()) {
+        List<ItemStack> own = takePack(pod, pilot -> pilot.equals(player.getUUID())).stream()
+                .map(WreckPack.Entry::stack)
+                .toList();
+        if (held.isEmpty() && own.isEmpty()) {
             player.sendSystemMessage(Component.translatable(
                     cargo.isReadable() ? "deepcharter.wreck.salvage.empty" : "deepcharter.wreck.salvage.unreadable"));
             return 0;
         }
         List<ItemStack> all = new ArrayList<>(held);
-        all.addAll(pack);
+        all.addAll(own);
         give(player, all);
         player.sendSystemMessage(Component.translatable("deepcharter.wreck.salvage.success", all.size()));
         return all.size();
     }
 
     /**
-     * Server only: gives {@code player} the pack the wreck's crew carried (what the hangar restore and the scrap hand
-     * back), and returns how many stacks moved. The hold is not touched. Unreadable saved pack is left alone.
+     * Server only: gives the pack back, which the hangar restore and the scrap do. Each stack goes to the player who
+     * carried it, if they are online and alive. A stack whose pilot is offline, dead or gone goes to {@code holder} (the
+     * wreck's place holder) if they are online and alive; with neither it stays in the wreck. The hold is not touched.
+     * Unreadable saved pack is left alone. Returns how many stacks each player was given.
      */
-    public static int returnPack(ServerPlayer player, PodEntity pod) {
-        List<ItemStack> pack = takePack(pod);
-        give(player, pack);
-        return pack.size();
+    public static Map<UUID, Integer> returnPack(MinecraftServer server, PodEntity pod, Optional<UUID> holder) {
+        Optional<ServerPlayer> fallback = holder.flatMap(id -> livePlayer(server, id));
+        Map<ServerPlayer, List<ItemStack>> given = new LinkedHashMap<>();
+        for (WreckPack.Entry entry :
+                takePack(pod, pilot -> recipient(server, pilot, fallback).isPresent())) {
+            given.computeIfAbsent(recipient(server, entry.pilot(), fallback).orElseThrow(), player -> new ArrayList<>())
+                    .add(entry.stack());
+        }
+        Map<UUID, Integer> counts = new LinkedHashMap<>();
+        given.forEach((player, stacks) -> {
+            give(player, stacks);
+            counts.put(player.getUUID(), stacks.size());
+        });
+        return counts;
     }
 
-    private static boolean mayTakePack(ServerPlayer player, PodEntity pod) {
-        return PodComponents.mayAccess(
-                pod, Charters.readableCharterOf(player.level().getServer(), player.getUUID()));
+    /**
+     * True when the wreck's pack holds a stack that {@link #returnPack} could not give anyone now: its pilot and the
+     * place holder are both offline or dead.
+     */
+    public static boolean packHasNoRecipient(MinecraftServer server, PodEntity pod, Optional<UUID> holder) {
+        Optional<ServerPlayer> fallback = holder.flatMap(id -> livePlayer(server, id));
+        return Versioned.readable(pod, WreckRegistry.PACK).stream()
+                .flatMap(pack -> pack.entries().stream())
+                .anyMatch(entry -> recipient(server, entry.pilot(), fallback).isEmpty());
+    }
+
+    /** Server only: drops every stack left in the wreck's pack at the wreck, for a scrap that no one could be handed it. */
+    public static void dropPack(PodEntity pod) {
+        for (WreckPack.Entry entry : takePack(pod, pilot -> true)) {
+            pod.level()
+                    .addFreshEntity(new ItemEntity(
+                            pod.level(), pod.getX(), pod.getY() + pod.getBbHeight(), pod.getZ(), entry.stack()));
+        }
+    }
+
+    /** The player who gets a pilot's stacks: the pilot if online and alive, else the fallback. */
+    private static Optional<ServerPlayer> recipient(
+            MinecraftServer server, UUID pilot, Optional<ServerPlayer> fallback) {
+        return livePlayer(server, pilot).or(() -> fallback);
+    }
+
+    /** A dead player has no pack to fill: what they were given would be lost at their respawn. */
+    private static Optional<ServerPlayer> livePlayer(MinecraftServer server, UUID id) {
+        return Optional.ofNullable(server.getPlayerList().getPlayer(id)).filter(ServerPlayer::isAlive);
     }
 
     private static void give(ServerPlayer player, List<ItemStack> stacks) {
@@ -119,14 +162,26 @@ public final class Wrecks {
         }
     }
 
-    /** Empties the wreck's saved pack and returns what was in it. Unreadable saved pack is skipped (logged once). */
-    private static List<ItemStack> takePack(PodEntity pod) {
+    /**
+     * Takes out of the wreck's saved pack the entries whose pilot {@code pilots} accepts, and returns them; the rest
+     * stay. Unreadable saved pack is skipped (logged once) and left as it is.
+     */
+    private static List<WreckPack.Entry> takePack(PodEntity pod, Predicate<UUID> pilots) {
         Optional<WreckPack> pack = Versioned.readable(pod, WreckRegistry.PACK);
-        if (pack.isEmpty() || pack.get().items().isEmpty()) {
+        if (pack.isEmpty()) {
             return List.of();
         }
-        Versioned.modifyOrThrow(pod, WreckRegistry.PACK, old -> WreckPack.EMPTY);
-        return pack.get().items();
+        List<WreckPack.Entry> taken = pack.get().entries().stream()
+                .filter(entry -> pilots.test(entry.pilot()))
+                .toList();
+        if (taken.isEmpty()) {
+            return List.of();
+        }
+        List<WreckPack.Entry> kept = pack.get().entries().stream()
+                .filter(entry -> !pilots.test(entry.pilot()))
+                .toList();
+        Versioned.modifyOrThrow(pod, WreckRegistry.PACK, old -> new WreckPack(kept));
+        return taken;
     }
 
     /**
@@ -138,7 +193,7 @@ public final class Wrecks {
         if (saved.isEmpty()) {
             return;
         }
-        List<ItemStack> stashed = new ArrayList<>(saved.get().items());
+        List<WreckPack.Entry> stashed = new ArrayList<>(saved.get().entries());
         for (Entity member : crew) {
             if (member instanceof ServerPlayer player) {
                 Inventory inventory = player.getInventory();
@@ -150,7 +205,7 @@ public final class Wrecks {
                     }
                     ItemStack stack = inventory.removeItemNoUpdate(slot);
                     if (!stack.isEmpty()) {
-                        stashed.add(stack);
+                        stashed.add(new WreckPack.Entry(player.getUUID(), stack));
                     }
                 }
             }
