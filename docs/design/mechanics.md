@@ -305,7 +305,7 @@ Read from the code, not invented. The pilot's whole counterplay to seeing a pock
 
 | What | Where | What it does for gas |
 |---|---|---|
-| The blast | `GasHazard.java:41` (`damage`), `OreTuning.java:17` | Hull cost is depth in feet times the radiator factor times 0.05 (about 20 at the top of Deep Claim). Pods within a block of the pocket take it; a pocket mined by the drill or by hand vents (`GasHazard.java:29`, `PodDrill.java:210`). |
+| The blast | `GasHazard.java:41` (`damage`), `OreTuning.java:17` | Hull cost is depth in metres times the radiator factor times 0.164, the 0.05 a foot it was before depth read in metres (#1604; about 20 at the top of Deep Claim). Pods within a block of the pocket take it; a pocket mined by the drill or by hand vents (`GasHazard.java:29`, `PodDrill.java:210`). |
 | Scanner, tier 3 and up | `ScannerTuning.java:23` (`gasTier` 3), `ScanSlice.java:85,120`, `ScannerHud.java:140` | Shows a pocket as a magenta cell in the slice (one block thick, in the pod's facing plane). Below tier 3 a pocket reads as rock. Price $1,250. **A Mole cannot fit it:** the Mole takes parts to tier 2 (`UpgradeTuning.java:14`), so the Mole sees no gas in layers 1 and 2. A Prospector (cap 3) can. |
 | Radiator | `PodComponents.java:177`, `UpgradeTuning.java:91` | Gas and lava both read it. A Mole's best is tier 2: gas costs 0.75 of the hull ($500 for 0.9, $1,250 for 0.75). |
 | Hull part | `PodComponents.java:133`, `UpgradeTuning.java:88` | More hull to spend; a soak, not an answer. |
@@ -804,7 +804,7 @@ The no-brace columns were measured again on the merged code and give the sounder
 
 **The bore.** `W = ceil(width)` blocks on both horizontal axes, `H = ceil(height)` blocks tall (`Chassis.boreWidth`, `boreHeight`; `PodFootprint` is the pod's cells). A pod is centred in its bore. Width is both the pod's width and depth; only width and height may differ. One downward step bores `W x W` cells (`Chassis.slabCells`), one sideways step `W x H`.
 
-**Drill time per slab.** The time does not grow with the bore. A slab takes the time of its hardest block: `ticks = ceil(hardness x ticksPerHardness x (1 + max(0, depthFeet) / 1000))` for that block (`PodDrill.drillTicks`). A wider bore is slower only because it is more likely to hold something harder than stone: with `p` the zone's ore chance, the chance a slab holds ore is `1 - (1 - p)^(W x W)`, and a slab with ore takes the ore's hardness (`EarlyRunModel.slabSeconds`). A Mole (4 cells) at `p` = 0.02 meets ore in 8% of slabs, a 4-wide pod (16 cells) in 28%.
+**Drill time per slab.** The time does not grow with the bore. A slab takes the time of its hardest block: `ticks = ceil(hardness x ticksPerHardness x (1 + max(0, depth) / doublingDepth))` for that block, depth in metres and `doublingDepth` 305 m, the original's 1,000 ft (`PodDrill.drillTicks`). A wider bore is slower only because it is more likely to hold something harder than stone: with `p` the zone's ore chance, the chance a slab holds ore is `1 - (1 - p)^(W x W)`, and a slab with ore takes the ore's hardness (`EarlyRunModel.slabSeconds`). A Mole (4 cells) at `p` = 0.02 meets ore in 8% of slabs, a 4-wide pod (16 cells) in 28%.
 
 **Ore per slab.** `W x W x p x yield` (`EarlyRunModel.run`). A 4 x 4 bore brings four times a Mole's ore from each slab for the same fuel per second, so the cargo bay fills in a quarter of the slabs. Bigger pods get their ore from a bigger bay and tank, which is what the chassis and its price are for, not from the drill.
 
@@ -1666,7 +1666,7 @@ The heat shield's Goldium is the slow one: the sales forgone are 4.4 minutes of 
 
 ## The deepest point (#476)
 
-A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in feet, like the HUD. "Reach layer 3", which opens the Morale Initiative, means reaching the top of layer 3 (`LayerChain.topDepth(3)`, depth 575, the bottom row of layer 2's crust): a charter has drilled through the crust, or come down the Kells' shaft.
+A charter's deepest point is the greatest depth any online member in survival or adventure has stood at on the surface or in a layer, read once a second with `Depth.of` (the HUD's depth). `/deepcharter charter info` prints it in metres, like the HUD. "Reach layer 3", which opens the Morale Initiative, means reaching the top of layer 3 (`LayerChain.topDepth(3)`, depth 575, the bottom row of layer 2's crust): a charter has drilled through the crust, or come down the Kells' shaft.
 
 ## Company Rock and the straight shaft (#509, A)
 
@@ -2410,7 +2410,7 @@ The film has no collision, breaks at once by hand or by the drill, drops nothing
 | Drifters a zone holds, one source / two sources / alarm, one source | 1 / 2 / 2 (up to the cap 2, 3, 4) | `driftersKeyOnTheTagAndAreCountedByPodsAndCappedByZone` |
 | The alarm | 3600 ticks from the last kill, 180 s on the readout, ends | `theAlarmShowsDronesAndEnds` runs all 3,600 ticks |
 
-**Priced against the hazards that exist.** Lava is 10 hull a second, for as long as the pod touches it, times the radiator. A gas pocket's blast is 0.05 hull a foot of depth, once: 25 hull at 500 feet, 50 at 1,000. One cloud is 3 a second for at most 8 seconds: less than a gas pocket in the layers the Hollows sit at, a tenth of lava's rate, and a pilot who drives clear takes a few points. The pocket is a surprise; the cloud has 10 seconds of tell and answers to a verb. Chained, it can wreck a pod that ignores it (the CREATURES.md line "can wreck a pod that ignores them, but never in one hit and never without a tell"): one cloud is a quarter of a Mole, never a hit.
+**Priced against the hazards that exist.** Lava is 10 hull a second, for as long as the pod touches it, times the radiator. A gas pocket's blast is 0.164 hull a metre of depth, once: 25 hull at 152 m, 50 at 305 m. One cloud is 3 a second for at most 8 seconds: less than a gas pocket in the layers the Hollows sit at, a tenth of lava's rate, and a pilot who drives clear takes a few points. The pocket is a surprise; the cloud has 10 seconds of tell and answers to a verb. Chained, it can wreck a pod that ignores it (the CREATURES.md line "can wreck a pod that ignores them, but never in one hit and never without a tell"): one cloud is a quarter of a Mole, never a hit.
 
 **Decisions (A).**
 - **The alarm is session-only; no ADR 0077.** The alarm is held in memory, never saved, and the readout attachment is not persistent. A restart forgets up to 3 minutes of alarm. That is the same class as the hold and the fuse (session state), the player loses nothing they could keep (no item, no progress, no account), and the worst case is a calm minute after a reload. Saving it would need a versioned `SavedData` and a decode fallback for a state that cannot be worth a migration. If the alarm ever has to survive a restart (a persistent zone state, the "while nobody is near" visits of #927), ADR 0077 is reserved for that move.

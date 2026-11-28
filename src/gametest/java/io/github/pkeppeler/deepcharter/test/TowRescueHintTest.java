@@ -361,8 +361,8 @@ public class TowRescueHintTest {
         expect(helper, page.contains("within " + seconds + " seconds"), "the page says the %d second window", seconds);
         expect(
                 helper,
-                page.contains("within " + PodTowing.reachBlocks() + " blocks"),
-                "the page says the %d block reach",
+                page.contains("within " + PodTowing.reachBlocks() + " m"),
+                "the page says the %d m reach (#1604: distances read in metres)",
                 PodTowing.reachBlocks());
         expect(helper, page.contains("holds the cable"), "the page says the cable is held");
         helper.succeed();

@@ -81,7 +81,7 @@ public class OreProcessorScenario extends EvidenceScenario {
                     context,
                     "an account line ending $" + cargo,
                     client -> AccountHud.text()
-                            .map(text -> text.getString().endsWith("$" + cargo))
+                            .map(text -> text.getString().replace(",", "").endsWith("$" + cargo))
                             .orElse(false),
                     client -> "the account line "
                             + AccountHud.text().map(Component::getString).orElse("(none)"));
@@ -94,7 +94,7 @@ public class OreProcessorScenario extends EvidenceScenario {
                     context,
                     "an account line ending $" + total,
                     client -> AccountHud.text()
-                            .map(text -> text.getString().endsWith("$" + total))
+                            .map(text -> text.getString().replace(",", "").endsWith("$" + total))
                             .orElse(false),
                     client -> "the account line "
                             + AccountHud.text().map(Component::getString).orElse("(none)"));

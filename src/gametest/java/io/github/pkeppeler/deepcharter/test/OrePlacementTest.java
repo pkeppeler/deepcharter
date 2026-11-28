@@ -238,19 +238,23 @@ public class OrePlacementTest {
 
     @GameTest
     public void gasDamageIsDepthTimesRadiator(GameTestHelper helper) {
-        float perFoot = OreTuning.DEFAULT.gasDamagePerFoot();
+        float perMetre = OreTuning.DEFAULT.gasDamagePerMetre();
+        // #1604: the depth is in metres now; a blast at a given depth costs what it did when it was read in feet.
+        if (Math.abs(perMetre - 0.05f * 3.28f) > 1e-4f) {
+            throw failure(helper, "a blast costs 0.164 hull a metre (0.05 a foot), got %s", perMetre);
+        }
         for (int depth : new int[] {0, 1, 100, 433, 1500, 6000}) {
             for (float radiator : new float[] {0f, 0.5f, 1f, 2.5f}) {
-                float expected = depth * radiator * perFoot;
+                float expected = depth * radiator * perMetre;
                 float actual = GasHazard.damage(depth, radiator);
                 if (Math.abs(actual - expected) > 1e-3f * Math.max(1f, expected)) {
                     throw failure(
                             helper,
-                            "damage(%d ft, radiator %s) is %s, expected depth x radiator x %s = %s",
+                            "damage(%d m, radiator %s) is %s, expected depth x radiator x %s = %s",
                             depth,
                             radiator,
                             actual,
-                            perFoot,
+                            perMetre,
                             expected);
                 }
             }
@@ -367,7 +371,7 @@ public class OrePlacementTest {
             level.destroyBlock(centre, false);
             GasHazard.vent(level, centre);
 
-            float damage = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), 1f);
+            float damage = GasHazard.damage(Depth.of(level, centre.getY()), 1f);
             if (damage <= 0f || damage >= before) {
                 throw failure(helper, "the test depth gives a damage of %s on a hull of %s", damage, before);
             }
@@ -413,7 +417,7 @@ public class OrePlacementTest {
             float stockLoss = ventLoss(level, centre, stock);
             stock.discard();
 
-            float base = GasHazard.damage(Depth.feet(Depth.of(level, centre.getY())), 1f);
+            float base = GasHazard.damage(Depth.of(level, centre.getY()), 1f);
             if (Math.abs(stockLoss - base) > 1e-3f) {
                 throw failure(helper, "the stock pod lost %s, expected the base %s", stockLoss, base);
             }
@@ -454,7 +458,7 @@ public class OrePlacementTest {
             }
             if (level.getBlockState(gas).isAir()) {
                 rig.pilot.releaseInput();
-                float damage = GasHazard.damage(Depth.feet(Depth.of(level, gas.getY())), 1f);
+                float damage = GasHazard.damage(Depth.of(level, gas.getY()), 1f);
                 if (damage <= 0f) {
                     throw failure(helper, "the test depth gives no gas damage");
                 }

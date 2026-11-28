@@ -383,7 +383,7 @@ Original lore with the original game's shape (a cheerful employer, vanishing min
 - **Transmissions** go to the whole charter. Most trigger at the charter's deepest point reached; the bootstrap repairs and the finale beats trigger on events.
 - **Comms log** (#1615): a key (K) opens every transmission the charter has sent the player, in order, each with when it came (its zone, breach or event), to read again or replay with its sounds. It is the transmissions channel's own screen, not a handbook page. It lists only what has reached the player, so it spoils nothing, and a member who joins later reads the charter's whole log. A garbled transmission stays garbled.
 - A personal build could swap in the original's transmission text ([REFERENCE.md](../original_flash_game/REFERENCE.md)).
-- **Altimeter:** each layer has its own trick, presentation only ([LORE.md](LORE.md#11-layers)). "UNCHARTED" shows below the ramp.
+- **Altimeter:** depth reads in metres, one block to a metre, with the unit m: the cockpit altimeter, the scanner ruler, chat and terminals ([#1604](https://github.com/pkeppeler/deepcharter/issues/1604)). Each layer has its own trick, presentation only ([LORE.md](LORE.md#11-layers)). "UNCHARTED" shows below the ramp.
 
 ## 15. Presentation
 

@@ -51,9 +51,11 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
      * @param ticksPerHardness ticks at the surface per point of hardness
      * @param crustHullDamage  hull points lost for each crust slab bored
      * @param alignSpeed       blocks per tick the pod slides to centre itself in its bore
+     * @param doublingDepth    metres below sea level at which a block takes twice its surface time: the original's
+     *                         1,000 ft (#1604)
      */
-    public record Drill(float ticksPerHardness, float crustHullDamage, double alignSpeed) {
-        public static final Drill DEFAULT = new Drill(16f, 8f, 0.1);
+    public record Drill(float ticksPerHardness, float crustHullDamage, double alignSpeed, double doublingDepth) {
+        public static final Drill DEFAULT = new Drill(16f, 8f, 0.1, 305.0);
     }
 
     /** Bay size. Ore mass shares a unit with enginePower (100 = no lift at all) and lives in {@code OreType}. */

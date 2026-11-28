@@ -34,8 +34,6 @@ public class BreachHudTest implements FabricClientGameTest {
     /** Written out here, not read from Depth, so the test checks the maths rather than repeating it. */
     private static final int SEA_LEVEL = 63;
 
-    private static final double FEET_PER_BLOCK = 3.28;
-
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
@@ -52,22 +50,13 @@ public class BreachHudTest implements FabricClientGameTest {
                     "the surface",
                     client -> SEA_LEVEL - ClientSession.player(client).getBlockY());
 
-            // In layer 1 low enough that the reading is over a thousand feet, so it has a thousands separator. The
-            // depth is the
-            // surface's formula (ADR 0059): sea level minus Y, in the one level.
+            // Low in layer 1. The depth is the surface's formula (ADR 0059): sea level minus Y, in the one level.
             teleport(singleplayer, 1, 5);
             ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
             assertAltimeter(
                     context,
                     "layer 1",
                     client -> SEA_LEVEL - ClientSession.player(client).getBlockY());
-            String deep = context.computeOnClient(client -> Altimeter.reading(
-                            ClientLight.clientLevel(client),
-                            ClientSession.player(client).getBlockY())
-                    .getString());
-            if (!deep.contains(",")) {
-                throw new AssertionError("A reading over 1,000 ft should group its digits, read: " + deep);
-            }
 
             // A crossing: one block under the floor of layer 1, so it crosses on the next server tick. It is in place,
             // so the HUD shakes
@@ -196,8 +185,7 @@ public class BreachHudTest implements FabricClientGameTest {
                                 ClientSession.player(client).getBlockY())
                         .getString(),
                 blocksDeep.applyAsInt(client)));
-        int feet = (int) Math.round(sample.blocks() * FEET_PER_BLOCK);
-        String expected = String.format(Locale.US, "%,d", -feet) + " ft.";
+        String expected = String.format(Locale.US, "%,d", -sample.blocks()) + " m";
         if (!sample.text().equals(expected)) {
             throw new AssertionError("Altimeter in " + where + " should read '" + expected + "' for " + sample.blocks()
                     + " blocks of depth, read '" + sample.text() + "'");

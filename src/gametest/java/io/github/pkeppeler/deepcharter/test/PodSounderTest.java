@@ -456,8 +456,7 @@ public class PodSounderTest {
             ticks[0]++;
             if (!level.getBlockState(pocket).is(HazardBlocks.GAS_POCKET)) {
                 float lost = startHull[0] - pod[0].hull();
-                float whole =
-                        GasHazard.damage(Depth.feet(Depth.of(level, FLOOR - 1)), PodComponents.radiatorRatio(pod[0]));
+                float whole = GasHazard.damage(Depth.of(level, FLOOR - 1), PodComponents.radiatorRatio(pod[0]));
                 float otherLost = other[0] == null ? Float.NaN : startHull[1] - other[0].hull();
                 pilot.releaseInput();
                 pilot.leave();
@@ -480,7 +479,7 @@ public class PodSounderTest {
                 hardness = Math.max(hardness, level.getBlockState(pos).getDestroySpeed(level, pos));
             }
         }
-        return PodDrill.drillTicks(stats, hardness, Depth.feet(Depth.of(level, FLOOR - 1)));
+        return PodDrill.drillTicks(stats, hardness, Depth.of(level, FLOOR - 1));
     }
 
     /** The pod bored the slab in about {@code expected} ticks: the hold starts a tick or two before the drill does, and the pod must centre. */
