@@ -35,6 +35,8 @@ public final class SpecSheetScreen extends Screen {
     /** Whether the spec sheet key that opened the sheet has not been let go yet: its repeats close nothing. */
     private boolean keyHeld;
 
+    /** The sheet of {@code item} over no screen, not marked LATEST. */
+    // test-seam: the layout tests build the sheet of every item on its own screen, outside the opener's queue
     public SpecSheetScreen(Item item) {
         this(null, SheetRequest.of(item));
     }
