@@ -14,6 +14,9 @@ worst-job-seconds 280
 # The setup a client shard spends before its first test, and a server shard's (seconds, measured).
 client-overhead-seconds 80
 server-overhead-seconds 60
+# Seconds from the job's start at which the client action ends its run with a message (.github/actions/client-gametest), 30 s under the limit
+# for the post steps and the runner's teardown. The deadline counts from the job's start, so slow setup shortens the tests' time, not the message.
+client-deadline-seconds 270
 # Seconds of client tests (gradle/client-test-weights.txt) one client shard holds.
 client-shard-seconds 115
 # Seconds of server GameTests (gradle/server-test-weights.txt) one build shard holds. Measured on the first sharded run of this change

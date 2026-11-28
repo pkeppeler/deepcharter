@@ -74,6 +74,8 @@ jobs:
       pr: ${{ steps.resolve.outputs.pr }}
       scenario: ${{ steps.resolve.outputs.scenario }}
     steps:
+      # The client action's deadline counts from here, the job's start.
+      - run: echo "JOB_START=$(date +%s)" >> "$GITHUB_ENV"
       # Build what will merge (the merge ref, as CI does), not the PR head: a stale base would
       # test old code. Needs the PR to be mergeable; GitHub makes no merge ref on a conflict.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -126,6 +128,7 @@ jobs:
           name: compiled-evidence
       - uses: ./.github/actions/client-gametest
         with:
+          job-start: ${{ env.JOB_START }}
           skip-compile: ${{ steps.compiled.outputs.skip }}
           evidence-scenario: ${{ steps.resolve.outputs.scenario }}
           client-tests: ${{ steps.resolve.outputs.class }}

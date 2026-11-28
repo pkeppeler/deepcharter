@@ -103,7 +103,7 @@ jobs:
     if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     # One shard holds at most gradle/ci-budget.txt's client-shard seconds of tests by measured weight (tools/tests/test_ci_budget.py checks it).
-    # The action's own deadline (215 s from the step's start) ends the run with a message before this limit would kill it silently.
+    # The action's own deadline (270 s from the job's start) ends the run with a message before this limit would kill it silently.
     timeout-minutes: 5
     strategy:
       fail-fast: false
@@ -112,6 +112,8 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
     steps:
+      # The client action's deadline counts from here, the job's start (a few seconds after "Set up job").
+      - run: echo "JOB_START=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -132,6 +134,7 @@ jobs:
           name: compiled-client
       - uses: ./.github/actions/client-gametest
         with:
+          job-start: ${{ env.JOB_START }}
           skip-compile: ${{ steps.compiled.outputs.skip }}
           client-shard: ${{ matrix.shard }}/${{ env.CLIENT_SHARDS }}
           gradle-cache-read-only: "true"
