@@ -49,7 +49,7 @@ GitHub's usage-limits table allows 20 concurrent jobs on the Free plan, 40 on Pr
 | Run | Jobs | Peak at once |
 | --- | --- | --- |
 | Full `CI` (batch) | plan, compile, 7 tool parts and 3 gate-check jobs, 16 server shards, checks, aggregates | about 10 (shards in waves of 6) |
-| Full `Client tests` (batch) | changes, compile, 34 client shards, aggregate | 10 (waves of 10) |
+| Full `Client tests` (batch) | changes, compile, 31 client shards, aggregate | 10 (waves of 10) |
 | PR tier, one class changed | plan, 7 tool parts, 3 gate-check jobs, `build-checks` and 1 server shard, each compiling for itself (no compile job), aggregates; the client suite's changes job and the shards its classes reach | about 14 |
 | PR tier, docs or tools only | plan and the 7 tool parts, aggregates: no Gradle job | about 8 |
 

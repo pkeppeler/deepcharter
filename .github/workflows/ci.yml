@@ -26,7 +26,7 @@ permissions:
 
 env:
   # The shards of a full run; a PR-tier run takes as many as its classes need (the plan job).
-  BUILD_SHARDS: 16
+  BUILD_SHARDS: 15
 
 jobs:
   # Picks the main this run tests once; every job that merges main merges exactly that commit (#1571).
@@ -139,6 +139,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: false
+          # No cleanup (#1724): Gradle serves a cached module from its metadata without reading the module's .pom, so setup-gradle's
+          # cleanup counted 288 POMs as unused and dropped them from the entry the shards restore, and every shard downloaded them
+          # again while configuring (5 to 22 s). Main's cache-seed.yml keeps cleaning; a PR's entries expire with the PR.
+          cache-cleanup: never
       # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
       # if a repository fails to answer (#1358).
       - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses

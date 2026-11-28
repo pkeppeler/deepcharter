@@ -642,10 +642,22 @@ object GametestScan {
 	}
 
 	/** What one pass over a source tree finds: the lists before any filter or shard, and each server class's campaign environments. */
-	class ScannedTree(val server: List<String>, val client: List<String>, val environments: Map<String, Set<String>>)
+	class ScannedTree(val server: List<String>, val client: List<String>, val environments: Map<String, Set<String>>) {
+		/** The scan task's output file (scanGametestSources), which generateGametestModJson reads back with [fromJson]. */
+		fun toJson(): String = JsonOutput.prettyPrint(JsonOutput.toJson(mapOf("server" to server, "client" to client, "environments" to environments.toSortedMap().mapValues { it.value.sorted() })))
+
+		companion object {
+			fun fromJson(text: String): ScannedTree {
+				val json = JsonSlurper().parseText(text) as Map<*, *>
+				fun names(key: String) = (json[key] as List<*>).map { it as String }
+				val environments = (json["environments"] as Map<*, *>).entries.associate { (k, v) -> k as String to (v as List<*>).map { it as String }.toSet() }
+				return ScannedTree(names("server"), names("client"), environments)
+			}
+		}
+	}
 
 	/** One pass over a source tree: the entrypoint lists, or a GradleException naming every problem. */
-	private fun scanTree(
+	fun scanTree(
 		javaRoot: File,
 		mainSources: Collection<File>,
 		guardSource: File,
@@ -837,6 +849,21 @@ object GametestScan {
 		trees: MutableMap<String, ScannedTree> = mutableMapOf(),
 	): GametestFound {
 		val tree = trees.getOrPut(javaRoot.canonicalPath) { scanTree(javaRoot, mainSources, guardSource, blankLiterals, markedNear) }
+		return select(tree, clientFilter, clientShard, clientWeights, serverFilter, serverShard, serverWeights, serverUnitLimit, order)
+	}
+
+	/** The entrypoint lists of one scanned tree after the filters and the shards, ordered: cheap, so each CI shard does it on the one scan (#1724). */
+	fun select(
+		tree: ScannedTree,
+		clientFilter: String?,
+		clientShard: String?,
+		clientWeights: Map<String, Int>,
+		serverFilter: String?,
+		serverShard: String?,
+		serverWeights: Map<String, Int>,
+		serverUnitLimit: Int,
+		order: String,
+	): GametestFound {
 		var server = tree.server.toMutableList()
 		var client = tree.client.toMutableList()
 		val serverEnvironments = tree.environments
@@ -884,18 +911,34 @@ object GametestScan {
 	}
 }
 
-val generateGametestModJson = tasks.register("generateGametestModJson") {
+// The scan of the gametest sources, before any filter or shard: its own task so that a CI shard, whose -PclientShard or -PgametestShard
+// differs from the compile job's, finds it UP-TO-DATE in the downloaded build/ and .gradle/ (or in the build cache) and only selects its
+// shard from the result, instead of scanning the whole tree again for 9 to 15 s (#1724). A scan problem fails this task.
+val scanGametestSources = tasks.register("scanGametestSources") {
 	@Suppress("UNCHECKED_CAST")
 	val blankLiterals = project.extra["blankLiterals"] as (String) -> String
 	@Suppress("UNCHECKED_CAST")
 	val markedNear = project.extra["markedNear"] as (List<String>, Int, (String) -> Boolean) -> Boolean
-	val generatedGametestResources = layout.buildDirectory.dir("generated/gametest-resources")
-	val template = file("src/gametest/fabric.mod.template.json")
 	// WorldDataGuard must list every saved-data record of the mod, or it misses a swap of a new one.
 	val mainSources = fileTree("src/main/java") { include("**/*.java") }
 	val guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 	// -PgametestJavaRoot points the scan at another tree, so a test can feed it fixtures.
 	val javaRoot = file(providers.gradleProperty("gametestJavaRoot").getOrElse("src/gametest/java"))
+	val outputFile = layout.buildDirectory.file("generated/gametest-scan/tree.json")
+	inputs.files(fileTree(javaRoot) { include("**/*.java") }).withPropertyName("gametestSources")
+	inputs.files(mainSources).withPropertyName("mainSources")
+	inputs.file(guardSource).withPropertyName("guardSource")
+	outputs.file(outputFile)
+	outputs.cacheIf { true }
+	doLast {
+		val tree = GametestScan.scanTree(javaRoot, mainSources.files, guardSource, blankLiterals, markedNear)
+		outputFile.get().asFile.writeText(tree.toJson())
+	}
+}
+
+val generateGametestModJson = tasks.register("generateGametestModJson") {
+	val generatedGametestResources = layout.buildDirectory.dir("generated/gametest-resources")
+	val template = file("src/gametest/fabric.mod.template.json")
 	val order = providers.gradleProperty("gametestOrder").getOrElse("name")
 	if (order !in listOf("name", "reverse")) {
 		throw GradleException("-PgametestOrder is '$order', expected name or reverse")
@@ -921,13 +964,14 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	val budgetFile = file("gradle/ci-budget.txt")
 	inputs.file(budgetFile).withPropertyName("ciBudget")
 	val outputFile = generatedGametestResources.map { it.file("fabric.mod.json") }
-	val sources = fileTree(javaRoot) { include("**/*.java") }
-	inputs.files(sources).withPropertyName("gametestSources")
+	// The scan's output, which also makes this task depend on it.
+	val scanned = files(scanGametestSources)
+	inputs.files(scanned).withPropertyName("scannedTree")
 	inputs.file(template).withPropertyName("template")
-	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
 	doLast {
-		val found = GametestScan.scan(javaRoot, clientFilter, clientShard, GametestScan.parseWeights(weightsFile), serverFilter, serverShard, GametestScan.parseWeights(serverWeightsFile), GametestScan.parseBudget(budgetFile, "server-shard-seconds"), order, mainSources.files, guardSource, blankLiterals, markedNear)
+		val tree = GametestScan.ScannedTree.fromJson(scanned.singleFile.readText())
+		val found = GametestScan.select(tree, clientFilter, clientShard, GametestScan.parseWeights(weightsFile), serverFilter, serverShard, GametestScan.parseWeights(serverWeightsFile), GametestScan.parseBudget(budgetFile, "server-shard-seconds"), order)
 		var json = template.readText()
 		mapOf("SERVER_TESTS" to found.server, "CLIENT_TESTS" to found.client).forEach { (token, names) ->
 			val placeholder = "\"@$token@\""

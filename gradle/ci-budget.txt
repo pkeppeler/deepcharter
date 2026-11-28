@@ -4,26 +4,30 @@
 # shard counts in the workflows (CLIENT_SHARDS, BUILD_SHARDS) enough for the weights. Lines are `<name> <number>`.
 #
 # One job is: setup (the job's start, the blobless checkout, the pinned merge of main, the compiled build's download and the Gradle cache
-# restore) + the program's start-up + the shard's tests. Measured on a client shard: about 80 s before its first test (25 s of setup, 25 s
-# resolving, 7 s of apt, 17 s of Gradle, 25 s of Minecraft); a server shard 59 s. A slow runner is 1.3 times slower in all of it, and the
-# worst job must stay under `worst-job-seconds` (280 s, 20 s under the limit) there: (80 + 115) * 1.3 = 254 s for a client shard.
+# restore) + the program's start-up + the shard's tests. Measured on PR #1730's two full runs (68 client and 32 server shard jobs, #1724):
+# a client shard's first test at p50 61 s, p90 75 s from the job's start (13 s of checkout and download, 5 s of Gradle cache, 3 s of
+# assets, 14 s of Gradle's first call, 5 s of the run task's start, 17 s of Minecraft); a server shard's first test batch at p50 49 s,
+# p90 59 s. Before #1724 they were p50 89 s and 78 s: every shard rescanned the gametest sources and downloaded 288 POMs while configuring.
+# A slow runner is 1.3 times slower in all of it, and the worst job must stay under `worst-job-seconds` (280 s, 20 s under the limit)
+# there: (65 + 127) * 1.3 = 250 s for a client shard.
 job-limit-minutes 5
 slow-runner-factor 1.3
 # The most any job may take at that factor, under the limit of 300 s.
 worst-job-seconds 280
-# The setup a client shard spends before its first test, and a server shard's (seconds, measured).
-client-overhead-seconds 80
-server-overhead-seconds 60
+# The setup a client shard spends before its first test, and a server shard's (seconds, measured above): at least the p50, and at the
+# slow-runner factor at least the p90 (65 * 1.3 = 85 >= 75; 50 * 1.3 = 65 >= 59).
+client-overhead-seconds 65
+server-overhead-seconds 50
 # Seconds from the job's start at which the client action ends its run with a message (.github/actions/client-gametest), 30 s under the limit
 # for the post steps and the runner's teardown. The deadline counts from the job's start, so slow setup shortens the tests' time, not the message.
 client-deadline-seconds 270
-# Seconds of client tests (gradle/client-test-weights.txt) one client shard holds.
-client-shard-seconds 115
-# Seconds of server GameTests (gradle/server-test-weights.txt) one build shard holds. Measured on the first sharded run of this change
-# (13 shards of 115 s): 59 s of setup and start-up, and 114 to 178 s of tests, so a shard took 173 to 237 s, 1.0 to 1.5 times its weight
-# in tests, because each shard also starts the campaign environments its classes use. At 100 s the slowest should take about 215 s:
-# (59 + 1.55 * 100) * 1.3 = 280 s.
-server-shard-seconds 100
+# Seconds of client tests (gradle/client-test-weights.txt) one client shard holds: (270 - 20) / 1.3 - 65, rounded down, so the slowest
+# modelled shard on a slow runner ends 20 s before the client deadline (the margin #1695 found missing).
+client-shard-seconds 127
+# Seconds of server GameTests (gradle/server-test-weights.txt) one build shard holds. Measured on the first sharded run of #1574 (13 shards
+# of 115 s): 114 to 178 s of tests, 1.0 to 1.5 times its weight, because each shard also starts the campaign environments its classes
+# use. With the setup above: (50 + 1.55 * 105) * 1.3 = 277 s.
+server-shard-seconds 105
 # Seconds of tool tests (tools/tests/ci-tool-test-weights.txt) one tool-test part holds, after about 40 s of setup: (40 + 100) * 1.3 = 182 s.
 tool-part-seconds 100
 # A gate-check job (tools/tests/gate_checks.py, one Gradle run over fixture trees) costs, at the measured speed: the job's setup and
