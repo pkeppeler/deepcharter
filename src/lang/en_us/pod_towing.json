@@ -1,4 +1,7 @@
 {
+  "deepcharter.pod.rescue.left": "%s waits low on fuel in layer %s at %s, %s, %s. Someone with a tow cable can tow her home.",
+  "deepcharter.pod.rescue.stranded": "%s is stranded in layer %s at %s, %s, %s. Someone with a tow cable can tow her home.",
+  "deepcharter.pod.rescue.unnamed": "A pod",
   "item.deepcharter.tow_cable": "Tow Cable",
   "message.deepcharter.towing.attached": "Cable hooked: the picked pod now tows this one",
   "message.deepcharter.towing.being_towed": "Your pod is being towed",
