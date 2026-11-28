@@ -141,6 +141,9 @@ public class ZoneColoursScenario extends EvidenceScenario {
             player.teleportTo(TestLayers.level(minecraftServer, layer), x + 1.0, top, z + 1.0, Set.of(), 0f, 0f, true);
             player.getAbilities().mayfly = true;
             player.getAbilities().flying = true;
+            // Leaving the pod drops the player down the bore, and layer 3's depth drains the suit: neither is the
+            // point here, so the player takes no harm for the whole scenario.
+            player.getAbilities().invulnerable = true;
             player.onUpdateAbilities();
             player.setDeltaMovement(Vec3.ZERO);
         });
