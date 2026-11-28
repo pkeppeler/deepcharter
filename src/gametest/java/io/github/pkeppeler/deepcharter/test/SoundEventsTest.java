@@ -49,6 +49,8 @@ public class SoundEventsTest {
             "phonograph.othello",
             "song.wreck",
             "song.dark",
+            "fuel.low",
+            "alarm.fuel_critical",
             "continuity.laugh",
             "continuity.needle",
             "continuity.lamp_out",
