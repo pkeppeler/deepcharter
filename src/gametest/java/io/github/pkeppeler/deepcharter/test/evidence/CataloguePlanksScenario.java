@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.world.item.ItemStack;
@@ -68,7 +69,7 @@ public class CataloguePlanksScenario extends EvidenceScenario {
         context.waitTicks(2); // tick-wait: the list follows the cleared search
         CatalogueScene.hover(context, layout.shelf().search());
         context.getInput().pressMouse(LEFT_MOUSE);
-        context.getInput().typeChars("planks");
+        RealInput.type(context, "planks");
         context.waitTicks(2); // tick-wait: the list follows the typed search
         CatalogueScene.parkCursor(context, layout);
         hold(context);

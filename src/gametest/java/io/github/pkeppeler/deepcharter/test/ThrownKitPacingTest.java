@@ -35,7 +35,7 @@ public class ThrownKitPacingTest {
     /** Modelled: blocks a tick that a person walks, 4.3 blocks a second: the cheapest way off a charge's blast. */
     private static final double WALK_BLOCKS_PER_TICK = 4.3 / TICKS_PER_SECOND;
 
-    private static final int MEASURE_X = 8224;
+    private static final int MEASURE_X = 8416;
     private static final int FLAT_X = 7776;
     private static final int LOB_X = 7840;
     private static final int LAND_BUDGET_TICKS = 120;

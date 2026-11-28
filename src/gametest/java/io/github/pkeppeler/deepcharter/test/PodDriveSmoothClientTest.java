@@ -7,7 +7,6 @@ import static io.github.pkeppeler.deepcharter.test.support.PodDrives.SETTLE_TICK
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.SETTLE_TOLERANCE;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.STEP_MARGIN;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.onClient;
-import static io.github.pkeppeler.deepcharter.test.support.PodDrives.put;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.serverPosition;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.standsAt;
 
@@ -123,7 +122,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
     /** Puts the pilot's pod back on its start and waits for the client to draw it there, still. */
     private static void returnToStart(ClientGameTestContext context, Rig rig) {
-        rig.two().server().runOnServer(server -> put(server.overworld(), rig.ownPodId(), rig.ownStart()));
+        rig.two().server().runOnServer(server -> PodDrives.put(server.overworld(), rig.ownPodId(), rig.ownStart()));
         ClientWait.until(
                 context,
                 "the pilot's pod standing at its start",
@@ -146,7 +145,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             double gap = PUSH_GAPS[i];
             returnToStart(context, rig);
             Vec3 to = rig.ownStart().add(0, 0, gap);
-            rig.two().server().runOnServer(server -> put(server.overworld(), rig.ownPodId(), to));
+            rig.two().server().runOnServer(server -> PodDrives.put(server.overworld(), rig.ownPodId(), to));
             Vec3 last = rig.ownStart();
             Vec3 afterSnap = rig.ownStart();
             int arrivedAt = -1;
@@ -213,7 +212,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             context.waitTicks(PIN_AFTER_TICKS);
             context.runOnClient(client -> PacketJitter.stall(TELEPORT_STALL_TICKS));
             context.getInput().releaseKey(options -> options.keyUp);
-            rig.two().server().runOnServer(server -> put(server.overworld(), rig.ownPodId(), to));
+            rig.two().server().runOnServer(server -> PodDrives.put(server.overworld(), rig.ownPodId(), to));
             for (int tick = 1; tick <= TELEPORT_STALL_TICKS + PUSH_TICKS; tick++) {
                 context.waitTick();
                 drawn.add(onClient(context, rig.ownPodId()));
@@ -257,7 +256,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         try {
             context.getInput().holdKey(options -> options.keyUp);
             context.waitTicks(PIN_AFTER_TICKS);
-            rig.two().server().runOnServer(server -> put(server.overworld(), rig.ownPodId(), to));
+            rig.two().server().runOnServer(server -> PodDrives.put(server.overworld(), rig.ownPodId(), to));
             for (int tick = 1; tick <= SNAP_TICKS; tick++) {
                 context.waitTick();
                 nearest = Math.min(
@@ -290,7 +289,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         double deepest = 0;
         try {
             rig.two().server().runOnServer(server -> {
-                put(server.overworld(), rig.mockPodId(), at);
+                PodDrives.put(server.overworld(), rig.mockPodId(), at);
                 setWall(server.overworld(), wall, Blocks.STONE);
             });
             ClientWait.until(
@@ -324,7 +323,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                     .setDeltaMovement(Vec3.ZERO));
             rig.two().server().runOnServer(server -> {
                 setWall(server.overworld(), wall, Blocks.AIR);
-                put(server.overworld(), rig.mockPodId(), rig.mockStart());
+                PodDrives.put(server.overworld(), rig.mockPodId(), rig.mockStart());
             });
         }
         LOGGER.info(

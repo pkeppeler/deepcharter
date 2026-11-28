@@ -34,10 +34,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class PodDriveStepTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 700;
-    /**
-     * Layer 1 columns x 4260-4269, z 2996-3308, all in chunk column 266: no other test stages here. PodDrillTest's
-     * nudge test shared x 4024 and in reverse order ran in one batch (#1178).
-     */
+    /** Layer 1 columns x 4260-4269, z 2996-3308, all in chunk column 266. */
     private static final int X = 4264;
 
     private static final int Z = 3000;

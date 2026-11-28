@@ -67,6 +67,24 @@ object GametestScan {
 	// or the comment line above it.
 	private const val FORCE_MARKER = "// force-ok:"
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
+	// A server test that stages at a fixed place of the shared worlds names its columns in test/support/TestSiteTable (#1182), so two tests never
+	// share a column of a layer. TestSites fails a carve or a force outside the caller's claims at run time; this scan is the part a run cannot
+	// see: a server test that calls FarChunks to wait for or force a chunk, RoomCarver.carve, or holds a coordinate constant (int/long/float/double
+	// whose name is x, z, *X, *Z, *COLUMN, *SITE or *ORIGIN set to a literal of 1000 or more) must be named in the table, as a claim or an exempt.
+	private const val SITE_TABLE = "TestSiteTable.java"
+	private val stagingCall = Regex("""\bFarChunks\s*\.\s*(?:force|pin|release|await\w*|whenBlocksLoaded)\s*\(|\bRoomCarver\s*\.\s*carve\w*\s*\(""")
+	private val coordinateConstant = Regex("""\b(?:int|long|float|double)\s+(\w+)\s*=\s*-?(\d[\d_]*)(?:\.\d+)?[dDfFlL]?\s*;""")
+	private val coordinateName = Regex("""^[xz]$|(?:^|_)[XZ]$|[a-z][XZ]$|(?:^|_)(?:COLUMN|SITE|ORIGIN)$|[a-z](?:Column|Site|Origin)$""")
+	private const val MIN_COORDINATE = 1000
+
+	/** What makes a server test class fixed-site, or null: the first staging call or coordinate constant of its code. */
+	fun fixedSite(code: String): String? {
+		stagingCall.find(code)?.let { return it.value.trimEnd('(').trim() }
+		return coordinateConstant.findAll(code)
+			.firstOrNull { coordinateName.containsMatchIn(it.groupValues[1]) && it.groupValues[2].replace("_", "").toLong() >= MIN_COORDINATE }
+			?.let { "the constant " + it.groupValues[1] }
+	}
+
 	// A pin made by a test class exists only in the shard that holds it (#1482, #1586); outside support/ it is flagged or marked.
 	private val worldPin = Regex("""\bFarChunks\s*\.\s*pin\s*\(|\bColonyChunks\s*\.\s*force\s*\(|\bimport\s+static\s+[\w.]*\b(?:FarChunks\s*\.\s*(?:pin|\*)|ColonyChunks\s*\.\s*(?:force|\*))\s*;""")
 	private val inSupport = Regex("""(?:^|\.)support\.""")
@@ -124,9 +142,19 @@ object GametestScan {
 	// method of a client GameTest or scenario is read in source order as carves, waits and seats, where a call or method reference to a
 	// same-file method stands for that method's steps; a seat after a carve with no wait between fails. The marker goes on the seat's
 	// statement, or on the call that reaches it.
-	// Heuristic: a call through another object or class (a support helper, a base class, another scenario) is not followed, a method is
-	// matched by name across its overloads, and the order is the text's, so a loop that seats before it carves again is not seen.
+	// A call to a helper in another class cannot be followed, so a helper that seats a pod (its body matches podSeat) carries SEATS_POD_MARKER, with a
+	// reason, on its declaration or the comment line above it, and a call `Class.helper(...)` from a client test or scenario stands for a seat.
+	// The gate fails an unmarked helper that a client test or scenario calls that way, so the marker cannot be forgotten (#1455).
+	// A static import of a seating helper, or of every member of its class, fails too: the bare call that follows would not be seen.
+	// Heuristic: a call through an object (`scene.seat(...)`) or a base class is not followed, a method is matched by name across its overloads,
+	// and a marked helper is trusted (its marker is not checked against its body).
+	// A helper that reaches a seat through another scanned method needs the marker too. That call is matched by name, so a same-named method
+	// of another class can make a helper a seater; two files with one simple name fail the scan, because helpers are keyed by it.
+	// The order is the text's, so a loop that seats before it carves again is not seen.
 	private const val LIGHT_SETTLED_MARKER = "// light-settled-ok:"
+	private const val SEATS_POD_MARKER = "// seats-pod:"
+	private val qualifiedCall = Regex("""\b([A-Z]\w*)\s*\.\s*(\w+)\s*\(""")
+	private val staticImport = Regex("""\bimport\s+static\s+(?:\w+\s*\.\s*)*([A-Z]\w*)\s*\.\s*(\w+|\*)\s*;""")
 	private val roomCarve = Regex("""\bRoomCarver\s*\.\s*carve\w*\s*\(""")
 	private val podSeat = Regex("""\bstartRiding\s*\(|\baddFreshEntity\s*\(\s*(?:\w+\s*\.\s*)*\w*[pP]od\w*\b|\b\w*[pP]od\w*\s*(?:\((?:[^()]|\([^()]*\))*\)\s*|\[[^\]]*]\s*)?\.\s*(?:setPos|teleportTo|teleport)\s*\(""")
 	private val lightSettledWait = Regex("""\bClientWait\s*\.\s*lightSettled\s*\(""")
@@ -140,6 +168,20 @@ object GametestScan {
 	// One step of a method for the light-settled gate, at [at] in the method read; [call] when a call of a same-file method brought it in, so
 	// two steps of one call share [at].
 	private class SettleStep(val kind: SettleKind, val at: Int, val call: Boolean)
+
+	// After a far teleport only a one-tick ticket holds the player's new chunk until the player's own, throttled ticket lands; when the short one lapses first,
+	// the chunk is demoted and an entity added or seated there in that tick is hidden for seconds (#1345, #1352). A client GameTest, evidence scenario or test
+	// helper that teleports a player (`teleportTo` on anything but a pod, a receiver whose name ends in `pod` or `Pod`, such as `realPod()` or `pod[0]`) and
+	// then adds an entity (`addFreshEntity`) or seats one (`startRiding`) in one runOnServer, computeOnServer, serverDo or serverGet block has no wait between
+	// them: teleport in one block, call ClientWait.arrived, then add and seat in the next. A teleport that leaves no chunk cold (in place, into chunks the
+	// player's tickets already hold, or into forced chunks) carries the marker below, with a reason, on its statement or the comment line above it.
+	// Heuristic: a teleport or a seat inside a helper method the block calls is not seen, and the gate does not check that a wait sits between the two blocks,
+	// so a teleport block followed straight by a seat block passes.
+	private const val ARRIVED_MARKER = "// arrived-ok:"
+	private val stagingBlockCall = Regex("""\b(?:runOnServer|computeOnServer|serverDo|serverGet)\s*\(""")
+	private val teleportCall = Regex("""(\b\w*[pP]od\s*(?:\(\s*\)|\[\s*\w+\s*])?\s*\.\s*)?\bteleportTo\s*\(""")
+	private val entityArrival = Regex("""\b(?:startRiding|addFreshEntity)\s*\(""")
+
 	// FarChunks.Deadline.await does not block (#1071, #1085), so a statement starting with `expect(` (`Failures.` prefix or not), `helper.fail(`,
 	// `helper.assert...(` or `throw` directly after `.await(...);` on a Deadline is flagged; comments between them do not count.
 	// Heuristic: only the direct next statement is seen, so any statement in between defeats it, and an assertion inside a helper method is not seen.
@@ -268,10 +310,62 @@ object GametestScan {
 		if (bodyClose < 0) null else nameAt to next..bodyClose
 	}.toList()
 
+	// Every method in [files] that seats a pod, itself or through a method it calls (an unqualified call or `Class.method(` that names a method of
+	// the scanned files), as class simple name to method name to whether it carries SEATS_POD_MARKER.
+	private fun seatHelpers(
+		files: List<File>,
+		blankLiterals: (String) -> String,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): Map<String, Map<String, Boolean>> {
+		class Helper(val owner: String, val name: String, val marked: Boolean, var seats: Boolean, val callees: Set<Pair<String, String>>)
+		val helpers = mutableListOf<Helper>()
+		for (source in files) {
+			val sourceText = source.readText()
+			val text = literalsAndComments.replace(sourceText) { match ->
+				(if (match.value.startsWith("/")) " " else "\"\"") + match.value.replace(notNewline, "")
+			}
+			val methods = methodBodies(text)
+			if (methods.isEmpty()) continue
+			val rawLines = blankLiterals(sourceText).reader().readLines()
+			val owner = source.nameWithoutExtension
+			fun innermost(at: Int) = methods.filter { at in it.second }.minByOrNull { it.second.last - it.second.first }?.second
+			for ((nameAt, body) in methods) {
+				fun inBody(regex: Regex) = regex.findAll(text, body.first).takeWhile { it.range.first < body.last }.filter { innermost(it.range.first) == body }
+				val callees = inBody(namedCall).filter { it.groupValues[1] !in notMethodNames }.map { owner to it.groupValues[1] }.toSet() +
+					inBody(qualifiedCall).map { it.groupValues[1] to it.groupValues[2] }.toSet()
+				helpers.add(
+					Helper(
+						owner,
+						namedCall.find(text, nameAt)!!.groupValues[1],
+						marked(markedNear, rawLines, lineOf(text, nameAt), SEATS_POD_MARKER),
+						inBody(podSeat).any(),
+						callees,
+					),
+				)
+			}
+		}
+		do {
+			var changed = false
+			for (helper in helpers.filter { !it.seats }) {
+				if (helpers.any { it.seats && (it.owner to it.name) in helper.callees && it !== helper }) {
+					helper.seats = true
+					changed = true
+				}
+			}
+		} while (changed)
+		val found = mutableMapOf<String, MutableMap<String, Boolean>>()
+		for (helper in helpers.filter { it.seats }) {
+			val byName = found.getOrPut(helper.owner) { mutableMapOf() }
+			byName[helper.name] = (byName[helper.name] ?: true) && helper.marked
+		}
+		return found
+	}
+
 	private fun lightSettledProblems(
 		className: String,
 		text: String,
 		rawLines: List<String>,
+		helpers: Map<String, Map<String, Boolean>>,
 		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
 	): List<String> {
 		val methods = methodBodies(text)
@@ -298,6 +392,13 @@ object GametestScan {
 			return (receiver == "this" || receiver == simpleName) && (receiverStart < 0 || text[receiverStart] != '.')
 		}
 		val memo = mutableMapOf<String, List<SettleStep>>()
+		val unmarkedHelpers = sortedSetOf<String>()
+		for (import in staticImport.findAll(text)) {
+			val (owner, member) = import.destructured
+			if (owner != simpleName && (member == "*" && helpers[owner]?.isNotEmpty() == true || helpers[owner]?.containsKey(member) == true)) {
+				unmarkedHelpers.add("$className:${lineOf(text, import.range.first) + 1} imports static $owner.$member, which seats a pod, so a bare call of it escapes the light-settled gate; import $owner and call it qualified ($owner.helper(...)) (#1455)")
+			}
+		}
 		fun steps(body: Pair<Int, IntRange>, stack: Set<String>): List<SettleStep> {
 			val range = body.second
 			fun inBody(regex: Regex) = regex.findAll(text, range.first).takeWhile { it.range.first < range.last }
@@ -306,6 +407,15 @@ object GametestScan {
 			for ((kind, regex) in listOf(SettleKind.CARVE to roomCarve, SettleKind.WAIT to lightSettledWait, SettleKind.SEAT to podSeat)) {
 				inBody(regex).map { it.range.first }.filter { own(it) && !(kind == SettleKind.SEAT && isMarked(it)) }
 					.forEach { found.add(SettleStep(kind, it, false)) }
+			}
+			for (call in inBody(qualifiedCall)) {
+				val helper = helpers[call.groupValues[1]]?.get(call.groupValues[2]) ?: continue
+				if (call.groupValues[1] == simpleName || !own(call.range.first)) continue
+				if (!helper) {
+					unmarkedHelpers.add("$className:${lineOf(text, call.range.first) + 1} calls ${call.groupValues[1]}.${call.groupValues[2]}, which seats a pod and carries no '$SEATS_POD_MARKER <reason>', so the light-settled gate cannot see the seat; mark the helper's declaration, and call ClientWait.lightSettled after a carve and before the call (#1455)")
+				} else if (!isMarked(call.range.first)) {
+					found.add(SettleStep(SettleKind.SEAT, call.range.first, false))
+				}
 			}
 			val calls = inBody(namedCall).map { Triple(it.range.first, it.groupValues[1], false) } +
 				inBody(methodReference).map { Triple(it.range.first, it.groupValues[1], true) }
@@ -332,6 +442,30 @@ object GametestScan {
 						problems.add("$className:${line + 1} seats a pod after a RoomCarver carve (line ${lineOf(text, pending.at) + 1}) with no ClientWait.lightSettled between them, so a pod first tracked while the carve's chunk re-send is queued reaches its rider only after the send (#1303, ADR 0092); carve, call ClientWait.lightSettled over the room's chunks, then seat, or mark a seat the carve cannot affect with '$LIGHT_SETTLED_MARKER <reason>'")
 					}
 				}
+			}
+		}
+		problems.addAll(unmarkedHelpers)
+		return problems
+	}
+
+	private fun arrivedProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val blocks = stagingBlockCall.findAll(text).map { it.range.last to closing(text, it.range.last) }.filter { it.second > 0 }.toList()
+		val arrivals = entityArrival.findAll(text).map { it.range.first }.toList()
+		val problems = mutableListOf<String>()
+		for (teleport in teleportCall.findAll(text)) {
+			if (teleport.groups[1] != null) {
+				continue
+			}
+			val at = teleport.range.first
+			val block = blocks.filter { at > it.first && at < it.second }.maxByOrNull { it.first } ?: continue
+			val line = lineOf(text, at)
+			if (arrivals.any { it > at && it < block.second } && !marked(markedNear, rawLines, line, ARRIVED_MARKER)) {
+				problems.add("$className:${line + 1} teleports a player and then adds or seats an entity in one server block, so a far teleport's one-tick chunk ticket can lapse and hide the entity for seconds (#1345); teleport in one runOnServer, call ClientWait.arrived, then add and seat in the next, or mark a teleport that leaves no chunk cold with '$ARRIVED_MARKER <reason>'")
 			}
 		}
 		return problems
@@ -531,6 +665,11 @@ object GametestScan {
 		val serverEnvironments = mutableMapOf<String, Set<String>>()
 		var client = mutableListOf<String>()
 		val problems = mutableListOf<String>()
+		for ((name, same) in javaFiles.filter { it.name != "package-info.java" }.groupBy { it.nameWithoutExtension }.filter { it.value.size > 1 }) {
+			problems.add("${same.joinToString(" and ") { javaRoot.toPath().relativize(it.toPath()).toString() }} share the simple name $name, which the light-settled gate keys its cross-class seat helpers by; rename one (#1455)")
+		}
+		val helpers = seatHelpers(javaFiles, blankLiterals, markedNear)
+		val siteTable = javaFiles.firstOrNull { it.name == SITE_TABLE }?.readText() ?: ""
 		val campaignEnvironments = javaFiles.filter { it.name == "CampaignEnvironments.java" }
 			.flatMap { file -> campaignEnvironmentName.findAll(file.readText()).map { it.groupValues[1] }.toList() }
 		for (source in javaFiles) {
@@ -627,7 +766,10 @@ object GametestScan {
 			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
 			if (isClientSide) {
-				problems.addAll(lightSettledProblems(className, text, rawLines, markedNear))
+				problems.addAll(lightSettledProblems(className, text, rawLines, helpers, markedNear))
+			}
+			if (clientImplements.containsMatchIn(text) || className.contains(".test.support.") || className.contains(".test.evidence.")) {
+				problems.addAll(arrivedProblems(className, text, rawLines, markedNear))
 			}
 			problems.addAll(awaitThenExpectProblems(className, text, rawLines, markedNear))
 			if (!isClientSide && gameTestAnnotation.containsMatchIn(text)) {
@@ -638,6 +780,13 @@ object GametestScan {
 				continue
 			}
 			val isServer = gameTestAnnotation.containsMatchIn(text)
+			if (isServer && !isClientSide) {
+				fixedSite(text)?.let { staging ->
+					if (!siteTable.contains("\"$simpleName\"")) {
+						problems.add("$className stages at a fixed place ($staging) but $SITE_TABLE (test/support) names no \"$simpleName\"; claim its block columns with claim or row so no other test shares them, or exempt it with the reason it needs no claim (#1182)")
+					}
+				}
+			}
 			if (isServer && isClientSide) {
 				problems.add("$className has both an @GameTest method and is a client GameTest; split it in two")
 			} else if (isServer) {

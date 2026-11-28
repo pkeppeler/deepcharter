@@ -146,7 +146,7 @@ public class AmbiencePlacesTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aHornIsFoundAtItsRangeAndNotABlockBeyond(GameTestHelper helper) {
-        BlockPos horn = new BlockPos(40_008, Y, 40_008);
+        BlockPos horn = new BlockPos(40_808, Y, 40_808);
         arena(helper, horn, level -> {
             int range = AmbienceTuning.DEFAULT.hornRange();
             level.setBlock(horn, AmbienceRegistry.COMPANY_HORN.defaultBlockState(), 3);

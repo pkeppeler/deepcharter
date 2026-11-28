@@ -269,6 +269,10 @@ jobs:
       - name: Shell tool tests
         if: matrix.kind == 'shell'
         run: tools/ci-tool-tests.sh shell ${{ matrix.slice }}
+      # Diff-scoped until #1223 rewraps the tree: the merge commit's merge base with the origin/main that merge-main fetched.
+      - name: comment lines added over 120 columns
+        if: matrix.part == 1
+        run: tools/py tools/comment_length_gate.py
       - name: shellcheck (pinned in tools/shellcheck.sh)
         if: matrix.part == 1
         run: |

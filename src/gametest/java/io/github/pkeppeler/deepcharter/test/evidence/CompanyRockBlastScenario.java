@@ -109,6 +109,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(X, floorY(layer), Z);
             level.addFreshEntity(pod);
+            // arrived-ok: a few blocks from where the player has stood since the slab shot
             player.teleportTo(level, X, floorY(layer), Z, Set.of(), 0, 0, true);
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod");

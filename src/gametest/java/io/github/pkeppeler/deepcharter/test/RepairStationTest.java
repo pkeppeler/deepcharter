@@ -1062,24 +1062,24 @@ public class RepairStationTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void theMatterTransmitterTakesThePodAndPilotAcrossDimensionsAndSpillsTheCargo(GameTestHelper helper) {
-        teleportFromLayerOne(helper, Consumable.MATTER_TRANSMITTER, 2400.5, 2400.5, 0.0, false);
+        teleportFromLayerOne(helper, Consumable.MATTER_TRANSMITTER, 27400.5, 27400.5, 0.0, false);
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void theMatterTransmitterTakesASecondPassengerToo(GameTestHelper helper) {
-        teleportFromLayerOne(helper, Consumable.MATTER_TRANSMITTER, 2600.5, 2600.5, 0.0, true);
+        teleportFromLayerOne(helper, Consumable.MATTER_TRANSMITTER, 27600.5, 27600.5, 0.0, true);
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void theQuantumTeleporterLandsWithinItsScatter(GameTestHelper helper) {
         teleportFromLayerOne(
-                helper, Consumable.QUANTUM_TELEPORTER, 2500.5, 2500.5, RepairTuning.DEFAULT.quantumScatter(), false);
+                helper, Consumable.QUANTUM_TELEPORTER, 27500.5, 27500.5, RepairTuning.DEFAULT.quantumScatter(), false);
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void theQuantumTeleporterTakesASecondPassengerToo(GameTestHelper helper) {
         teleportFromLayerOne(
-                helper, Consumable.QUANTUM_TELEPORTER, 2700.5, 2700.5, RepairTuning.DEFAULT.quantumScatter(), true);
+                helper, Consumable.QUANTUM_TELEPORTER, 27700.5, 27700.5, RepairTuning.DEFAULT.quantumScatter(), true);
     }
 
     @GameTest

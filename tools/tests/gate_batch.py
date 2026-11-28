@@ -29,6 +29,9 @@ class Case:
     server_weights: Mapping[str, int] | None = None
     # Seconds above which a campaign group is broken into its classes (gradle/ci-budget.txt's server-shard-seconds for the real tree).
     server_unit_limit: int | None = None
+    # A tree of the entrypoint scan gets a generated test/support/TestSiteTable.java exempting each of its classes (replacing any table the case brings), so the fixed-site gate (#1182)
+    # judges only the site_table fixtures; those say site_table=False where the table is part of the case.
+    site_table: bool = True
 
 
 def checked_in_weights(file_name: str) -> dict[str, int]:
@@ -88,7 +91,11 @@ def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
                 root = case.files
             else:
                 root = work / f"tree{index}"
-                for relative, body in case.files.items():
+                files = dict(case.files)
+                if case.site_table and case.gate is None:
+                    exempts = "".join(f'        exempt("{Path(relative).stem}", "a fixture of another gate");\n' for relative in files if relative != "support/TestSiteTable.java")
+                    files["support/TestSiteTable.java"] = f"final class TestSiteTable {{\n    static void fill() {{\n{exempts}    }}\n}}\n"
+                for relative, body in files.items():
                     path = root / PACKAGE / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(body)
