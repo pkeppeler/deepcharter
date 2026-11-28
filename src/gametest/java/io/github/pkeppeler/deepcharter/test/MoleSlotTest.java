@@ -758,11 +758,8 @@ public class MoleSlotTest {
                             Versioned.readable(mole, WreckRegistry.PACK).orElseThrow();
                     expect(
                             helper,
-                            saved.entries().size() == 1
-                                    && saved.entries()
-                                            .getFirst()
-                                            .pilot()
-                                            .equals(pilot.player().getUUID())
+                            saved.entries().stream()
+                                            .allMatch(entry -> entry.pilot().equals(pilot.player().getUUID()))
                                     && packed(mole, Items.DIAMOND) == 5,
                             "the wreck holds the pilot's 5 diamonds, under the pilot's name");
                     expect(

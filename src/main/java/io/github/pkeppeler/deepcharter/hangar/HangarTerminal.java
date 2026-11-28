@@ -411,8 +411,7 @@ public final class HangarTerminal {
         if (charter.account() < cost.money()) {
             return refuse("insufficient_funds", cost.money());
         }
-        // A restore ends the wreck, and a stack in its pack goes to the one who carried it: wait for them or the
-        // holder.
+        // A restore ends the wreck: a pack stack goes to its pilot or the holder, so wait for one of them.
         if (Wrecks.packHasNoRecipient(
                 server, wreck, data.get().slotHolding(wreck.getUUID()).map(HangarData.Slot::player))) {
             return refuse("pack_owner_away");
