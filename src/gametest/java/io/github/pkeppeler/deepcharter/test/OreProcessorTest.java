@@ -266,6 +266,32 @@ public class OreProcessorTest {
         helper.succeed();
     }
 
+    /** #1669: the price on an ore's tooltip is what the processor pays for it, so the two cannot drift apart. */
+    @GameTest
+    public void everyOreSellsForThePriceItsTooltipShows(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        withProcessorOnline(server, () -> {
+            MockPlayer mock = player(helper, "Tooltip Reader", true);
+            ServerPlayer player = mock.player();
+            BlockPos processor = processorFor(helper, mock);
+            for (OreType ore : OreType.values()) {
+                long shown = OrePriceTooltipTest.dollars(OrePriceTooltipTest.shownPrices(helper, OreRegistry.stack(ore))
+                        .getFirst());
+                carry(player, ore);
+                long before = balance(server, player);
+                expectDone(
+                        helper,
+                        Terminals.act(player, processor, OreProcessor.SELL_INVENTORY, new CompoundTag()),
+                        "selling " + ore);
+                long paid = balance(server, player) - before;
+                if (paid != shown) {
+                    throw failure(helper, "%s's tooltip says $%s, the processor paid $%s", ore, shown, paid);
+                }
+            }
+        });
+        helper.succeed();
+    }
+
     @GameTest
     public void aPlayerOnNoCharterIsRefusedAndKeepsTheOre(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();

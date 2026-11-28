@@ -37,6 +37,16 @@ public final class OutpostRates {
 
     /** Dollars one {@code ore} sells for at a sell terminal at height {@code y} in {@code level}: a whole number, rounded down. */
     public static long orePrice(Level level, int y, OreType ore) {
-        return atDepth(level, y) ? ore.value() * OutpostTuning.DEFAULT.sellPercent() / 100 : ore.value();
+        return atDepth(level, y) ? outpostOrePrice(ore) : colonyOrePrice(ore);
+    }
+
+    /** Dollars one {@code ore} sells for at the colony's ore processor. */
+    public static long colonyOrePrice(OreType ore) {
+        return ore.value();
+    }
+
+    /** Dollars one {@code ore} sells for at a sell terminal in a layer, an outpost's: a whole number, rounded down. */
+    public static long outpostOrePrice(OreType ore) {
+        return colonyOrePrice(ore) * OutpostTuning.DEFAULT.sellPercent() / 100;
     }
 }
