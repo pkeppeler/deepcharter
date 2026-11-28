@@ -96,6 +96,9 @@ public class TerminalAboutScenario extends EvidenceScenario {
             screenshot(context, "hangar-restore");
             focusRow(context, screen, "SCRAP");
             screenshot(context, "hangar-scrap");
+            context.runOnClient(client -> screen.resize(SMALL_WIDTH, SMALL_HEIGHT));
+            focusRow(context, screen, "RESTORE WRECK");
+            screenshot(context, "hangar-320-restore");
             // Armed for a minute: the write-off terms stand in the status line, and the tip must leave them clear.
             TerminalView armed = new TerminalView(
                     BlockPos.ZERO,

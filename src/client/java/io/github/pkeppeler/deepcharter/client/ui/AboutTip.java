@@ -30,6 +30,9 @@ public final class AboutTip {
     private static final int PAD = 3;
     private static final int GAP = 2;
 
+    /** How far round each letter {@link CrtDraw#glowText} draws its halo. */
+    private static final int HALO = 1;
+
     /** The area of the screen the tip stays inside, and where its intro text starts and, typed out in full, ends. */
     public record Bounds(int left, int top, int right, int bottom, int introY, int introBottom) {}
 
@@ -58,9 +61,49 @@ public final class AboutTip {
         public boolean covers(Rect rect) {
             return new Rect(x, y, width, height).overlaps(rect);
         }
+
+        /** Whether this box covers every pixel of {@code rect}. */
+        public boolean contains(Rect rect) {
+            return rect.x() >= x
+                    && rect.y() >= y
+                    && rect.x() + rect.width() <= x + width
+                    && rect.y() + rect.height() <= y + height;
+        }
+
+        /** Whether this box covers none of {@code rect} or all of it, so no line of it shows in part. */
+        public boolean coversWholeOrNone(Rect rect) {
+            return !covers(rect) || contains(rect);
+        }
     }
 
     private AboutTip() {}
+
+    /**
+     * The screen's title as {@link CrtDraw#header} draws it at the top of {@code bounds}: the title with its halo and
+     * the rule under it, whose ends reach past the content area.
+     */
+    public static Rect titleArea(Font font, Bounds bounds) {
+        CrtTuning tuning = CrtTuning.current();
+        int inset = tuning.headerRuleInset();
+        int top = bounds.top() - HALO;
+        int ruleBottom = bounds.top() + font.lineHeight + tuning.headerRuleGap() + 1;
+        return new Rect(bounds.left() - inset, top, bounds.right() - bounds.left() + 2 * inset, ruleBottom - top);
+    }
+
+    /** The intro text, typed out in full, with its halo. */
+    public static Rect introArea(Bounds bounds) {
+        return new Rect(
+                bounds.left() - HALO,
+                bounds.introY() - HALO,
+                bounds.right() - bounds.left() + 2 * HALO,
+                bounds.introBottom() - bounds.introY() + 2 * HALO);
+    }
+
+    /** The area a box may take: the content area, and the title's halo and rule ends past it. */
+    public static Rect allowed(Font font, Bounds bounds) {
+        Rect title = titleArea(font, bounds);
+        return new Rect(title.x(), title.y(), title.width(), bounds.bottom() - title.y());
+    }
 
     /** The row the pointer is on, else the row the keyboard moved to, when it says what it does. */
     public static Optional<CrtButton> pointed(Screen screen, int mouseX, int mouseY) {
@@ -86,7 +129,7 @@ public final class AboutTip {
 
     /**
      * The box for {@code button}'s line, inside {@code bounds}, clear of the other rows of {@code screen} that sell
-     * something and of {@code readouts}.
+     * something and of {@code readouts}, and covering the title and the intro whole or not at all.
      */
     public static Box boxFor(Font font, Bounds bounds, Screen screen, CrtButton button, List<Rect> readouts) {
         List<Rect> occupied = new ArrayList<>(readouts);
@@ -110,35 +153,35 @@ public final class AboutTip {
             int y = Math.max(bounds.top(), Math.min(beside.y(), bounds.bottom() - beside.height()));
             candidates.add(new Box(beside.x(), y, beside.width(), beside.height(), beside.lines()));
         }
-        Box over = box(font, button, bounds.left(), bounds.introY(), bounds.right() - bounds.left(), false);
-        // The box covers the whole intro, so that no line of it shows in part under the box's edge.
-        Box intro = new Box(
-                over.x(),
-                over.y(),
-                over.width(),
-                Math.max(over.height(), bounds.introBottom() - bounds.introY()),
-                over.lines());
+        // Over the intro, or over the title and the intro: each covers the whole of what it is over, halo and rule
+        // ends included, so no line of it shows in part under the box's edge.
+        Rect introArea = introArea(bounds);
+        Box intro = stretched(font, button, introArea, introArea.y() + introArea.height());
         candidates.add(intro);
         // A one-line intro leaves the box too little room above the account: take the title's line too.
-        candidates.add(new Box(
-                over.x(),
-                bounds.top(),
-                over.width(),
-                Math.max(over.height(), bounds.introBottom() - bounds.top()),
-                over.lines()));
+        candidates.add(stretched(font, button, titleArea(font, bounds), introArea.y() + introArea.height()));
+        Rect allowed = allowed(font, bounds);
+        Rect title = titleArea(font, bounds);
         return candidates.stream()
-                .filter(box -> inside(box, bounds)
+                .filter(box -> inside(box, allowed)
                         && box.lines().size() <= MAX_LINES
+                        && box.coversWholeOrNone(title)
+                        && box.coversWholeOrNone(introArea)
                         && occupied.stream().noneMatch(box::covers))
                 .findFirst()
                 .orElse(intro);
     }
 
-    private static boolean inside(Box box, Bounds bounds) {
-        return box.x() >= bounds.left()
-                && box.y() >= bounds.top()
-                && box.x() + box.width() <= bounds.right()
-                && box.y() + box.height() <= bounds.bottom();
+    /** Whether {@code box} lies inside {@code area}. */
+    public static boolean inside(Box box, Rect area) {
+        return new Box(area.x(), area.y(), area.width(), area.height(), List.of())
+                .contains(new Rect(box.x(), box.y(), box.width(), box.height()));
+    }
+
+    /** A box of the full width of {@code area} from its top, down to {@code bottom} at least, with the line in it. */
+    private static Box stretched(Font font, CrtButton button, Rect area, int bottom) {
+        Box box = box(font, button, area.x(), area.y(), area.width(), false);
+        return new Box(box.x(), box.y(), box.width(), Math.max(box.height(), bottom - box.y()), box.lines());
     }
 
     /** A box of {@code width} at {@code x} and {@code y}, or, when {@code over}, ending a gap above the button. */

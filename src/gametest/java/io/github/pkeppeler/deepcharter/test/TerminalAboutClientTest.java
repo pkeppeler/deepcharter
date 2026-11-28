@@ -158,10 +158,7 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
                         "the line for '" + label + "' wraps to " + box.lines().size() + " rows, over the "
                                 + AboutTip.MAX_LINES + " the tip has: " + about.getString());
             }
-            if (box.x() < bounds.left()
-                    || box.y() < bounds.top()
-                    || box.x() + box.width() > bounds.right()
-                    || box.y() + box.height() > bounds.bottom()) {
+            if (!AboutTip.inside(box, AboutTip.allowed(client.font, bounds))) {
                 return Optional.of("the tip for '" + label + "' leaves the content area " + bounds + ": " + box);
             }
             if (box.covers(AboutTip.Rect.of(button))) {
@@ -176,10 +173,15 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
                             + other.getMessage().getString() + "': " + box);
                 }
             }
-            boolean overIntro = box.x() == bounds.left() && box.y() == bounds.introY();
-            if (overIntro && (box.y() > bounds.introY() || box.y() + box.height() < bounds.introBottom())) {
-                return Optional.of("the tip for '" + label + "' over the intro leaves a line of it in part showing: "
-                        + box + " " + bounds);
+            // The title, its rule and the intro are covered whole or not at all, halo and rule ends included: a box
+            // edge across one leaves a sliver of it showing.
+            AboutTip.Rect title = AboutTip.titleArea(client.font, bounds);
+            if (!box.coversWholeOrNone(title)) {
+                return Optional.of("the tip for '" + label + "' covers the title " + title + " in part: " + box);
+            }
+            AboutTip.Rect intro = AboutTip.introArea(bounds);
+            if (!box.coversWholeOrNone(intro)) {
+                return Optional.of("the tip for '" + label + "' covers the intro " + intro + " in part: " + box);
             }
             for (AboutTip.Rect readout : readouts) {
                 if (box.covers(readout)) {
