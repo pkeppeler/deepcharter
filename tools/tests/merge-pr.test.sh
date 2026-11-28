@@ -103,6 +103,10 @@ case "$method $path" in
     [[ -z ${STUB_MERGE_ERR-} ]] || echo "$STUB_MERGE_ERR" >&2
     exit "${STUB_MERGE_RC:-0}" ;;
   "POST "*/issues/*) exit 0 ;;
+  "GET "*/compare/*)
+    # The gate-sweep sha against the head (#1639): STUB_COMPARE is GitHub's status, STUB_COMPARE_FAIL an unreadable compare.
+    [[ ${STUB_COMPARE_FAIL-0} == 1 ]] && { echo "gh: Not Found (HTTP 404)" >&2; exit 1; }
+    echo "${STUB_COMPARE-ahead}" ;;
   "GET "*/pulls/*)
     [[ ${STUB_VIEW_FAIL-0} == 1 ]] && exit 1
     if [[ -n ${STUB_FIXTURE_PR-} ]]; then gh_fixture_jq "$STUB_FIXTURE_PR" "$jq"; exit; fi
@@ -949,7 +953,7 @@ carried_m=$(printf 'd%.0s' {1..40})
 carry_env=("STUB_COMMENT=review-passed $carried_p" STUB_FETCH_HEAD=abc123 "STUB_REVLIST=abc123 $carried_p $carried_m" STUB_MTREE=tree1 STUB_TREE=tree1)
 run_check "${carry_env[@]}"
 exited "carry: a clean merge of main on a passed head passes the gate" 0
-printed "carry: the check says where the pass came from" "review-passed: yes (carried from ccccccccc across a clean merge of origin/main)"
+printed "carry: the check says where the pass came from" "review-passed: yes (carried from ccccccccc across: clean merge of origin/main)"
 run_script "${carry_env[@]}"
 exited "carry: the merge goes ahead" 0
 merged_via_rest "carry: merged through the pinned sha"
@@ -969,7 +973,7 @@ run_carry_mark() {
 }
 run_carry_mark "${carry_env[@]}"
 exited "mark --carry: a carriable head is marked" 0
-printed "mark --carry: names the carried pass" "Carrying the pass of ccccccccc to abc123"
+printed "mark --carry: names the carried pass" "Carrying the pass of ccccccccc to abc123 across: clean merge of origin/main"
 logged "mark --carry: comments the head's own pass" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed abc123"
 run_carry_mark "${carry_env[@]}" STUB_MTREE_RC=1
 exited "mark --carry: a conflicted merge is refused" 1
@@ -1128,6 +1132,88 @@ not_logged "mark refuses a gameplay PR without px-reviewed before writing anythi
 px_run "$mark" "$px_first" "$gpx"
 exited "mark allows a gameplay PR with px-reviewed" 0
 count "the px check reads no comments (no lookup that can fail open)" "comments?per_page" 0
+# The gate sweep (#1639): a PR that changes gate code says what its sweep found, with a `Gate sweep (<sha>):` body line whose sha is
+# an ancestor of the head. A PR numbered below GATE_SWEEP_FIRST_PR is exempt (it was open before the rule).
+gs_first=$(sed -n 's/^GATE_SWEEP_FIRST_PR=\([0-9][0-9]*\)$/\1/p' "$tools/lib/pr-body-checks.sh")
+[[ -n $gs_first ]] || { echo "cannot read GATE_SWEEP_FIRST_PR from tools/lib/pr-body-checks.sh" >&2; exit 1; }
+gate_files="STUB_FILES=$(files modified:gradle/keybind-gate.gradle.kts)"
+gs_ok="Gate sweep (abc1234): none affected"
+# gs_run <who> <pr> <body line or empty> [VAR=value ...]: a PR whose body is "Closes #12" plus the line. <who> is mark,
+# merge (the direct merge) or preflight.
+gs_run() {
+  local who=$1 n=$2 line=$3 s=$script flag=(--direct)
+  shift 3
+  reset
+  rc=0
+  [[ $who != mark ]] || { s=$mark; flag=(); }
+  [[ $who != preflight ]] || flag=(--preflight)
+  out=$(env "STUB_BODY=Closes #12${line:+
+$line}" "$@" PATH="$work/bin:$PATH" bash "$s" ${flag[@]+"${flag[@]}"} "$n" 2>&1) || rc=$?
+}
+gs_refused() { # <name> [message part]
+  if [[ $rc -eq 1 && $out == *"${2:-has no 'Gate sweep (<sha>): none affected'}"* ]]; then pass "$1"; else fail "$1 (rc=$rc out=$out)"; fi
+}
+gs_allowed() { # <name>
+  if [[ $out == *"Gate sweep"* ]]; then fail "$1 (out: $out)"; else pass "$1"; fi
+}
+for who in mark merge preflight; do
+  gs_run "$who" "$gs_first" "" "$gate_files"
+  gs_refused "$who: a gate PR with no Gate sweep line is refused"
+  printed "$who: names the sweep command" "tools/gate-sweep.sh $gs_first"
+  gs_run "$who" "$gs_first" "$gs_ok" "$gate_files"
+  gs_allowed "$who: 'none affected' with a sha passes"
+  logged_compare=$(grep -c "^gh api repos/pkeppeler/deepcharter/compare/abc1234...abc123 " "$LOG" || true)
+  if [[ $logged_compare -eq 1 ]]; then pass "$who: the sweep sha is compared with the head"; else fail "$who: the sweep sha is compared with the head ($logged_compare)"; fi
+  gs_run "$who" "$gs_first" "Gate sweep (abc1234): #1546 fixed, #1542 notified" "$gate_files"
+  gs_allowed "$who: a list of PRs passes"
+  gs_run "$who" "$gs_first" "Gate sweep (abc1234): none affected."$'\r' "$gate_files"
+  gs_allowed "$who: a trailing period and CRLF pass"
+  gs_run "$who" "$gs_first" "Gate sweep (abc1234):   " "$gate_files"
+  gs_refused "$who: an empty Gate sweep line is refused"
+  gs_run "$who" "$gs_first" "Gate sweep (abc1234): done" "$gate_files"
+  gs_refused "$who: a Gate sweep line that names neither 'none affected' nor a PR is refused"
+  gs_run "$who" "$gs_first" "Gate sweep (abc1234): #1546 mentioned" "$gate_files"
+  gs_refused "$who: a PR that is neither fixed nor notified is refused"
+  gs_run "$who" "$gs_first" "Gate sweep (abc1234): none affected, but see #5" "$gate_files"
+  gs_refused "$who: 'none affected' with trailing prose is refused"
+  gs_run "$who" "$gs_first" "Gate sweep: none affected" "$gate_files"
+  gs_refused "$who: a line with no sha is refused"
+  gs_run "$who" "$gs_first" "Gate sweep (xyz): none affected" "$gate_files"
+  gs_refused "$who: a line whose sha is not hex is refused"
+  gs_run "$who" "$gs_first" "- $gs_ok" "$gate_files"
+  gs_refused "$who: a Gate sweep line not at line start is refused"
+  gs_run "$who" "$gs_first" "$gs_ok" "$gate_files" STUB_COMPARE=diverged
+  gs_refused "$who: a sweep sha that is not an ancestor of the head is refused" "not an ancestor of the head"
+  gs_run "$who" "$gs_first" "$gs_ok" "$gate_files" STUB_COMPARE=behind
+  gs_refused "$who: a sweep sha ahead of the head is refused" "not an ancestor of the head"
+  gs_run "$who" "$gs_first" "$gs_ok" "$gate_files" STUB_COMPARE=identical
+  gs_allowed "$who: a sweep at the head itself passes"
+  gs_run "$who" "$gs_first" "$gs_ok" "$gate_files" STUB_COMPARE_FAIL=1
+  gs_refused "$who: an unreadable compare is refused, not let through" "could not be verified"
+  gs_run "$who" "$gs_first" "$gs_ok" "$gate_files" STUB_COMPARE=
+  gs_refused "$who: an empty compare answer is refused, not let through" "could not be verified"
+  if [[ $rc -ne 0 ]] && ! grep -q '^gh api -X PUT' "$LOG"; then pass "$who: an unverified sweep sha never reaches a merge"; else fail "$who: an unverified sweep sha reached a merge"; fi
+  gs_run "$who" $((gs_first - 1)) "" "$gate_files"
+  gs_allowed "$who: a PR below GATE_SWEEP_FIRST_PR is exempt"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:README.md modified:tools/merge-pr.sh)"
+  gs_allowed "$who: a PR that changes no gate needs no line"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files renamed:docs/x.md:tools/old_gate.py)"
+  gs_refused "$who: a PR that renames a gate away is a gate PR"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:gradle/keybind-allowlist.txt)"
+  gs_refused "$who: a gate list change is a gate change"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:.githooks/pre-push)"
+  gs_refused "$who: a pre-push hook change is a gate change"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:gradle/gametest.gradle.kts)"
+  gs_refused "$who: the gametest gates are gate code"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:tools/tests/conflict_markers.py)"
+  gs_refused "$who: a repo-wide lint is gate code"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:.github/workflows/ci.yml)"
+  gs_refused "$who: a workflow is gate code"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:tools/tests/keybind_gate_check.py)"
+  gs_allowed "$who: a gate's own fixture test is not gate code"
+done
+gs_run mark "$gs_first" "" "$gate_files"
+not_logged "mark refuses a gate PR with no sweep line before writing anything" "^gh api -X POST"
 # merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
 # check_pr_body_and_labels: the two lists must hold the same steps.
 lib=$tools/lib/pr-body-checks.sh

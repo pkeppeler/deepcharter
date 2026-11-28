@@ -35,7 +35,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 
 - The SessionStart hook adds one line when `playtest-feedback` issues exist past the player-experience marker.
 - The SessionStart hook (`.claude/hooks/session-start.sh`) also injects the next free ADR number on `origin/main` and the last 15 merged PRs; local-only git state collapses `worktree-agent-*` branches with no upstream to one count.
-- `tools/mark-review-passed.sh` first runs the merge gate's body and label checks and refuses on a failure. Any push other than a clean merge of `origin/main` voids the pass; `tools/mark-review-passed.sh --carry <n>` re-pins it.
+- `tools/mark-review-passed.sh` first runs the merge gate's body and label checks and refuses on a failure. Any push other than a clean merge of `origin/main` or a comment-only commit ([ADR 0118](../docs/adr/0118-a-review-pass-survives-a-comment-only-push.md)) voids the pass; `tools/mark-review-passed.sh --carry <n>` re-pins it.
 - **Before ending or clearing a session**, the handoff issue body is written only through `tools/handoff.sh <file>`. It refuses a body over 1,000 words or one with a section the hook derives (merged PRs, open PRs, ADR numbers, local-only state). Updated also holds the successor's id when handing over. Notes hold only what the next session cannot learn from the repo; a durable rule goes in the conventions skill or this file, not there.
 - **Decision log:** the audit posts its Attention section on the handoff issue, #14. `.audit/` is git-ignored.
 

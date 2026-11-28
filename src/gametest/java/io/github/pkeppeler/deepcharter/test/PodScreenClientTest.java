@@ -62,7 +62,7 @@ public class PodScreenClientTest implements FabricClientGameTest {
                     "the pilot in the pod on the client",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
 
-            RealInput.key(context, InputConstants.KEY_I, 0);
+            context.getInput().pressKey(options -> options.keyInventory);
             ClientWait.screen(context, PodScreen.class);
             PodScreen screen = context.computeOnClient(client -> ClientSession.screen(client, PodScreen.class));
             ClientWait.until(
