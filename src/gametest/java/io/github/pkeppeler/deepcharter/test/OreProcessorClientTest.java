@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -129,6 +130,14 @@ public class OreProcessorClientTest implements FabricClientGameTest {
                     "fusing is free, the HUD shows '" + hud(context) + "'");
             PodLining.State fused = singleplayer.getServer().computeOnServer(server -> PodLining.of(parkedPod(server)));
             require(fused.bricks() == 2 && fused.spoil() == 0, "four spoil make two bricks in the rack, got " + fused);
+            // #1649: the result stays on screen: the rack and the pack as they are after the fuse.
+            String rack = "RACK 2/" + PodLiningTuning.DEFAULT.brickCapacity();
+            ClientWait.until(
+                    context,
+                    "the brick line showing '" + rack + "' and an empty pack",
+                    client -> screen.bricksLine().contains(rack)
+                            && screen.bricksLine().contains("PACK 0"),
+                    client -> "brick line '" + screen.bricksLine() + "'");
 
             // #470: forty-eight spoil are two salvage crates in the pack, and the account is not charged.
             singleplayer
@@ -331,7 +340,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             TerminalView manyView = new TerminalView(
                     processor,
                     TerminalTypes.ORE_PROCESSOR.id(),
-                    Optional.of(new ProcessorView(many, List.of())),
+                    Optional.of(new ProcessorView(many, List.of(), new ProcessorView.Bricks(0, 0, 0, 0))),
                     List.of());
             for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                 context.setScreen(() -> new OreProcessorScreen(manyView));

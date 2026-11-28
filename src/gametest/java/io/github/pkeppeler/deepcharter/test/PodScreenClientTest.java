@@ -10,6 +10,8 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -25,6 +27,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -33,11 +36,18 @@ import net.minecraft.world.item.Items;
  * Client GameTest for #1270: the pod screen, driven with the real keyboard and cursor. The pilot presses the pod screen
  * key in the seat; the screen shows the hold's ore and mass; a shift-clicked drill unit is fitted and shows its tier; a
  * hull unit dropped on the scanner slot is refused on screen; dirt dropped on a hold slot lands in it and shift-clicks
- * back; shift-clicked coal fills the fuel slot and the gauge rises as it feeds the tank; and Escape closes the screen.
+ * back; shift-clicked coal fills the fuel slot and the gauge rises as it feeds the tank; the readouts show the brick
+ * rack (#1649); torches move into and out of the offhand slot by click, shift-click and the swap-hands key (#1670); and
+ * Escape closes the screen.
  */
 public class PodScreenClientTest implements FabricClientGameTest {
     /** A goldium (10) and an einsteinium (20) in the hold, in tenths. */
     private static final int GOLDIUM_AND_EINSTEINIUM_TENTHS = 300;
+
+    /** Bricks in the pod's rack, which the screen shows against the rack's size (#1649). */
+    private static final int RACKED = 5;
+    /** Torches the test moves through the offhand (#1670). */
+    private static final int TORCHES = 4;
 
     private static final Item DRILL_UNIT = PartUnits.unit(ComponentTrack.DRILL);
     private static final Item HULL_UNIT = PartUnits.unit(ComponentTrack.HULL);
@@ -79,6 +89,8 @@ public class PodScreenClientTest implements FabricClientGameTest {
             refusesAWrongUnit(context, singleplayer, screen);
             movesDirtThroughTheHold(context, singleplayer, screen, pod);
             feedsCoal(context, screen);
+            showsTheRack(context, screen);
+            movesThroughTheOffhand(context, singleplayer, screen);
             context.takeScreenshot("pod-screen-client");
 
             RealInput.key(context, InputConstants.KEY_ESCAPE, 0);
@@ -116,6 +128,8 @@ public class PodScreenClientTest implements FabricClientGameTest {
         player.getInventory().add(new ItemStack(HULL_UNIT));
         player.getInventory().add(new ItemStack(Items.DIRT, 20));
         player.getInventory().add(new ItemStack(Items.COAL, 16));
+        player.getInventory().add(new ItemStack(Items.TORCH, TORCHES));
+        PodLining.modify(pod, state -> state.fused(0, RACKED));
         return pod.getUUID();
     }
 
@@ -199,5 +213,58 @@ public class PodScreenClientTest implements FabricClientGameTest {
                         && screen.getMenu().fuelTenths() > 0,
                 client -> "fuel slot " + screen.getMenu().fuelSlot().getItem() + ", gauge "
                         + screen.getMenu().fuelTenths() + "/" + screen.getMenu().tankTenths());
+    }
+
+    /** #1649: the readouts name the brick rack and its size, so a fused brick has a place on screen. */
+    private static void showsTheRack(ClientGameTestContext context, PodScreen screen) {
+        String rack = "SLAG RACK " + RACKED + "/" + PodLiningTuning.DEFAULT.brickCapacity();
+        ClientWait.until(
+                context,
+                "the rack line '" + rack + "' and the hopper line",
+                client -> screen.readouts().contains(rack)
+                        && screen.readouts().contains("NO HOPPER"),
+                client -> "readouts " + screen.readouts());
+    }
+
+    /**
+     * #1670: the torches go into the offhand by a click, come back to the pack by a shift-click, and go in again by the
+     * swap-hands key over their pack slot, all with the real cursor and keyboard.
+     */
+    private static void movesThroughTheOffhand(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, PodScreen screen) {
+        Slot offhand = context.computeOnClient(client -> screen.getMenu().offhandSlot());
+        SlotClicks.click(context, screen, SlotClicks.inventorySlot(context, screen, Items.TORCH));
+        SlotClicks.click(context, screen, offhand);
+        awaitOffhand(context, singleplayer, TORCHES, "a click puts the torches in the offhand");
+        SlotClicks.shiftClick(context, screen, offhand);
+        awaitOffhand(context, singleplayer, 0, "a shift-click sends them back to the pack");
+        SlotClicks.hover(context, screen, SlotClicks.inventorySlot(context, screen, Items.TORCH));
+        context.getInput().pressKey(options -> options.keySwapOffhand);
+        awaitOffhand(context, singleplayer, TORCHES, "the swap-hands key over their slot moves them to the offhand");
+    }
+
+    /** Waits for the player's offhand to hold {@code torches} torches on the server and in the screen's slot. */
+    private static void awaitOffhand(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, int torches, String what) {
+        ClientWait.until(
+                context,
+                what,
+                () -> singleplayer.getServer().computeOnServer(server -> torchesIn(server.getPlayerList()
+                                        .getPlayers()
+                                        .getFirst()
+                                        .getOffhandItem()))
+                                == torches
+                        && context.computeOnClient(client -> torchesIn(ClientSession.player(client)
+                                        .getOffhandItem()))
+                                == torches,
+                () -> "offhand on the server "
+                        + singleplayer.getServer().computeOnServer(server -> server.getPlayerList()
+                                .getPlayers()
+                                .getFirst()
+                                .getOffhandItem()));
+    }
+
+    private static int torchesIn(ItemStack stack) {
+        return stack.is(Items.TORCH) ? stack.getCount() : 0;
     }
 }

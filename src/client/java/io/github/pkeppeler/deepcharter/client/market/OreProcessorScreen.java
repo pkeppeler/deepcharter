@@ -37,7 +37,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 
 /**
- * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons and, at the foot of the price column, the two buttons that use a pod's spoil: slag brick and salvage crates. A button
+ * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons
+ * and, at the foot of the price column, the two buttons that use a pod's spoil: slag brick and salvage crates. Where the
+ * slag brick is (the parked pods' racks and the pack) sits on the title's row, so the result of MAKE SLAG BRICK stays on
+ * screen. A button
  * only asks the server; the server decides, and the account shown is the one it last synced, so it changes when a sale goes through.
  *
  * <p>WITHDRAW ORE swaps the sheet for a list of the ores the parked pods hold, each with buttons that move 1, 10 or all of it into the pack (#536). BACK returns to the sheet.
@@ -109,6 +112,31 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     @Override
     public Typewriter typewriter() {
         return typewriter;
+    }
+
+    /**
+     * Where the slag brick is, as the server last sent it: the parked pods' racks against their size, and the pack. MAKE SLAG
+     * BRICK changes it, so the result stays on screen after the passing line (#1649). The long form names the brick; on a
+     * screen too narrow for it beside the title, the short form.
+     */
+    public String bricksLine() {
+        ProcessorView.Bricks bricks = view.feature(ProcessorView.class)
+                .map(ProcessorView::bricks)
+                .orElse(new ProcessorView.Bricks(0, 0, 0, 0));
+        String full = bricksLine(bricks, "");
+        int room = contentWidth(MARGIN) - CrtText.width(font, title.getString().toUpperCase(Locale.ROOT)) - GAP;
+        return CrtText.width(font, full) <= room ? full : bricksLine(bricks, "_short");
+    }
+
+    private static String bricksLine(ProcessorView.Bricks bricks, String form) {
+        Component line = bricks.rackSize() > 0
+                ? Component.translatable(
+                        "screen.deepcharter.processor.bricks" + form,
+                        bricks.racked(),
+                        bricks.rackSize(),
+                        bricks.carried())
+                : Component.translatable("screen.deepcharter.processor.bricks_no_pod" + form, bricks.carried());
+        return line.getString().toUpperCase(Locale.ROOT);
     }
 
     /** The text of the account line, empty when the player is on no charter. */
@@ -587,6 +615,14 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
             return;
         }
         TerminalNoticeLine.draw(graphics, font, view, contentLeft(MARGIN), contentTop(MARGIN), contentWidth(MARGIN));
+        String bricks = bricksLine();
+        CrtDraw.glowText(
+                graphics,
+                font,
+                bricks,
+                contentRight(MARGIN) - CrtText.width(font, bricks),
+                contentTop(MARGIN),
+                tuning.phosphorColor());
         drawTypewriter(graphics, typewriter, contentLeft(MARGIN), underHeader() + noticeHeight(), contentWidth(MARGIN));
         int top = accountTop();
         CrtDraw.glowText(graphics, font, accountLine(), contentLeft(MARGIN), top, tuning.phosphorColor());

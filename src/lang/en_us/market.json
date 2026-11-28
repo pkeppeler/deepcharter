@@ -48,5 +48,9 @@
   "screen.deepcharter.processor.withdraw_one": "TAKE ONE",
   "screen.deepcharter.processor.withdraw_row": "%s  %s IN CARGO",
   "screen.deepcharter.processor.withdraw_scroll": "ORE %s-%s OF %s",
-  "screen.deepcharter.processor.withdraw_ten": "TAKE TEN"
+  "screen.deepcharter.processor.withdraw_ten": "TAKE TEN",
+  "screen.deepcharter.processor.bricks": "Slag brick: rack %s/%s, pack %s",
+  "screen.deepcharter.processor.bricks_short": "Rack %s/%s  Pack %s",
+  "screen.deepcharter.processor.bricks_no_pod": "Slag brick: no pod parked, pack %s",
+  "screen.deepcharter.processor.bricks_no_pod_short": "No pod  Pack %s"
 }

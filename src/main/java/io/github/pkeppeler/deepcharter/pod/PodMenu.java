@@ -46,8 +46,8 @@ import net.minecraft.world.item.Items;
 
 /**
  * The pod screen (ADR 0102): one slot for each part track, the fuel slot, and a page of the hold, over the player's
- * inventory. It opens for the pod's own charter only: by sneak and use from outside, or by the inventory key from a
- * seat ({@link PodEntity#openCustomInventoryScreen}).
+ * inventory and the offhand beside it. It opens for the pod's own charter only: by sneak and use from outside, or by
+ * the inventory key from a seat ({@link PodEntity#openCustomInventoryScreen}).
  *
  * <ul>
  *   <li><b>Parts.</b> Each track's slot shows the part fitted on it, bought or crafted, or a faded stock or empty
@@ -78,7 +78,16 @@ public final class PodMenu extends SlottedMenu {
     /** Where the inventory and the hold start, at the bottom of the screen. */
     public static final int INVENTORY_Y = 116;
 
-    public static final int HOLD_X = 172;
+    /**
+     * Where the hold starts: past the inventory and the offhand slot beside it, its last column at the content's right
+     * edge.
+     */
+    public static final int HOLD_X = 185;
+
+    /** The offhand slot, between the inventory and the hold on the hotbar's row, as the vanilla inventory has it. */
+    public static final int OFFHAND_X = 165;
+
+    public static final int OFFHAND_Y = INVENTORY_Y + INVENTORY_HEIGHT - SLOT_SIZE;
     /** Blocks from the pod within which a player outside can keep the screen open. */
     private static final double REACH = 8;
 
@@ -133,6 +142,7 @@ public final class PodMenu extends SlottedMenu {
     private final Map<ComponentTrack, RuleSlot> partSlots = new EnumMap<>(ComponentTrack.class);
     private final RuleSlot fuelSlot;
     private final RuleSlot[] holdSlots = new RuleSlot[HOLD_WINDOW];
+    private final Slot offhandSlot;
 
     /** The client's menu. */
     public PodMenu(int containerId, Inventory inventory, Opening opening) {
@@ -181,6 +191,7 @@ public final class PodMenu extends SlottedMenu {
             holdSlots[i] = addRuleSlot(hold, i, x, y, holdRule(i));
         }
         addPlayerInventory(inventory, INVENTORY_Y);
+        this.offhandSlot = addSlot(new Slot(inventory, Inventory.SLOT_OFFHAND, OFFHAND_X, OFFHAND_Y));
         refresh();
     }
 
@@ -259,6 +270,11 @@ public final class PodMenu extends SlottedMenu {
     // test-seam: a test clicks the fuel slot as the player sees it; the screen draws it with the other slots
     public RuleSlot fuelSlot() {
         return fuelSlot;
+    }
+
+    /** The player's offhand slot, beside the pack. */
+    public Slot offhandSlot() {
+        return offhandSlot;
     }
 
     /** Hold slot {@code index} of the page shown, counted from the top left. */
@@ -449,6 +465,29 @@ public final class PodMenu extends SlottedMenu {
     /** Whether {@code slot} is one of the hold's. */
     public boolean isHold(Slot slot) {
         return slot.container == hold;
+    }
+
+    /** A shift-click on the offhand sends it to the pack, as in the vanilla inventory, not into the hold. */
+    @Override
+    public ItemStack quickMoveStack(Player player, int index) {
+        if (index != offhandSlot.index) {
+            return super.quickMoveStack(player, index);
+        }
+        if (!offhandSlot.hasItem()) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack stack = offhandSlot.getItem();
+        ItemStack before = stack.copy();
+        if (!moveToInventory(stack)) {
+            return ItemStack.EMPTY;
+        }
+        if (stack.isEmpty()) {
+            offhandSlot.setByPlayer(ItemStack.EMPTY);
+        } else {
+            offhandSlot.setChanged();
+        }
+        offhandSlot.onTake(player, stack);
+        return before;
     }
 
     /** A unit shift-clicked from the inventory goes to its track's slot or is refused there, never into the hold. */

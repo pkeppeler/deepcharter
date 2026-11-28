@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.menu.SlottedMenu;
 import io.github.pkeppeler.deepcharter.ore.LooseOre;
 import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
 import io.github.pkeppeler.deepcharter.pod.LooseOreTuning;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -26,9 +27,10 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The pod screen ({@link PodMenu}): the part slots in two rows with each fitted part's tier on it and its condition in
- * the frame's colour, the fuel slot and its gauge, the hold's mass, spoil and bricks, and a page of the hold beside the
- * inventory, with buttons to turn the page when the hold takes more than one. An empty part slot names the stock part
- * or the empty track when the cursor is on it, and a hold stack's tooltip names the key that dumps it.
+ * the frame's colour, the fuel slot and its gauge, the hold's mass, the hopper's spoil and the slag rack against their
+ * sizes, and a page of the hold beside the inventory and its offhand slot, with buttons to turn the page when the hold
+ * takes more than one. An empty part slot names the stock part or the empty track when the cursor is on it, and a hold
+ * stack's tooltip names the key that dumps it.
  */
 public final class PodScreen extends CrtMenuScreen<PodMenu> {
     private static final int SLOT = PodMenu.SLOT_SIZE;
@@ -150,24 +152,29 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
         return String.format(Locale.ROOT, "%d.%d", tenths / 10, tenths % 10);
     }
 
-    /** The hold's mass, the hopper's spoil and the rack's bricks, and the names over the hold and the pack. */
-    private void readouts(GuiGraphicsExtractor graphics, CrtTuning tuning) {
+    /**
+     * The readouts right of the gauge: the hold's mass, the hopper's spoil and the rack's slag brick, each store against
+     * its size, so a fused brick has a place on screen (#1649).
+     */
+    public List<String> readouts() {
+        PodLiningTuning lining = PodLiningTuning.DEFAULT;
         List<Component> lines = new ArrayList<>();
         lines.add(Component.translatable("screen.deepcharter.pod.mass", OreEncumbrance.shown(menu.massTenths())));
         lines.add(
                 menu.spoil() >= 0
-                        ? Component.translatable("screen.deepcharter.pod.spoil", menu.spoil())
+                        ? Component.translatable("screen.deepcharter.pod.spoil", menu.spoil(), lining.spoilCapacity())
                         : Component.translatable("screen.deepcharter.pod.no_hopper"));
-        lines.add(Component.translatable("screen.deepcharter.pod.bricks", menu.bricks()));
+        lines.add(Component.translatable("screen.deepcharter.pod.rack", menu.bricks(), lining.brickCapacity()));
+        return lines.stream()
+                .map(line -> line.getString().toUpperCase(Locale.ROOT))
+                .toList();
+    }
+
+    /** The readouts, and the names over the hold and the pack. */
+    private void readouts(GuiGraphicsExtractor graphics, CrtTuning tuning) {
         int y = topPos + PodMenu.PARTS_Y + 1;
-        for (Component line : lines) {
-            CrtDraw.glowText(
-                    graphics,
-                    font,
-                    line.getString().toUpperCase(Locale.ROOT),
-                    leftPos + READOUT_X,
-                    y,
-                    tuning.phosphorColor());
+        for (String line : readouts()) {
+            CrtDraw.glowText(graphics, font, line, leftPos + READOUT_X, y, tuning.phosphorColor());
             y += LINE;
         }
         Component hold = menu.pages() > 1
@@ -253,11 +260,19 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
         return lines;
     }
 
-    /** An empty part slot names what is there: the stock part, or nothing yet. */
+    /**
+     * An empty part slot names what is there: the stock part, or nothing yet. The empty offhand names itself and the key
+     * that fills it.
+     */
     @Override
     protected void extractTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         super.extractTooltip(graphics, mouseX, mouseY);
         Slot hovered = hoveredSlot;
+        if (hovered == menu.offhandSlot() && !hovered.hasItem() && menu.getCarried().isEmpty()) {
+            Component swap = minecraft.options.keySwapOffhand.getTranslatedKeyMessage();
+            graphics.setTooltipForNextFrame(
+                    font, Component.translatable("screen.deepcharter.pod.offhand", swap), mouseX, mouseY);
+        }
         if (hovered instanceof SlottedMenu.RuleSlot typed
                 && !hovered.hasItem()
                 && menu.getCarried().isEmpty()

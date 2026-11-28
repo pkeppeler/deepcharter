@@ -140,7 +140,7 @@
   "deepcharter.handbook.controls.dig.down": "Pilot, on the ground: hold %s to drill down.",
   "deepcharter.handbook.controls.dig.side": "Drive forward (%s) into a wall to drill sideways; the pod turns square to the grid first.",
   "deepcharter.handbook.controls.crew.title": "The Mole: crew",
-  "deepcharter.handbook.controls.crew.line": "Pilot: %s lines the slab with slag brick.",
+  "deepcharter.handbook.controls.crew.line": "Pilot: %s lines the slab with slag brick from the pod's rack.",
   "deepcharter.handbook.controls.crew.sonar": "Navigator: %s pings the sonar, %s marks an echo.",
   "deepcharter.handbook.controls.cargo.title": "The Mole: dumping cargo",
   "deepcharter.handbook.controls.cargo.dump_stack": "In her screen, %s on a stack dumps one; with Ctrl, the stack.",

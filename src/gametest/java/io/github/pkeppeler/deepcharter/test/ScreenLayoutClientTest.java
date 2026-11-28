@@ -194,7 +194,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                         new WorkOrdersView(true, orders),
                         Arrays.stream(OreType.values())
                                 .map(ore -> new ProcessorView.Hold(ore, 99999))
-                                .toList()));
+                                .toList(),
+                        new ProcessorView.Bricks(999, 999, 999, 9999)));
         return features;
     }
 
@@ -652,7 +653,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return new TerminalView(
                 view.pos(),
                 view.type(),
-                Optional.of(new ProcessorView(new WorkOrdersView(true, orders), processor.cargo())),
+                Optional.of(new ProcessorView(new WorkOrdersView(true, orders), processor.cargo(), processor.bricks())),
                 view.notices());
     }
 
