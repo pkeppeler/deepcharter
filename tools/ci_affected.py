@@ -45,7 +45,7 @@ _ENTRY_POINTS = (
 # Paths that can change what every test does: both suites run whole.
 _EVERYTHING = (
     re.compile(r"^(build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties|gradle\.lockfile|buildscript-gradle\.lockfile|settings-gradle\.lockfile)$"),
-    re.compile(r"^gradle/(?!(client|server)-test-weights\.txt$|ci-budget\.txt$)"),
+    re.compile(r"^gradle/(?!(client|server)-test-weights\.txt$|client-overhead\.txt$|ci-budget\.txt$)"),
     re.compile(r"^\.github/(workflows|actions)/"),
     re.compile(r"^\.python-version$"),
     re.compile(r"^src/(main|client)/java/.*/mixin/"),
