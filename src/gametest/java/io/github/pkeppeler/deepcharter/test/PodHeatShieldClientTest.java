@@ -47,8 +47,16 @@ public class PodHeatShieldClientTest implements FabricClientGameTest {
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.setGameMode(GameType.SURVIVAL);
+                // Creative while it waits for the arrival: it stands in the lava pool until it is seated.
+                player.setGameMode(GameType.CREATIVE);
                 player.teleportTo(one, 0, FEET_Y, 0, Set.of(), 0f, 0f, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                player.setRemainingFireTicks(0);
+                player.setGameMode(GameType.SURVIVAL);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(0, FEET_Y, 0);
                 pod.setNoGravity(true);

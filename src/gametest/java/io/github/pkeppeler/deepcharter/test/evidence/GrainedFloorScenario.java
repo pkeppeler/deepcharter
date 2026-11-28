@@ -67,6 +67,11 @@ public class GrainedFloorScenario extends EvidenceScenario {
                 player.setGameMode(GameType.SURVIVAL);
                 player.setPermanentlyInvulnerable(true);
                 player.teleportTo(level, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel level = TestLayers.level(server, LAST);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setFuel(100f);

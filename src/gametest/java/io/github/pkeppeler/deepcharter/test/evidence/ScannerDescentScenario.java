@@ -73,6 +73,11 @@ public class ScannerDescentScenario extends EvidenceScenario {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, X + 0.5, feetY, Z + 0.5, Set.of(), EAST, 0f, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X + 0.5, feetY, Z + 0.5);
                 pod.setYRot(EAST);

@@ -22,4 +22,11 @@ class Flagged {
 	boolean t = event.button() == 0;
 	Object u = new KeyEvent(82, 0, 0);
 	Object v = new KeyEvent('R', 0, 0);
+	Object w = context.getInput().typeChars("o");
+	Object x = screen.charTyped(new CharacterEvent(c));
+	Object y = screen
+			.charTyped(event);
+	Object z = screen::charTyped;
+	list.forEach(screen::charTyped);
+	Object q = RealInput::typeChars;
 }
