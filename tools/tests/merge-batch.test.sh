@@ -494,7 +494,7 @@ run_b 1
 exited "batch push error: exit 1" 1
 printed "batch push error: the message names the failed push" "could not push batch/S"
 printed "batch push error: it carries the end of git's output" "hook line 30"
-if [[ $out == *"hook line 1"$'\n'* ]]; then fail "batch push error: only the last lines are shown"; else pass "batch push error: only the last lines are shown"; fi
+if [[ $out == *"hook line 10"* ]]; then fail "batch push error: only the last lines are shown"; else pass "batch push error: only the last lines are shown"; fi
 
 # --- a batch of one retries a stale base by rebuilding, up to the limit ---
 reset
