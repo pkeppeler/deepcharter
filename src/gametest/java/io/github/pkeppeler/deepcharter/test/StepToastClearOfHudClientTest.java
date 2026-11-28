@@ -519,7 +519,8 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                             Style.EMPTY)
                     .size();
             int step = font.lineHeight + crt.lineSpacing();
-            int panelHeight = 2 * crt.padding() + step + look.headerGap() + lines * step;
+            // The text's lines and one more for the comms log hint under them (#1615), as TransmissionHud sizes it.
+            int panelHeight = 2 * crt.padding() + step + look.headerGap() + (lines + 1) * step;
             int top = Math.max(look.screenMargin(), Math.round(height * (float) look.centerY() - panelHeight / 2f));
             hud.put("transmission", new Box((width - panelWidth) / 2, top, panelWidth, panelHeight));
         }
