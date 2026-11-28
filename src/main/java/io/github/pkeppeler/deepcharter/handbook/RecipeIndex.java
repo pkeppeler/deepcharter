@@ -30,7 +30,6 @@ public final class RecipeIndex {
     private final RecipeManager manager;
     private final Map<Item, Set<Identifier>> touching = new HashMap<>();
     private final Map<Item, Set<Identifier>> producing = new HashMap<>();
-    private final Map<Identifier, Set<Item>> ingredientItems = new HashMap<>();
     private final Map<Identifier, ResourceKey<Recipe<?>>> keys = new HashMap<>();
 
     private RecipeIndex(MinecraftServer server, RecipeManager manager) {
@@ -43,9 +42,6 @@ public final class RecipeIndex {
                 for (ItemStack stack : ingredient.display().resolveForStacks(context)) {
                     touching.computeIfAbsent(stack.getItem(), ignored -> new HashSet<>())
                             .add(id);
-                    ingredientItems
-                            .computeIfAbsent(id, ignored -> new HashSet<>())
-                            .add(stack.getItem());
                 }
             }
             manager.listDisplaysForRecipe(holder.id(), entry -> {
@@ -89,11 +85,6 @@ public final class RecipeIndex {
     /** The recipes {@code item} is the result or an ingredient of. */
     Set<Identifier> touching(Item item) {
         return touching.getOrDefault(item, Set.of());
-    }
-
-    /** The items the recipe {@code id} takes as ingredients (every item an ingredient tag names). */
-    Set<Item> ingredientsOf(Identifier id) {
-        return ingredientItems.getOrDefault(id, Set.of());
     }
 
     /** The recipes that make {@code item}. */

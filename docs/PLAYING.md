@@ -49,7 +49,8 @@ You need a Minecraft Java Edition account.
 - **Sonar (navigator):** sit in the Prospector's second seat. V pings, and G marks the echo you are looking at on the pilot's HUD. A ping is loud.
 - **Thrown kit and tether:** buy flares, decoys, charges and the tether at the repair station, and use them from the hand on foot, not from a seat.
 - **Suit:** from layer 3 down the suit on your back runs on a reserve of about 3 minutes. A powered pod seat or a sound outpost hall refills it, and an air canister adds a minute.
-- **Tow cable:** craft it from six iron ingots around a lead. A lead is five string (two leads from one craft), and one salvage cloth cuts into four string, so keep a few cloths from the lockers and crates. Holding cloth and iron shows the whole chain in the recipe book. Then ride a pod, hold a tow cable and right-click another pod. Right-click a towed pod with the cable to take it off.
+- **Tow cable, make it:** six iron ingots around a lead. A lead is five string, and one salvage cloth cuts into four string, so keep a few cloths from the lockers and crates. The recipe book and parts catalogue show all three recipes once the handbook asks you to tow the Prospector.
+- **Tow cable, use it:** ride a pod, hold a tow cable and right-click another pod. Right-click a towed pod with the cable to take it off.
 - **Operator commands** (ops only): `/deepcharter pod spawn` puts a pod next to you, `/deepcharter layer goto <n>` moves you to the surface of layer n, `/deepcharter pod dump` empties the ridden pod's cargo.
 
 ## Your first hour

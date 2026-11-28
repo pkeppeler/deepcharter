@@ -3,11 +3,17 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
+import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.KnownRecipes;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -57,15 +63,33 @@ public class TowCableCraftableTest {
     }
 
     /**
-     * The recipes a crew needs for the cable are in the book of a player holding only cloth and iron: the cable's own,
-     * the lead's (which no held item touches) and the string's.
+     * The towing step asks for the tow cable, the lead and the string, so the recipe of each is known and in the book
+     * of a player on that step, though they hold none of them.
      */
     @GameTest(maxTicks = 100)
-    public void aPlayerHoldingClothAndIronIsShownTheWholeCableChain(GameTestHelper helper) {
+    public void aPlayerOnTheTowingStepIsShownTheWholeCableChain(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerPlayer player = MockPlayers.join(helper, "Cabler").player();
-        player.getInventory().add(new ItemStack(ours("salvage_cloth")));
-        player.getInventory().add(new ItemStack(Items.IRON_INGOT));
+        Identifier towStep =
+                Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/company_property/tow_prospector");
+        expect(
+                helper,
+                Charters.found(
+                                server,
+                                player.getUUID(),
+                                "Cable " + UUID.randomUUID().toString().substring(0, 8))
+                        .isEmpty(),
+                "founding a charter should succeed");
+        CharterId charter = Charters.charterOfOrThrow(server, player.getUUID())
+                .orElseThrow()
+                .id();
+        // The step is current once every step before it is done.
+        for (Identifier directive : HandbookChapters.directivesOrEmpty(server)) {
+            if (directive.equals(towStep)) {
+                break;
+            }
+            HandbookProgressData.get(server).complete(charter, directive);
+        }
         List<Identifier> chain = List.of(
                 Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tow_cable"),
                 Identifier.withDefaultNamespace("lead"),
@@ -76,7 +100,7 @@ public class TowCableCraftableTest {
                 expect(
                         helper,
                         KnownRecipes.knownFor(server, player.getUUID()).contains(recipe),
-                        "a player holding cloth and iron should know %s, knows %s",
+                        "a player on the towing step should know %s, knows %s",
                         recipe,
                         KnownRecipes.knownFor(server, player.getUUID()));
                 expect(
@@ -88,7 +112,10 @@ public class TowCableCraftableTest {
         });
     }
 
-    /** Whether {@code item} is a raw item or some loaded recipe makes it from craftable ingredients; {@code path} stops loops. */
+    /**
+     * Whether {@code item} is a raw item or some loaded recipe makes it from craftable ingredients; {@code path} stops
+     * loops.
+     */
     private static boolean craftable(Item item, List<Recipe<?>> loaded, Set<Item> raw, Set<Item> path) {
         if (raw.contains(item)) {
             return true;
@@ -96,7 +123,7 @@ public class TowCableCraftableTest {
         if (path.contains(item)) {
             return false;
         }
-        Set<Item> deeper = new java.util.HashSet<>(path);
+        Set<Item> deeper = new HashSet<>(path);
         deeper.add(item);
         return loaded.stream()
                 .filter(recipe -> makes(recipe, item))

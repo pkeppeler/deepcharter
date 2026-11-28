@@ -208,7 +208,7 @@
   "deepcharter.handbook.chapter.deepcharter.company_property.text.1.margin": "If you hear the song and there's no radio, leave. —R.",
   "deepcharter.handbook.chapter.deepcharter.company_property.margin": "Ines's pod. Read her log, then decide if you still want the job. —R.",
   "deepcharter.handbook.directive.company_property.find_prospector": "Find the Prospector.",
-  "deepcharter.handbook.directive.company_property.tow_prospector": "Tow the Prospector to the colony.",
+  "deepcharter.handbook.directive.company_property.tow_prospector": "Tow the Prospector to the colony. A tow cable is six iron around a lead, a lead is five string, and string comes from salvage cloth found in lockers and crates.",
   "deepcharter.handbook.directive.company_property.restore_prospector": "Restore the Prospector.",
   "deepcharter.handbook.directive.company_property.reach_workings_floor": "Reach the floor of the Old Workings.",
   "deepcharter.handbook.appendix.title.part": "%s (%s/%s)",

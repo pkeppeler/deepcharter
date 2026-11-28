@@ -145,7 +145,8 @@ public class HandbookChaptersSixToNineTest {
                 "Ines's pod. Read her log, then decide if you still want the job. —R.");
         CANON.put("deepcharter.handbook.directive.company_property.find_prospector", "Find the Prospector.");
         CANON.put(
-                "deepcharter.handbook.directive.company_property.tow_prospector", "Tow the Prospector to the colony.");
+                "deepcharter.handbook.directive.company_property.tow_prospector",
+                "Tow the Prospector to the colony. A tow cable is six iron around a lead, a lead is five string, and string comes from salvage cloth found in lockers and crates.");
         CANON.put("deepcharter.handbook.directive.company_property.restore_prospector", "Restore the Prospector.");
         CANON.put(
                 "deepcharter.handbook.directive.company_property.reach_workings_floor",

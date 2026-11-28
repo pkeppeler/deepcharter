@@ -14,7 +14,12 @@
       "id": "deepcharter:handbook/company_property/tow_prospector",
       "text": {
         "translate": "deepcharter.handbook.directive.company_property.tow_prospector"
-      }
+      },
+      "targets": [
+        { "item": "deepcharter:tow_cable", "count": 1 },
+        { "item": "minecraft:lead", "count": 1 },
+        { "item": "minecraft:string", "count": 1 }
+      ]
     },
     {
       "id": "deepcharter:handbook/company_property/restore_prospector",
