@@ -130,7 +130,9 @@ public final class Wrecks {
                 .anyMatch(entry -> recipient(server, entry.pilot(), fallback).isEmpty());
     }
 
-    /** Server only: drops every stack left in the wreck's pack at the wreck, for a scrap that no one could be handed it. */
+    /**
+     * Server only: drops every stack left in the wreck's pack at the wreck, for a scrap that no one could be handed it.
+     */
     public static void dropPack(PodEntity pod) {
         for (WreckPack.Entry entry : takePack(pod, pilot -> true)) {
             pod.level()

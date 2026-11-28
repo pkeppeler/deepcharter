@@ -125,7 +125,9 @@ public final class HangarTerminal {
         return tuning.writeOffTicks() / TICKS_PER_MINUTE;
     }
 
-    /** The ticks left of the player's first press on Write Off, 0 unless their Mole is a wreck with no write-off filed. */
+    /**
+     * The ticks left of the player's first press on Write Off, 0 unless their Mole is a wreck with no write-off filed.
+     */
     private static int armedTicksLeft(ServerPlayer player, Optional<HangarData.Slot> slot, long now) {
         Long armedAt = ARMED.get(player.getUUID());
         boolean wreckedUnfiled =
