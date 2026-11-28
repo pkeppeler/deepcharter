@@ -27,6 +27,8 @@ class Case:
     client_weights: Mapping[str, int] | None = None
     server_shard: str | None = None
     server_weights: Mapping[str, int] | None = None
+    # Seconds above which a campaign group is broken into its classes (gradle/ci-budget.txt's server-shard-seconds for the real tree).
+    server_unit_limit: int | None = None
     # A tree of the entrypoint scan gets a generated test/support/TestSiteTable.java exempting each of its classes (replacing any table the case brings), so the fixed-site gate (#1182)
     # judges only the site_table fixtures; those say site_table=False where the table is part of the case.
     site_table: bool = True
@@ -97,7 +99,7 @@ def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
                     path = root / PACKAGE / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text(body)
-            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "clientShard": case.client_shard, "clientWeights": case.client_weights, "serverShard": case.server_shard, "serverWeights": case.server_weights, "gate": case.gate})
+            manifest.append({"name": name, "root": str(root), "clientTests": case.client_tests, "clientShard": case.client_shard, "clientWeights": case.client_weights, "serverShard": case.server_shard, "serverWeights": case.server_weights, "serverUnitLimit": case.server_unit_limit, "gate": case.gate})
         # Fixed paths: the properties are inputs of Gradle's configuration cache, so a new path each run would add a cache entry each run.
         cases_file = EXCHANGE / "cases.json"
         results_file = EXCHANGE / "results.json"
