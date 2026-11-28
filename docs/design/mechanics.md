@@ -2281,7 +2281,7 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 ## Fuel lasts 30% shorter, and the tank ladder is flatter (#1596)
 
-**Problem.** The friends playtest (2026-11-27): one stock tank almost got a pod through layer 1 (93 of its 98 blocks of stone), and with the tier 2 tank "a deep mining trip needs no thought about fuel at all". The user's decisions, from game chat: keep the stock tank at 10 L but make it last as long as 7 L did (the burn is 1 / 0.7 times higher), and flatten the tank ladder to 10, 13, 17, 22, 30, 45 and 65 L for tiers 0 to 6 (was 10, 15, 25, 40, 60, 100 and 150 L).
+**Problem.** The friends playtest (2026-11-27): one stock tank almost got a pod through layer 1 (93 of its 98 blocks of stone), and with the tier 2 tank "a deep mining trip needs no thought about fuel at all". The user's decisions: in game chat (2026-11-27), keep the stock tank at 10 L but make it last as long as 7 L did (the burn is 1 / 0.7 times higher); on the issue (2026-11-28), on top of that, flatten the tank ladder so tier 2 no longer makes fuel a non-issue, starting from 10, 13, 17, 22, 30, 45 and 65 L for tiers 0 to 6 (was 10, 15, 25, 40, 60, 100 and 150 L). Those sizes are kept: the first trip still comes home and every tier still gains at least 1.25x over the one below. So a stock tank lasts 70% of its old time, and a bigger tank lasts 70% of what its new, smaller litres lasted before (tier 2: 5.1 minutes of the mix, was 10.6).
 
 **The change.** `PodTuning.Fuel`: 0.009, 0.027 and 0.046 L/s (idle, moving, drilling) become 0.01286, 0.03857 and 0.06571. `UpgradeTuning`: the tank track's litres. Nothing else in `src/main` moves except the Company rock cutter's multiplier (below).
 
