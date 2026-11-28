@@ -288,7 +288,8 @@ public final class HangarTerminal {
      * Files a write-off of the player's own wreck, wherever it lies: for a wreck that cannot be reached (lava, the
      * void). It costs {@link HangarTuning#writeOffCost} from the charter's account now. One in-game day later the place
      * is free and the wreck is destroyed with its parts and cargo ({@code Hangar.settleWriteOffs}). Only a recorded
-     * wreck can be written off: a working Mole that is merely stuck cannot, so no one writes a pod off to skip the way home.
+     * wreck can be written off: a working Mole that is merely stuck cannot, so no one writes a pod off to skip the way
+     * home.
      */
     private static Optional<Component> writeOff(TerminalAction.Context context) {
         MinecraftServer server = context.server();
