@@ -48,7 +48,8 @@ public final class WreckEvents {
 
     /**
      * A wreck was made a working pod again, by whatever repairs it: the hangar console today, the field kit later.
-     * Fires from {@link Wrecks#restore} after the state is set. A listener that throws is logged and does not stop the others.
+     * Fires from {@link Wrecks#restore} after the state is set. A listener that throws is logged and does not stop the
+     * others.
      */
     public static final Event<Restored> RESTORED = EventFactory.createArrayBacked(Restored.class, listeners -> pod -> {
         for (Restored listener : listeners) {

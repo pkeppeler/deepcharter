@@ -135,8 +135,8 @@ public final class Hangar {
 
     /**
      * Takes the write-offs that are due at game time {@code now}: frees the place, and destroys the wreck with its
-     * parts and cargo, without a drop. A wreck that is not loaded is condemned and destroyed when it loads ({@link #onLoad}). One bad
-     * record never stops the rest.
+     * parts and cargo, without a drop. A wreck that is not loaded is condemned and destroyed when it loads ({@link
+     * #onLoad}). One bad record never stops the rest.
      */
     public static void settleWriteOffs(MinecraftServer server, long now) {
         Optional<HangarData> data = HangarData.readable(server);
@@ -307,8 +307,8 @@ public final class Hangar {
 
     /**
      * A founding Mole repaired before the one-Mole rule (data of version 1) has no place on record, because the repair
-     * kept only the charter. It is given to the Director of the founding charter, once, unless they have a place already. Other Moles
-     * of an older world hold no place: the rule counts only what is crafted after it (ADR 0117). Never throws.
+     * kept only the charter. It is given to the Director of the founding charter, once, unless they have a place
+     * already. Other Moles of an older world hold no place: the rule counts only what is crafted after it (ADR 0117). Never throws.
      */
     private static void giveLegacyFoundingPlace(MinecraftServer server, HangarData data, PodEntity pod) {
         HangarData.State state = data.state();

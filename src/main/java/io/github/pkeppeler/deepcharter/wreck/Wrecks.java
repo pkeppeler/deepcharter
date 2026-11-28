@@ -69,8 +69,8 @@ public final class Wrecks {
 
     /**
      * Server only: moves everything in the wreck's hold and the pack its crew carried to {@code player}, ore and the
-     * crew's stores alike, dropping what does not fit. Anyone may do this. Tells the player what happened, and returns how many
-     * stacks moved. Unreadable cargo is left alone and reported, not thrown.
+     * crew's stores alike, dropping what does not fit. Anyone may do this. Tells the player what happened, and returns
+     * how many stacks moved. Unreadable cargo is left alone and reported, not thrown.
      */
     public static int salvage(ServerPlayer player, PodEntity pod) {
         if (!isWreck(pod)) {

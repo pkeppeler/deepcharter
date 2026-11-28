@@ -74,8 +74,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for #1595 (ADR 0117): each charter member crafts one Mole from four parts and pays no fee, a wreck
- * keeps its owner's place and what it holds, only scrapping at the hangar or a write-off a day later frees the place, and a world
- * saved before the rule still loads.
+ * keeps its owner's place and what it holds, only scrapping at the hangar or a write-off a day later frees the place,
+ * and a world saved before the rule still loads.
  *
  * <p>Every test runs in a fresh hangar record inside the hangar's tick, as {@link FoundingMoleHangarTest} does.
  */

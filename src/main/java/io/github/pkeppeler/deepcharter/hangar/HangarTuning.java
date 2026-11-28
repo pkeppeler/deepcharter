@@ -18,8 +18,8 @@ import net.minecraft.resources.Identifier;
  * the onboarding's other buys, so it ends the onboarding as the SPEC intends. The three Cicatrium are the longer wait
  * in the ore (about 50 runs in the deepest zone), so the Company advances them, once per charter, against its contract.
  * <li>A write-off, $2,000: more than a Prospector's restore money ($1,390) and with no catalyst, so a member who cannot
- * reach a wreck pays more than a tow and a restore would have cost, and no member writes a wreck off to skip the way home. It
- * takes one in-game day, so a free place never comes sooner than a rescue could.
+ * reach a wreck pays more than a tow and a restore would have cost, and no member writes a wreck off to skip the way
+ * home. It takes one in-game day, so a free place never comes sooner than a rescue could.
  * </ul>
  *
  * @param restoreCosts      what the hangar charges to restore a wreck, by chassis id

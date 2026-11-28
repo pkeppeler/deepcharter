@@ -12,8 +12,8 @@ import net.minecraft.server.level.ServerPlayer;
 
 /**
  * {@code /deepcharter hangar release <player>}: the operator's way out for a Mole place that nothing frees, such as a
- * pod lost in a way the hangar never saw. It frees the player's place and drops a filed write-off without a refund; the pod, if it
- * exists, stays as it is. A world's operator is trusted with it, as with every command at gamemaster level.
+ * pod lost in a way the hangar never saw. It frees the player's place and drops a filed write-off without a refund; the
+ * pod, if it exists, stays as it is. A world's operator is trusted with it, as with every command at gamemaster level.
  */
 final class HangarCommands {
     private HangarCommands() {}

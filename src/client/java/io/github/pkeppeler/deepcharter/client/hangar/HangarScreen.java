@@ -27,9 +27,9 @@ import net.minecraft.resources.Identifier;
 
 /**
  * The online screen of the hangar console: assemble the player's one Mole from four parts, restore or scrap the wreck
- * nearest the console, or write off the player's own wreck. The prices are the tuning's, and the server decides every press. A line
- * under the prices says where the player's Mole stands. The server's answer to an action is a new view, which this screen takes
- * in place.
+ * nearest the console, or write off the player's own wreck. The prices are the tuning's, and the server decides every
+ * press. A line under the prices says where the player's Mole stands. The server's answer to an action is a new view, which this
+ * screen takes in place.
  */
 public final class HangarScreen extends CrtScreen implements TerminalViewScreen {
     private static final int MARGIN = 24;
