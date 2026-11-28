@@ -138,21 +138,28 @@ check_px_review() {
   refuse "is labelled 'gameplay' but lacks the 'px-reviewed' label: run player-experience-reviewer (cycle 1, cycle 2) and label the PR after its PASS"
 }
 
-# A PR that changes gate code (tools/lib/gate-paths.sh) must say what `tools/gate-sweep.sh <pr>` found among the open PRs, so a
-# new or tightened gate does not break review-passed PRs after it lands (#1639): a body line `Gate sweep: none affected`, or
-# `Gate sweep: <the PRs fixed or notified>` (each named #N). A PR numbered below GATE_SWEEP_FIRST_PR was open before the rule
-# and is exempt. Needs $pr_files, $pr and $body.
+# A PR that changes gate code (tools/gate-map.txt says which paths) must say what `tools/gate-sweep.sh <pr>` found among the open
+# PRs, so a new or tightened gate does not break review-passed PRs after it lands (#1639): a body line
+# `Gate sweep (<sha>): none affected` or `Gate sweep (<sha>): #N fixed, #M notified`, where <sha> is the PR head the sweep ran
+# at and must be an ancestor of (or be) the current head. The line is a prompt to look, not proof the sweep ran. A PR numbered
+# below GATE_SWEEP_FIRST_PR was open before the rule and is exempt. Needs $pr_files, $pr, $sha and $body.
 GATE_SWEEP_FIRST_PR=1643
 check_gate_sweep() {
-  local gate_file= path previous
+  local gate_file= path previous swept status
+  local pr_ref='#[0-9]+ (fixed|notified)'
   [[ $pr -ge $GATE_SWEEP_FIRST_PR ]] || return 0
   while IFS=$'\t' read -r _ path previous; do
     if is_gate_path "$path"; then gate_file=$path; break; fi
     if is_gate_path "$previous"; then gate_file=$previous; break; fi
   done <<<"$pr_files"
   [[ -n $gate_file ]] || return 0
-  grep -qiE '^Gate sweep:[[:space:]]*(none affected|[^#]*#[0-9]+)' <<<"$body" \
-    || refuse "changes gate code ($gate_file) but its body has no 'Gate sweep:' line: run tools/gate-sweep.sh $pr and add 'Gate sweep: none affected', or 'Gate sweep: #N fixed, #M notified' naming each open PR it would break"
+  swept=$(sed -nE "s/^Gate sweep \(([0-9a-f]{7,40})\): (none affected|$pr_ref(, $pr_ref)*)[[:space:].]*\$/\1/p" <<<"$body" | head -1)
+  [[ -n $swept ]] \
+    || refuse "changes gate code ($gate_file) but its body has no 'Gate sweep (<sha>): none affected' or 'Gate sweep (<sha>): #N fixed, #M notified' line: run tools/gate-sweep.sh $pr, fix or notify each PR it lists, and paste the line it prints"
+  status=$(gh api "repos/$repo/compare/$swept...$sha" --jq .status 2>/dev/null) \
+    || refuse "has a 'Gate sweep ($swept)' line, but GitHub cannot compare $swept with the head $sha (is the sha a commit of this PR?)"
+  [[ $status == identical || $status == ahead ]] \
+    || refuse "has a 'Gate sweep ($swept)' line for a commit that is not an ancestor of the head $sha (compare: $status): the branch was rebased or reset since the sweep; run tools/gate-sweep.sh $pr again and update the line"
 }
 
 # All the body and label checks, for a caller that does not need them interleaved with others

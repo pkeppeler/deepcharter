@@ -5,20 +5,22 @@
 #        tools/gate-sweep.sh --local <ref>         sweep a local branch before it is a PR (its files: the diff from origin/main)
 #        tools/gate-sweep.sh --map [--root <dir>] <path>...   print what each gate path would run (no network)
 #
-# For gate PR <pr> (a PR that changes gate code: tools/lib/gate-paths.sh says which paths) it takes each open, non-draft PR into
-# main, merges it with the gate PR's head in a scratch worktree, and runs only the changed gates there, never the whole `check`:
-# a changed gradle/*gate*.gradle.kts runs its own `check*` tasks, a changed list or tools/*Gate.java the tasks of every script that
-# names it, a changed tools/*gate*.py the tool itself (the comment-length gate against only the open PR's own lines). Then it
-# reports which open PRs would fail and why, and prints the `Gate sweep:` line the gate PR's body needs (the merge gate checks it).
-# A gate file with nothing to run (the pre-push hook, a script that registers no check task) is listed as UNSWEPT: read it by hand.
+# For gate PR <pr> (a PR that changes gate code) it takes each open, non-draft PR into main, merges it with the gate PR's head in a
+# scratch worktree, and runs only the changed gates there, never the whole `check`. What counts as gate code and what runs it is
+# data: tools/gate-map.txt (its header has the rules; docs: .claude/skills/deepcharter-conventions/merging.md). It then reports
+# which open PRs would fail and why, and prints the `Gate sweep (<sha>):` line the gate PR's body needs; the merge gate checks the
+# line's form and that its sha is an ancestor of the PR head. The line is a prompt to look, not proof the sweep ran.
 #
-# The gate PR's own head (with main) is the baseline: its CI is green, so a failure on the merged tree comes from the open PR. A PR that
-# conflicts with the gate PR is listed apart; the gate did not decide it.
+# The gate PR's head merged with main is the baseline: its CI is green, so a failure of a gate task on the merged tree is the open
+# PR's. A PR that conflicts with the base is listed apart; the gate did not decide it. A Gradle run that fails without any gate
+# task failing (lock timeout, a resolution or compile error) is a SWEEP ERROR: listed apart and never blamed on the PR.
+# A gate file with nothing to run is listed UNSWEPT with the manual step: the printed line then carries a caveat.
 #
 # Gradle runs with --max-workers=2 under the clone's shared slot lock (DEEPCHARTER_GRADLE_LOCK overrides the path) and
 # GITHUB_ACTIONS=true, as CI does. GATE_SWEEP_JAVA_HOME names the JDK to run it with (default: the environment's);
-# GATE_SWEEP_ONLY ("1634 1542") limits the sweep to those open PRs; GATE_SWEEP_DIR names a scratch directory to keep between runs for warm builds (default: a temporary one, removed on exit).
-# Exit status: 0 no open PR fails, 1 at least one would, 2 usage or a read failure.
+# GATE_SWEEP_ONLY ("1634 1542") limits the sweep to those open PRs; GATE_SWEEP_DIR names a scratch directory to keep between runs
+# for warm builds (default: a temporary one, removed on exit).
+# Exit status: 0 no open PR fails; 1 at least one would; 2 usage, a read failure or a sweep error; 3 nothing runnable (all UNSWEPT).
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
@@ -66,6 +68,9 @@ origin=$(git remote get-url origin)
 
 die() { echo "gate-sweep: $1" >&2; exit 2; }
 
+# A scratch worktree a killed run left behind is not a worktree any more.
+git worktree prune
+
 if [[ -n $local_ref ]]; then
   git fetch -q origin main || die "could not fetch origin/main"
   gate_head=$(git rev-parse --verify "$local_ref^{commit}") || die "no such ref: $local_ref"
@@ -86,7 +91,7 @@ if [[ ${#gate_paths[@]} -eq 0 ]]; then
   echo "$label changes no gate code: nothing to sweep."
   exit 0
 fi
-echo "Gate sweep for $label at ${gate_head:0:9}; gate files: ${gate_paths[*]}"
+echo "Gate sweep for $label at ${gate_head:0:12}; gate files: ${gate_paths[*]}"
 
 if [[ -z $local_ref ]]; then
   git fetch -q origin "refs/pull/$pr/head" || die "could not fetch the head of PR #$pr"
@@ -105,8 +110,15 @@ cleanup() {
   [[ -z $made_dir ]] || { git worktree remove --force "$tree" >/dev/null 2>&1 || true; rm -rf "${dir:?}"; }
 }
 trap cleanup EXIT
+# reset_tree <commit>: the scratch tree at <commit>, clean (a kept tree may hold a half-finished merge from a killed run).
+reset_tree() {
+  git -C "$tree" merge --abort >/dev/null 2>&1 || true
+  git -C "$tree" reset -q --hard
+  git -C "$tree" checkout -q -f --detach "$1"
+  git -C "$tree" clean -fdq
+}
 if [[ -d $tree ]]; then
-  git -C "$tree" checkout -q -f --detach "$gate_head"
+  reset_tree "$gate_head"
 else
   git worktree add -q --detach "$tree" "$gate_head"
 fi
@@ -114,7 +126,6 @@ fi
 # The base every open PR is merged into: the gate PR's head with the current main, as CI tests it. A gate PR that conflicts with
 # main is not swept: merge main into it first.
 git fetch -q origin main || die "could not fetch origin/main"
-git -C "$tree" clean -fdq
 if ! git -C "$tree" -c user.name=gate-sweep -c user.email=gate-sweep@example.invalid merge -q --no-edit "$(git rev-parse FETCH_HEAD)" >/dev/null 2>&1; then
   git -C "$tree" merge --abort >/dev/null 2>&1 || true
   die "$label conflicts with origin/main: merge main into its branch first"
@@ -123,16 +134,31 @@ base=$(git -C "$tree" rev-parse HEAD)
 
 # The gates to run come from the gate PR's own head.
 gradle_tasks=()
-py_tools=()
+tools=() # <kind> <file>: py, unittest or shell
 unswept=()
 while IFS=$'\t' read -r kind a b; do
   case $kind in
     gradle) gradle_tasks+=("$a") ;;
-    py) py_tools+=("$a") ;;
+    py | unittest | shell) tools+=("$kind $a") ;;
     unswept) unswept+=("$a: $b") ;;
   esac
 done <<<"$(gate_targets "$tree" "${gate_paths[@]}")"
-echo "gradle tasks: ${gradle_tasks[*]:-none}; tools: ${py_tools[*]:-none}"
+echo "gradle tasks: ${gradle_tasks[*]:-none}; tools: ${tools[*]:-none}"
+sha=${gate_head:0:12}
+
+print_unswept() {
+  [[ ${#unswept[@]} -gt 0 ]] || return 0
+  echo "UNSWEPT (no gate to run; check each by hand against the open PRs):"
+  printf '  %s\n' "${unswept[@]}"
+}
+
+if [[ ${#gradle_tasks[@]} -eq 0 && ${#tools[@]} -eq 0 ]]; then
+  echo
+  echo "=== Gate sweep for $label: not swept, nothing in its gate files can run"
+  print_unswept
+  echo "No body line: do the manual steps, then write in the PR body what you checked and which PRs it affected."
+  exit 3
+fi
 
 open=
 gh_list open "repos/$repo/pulls?state=open&per_page=100" \
@@ -151,19 +177,35 @@ run_gradle() {
     -Dorg.gradle.workers.max=2 "${gradle_tasks[@]}") >"$1" 2>&1
 }
 
+# run_tool <kind> <file>: one non-Gradle gate in the scratch tree; its output (without uv's warnings) in $tool_out.
+run_tool() {
+  local args=()
+  case $1 in
+    py)
+      [[ $2 != tools/comment_length_gate.py ]] || args=(--base "$base" --head HEAD)
+      tool_out=$(cd "$tree" && tools/py "$2" ${args[@]+"${args[@]}"} 2>&1) || { tool_out=$(grep -v '^warning:' <<<"$tool_out" || true); return 1; }
+      ;;
+    unittest)
+      tool_out=$(cd "$tree" && tools/py -m unittest discover -s tools/tests -p "${2##*/}" 2>&1) || { tool_out=$(grep -v '^warning:' <<<"$tool_out" || true); return 1; }
+      ;;
+    shell)
+      tool_out=$(cd "$tree" && bash "$2" 2>&1) || { tool_out=$(grep -v '^warning:' <<<"$tool_out" || true); return 1; }
+      ;;
+  esac
+}
+
 failed=()
 conflicted=()
-ok=()
-report=
+swept_ok=()
+sweep_errors=()
 while IFS=$'\t' read -r n _; do
   [[ -n $n ]] || continue
   [[ -z ${GATE_SWEEP_ONLY:-} || " $GATE_SWEEP_ONLY " == *" $n "* ]] || continue
   echo "--- PR #$n"
-  git -C "$tree" checkout -q -f --detach "$base"
-  git -C "$tree" clean -fdq
+  reset_tree "$base"
   if ! git fetch -q origin "refs/pull/$n/head"; then
-    echo "  could not fetch it: skipped"
-    conflicted+=("#$n (could not fetch)")
+    echo "  could not fetch it: sweep error"
+    sweep_errors+=("#$n: could not fetch refs/pull/$n/head")
     continue
   fi
   # FETCH_HEAD is per worktree: name the fetched commit.
@@ -174,43 +216,64 @@ while IFS=$'\t' read -r n _; do
     continue
   fi
   why=
+  errors=
   if [[ ${#gradle_tasks[@]} -gt 0 ]]; then
     log=$dir/pr-$n.gradle.log
     if ! run_gradle "$log"; then
-      tasks=$(gradle_failed_tasks "$log")
-      why="${why}gradle ${tasks:-(no gate task ran)}: $(gradle_failure_message "$log")"$'\n'
+      # A failure counts against the PR only when a gate task we asked for failed; anything else (a lock timeout, a resolution or
+      # compile error) says nothing about the gate.
+      hit=
+      for task in $(gradle_failed_tasks "$log"); do
+        [[ " ${gradle_tasks[*]} " == *" $task "* ]] && hit="$hit $task"
+      done
+      if [[ -n $hit ]]; then
+        why="${why}gradle${hit}: $(gradle_failure_message "$log")"$'\n'
+      else
+        errors="${errors}gradle did not run the gate tasks: $(gradle_failure_message "$log")"$'\n'
+      fi
     fi
   fi
-  for tool in ${py_tools[@]+"${py_tools[@]}"}; do
-    args=()
-    [[ $tool != tools/comment_length_gate.py ]] || args=(--base "$base" --head HEAD)
-    if ! tool_out=$(cd "$tree" && tools/py "$tool" ${args[@]+"${args[@]}"} 2>&1); then
-      why="${why}$tool: $(grep -v "^warning:" <<<"$tool_out" | head -8 | tr '\n' ' ')"$'\n'
+  for entry in "${tools[@]+"${tools[@]}"}"; do
+    [[ -n $entry ]] || continue
+    if ! run_tool "${entry%% *}" "${entry#* }"; then
+      why="${why}${entry#* }: $(head -8 <<<"$tool_out" | tr '\n' ' ')"$'\n'
     fi
   done
-  if [[ -z $why ]]; then
-    echo "  ok"
-    ok+=("#$n")
-  else
+  if [[ -n $errors ]]; then
+    echo "  SWEEP ERROR (not the PR's fault):"
+    while IFS= read -r line; do printf '    %s\n' "$line"; done <<<"${errors%$'\n'}"
+    sweep_errors+=("#$n: ${errors%$'\n'}")
+  fi
+  if [[ -n $why ]]; then
     echo "  WOULD FAIL:"
-    sed 's/^/    /' <<<"${why%$'\n'}"
+    while IFS= read -r line; do printf '    %s\n' "$line"; done <<<"${why%$'\n'}"
     failed+=("#$n")
-    report="${report}#$n: ${why}"
+  elif [[ -z $errors ]]; then
+    echo "  ok"
+    swept_ok+=("#$n")
   fi
 done <<<"$open"
 
 echo
-echo "=== Gate sweep for $label: ${#failed[@]} open PR(s) would fail, ${#ok[@]} pass, ${#conflicted[@]} conflict"
+echo "=== Gate sweep for $label: ${#failed[@]} open PR(s) would fail, ${#swept_ok[@]} pass, ${#conflicted[@]} conflict, ${#sweep_errors[@]} sweep error(s)"
 [[ ${#failed[@]} -eq 0 ]] || echo "would fail: ${failed[*]}"
 [[ ${#conflicted[@]} -eq 0 ]] || echo "conflict with the gate PR (not swept): ${conflicted[*]}"
-if [[ ${#unswept[@]} -gt 0 ]]; then
-  echo "UNSWEPT (no gate to run; check each by hand against the open PRs):"
-  printf '  %s\n' "${unswept[@]}"
+if [[ ${#sweep_errors[@]} -gt 0 ]]; then
+  echo "SWEEP ERRORS (the gate was not run on these; fix the cause and re-run):"
+  printf '  %s\n' "${sweep_errors[@]}"
+fi
+print_unswept
+caveat="The line covers only the swept gates: also say in the PR body what you checked by hand for the UNSWEPT files."
+if [[ ${#sweep_errors[@]} -gt 0 ]]; then
+  echo "Sweep incomplete: no body line."
+  exit 2
 fi
 if [[ ${#failed[@]} -gt 0 ]]; then
-  echo "Fix each (or notify its author), then put this in the gate PR's body: Gate sweep: ${failed[*]} fixed or notified"
+  list=
+  for n in "${failed[@]}"; do list="${list:+$list, }$n fixed"; done
+  echo "Fix each (or notify its author), then put this in the gate PR's body (write notified for a PR you only notified): Gate sweep ($sha): $list"
+  [[ ${#unswept[@]} -eq 0 ]] || echo "$caveat"
   exit 1
 fi
-if [[ ${#unswept[@]} -eq 0 ]]; then
-  echo "Body line: Gate sweep: none affected"
-fi
+echo "Body line: Gate sweep ($sha): none affected"
+[[ ${#unswept[@]} -eq 0 ]] || echo "$caveat"

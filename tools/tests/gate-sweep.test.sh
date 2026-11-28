@@ -30,9 +30,21 @@ is_gate gradle/literals.gradle.kts
 is_gate tools/EnumSwitchGate.java
 is_gate tools/comment_length_gate.py
 is_gate .githooks/pre-push
-not_gate gradle/server-test-weights.txt
+is_gate gradle/gametest.gradle.kts
+is_gate gradle/server-test-weights.txt
+is_gate gradle/lang.gradle.kts
+is_gate gradle/run-jvm.gradle.kts
+is_gate build.gradle.kts
+is_gate config/checkstyle/checkstyle.xml
+is_gate tools/check-homage.py
+is_gate .github/workflows/ci.yml
+is_gate tools/tests/conflict_markers.py
+is_gate tools/tests/test_docs.py
+is_gate tools/tests/test_loot_table_format.py
+is_gate tools/tests/no-pipe-grep-q.test.sh
 not_gate gradle/libs.versions.toml
-not_gate gradle/gametest.gradle.kts
+not_gate tools/tests/test_drifter.py
+not_gate tools/tests/merge-pr.test.sh
 not_gate tools/tests/keybind_gate_check.py
 not_gate tools/merge-pr.sh
 not_gate src/main/java/A.java
@@ -82,6 +94,20 @@ expect "a path that is not a gate maps to nothing" "" src/main/java/A.java tools
 expect "two paths naming one task list it once" \
   "gradle${tab}checkBetaGate;gradle${tab}checkAlphaGate;gradle${tab}checkAlphaExtra;" gradle/beta-allowlist.txt tools/ScanGate.java
 
+# The map is data: a rule file of its own drives it.
+printf 'foo/*  tasks one two; unswept by hand\nbar/*  ignore\n' >"$work/map.txt"
+mkdir -p "$work/mt/foo"
+touch "$work/mt/foo/x"
+got=$(GATE_MAP_FILE=$work/map.txt "$sweep" --map --root "$work/mt" foo/x bar/y baz/z | tr '\n' ';')
+if [[ $got == "gradle${tab}one;gradle${tab}two;unswept${tab}foo/x${tab}by hand;" ]]; then pass "a rule file picks the actions: tasks, unswept, ignore"; else fail "a rule file picks the actions (got: $got)"; fi
+# The real tree.
+real=$("$sweep" --map --root "$repo" gradle/gametest.gradle.kts | tr '\n' ';')
+if [[ $real == "gradle${tab}checkGametestFixtures;gradle${tab}generateGametestModJson;" ]]; then pass "gametest.gradle.kts runs checkGametestFixtures and generateGametestModJson"; else fail "gametest.gradle.kts mapping (got: $real)"; fi
+real=$("$sweep" --map --root "$repo" tools/tests/test_docs.py tools/tests/no-pipe-grep-q.test.sh tools/check-homage.py | tr '\n' ';')
+if [[ $real == "unittest${tab}tools/tests/test_docs.py;shell${tab}tools/tests/no-pipe-grep-q.test.sh;py${tab}tools/check-homage.py;" ]]; then pass "repo-wide lints and tests map to what runs them"; else fail "repo-wide lints (got: $real)"; fi
+real=$("$sweep" --map --root "$repo" .github/workflows/ci.yml gradle/server-test-weights.txt | cut -f1,2 | tr '\n' ';')
+if [[ $real == "unswept${tab}.github/workflows/ci.yml;unswept${tab}gradle/server-test-weights.txt;" ]]; then pass "what cannot run is UNSWEPT with a manual step"; else fail "UNSWEPT mapping (got: $real)"; fi
+
 # The real tree: the shipped gates the incidents came from.
 real=$("$sweep" --map --root "$repo" gradle/keybind-allowlist.txt | tr '\n' ';')
 if [[ $real == "gradle${tab}checkKeybindGate;" ]]; then pass "the keybind list runs checkKeybindGate"; else fail "the keybind list runs checkKeybindGate (got: $real)"; fi
@@ -120,6 +146,28 @@ else
 fi
 : >"$work/empty.log"
 if [[ -z $(gradle_failed_tasks "$work/empty.log") && -z $(gradle_failure_message "$work/empty.log") ]]; then pass "an empty log parses to nothing"; else fail "an empty log parses to nothing"; fi
+
+# Coverage: every Gradle script that registers a check task is gate code, or is listed here as one that is not (none today); and a
+# task registered under a name built at runtime would be missed by `script`, so none may exist.
+not_gate_scripts=" "
+uncovered=
+for f in "$repo"/gradle/*.kts "$repo"/build.gradle.kts; do
+  rel=${f#"$repo"/}
+  [[ -n $(gate_check_tasks "$f") ]] || continue
+  if ! is_gate_path "$rel" && [[ $not_gate_scripts != *" $rel "* ]]; then uncovered="$uncovered $rel"; fi
+done
+if [[ -z $uncovered ]]; then pass "every script that registers a check task is gate code"; else fail "scripts that register a check task but are no gate path (add a rule to tools/gate-map.txt):$uncovered"; fi
+unseen=
+for f in "$repo"/gradle/*.kts "$repo"/build.gradle.kts; do
+  loose=$(grep -cE 'register.*"check' "$f" || true)
+  strict=$(gate_check_tasks "$f" | wc -l | tr -d ' ')
+  [[ $loose -le $strict ]] || unseen="$unseen ${f#"$repo"/}"
+done
+if [[ -z $unseen ]]; then pass "no check task is registered under a name the mapping cannot read"; else fail "check tasks registered by a non-literal name (list them with 'tasks' in tools/gate-map.txt):$unseen"; fi
+# The gametest entry points the map names exist.
+for task in generateGametestModJson checkGametestFixtures; do
+  if grep -q "\"$task\"\|val $task\b" "$repo/gradle/gametest.gradle.kts"; then pass "gametest.gradle.kts defines $task"; else fail "gametest.gradle.kts defines $task"; fi
+done
 
 # Usage errors.
 rc=0
