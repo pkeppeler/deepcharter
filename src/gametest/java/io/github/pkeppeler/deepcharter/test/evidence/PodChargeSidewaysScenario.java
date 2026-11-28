@@ -23,11 +23,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Evidence scenario "pod-charge-sideways" (#1613): a pod faces a band of Company rock in a sealed stone room. The pilot sets a blasting charge on the face
  * ahead (a right click), the fuse counts down on the action bar with "BACK AWAY", the pod backs out of the reach, and the charge blows: the 2 slabs of the
- * bore's face go, the rock beside and behind them stays, and the pod drives on through the hole.
+ * bore's face go and the rock behind them stays; a spectator then looks at the hole from the side.
  */
 public class PodChargeSidewaysScenario extends EvidenceScenario {
     private static final int X = 5500;
@@ -61,8 +62,8 @@ public class PodChargeSidewaysScenario extends EvidenceScenario {
                         new BlockPos(X + 8, FLOOR_Y + 8, Z + 6),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
-                for (int z = Z - 1; z <= Z; z++) {
-                    for (int y = FLOOR_Y; y < FLOOR_Y + 3; y++) {
+                for (int z = Z - 4; z <= Z + 3; z++) {
+                    for (int y = FLOOR_Y; y < FLOOR_Y + 4; y++) {
                         for (int x : BAND) {
                             one.setBlock(new BlockPos(x, y, z), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 3);
                         }
@@ -76,6 +77,11 @@ public class PodChargeSidewaysScenario extends EvidenceScenario {
                 }
             });
             ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 13);
+            // The band from the side and above, before the pilot boards.
+            lookAtBand(singleplayer);
+            ClientWait.arrived(context, singleplayer.getServer());
+            context.waitTicks(30);
+            screenshot(context, "pod-charge-sideways-before");
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -113,7 +119,6 @@ public class PodChargeSidewaysScenario extends EvidenceScenario {
                 frame(context);
                 context.waitTicks(TICKS_PER_FRAME);
             }
-            screenshot(context, "pod-charge-sideways-before");
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -166,9 +171,33 @@ public class PodChargeSidewaysScenario extends EvidenceScenario {
                 throw new AssertionError("a pod that backed clear should keep its hull");
             }
             if (!stays(singleplayer)) {
-                throw new AssertionError("the Company rock behind the blast should still stand");
+                throw new AssertionError("the Company rock round and behind the blast should still stand");
             }
+            singleplayer
+                    .getServer()
+                    .runOnServer(server ->
+                            server.getPlayerList().getPlayers().getFirst().stopRiding());
+            lookAtBand(singleplayer);
+            for (int i = 0; i < 10; i++) {
+                context.waitTicks(TICKS_PER_FRAME);
+                frame(context);
+            }
+            screenshot(context, "pod-charge-sideways-through");
         }
+    }
+
+    /** Floats the first player, as a spectator, at the side of the room and above the pod's place, looking at the face of the band. */
+    private static void lookAtBand(TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.setGameMode(GameType.SPECTATOR);
+            Vec3 eye = new Vec3(X + 3.0, FLOOR_Y + 4.0, Z + 6.0);
+            Vec3 face = new Vec3(X - 2.0, FLOOR_Y + 1.0, Z);
+            Vec3 look = face.subtract(eye);
+            float yaw = (float) Math.toDegrees(Math.atan2(-look.x, look.z));
+            float pitch = (float) Math.toDegrees(Math.atan2(-look.y, Math.hypot(look.x, look.z)));
+            player.teleportTo(player.level(), eye.x, eye.y - player.getEyeHeight(), eye.z, Set.of(), yaw, pitch, true);
+        });
     }
 
     private static boolean blasted(TestSingleplayerContext singleplayer) {
@@ -188,11 +217,12 @@ public class PodChargeSidewaysScenario extends EvidenceScenario {
     }
 
     private static boolean stays(TestSingleplayerContext singleplayer) {
-        return singleplayer
-                .getServer()
-                .computeOnServer(server -> TestLayers.level(server, 1)
-                        .getBlockState(new BlockPos(STAYS_X, FLOOR_Y, Z))
-                        .is(HazardBlocks.COMPANY_ROCK));
+        return singleplayer.getServer().computeOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            return one.getBlockState(new BlockPos(STAYS_X, FLOOR_Y, Z)).is(HazardBlocks.COMPANY_ROCK)
+                    && one.getBlockState(new BlockPos(BAND[0], FLOOR_Y, Z - 3)).is(HazardBlocks.COMPANY_ROCK)
+                    && one.getBlockState(new BlockPos(BAND[0], FLOOR_Y + 3, Z)).is(HazardBlocks.COMPANY_ROCK);
+        });
     }
 
     private static float podHull(TestSingleplayerContext singleplayer) {

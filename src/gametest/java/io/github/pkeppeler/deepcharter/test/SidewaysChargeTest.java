@@ -372,8 +372,7 @@ public class SidewaysChargeTest {
                     put(level, cell(x, facing, 0, 1, 1), LayerBlocks.BREACH_CRUST);
                     put(level, cell(x, facing, 0, 0, 2), LayerBlocks.GRAINED_CRUST);
                     put(level, cell(x, facing, 1, 1, 2), Blocks.LAVA);
-                    // The lava is walled in but for the face, so it is the blast's rule that keeps it, not a flow that
-                    // left.
+                    // The lava is walled in but for the face: the blast's rule keeps it, not a flow.
                     put(level, cell(x, facing, 1, 1, BORE_HEIGHT), Blocks.STONE);
                     put(level, cell(x, facing, 1, 2, 2), Blocks.STONE);
                     put(level, cell(x, facing, 1, 1, 1), Blocks.STONE);
