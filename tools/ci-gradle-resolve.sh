@@ -18,7 +18,8 @@
 #    prints diagnostics (diagnose) before the wait. The last retry adds --refresh-dependencies, in case the cache
 #    holds a "not found". A bare "Could not resolve all" is not a signature: a lock-state or verification
 #    failure says it too, and retrying those only wastes time. A failed download of the Gradle distribution itself
-#    prints no "FAILURE:" line and is not retried.
+#    prints no "FAILURE:" line and is not retried. Loom's asset download (a caller's downloadAssets) counts too: Loom
+#    tries each object three times with no wait and then fails the build (#1703); a rerun keeps the objects it has.
 # 3. A throttled Maven Central (#1365, ADR 0101). On GitHub Actions (GITHUB_ACTIONS=true) the script first copies
 #    gradle/ci-central-mirror.init.gradle.kts into $GRADLE_USER_HOME/init.d, so this run and every later Gradle call
 #    in the job resolve Central's artifacts from Google's mirror of it. A dev machine never gets the file. The
@@ -55,6 +56,7 @@ NETWORK_SIGNATURES=(
   'UnknownHostException'
   'Temporary failure in name resolution'
   'Premature end of'
+  'DownloadException: Failed to download '
 )
 network_re=$(IFS='|' && echo "${NETWORK_SIGNATURES[*]}")
 
@@ -152,11 +154,11 @@ while true; do
   fi
   diagnose
   if [[ $run -ge $attempts ]]; then
-    echo "::error::Gradle failed to download a plugin or dependency $attempts times: a repository is failing (#1358). Re-run the job later."
+    echo "::error::Gradle failed to download a plugin, dependency or Minecraft asset $attempts times: a repository is failing (#1358). Re-run the job later."
     exit "$status"
   fi
   wait_s=$((delay * (1 << (run - 1))))
-  echo "::warning::Gradle could not download a plugin or dependency (failure $run of $attempts). Waiting ${wait_s}s, then running again (#1358)."
+  echo "::warning::Gradle could not download a plugin, dependency or Minecraft asset (failure $run of $attempts). Waiting ${wait_s}s, then running again (#1358)."
   sleep "$wait_s"
   rm -rf .gradle/configuration-cache
   run=$((run + 1))

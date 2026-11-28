@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -794,6 +795,19 @@ public class OreProcessorTest {
                             after.bricks(),
                             after.spoil(),
                             bricksCarried(serverPlayer));
+                }
+                // #1649: the view the screen redraws from after the fuse shows the rack and the pack as they are now.
+                ProcessorView.Bricks shown = OreProcessor.view(
+                                server,
+                                serverPlayer,
+                                Charters.readableCharterOf(server, serverPlayer.getUUID()),
+                                processor)
+                        .bricks();
+                ProcessorView.Bricks expected = new ProcessorView.Bricks(
+                        expectedRack, PodLiningTuning.DEFAULT.brickCapacity(), expectedCarried);
+                if (!shown.equals(expected)) {
+                    throw failure(
+                            helper, "%s: the screen should show %s after the fuse, shows %s", what, expected, shown);
                 }
             } finally {
                 pod.discard();
