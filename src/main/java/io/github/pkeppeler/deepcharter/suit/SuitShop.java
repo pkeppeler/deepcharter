@@ -32,9 +32,15 @@ public final class SuitShop {
         for (SuitTrack track : SuitTrack.values()) {
             TerminalWares.register(
                     TerminalTypes.REPAIR_STATION,
-                    "suit:" + track.id(),
+                    SUIT_BUY,
+                    ware(track),
                     "screen.deepcharter.repair.about.suit." + track.id());
         }
+    }
+
+    /** The ware id of a suit track. */
+    public static String ware(SuitTrack track) {
+        return "suit:" + track.id();
     }
 
     private static Optional<Component> buy(TerminalAction.Context context) {

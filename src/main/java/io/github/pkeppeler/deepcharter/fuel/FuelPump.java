@@ -44,8 +44,9 @@ public final class FuelPump {
         TerminalActions.register(TerminalTypes.FUEL_PUMP, BUY, OutpostAccess.guarded(FuelPump::buy));
         TerminalActions.register(TerminalTypes.FUEL_PUMP, FILL, OutpostAccess.guarded(FuelPump::fill));
         ParkedPodView.register(TerminalTypes.FUEL_PUMP);
-        TerminalWares.register(TerminalTypes.FUEL_PUMP, "buy_fuel", "screen.deepcharter.fuel_pump.about.buy");
-        TerminalWares.register(TerminalTypes.FUEL_PUMP, "fill_fuel", "screen.deepcharter.fuel_pump.about.fill");
+        TerminalWares.register(TerminalTypes.FUEL_PUMP, BUY, BUY.getPath(), "screen.deepcharter.fuel_pump.about.buy");
+        TerminalWares.register(
+                TerminalTypes.FUEL_PUMP, FILL, FILL.getPath(), "screen.deepcharter.fuel_pump.about.fill");
     }
 
     /** The litres in the tank now. */

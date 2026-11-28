@@ -106,7 +106,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
                 Component.translatable("screen.deepcharter.terminal.close"),
                 button -> onClose()));
         int rowY = closeY - GAP - BUTTON_HEIGHT;
-        Component buyAbout = TerminalWares.about(TerminalTypes.FUEL_PUMP, "buy_fuel");
+        Component buyAbout = TerminalWares.about(TerminalTypes.FUEL_PUMP, FuelPump.BUY.getPath());
         int x = contentLeft(MARGIN);
         for (int litres : FuelTuning.DEFAULT.purchaseSteps()) {
             buyButtons.add(addRenderableWidget(new CrtButton(
@@ -126,7 +126,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
                         BUTTON_HEIGHT,
                         Component.translatable("screen.deepcharter.fuel_pump.fill"),
                         button -> fill())
-                .about(TerminalWares.about(TerminalTypes.FUEL_PUMP, "fill_fuel")));
+                .about(TerminalWares.about(TerminalTypes.FUEL_PUMP, FuelPump.FILL.getPath())));
     }
 
     private void buy(int litres) {
@@ -168,7 +168,11 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
     /** The content area, which a row's tip stays inside. */
     public AboutTip.Bounds tipBounds() {
         return new AboutTip.Bounds(
-                contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN), contentBottom(MARGIN));
+                contentLeft(MARGIN),
+                contentTop(MARGIN),
+                contentRight(MARGIN),
+                contentBottom(MARGIN),
+                contentTop(MARGIN) + font.lineHeight + 14);
     }
 
     @Override

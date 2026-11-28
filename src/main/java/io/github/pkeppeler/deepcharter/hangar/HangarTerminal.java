@@ -64,8 +64,9 @@ public final class HangarTerminal {
     static void register() {
         TerminalActions.register(TYPE, BUY_MOLE, HangarTerminal::buyMole);
         TerminalActions.register(TYPE, RESTORE_WRECK, HangarTerminal::restoreWreck);
-        TerminalWares.register(TYPE, "buy_mole", "screen.deepcharter.hangar.about.buy_mole");
-        TerminalWares.register(TYPE, "restore_wreck", "screen.deepcharter.hangar.about.restore_wreck");
+        TerminalWares.register(TYPE, BUY_MOLE, BUY_MOLE.getPath(), "screen.deepcharter.hangar.about.buy_mole");
+        TerminalWares.register(
+                TYPE, RESTORE_WRECK, RESTORE_WRECK.getPath(), "screen.deepcharter.hangar.about.restore_wreck");
         TerminalFeatures.register(TYPE, HangarView.STREAM_CODEC, HangarTerminal::view);
     }
 

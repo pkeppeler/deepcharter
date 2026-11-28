@@ -1,39 +1,43 @@
 package io.github.pkeppeler.deepcharter.terminal;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 /**
- * What each terminal sells, and the line that says what each ware does. A terminal's screen shows the line while the
- * player browses the row, before the purchase, and a test fails a terminal that sells something with no line, so a
- * new ware cannot ship unexplained (#1645). A line is a lang key: for an item it is the same {@code
- * deepcharter.spec.item.*} key as the spec sheet, so the two never drift.
+ * What each terminal sells: the ware, the action that buys it and the line that says what it does (#1645). A
+ * terminal's screen shows the line while the player browses the row, before the purchase, and a test walks every
+ * action a terminal registers: each is a ware here or is named as no sale, so a new ware cannot ship unexplained. A
+ * line is a lang key: for an item it is the same {@code deepcharter.spec.item.*} key as the spec sheet, so the two
+ * never drift.
  */
 public final class TerminalWares {
-    private static final Map<TerminalType, Map<String, String>> WARES = new HashMap<>();
+    private static final Map<TerminalType, List<Ware>> WARES = new HashMap<>();
+
+    /** One thing a row sells: its id on the terminal, the action that sells it and the lang key of its line. */
+    public record Ware(String id, Identifier action, String aboutKey) {}
 
     private TerminalWares() {}
 
     /**
-     * Declares that {@code type} sells {@code ware}, and that {@code aboutKey} is the lang key of the line that says
-     * what it does.
+     * Declares that {@code type} sells {@code ware} through {@code action}, and says what it does in {@code
+     * aboutKey}.
      */
-    public static void register(TerminalType type, String ware, String aboutKey) {
-        if (WARES.computeIfAbsent(type, key -> new LinkedHashMap<>()).putIfAbsent(ware, aboutKey) != null) {
+    public static void register(TerminalType type, Identifier action, String ware, String aboutKey) {
+        List<Ware> wares = WARES.computeIfAbsent(type, key -> new ArrayList<>());
+        if (wares.stream().anyMatch(known -> known.id().equals(ware))) {
             throw new IllegalArgumentException("terminal " + type.id() + " already sells " + ware);
         }
+        wares.add(new Ware(ware, action, aboutKey));
     }
 
-    /**
-     * The lang key of every ware {@code type} sells, by ware id, in the order registered; empty for a terminal that
-     * sells nothing.
-     */
+    /** Every ware {@code type} sells, in the order registered. */
     // test-seam: the tests walk every ware of every terminal to fail one with no line; a screen asks for one by id
-    public static Map<String, String> of(TerminalType type) {
-        return Collections.unmodifiableMap(WARES.getOrDefault(type, Map.of()));
+    public static List<Ware> of(TerminalType type) {
+        return List.copyOf(WARES.getOrDefault(type, List.of()));
     }
 
     /**
@@ -41,10 +45,10 @@ public final class TerminalWares {
      * screen.
      */
     public static Component about(TerminalType type, String ware) {
-        String key = WARES.getOrDefault(type, Map.of()).get(ware);
-        if (key == null) {
-            throw new IllegalStateException("terminal " + type.id() + " does not sell " + ware);
-        }
-        return Component.translatable(key);
+        return WARES.getOrDefault(type, List.of()).stream()
+                .filter(known -> known.id().equals(ware))
+                .findFirst()
+                .map(known -> Component.translatable(known.aboutKey()))
+                .orElseThrow(() -> new IllegalStateException("terminal " + type.id() + " does not sell " + ware));
     }
 }

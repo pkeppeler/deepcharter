@@ -68,13 +68,19 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
      */
     private record Row(
             Component label, Identifier action, CompoundTag args, boolean active, Optional<Component> about) {
+        /** A row that can be pressed and says what its ware does. */
         Row(Component label, Identifier action, CompoundTag args, Component about) {
             this(label, action, args, true, Optional.of(about));
         }
 
-        /** A row that cannot be pressed now, but still says what the ware does. */
+        /** A row that cannot be pressed now, but still says what its ware does. */
         static Row inactive(Component label, Identifier action, CompoundTag args, Component about) {
             return new Row(label, action, args, false, Optional.of(about));
+        }
+
+        /** A row that sells nothing and says nothing: it only reports that the suit's log cannot be read. */
+        static Row silent(Component label, Identifier action, CompoundTag args) {
+            return new Row(label, action, args, false, Optional.empty());
         }
     }
 
@@ -134,13 +140,13 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                     Component.translatable("screen.deepcharter.repair.repair", hp, cost),
                     RepairStation.REPAIR,
                     args,
-                    about("repair")));
+                    about(RepairStation.REPAIR)));
         }
         rows.add(new Row(
                 Component.translatable("screen.deepcharter.repair.total"),
                 RepairStation.REPAIR_TOTAL,
                 new CompoundTag(),
-                about("repair_total")));
+                about(RepairStation.REPAIR_TOTAL)));
         rows.addAll(sootRows());
         rows.addAll(suitRows());
         for (Consumable consumable : Consumable.values()) {
@@ -154,11 +160,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                     ? Component.translatable(
                             "screen.deepcharter.repair.buy_pack", name, consumable.perPurchase(), consumable.price())
                     : Component.translatable("screen.deepcharter.repair.buy", name, consumable.price());
-            rows.add(new Row(
-                    label,
-                    RepairStation.BUY,
-                    args,
-                    about("item:" + consumable.itemId().getPath())));
+            rows.add(new Row(label, RepairStation.BUY, args, about(consumable)));
         }
         return rows;
     }
@@ -186,26 +188,26 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                                         "screen.deepcharter.repair.service_part", quote.litres(), soot, quote.cost()),
                         RepairStation.SERVICE_ENGINE,
                         new CompoundTag(),
-                        about("service_engine")))
+                        about(RepairStation.SERVICE_ENGINE)))
                 .orElseGet(() -> Row.inactive(
                         Component.translatable(
                                 "screen.deepcharter.repair.service_unpaid",
                                 FuelTuning.DEFAULT.soot().servicePerLitre()),
                         RepairStation.SERVICE_ENGINE,
                         new CompoundTag(),
-                        about("service_engine"))));
+                        about(RepairStation.SERVICE_ENGINE))));
         if (EngineSoot.limpAtColony(pod)) {
             rows.add(FlueScrape.secondsLeft(pod)
                     .map(seconds -> Row.inactive(
                             Component.translatable("screen.deepcharter.repair.scraping", seconds),
                             RepairStation.SCRAPE_FLUE,
                             new CompoundTag(),
-                            about("scrape_flue")))
+                            about(RepairStation.SCRAPE_FLUE)))
                     .orElseGet(() -> new Row(
                             Component.translatable("screen.deepcharter.repair.scrape"),
                             RepairStation.SCRAPE_FLUE,
                             new CompoundTag(),
-                            about("scrape_flue"))));
+                            about(RepairStation.SCRAPE_FLUE))));
         }
         return rows;
     }
@@ -222,12 +224,8 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
         }
         Optional<SuitTracks> held = Versioned.readable(player, SuitRegistry.TRACKS);
         if (held.isEmpty()) {
-            rows.add(new Row(
-                    Component.translatable("hud.deepcharter.suit.unreadable"),
-                    SuitShop.SUIT_BUY,
-                    new CompoundTag(),
-                    false,
-                    Optional.empty()));
+            rows.add(Row.silent(
+                    Component.translatable("hud.deepcharter.suit.unreadable"), SuitShop.SUIT_BUY, new CompoundTag()));
             return rows;
         }
         for (SuitTrack track : SuitTrack.values()) {
@@ -238,7 +236,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                         Component.translatable("screen.deepcharter.repair.suit_top", name),
                         SuitShop.SUIT_BUY,
                         new CompoundTag(),
-                        about("suit:" + track.id())));
+                        about(track)));
                 continue;
             }
             CompoundTag args = new CompoundTag();
@@ -252,14 +250,22 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                             String.format(Locale.ROOT, "%,d", track.price(current + 1))),
                     SuitShop.SUIT_BUY,
                     args,
-                    about("suit:" + track.id())));
+                    about(track)));
         }
         return rows;
     }
 
-    /** What the ware does: the line {@code TerminalWares} holds for it, the spec sheet's own for an item. */
-    private static Component about(String ware) {
-        return TerminalWares.about(TerminalTypes.REPAIR_STATION, ware);
+    /** What a ware does: the line {@code TerminalWares} holds for it, the spec sheet's own for an item. */
+    private static Component about(Identifier action) {
+        return TerminalWares.about(TerminalTypes.REPAIR_STATION, RepairStation.ware(action));
+    }
+
+    private static Component about(Consumable consumable) {
+        return TerminalWares.about(TerminalTypes.REPAIR_STATION, RepairStation.ware(consumable));
+    }
+
+    private static Component about(SuitTrack track) {
+        return TerminalWares.about(TerminalTypes.REPAIR_STATION, SuitShop.ware(track));
     }
 
     private static int buttonHeight() {
@@ -397,7 +403,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     /** The content area, which a row's tip stays inside. */
     public AboutTip.Bounds tipBounds() {
         return new AboutTip.Bounds(
-                contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN), contentBottom(MARGIN));
+                contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN), contentBottom(MARGIN), introTop());
     }
 
     @Override

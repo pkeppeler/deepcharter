@@ -71,14 +71,30 @@ public final class RepairStation {
      * sheet's.
      */
     private static void declareWares() {
-        String about = "screen.deepcharter.repair.about.";
-        for (String ware : List.of("repair", "repair_total", "service_engine", "scrape_flue")) {
-            TerminalWares.register(TerminalTypes.REPAIR_STATION, ware, about + ware);
+        for (Identifier action : List.of(REPAIR, REPAIR_TOTAL, SERVICE_ENGINE, SCRAPE_FLUE)) {
+            TerminalWares.register(
+                    TerminalTypes.REPAIR_STATION,
+                    action,
+                    ware(action),
+                    "screen.deepcharter.repair.about." + action.getPath());
         }
         for (Consumable consumable : Consumable.values()) {
-            String path = consumable.itemId().getPath();
-            TerminalWares.register(TerminalTypes.REPAIR_STATION, "item:" + path, "deepcharter.spec.item." + path);
+            TerminalWares.register(
+                    TerminalTypes.REPAIR_STATION,
+                    BUY,
+                    ware(consumable),
+                    "deepcharter.spec.item." + consumable.itemId().getPath());
         }
+    }
+
+    /** The ware id of a row that one action sells. */
+    public static String ware(Identifier action) {
+        return action.getPath();
+    }
+
+    /** The ware id of an item the station sells. */
+    public static String ware(Consumable consumable) {
+        return "item:" + consumable.itemId().getPath();
     }
 
     private static Optional<Component> repair(TerminalAction.Context context, Optional<Integer> requested) {

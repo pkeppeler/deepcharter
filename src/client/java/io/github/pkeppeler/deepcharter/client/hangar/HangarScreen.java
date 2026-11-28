@@ -118,7 +118,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                         Component.translatable(
                                 "screen.deepcharter.hangar.buy", tuning.refurbishedMole(), tuning.registrationFee()),
                         button -> send(HangarTerminal.BUY_MOLE))
-                .about(TerminalWares.about(HangarTerminal.TYPE, "buy_mole")));
+                .about(TerminalWares.about(HangarTerminal.TYPE, HangarTerminal.BUY_MOLE.getPath())));
         // The wreck the server restores is the nearest one, so the lines under the button name the price of
         // each chassis.
         addRenderableWidget(new CrtButton(
@@ -128,7 +128,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                         BUTTON_HEIGHT,
                         Component.translatable("screen.deepcharter.hangar.restore"),
                         button -> send(HangarTerminal.RESTORE_WRECK))
-                .about(TerminalWares.about(HangarTerminal.TYPE, "restore_wreck")));
+                .about(TerminalWares.about(HangarTerminal.TYPE, HangarTerminal.RESTORE_WRECK.getPath())));
     }
 
     private List<String> wrap(String text) {
@@ -165,7 +165,11 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
     /** The content area, which a row's tip stays inside. */
     public AboutTip.Bounds tipBounds() {
         return new AboutTip.Bounds(
-                contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN), contentBottom(MARGIN));
+                contentLeft(MARGIN),
+                contentTop(MARGIN),
+                contentRight(MARGIN),
+                contentBottom(MARGIN),
+                contentTop(MARGIN) + font.lineHeight + 14);
     }
 
     @Override

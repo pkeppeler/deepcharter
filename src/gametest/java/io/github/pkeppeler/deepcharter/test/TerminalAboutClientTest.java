@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
 import io.github.pkeppeler.deepcharter.client.ui.AboutTip;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
+import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.InputType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -39,7 +41,8 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
     private static final int[][] SIZES = {{427, 240}, {320, 240}};
 
     /** The wares a pod's soot adds to the repair station's list: no pod is parked in this test. */
-    private static final Set<String> NEEDS_A_POD = Set.of("service_engine", "scrape_flue");
+    private static final Set<String> NEEDS_A_POD =
+            Set.of(RepairStation.ware(RepairStation.SERVICE_ENGINE), RepairStation.ware(RepairStation.SCRAPE_FLUE));
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -106,10 +109,11 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
     /** Every row but CLOSE has a line, the tip shows it by pointer and by focus, and it fits the screen. */
     private static Optional<String> rowsProblem(Screen screen, AboutTip.Bounds bounds, Set<String> seen) {
         Minecraft client = Minecraft.getInstance();
-        for (CrtButton button : screen.children().stream()
+        List<CrtButton> rows = screen.children().stream()
                 .filter(CrtButton.class::isInstance)
                 .map(CrtButton.class::cast)
-                .toList()) {
+                .toList();
+        for (CrtButton button : rows) {
             String label = button.getMessage().getString();
             if (label.equals(
                     Component.translatable("screen.deepcharter.terminal.close").getString())) {
@@ -120,15 +124,20 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
             }
             Component about = button.about().get();
             seen.add(about.getString());
+            client.setLastInputType(InputType.KEYBOARD_TAB);
             screen.setFocused(button);
             if (!AboutTip.pointed(screen, -1, -1).equals(Optional.of(button))) {
-                return Optional.of("the tip does not show the focused '" + label + "'");
+                return Optional.of("the tip does not show the row the keys moved to: '" + label + "'");
+            }
+            client.setLastInputType(InputType.MOUSE);
+            if (AboutTip.pointed(screen, -1, -1).isPresent()) {
+                return Optional.of("the tip stays open on '" + label + "' after a click, with the pointer away");
             }
             screen.setFocused(null);
             if (!AboutTip.pointed(screen, button.getX() + 1, button.getY() + 1).equals(Optional.of(button))) {
                 return Optional.of("the tip does not show the pointed-at '" + label + "'");
             }
-            AboutTip.Box box = AboutTip.boxFor(client.font, bounds, button);
+            AboutTip.Box box = AboutTip.boxFor(client.font, bounds, screen, button);
             if (box.lines().size() > AboutTip.MAX_LINES) {
                 return Optional.of(
                         "the line for '" + label + "' wraps to " + box.lines().size() + " rows, over the "
@@ -140,8 +149,14 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
                     || box.y() + box.height() > bounds.bottom()) {
                 return Optional.of("the tip for '" + label + "' leaves the content area " + bounds + ": " + box);
             }
-            if (box.y() < button.getBottom() && box.y() + box.height() > button.getY()) {
+            if (box.covers(button)) {
                 return Optional.of("the tip for '" + label + "' covers the row it belongs to: " + box);
+            }
+            for (CrtButton other : rows) {
+                if (other != button && other.about().isPresent() && other.visible && box.covers(other)) {
+                    return Optional.of("the tip for '" + label + "' covers the row '"
+                            + other.getMessage().getString() + "': " + box);
+                }
             }
         }
         if (AboutTip.pointed(screen, -1, -1).isPresent()) {
@@ -152,9 +167,9 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
 
     /** The rows between them showed every line the terminal's wares hold, bar those that need a pod. */
     private static Optional<String> missing(TerminalType type, Set<String> seen, Set<String> skipped) {
-        Set<String> absent = TerminalWares.of(type).entrySet().stream()
-                .filter(ware -> !skipped.contains(ware.getKey()))
-                .map(ware -> Component.translatable(ware.getValue()).getString())
+        Set<String> absent = TerminalWares.of(type).stream()
+                .filter(ware -> !skipped.contains(ware.id()))
+                .map(ware -> Component.translatable(ware.aboutKey()).getString())
                 .filter(line -> !seen.contains(line))
                 .collect(Collectors.toSet());
         return absent.isEmpty() ? Optional.empty() : Optional.of("no row showed " + absent);

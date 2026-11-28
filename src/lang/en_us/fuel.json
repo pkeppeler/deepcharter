@@ -18,6 +18,6 @@
   "screen.deepcharter.fuel_pump.about.fill": "Fills the tank to the brim, or as far as your account reaches.",
   "screen.deepcharter.fuel_pump.fill": "FILL UP",
   "screen.deepcharter.fuel_pump.no_pod": "NO POD PARKED AT THE PUMP",
-  "screen.deepcharter.fuel_pump.online": "FUEL PUMP ONLINE. $%s A LITRE.",
+  "screen.deepcharter.fuel_pump.online": "FUEL PUMP ONLINE. $%s A LITRE. POINT AT A ROW FOR DETAILS.",
   "screen.deepcharter.fuel_pump.tank": "TANK %s / %s L"
 }

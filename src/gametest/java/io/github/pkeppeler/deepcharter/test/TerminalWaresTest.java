@@ -2,127 +2,152 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 
-import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
-import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
+import io.github.pkeppeler.deepcharter.handbook.SpecSheets;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.repair.RepairStation;
+import io.github.pkeppeler.deepcharter.suit.SuitShop;
 import io.github.pkeppeler.deepcharter.suit.SuitTrack;
+import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
+import io.github.pkeppeler.deepcharter.terminal.TerminalWares.Ware;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.locale.Language;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 /**
- * Every item a terminal sells says what it does before the player buys it (#1645): each ware a terminal declares in
- * {@link TerminalWares} has a line in the lang file, and each terminal either declares its wares or is named below
- * as selling nothing.
+ * Every item a terminal sells says what it does before the player buys it (#1645). The test walks every action each
+ * Deep Charter terminal registers: it is a ware with a line in the lang file, or it is named below as no sale, with
+ * why.
  */
 public class TerminalWaresTest {
     /** The longest a line may be, so that it wraps to the tip's rows. */
     private static final int MAX_LINE = 90;
 
-    /** Terminals that sell nothing, with why: a terminal not named here and with no wares fails the test. */
-    private static final Map<TerminalType, String> SELLS_NOTHING = Map.of(
-            TerminalTypes.ORE_PROCESSOR, "it buys the player's ore and spends nothing of theirs on its own items",
-            ContractTerminal.TYPE, "it founds and joins charters and sells nothing");
+    /**
+     * The actions that sell nothing, as {@code <terminal>/<action>} with why. A new action not named here must be a
+     * ware.
+     */
+    private static final Map<String, String> NOT_A_SALE = Map.ofEntries(
+            Map.entry("contract_terminal/charter_found", "charter paperwork, no price"),
+            Map.entry("contract_terminal/charter_apply", "charter paperwork, no price"),
+            Map.entry("contract_terminal/charter_revive", "charter paperwork, no price"),
+            Map.entry("contract_terminal/charter_approve", "the Director answers an application, no price"),
+            Map.entry("contract_terminal/charter_deny", "the Director answers an application, no price"),
+            Map.entry("contract_terminal/charter_leave", "leaving or withdrawing, no price"),
+            Map.entry("contract_terminal/charter_share_outposts", "a Director's setting, no price"),
+            Map.entry("contract_terminal/charter_keep_outposts", "a Director's setting, no price"),
+            Map.entry("ore_processor/sell_cargo", "the terminal buys the player's ore"),
+            Map.entry("ore_processor/sell_inventory", "the terminal buys the player's ore"),
+            Map.entry("ore_processor/fuse_spoil", "turns spoil the player brings into ore, nothing is bought"),
+            Map.entry("ore_processor/press_crates", "presses what the player brings into crates, nothing is bought"),
+            Map.entry("ore_processor/withdraw_ore", "hands back ore the player already owns"),
+            Map.entry("ore_processor/work_order_deliver", "pays the player for ore delivered"));
 
     /**
-     * The upgrade terminal sells pod parts, and #1440 (PR #1494) writes each track's line and the wares with it.
-     * This entry goes with that PR: the test fails once the terminal declares wares, so the entry cannot outlive the
-     * fix.
+     * Actions that sell something and have no line yet, as {@code <terminal>/<action>} with the issue that gives
+     * them one.
      */
-    private static final Map<TerminalType, String> PENDING = Map.of(TerminalTypes.UPGRADE_TERMINAL, "#1440");
+    private static final Map<String, String> PENDING = Map.of("upgrade_terminal/upgrade_buy", "#1693");
 
     @GameTest
-    public void everyTerminalSaysWhatItSells(GameTestHelper helper) {
+    public void everyActionIsAWareWithALineOrNamedAsNoSale(GameTestHelper helper) {
+        Set<String> seen = new HashSet<>();
         int terminals = 0;
         for (TerminalType type : TerminalTypes.all()) {
             if (!type.id().getNamespace().equals("deepcharter")) {
                 continue;
             }
             terminals++;
-            Map<String, String> wares = TerminalWares.of(type);
-            if (SELLS_NOTHING.containsKey(type)) {
-                expect(helper, wares.isEmpty(), "%s is listed as selling nothing but declares %s", type.id(), wares);
-            } else if (PENDING.containsKey(type)) {
-                expect(
-                        helper,
-                        wares.isEmpty(),
-                        "%s now declares wares, so drop it from PENDING (%s)",
-                        type.id(),
-                        PENDING.get(type));
-            } else {
-                expect(
-                        helper,
-                        !wares.isEmpty(),
-                        "%s sells nothing in TerminalWares: declare its wares, or name it in SELLS_NOTHING with why",
-                        type.id());
+            List<Ware> wares = TerminalWares.of(type);
+            Set<Identifier> actions = TerminalActions.registered(type);
+            for (Identifier action : actions) {
+                String key = type.id().getPath() + "/" + action.getPath();
+                seen.add(key);
+                boolean sold = wares.stream().anyMatch(ware -> ware.action().equals(action));
+                if (NOT_A_SALE.containsKey(key) || PENDING.containsKey(key)) {
+                    expect(
+                            helper,
+                            !sold,
+                            "%s is named as no sale or pending but is a ware: drop it from the list",
+                            key);
+                } else {
+                    expect(
+                            helper,
+                            sold,
+                            "%s sells nothing in TerminalWares: declare it with the line that says what it does, or name it in NOT_A_SALE with why",
+                            key);
+                }
             }
-            wares.forEach((ware, key) -> {
+            for (Ware ware : wares) {
                 expect(
                         helper,
-                        Language.getInstance().has(key),
+                        actions.contains(ware.action()),
+                        "%s's ware %s names an action it lacks",
+                        type.id(),
+                        ware.id());
+                String line = Language.getInstance().getOrDefault(ware.aboutKey());
+                expect(
+                        helper,
+                        Language.getInstance().has(ware.aboutKey()) && !line.isBlank(),
                         "%s sells %s with no line: %s is not in the lang file",
                         type.id(),
-                        ware,
-                        key);
-                String line = Language.getInstance().getOrDefault(key);
-                expect(helper, !line.isBlank(), "%s's line for %s is empty", type.id(), ware);
+                        ware.id(),
+                        ware.aboutKey());
                 expect(
                         helper,
                         line.length() <= MAX_LINE,
                         "%s's line for %s is %s long, over %s: %s",
                         type.id(),
-                        ware,
+                        ware.id(),
                         line.length(),
                         MAX_LINE,
                         line);
-            });
+            }
         }
-        expect(helper, terminals >= 6, "the test walked the colony's terminals, only %s", terminals);
+        expect(helper, terminals > 0, "the test walked no terminal");
+        Set<String> listed = new HashSet<>(NOT_A_SALE.keySet());
+        listed.addAll(PENDING.keySet());
+        listed.removeAll(seen);
+        expect(helper, listed.isEmpty(), "NOT_A_SALE or PENDING names actions no terminal registers: %s", listed);
         helper.succeed();
     }
 
     @GameTest
-    public void everyShopItemAndTrackIsDeclared(GameTestHelper helper) {
-        Map<String, String> repair = TerminalWares.of(TerminalTypes.REPAIR_STATION);
+    public void everyShopItemAndSuitTrackIsAWareWithItsSpecSheetLine(GameTestHelper helper) {
+        List<Ware> repair = TerminalWares.of(TerminalTypes.REPAIR_STATION);
         for (Consumable consumable : Consumable.values()) {
-            String ware = "item:" + consumable.itemId().getPath();
-            expect(helper, repair.containsKey(ware), "the repair station sells %s with no line", ware);
+            String ware = RepairStation.ware(consumable);
             expect(
                     helper,
-                    Objects.equals(
-                            repair.get(ware),
-                            "deepcharter.spec.item." + consumable.itemId().getPath()),
-                    "%s's line is its spec sheet line, got %s",
-                    ware,
-                    repair.get(ware));
+                    repair.stream().anyMatch(known -> known.id().equals(ware)),
+                    "the repair station sells %s with no line",
+                    ware);
+            Component sheet = SpecSheets.of(RepairRegistry.item(consumable)).blurb();
+            expect(
+                    helper,
+                    TerminalWares.about(TerminalTypes.REPAIR_STATION, ware)
+                            .getString()
+                            .equals(sheet.getString()),
+                    "%s's line is its spec sheet line",
+                    ware);
         }
         for (SuitTrack track : SuitTrack.values()) {
+            String ware = SuitShop.ware(track);
             expect(
                     helper,
-                    repair.containsKey("suit:" + track.id()),
-                    "the repair station sells suit %s with no line",
-                    track);
+                    repair.stream().anyMatch(known -> known.id().equals(ware)),
+                    "the repair station sells %s with no line",
+                    ware);
         }
-        for (String ware : new String[] {"repair", "repair_total", "service_engine", "scrape_flue"}) {
-            expect(helper, repair.containsKey(ware), "the repair station sells %s with no line", ware);
-        }
-        Map<String, String> pump = TerminalWares.of(TerminalTypes.FUEL_PUMP);
-        expect(
-                helper,
-                pump.containsKey("buy_fuel") && pump.containsKey("fill_fuel"),
-                "the pump says what a litre and a fill do: %s",
-                pump);
-        Map<String, String> hangar = TerminalWares.of(HangarTerminal.TYPE);
-        expect(
-                helper,
-                hangar.containsKey("buy_mole") && hangar.containsKey("restore_wreck"),
-                "the hangar says what it sells: %s",
-                hangar);
         helper.succeed();
     }
 }

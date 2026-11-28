@@ -22,6 +22,7 @@ import java.util.function.BooleanSupplier;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.InputType;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 
@@ -104,6 +105,8 @@ public class TerminalAboutScenario extends EvidenceScenario {
      */
     private void focusRow(ClientGameTestContext context, Screen screen, String label) {
         context.runOnClient(client -> {
+            // The keyboard's way to the tip: a click's focus shows none.
+            client.setLastInputType(InputType.KEYBOARD_TAB);
             if (screen instanceof RepairStationScreen repair) {
                 for (int first = 0;
                         first < repair.rowCount() && shown(screen, label).isEmpty();
