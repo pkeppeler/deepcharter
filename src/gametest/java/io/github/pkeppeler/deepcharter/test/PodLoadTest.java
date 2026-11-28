@@ -92,8 +92,8 @@ public class PodLoadTest {
 
     /**
      * #1446: ore in a seated pilot's pack rode with no weight, so a pack was free cargo. It weighs on the pod now,
-     * double its mass (ADR 0110) and on top of the bay's (never counted twice), and a pack heavier than the engine keeps
-     * the pod on the ground.
+     * double its mass (ADR 0110) and on top of the bay's (never counted twice), and a pack heavier than the engine
+     * keeps the pod on the ground.
      */
     @GameTest(maxTicks = 60)
     public void aSeatedPilotsPackOreWeighsOnThePodAndKeepsAHeavyPodDown(GameTestHelper helper) {
