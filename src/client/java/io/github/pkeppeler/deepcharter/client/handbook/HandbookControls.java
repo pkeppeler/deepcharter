@@ -3,25 +3,35 @@ package io.github.pkeppeler.deepcharter.client.handbook;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueKeys;
 import io.github.pkeppeler.deepcharter.client.pod.LiningKeys;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
+import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.pod.TowTuning;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
 import net.minecraft.network.chat.Component;
 
 /**
  * The controls pages of the handbook (#1260): one sheet each for the handbook, the parts catalogue, the pod, its screen
- * (#1270), its cargo (#1456), the cockpit's readouts (#1436) and the scanner. Every key a line names is read from the
- * player's own binding when the line is built, so a rebind shows on the next draw and no key letter is written into
- * the language file. A key the game does not let the player rebind (Ctrl+F, the arrow keys) is written out in the line.
+ * (#1270), its cargo (#1456), its towing (#1600), the cockpit's readouts (#1436) and the scanner. Every key a line
+ * names is read from the player's own binding when the line is built, so a rebind shows on the next draw and no key
+ * letter is written into the language file. A key the game does not let the player rebind (Ctrl+F, the arrow keys) is
+ * written out in the line.
  */
 public final class HandbookControls {
     /**
      * One line of a sheet: its language key under the sheet's, and the bindings its {@code %s} slots show, in order.
      */
-    record Row(String name, List<Function<Options, KeyMapping>> keys) {
+    record Row(String name, List<Function<Options, KeyMapping>> keys, List<Supplier<Object>> values) {
+        /** A line that names keys and no tuned value. */
+        Row(String name, List<Function<Options, KeyMapping>> keys) {
+            this(name, keys, List.of());
+        }
+
         /** A line that names no key. */
         Row(String name) {
             this(name, List.of());
@@ -30,6 +40,8 @@ public final class HandbookControls {
 
     /** One page of controls: its name, which keys its language keys, and its lines. */
     record Sheet(String name, List<Row> rows) {}
+
+    private static final int TICKS_PER_SECOND = 20;
 
     private static final List<Sheet> SHEETS = List.of(
             new Sheet(
@@ -91,6 +103,18 @@ public final class HandbookControls {
                     List.of(
                             new Row("open", List.of(options -> options.keyShift, options -> options.keyUse)),
                             new Row("seated", List.of(options -> options.keyInventory)))),
+            new Sheet(
+                    "tow",
+                    List.of(
+                            new Row("hook", List.of(options -> options.keyUse)),
+                            // The window and the reach are the tuned ones, read when the line is built.
+                            new Row(
+                                    "limits",
+                                    List.of(),
+                                    List.of(
+                                            () -> TowTuning.DEFAULT.pickTicks() / TICKS_PER_SECOND,
+                                            PodTowing::reachBlocks)))),
+            new Sheet("untow", List.of(new Row("free", List.of(options -> options.keyUse)))),
             new Sheet("cargo", List.of(new Row("dump_stack", List.of(options -> options.keyDrop)))),
             new Sheet("scanner", List.of(new Row("map"), new Row("reach"))));
 
@@ -125,12 +149,13 @@ public final class HandbookControls {
     }
 
     private static Component line(Sheet sheet, Row row, Options options) {
-        Object[] keys = row.keys().stream()
-                .map(key -> (Object) Component.literal("[")
+        List<Object> args = new ArrayList<>();
+        row.keys()
+                .forEach(key -> args.add(Component.literal("[")
                         .append(key.apply(options).getTranslatedKeyMessage())
-                        .append("]"))
-                .toArray();
-        return Component.translatable(keyOf(sheet.name(), row.name()), keys);
+                        .append("]")));
+        row.values().forEach(value -> args.add(value.get()));
+        return Component.translatable(keyOf(sheet.name(), row.name()), args.toArray());
     }
 
     private static Sheet sheet(int part) {
