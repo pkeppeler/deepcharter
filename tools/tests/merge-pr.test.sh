@@ -1189,7 +1189,10 @@ for who in mark merge preflight; do
   gs_run "$who" "$gs_first" "$gs_ok" "$gate_files" STUB_COMPARE=identical
   gs_allowed "$who: a sweep at the head itself passes"
   gs_run "$who" "$gs_first" "$gs_ok" "$gate_files" STUB_COMPARE_FAIL=1
-  gs_refused "$who: an unreadable compare is refused" "cannot compare"
+  gs_refused "$who: an unreadable compare is refused, not let through" "could not be verified"
+  gs_run "$who" "$gs_first" "$gs_ok" "$gate_files" STUB_COMPARE=
+  gs_refused "$who: an empty compare answer is refused, not let through" "could not be verified"
+  if [[ $rc -ne 0 ]] && ! grep -q '^gh api -X PUT' "$LOG"; then pass "$who: an unverified sweep sha never reaches a merge"; else fail "$who: an unverified sweep sha reached a merge"; fi
   gs_run "$who" $((gs_first - 1)) "" "$gate_files"
   gs_allowed "$who: a PR below GATE_SWEEP_FIRST_PR is exempt"
   gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:README.md modified:tools/merge-pr.sh)"

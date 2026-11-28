@@ -156,8 +156,10 @@ check_gate_sweep() {
   swept=$(sed -nE "s/^Gate sweep \(([0-9a-f]{7,40})\): (none affected|$pr_ref(, $pr_ref)*)[[:space:].]*\$/\1/p" <<<"$body" | head -1)
   [[ -n $swept ]] \
     || refuse "changes gate code ($gate_file) but its body has no 'Gate sweep (<sha>): none affected' or 'Gate sweep (<sha>): #N fixed, #M notified' line: run tools/gate-sweep.sh $pr, fix or notify each PR it lists, and paste the line it prints"
-  status=$(gh api "repos/$repo/compare/$swept...$sha" --jq .status 2>/dev/null) \
-    || refuse "has a 'Gate sweep ($swept)' line, but GitHub cannot compare $swept with the head $sha (is the sha a commit of this PR?)"
+  # Fail closed: a compare that cannot be read leaves the sha unverified, and an unverified sha is not let through.
+  status=$(gh api "repos/$repo/compare/$swept...$sha" --jq .status 2>/dev/null) || status=
+  [[ -n $status ]] \
+    || refuse "has a 'Gate sweep ($swept)' line, but the sweep sha could not be verified against the head $sha (GitHub did not answer the compare, or the sha is not a commit of this PR): retry, and if it persists run tools/gate-sweep.sh $pr again and update the line"
   [[ $status == identical || $status == ahead ]] \
     || refuse "has a 'Gate sweep ($swept)' line for a commit that is not an ancestor of the head $sha (compare: $status): the branch was rebased or reset since the sweep; run tools/gate-sweep.sh $pr again and update the line"
 }
