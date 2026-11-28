@@ -9,9 +9,10 @@
 # tools/merge-pr.sh refuses if the head has moved since, except across a clean merge of origin/main (--carry below).
 #
 # --carry re-pins an earlier pass to the current head instead of a new review, and only when the head is a chain of
-# clean merges of origin/main on a passed commit (tools/lib/pass-carry.sh, #1568): each merge conflict-free, git
-# merge-tree reproducing its tree exactly. Any other change since the pass (a commit, a hand-resolved merge, a merge of
-# another branch) refuses, and the head needs a review. tools/merge-pr.sh carries the same pass by itself, so this only
+# clean merges of origin/main and semantically empty commits on a passed commit (tools/lib/pass-carry.sh, #1568, #1640):
+# each merge conflict-free, git merge-tree reproducing its tree exactly; each other commit changing no code token (a
+# comment rewrap, a whitespace reflow; tools/semantic_diff.py). Any other change since the pass (a code commit, a
+# hand-resolved merge, a merge of another branch) refuses, and the head needs a review. tools/merge-pr.sh carries the same pass by itself, so this only
 # makes the comment explicit.
 set -euo pipefail
 
@@ -49,8 +50,8 @@ check_pr_body_and_labels
 
 if [[ $carry -eq 1 ]]; then
   carry_review_pass "$sha" \
-    || refuse "cannot carry a review pass to $sha: it is not a chain of clean merges of origin/main on a passed commit (review it, then run this without --carry)"
-  echo "Carrying the pass of ${carried_from:0:9} to $sha"
+    || refuse "cannot carry a review pass to $sha: it is not a chain of clean merges of origin/main and comment- or whitespace-only commits on a passed commit (review it, then run this without --carry)"
+  echo "Carrying the pass of ${carried_from:0:9} to $sha across: $carried_kinds"
 fi
 
 gh api -X POST "repos/$repo/issues/$pr/comments" -f body="review-passed $sha" >/dev/null
