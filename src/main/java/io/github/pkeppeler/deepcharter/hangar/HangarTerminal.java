@@ -64,10 +64,15 @@ public final class HangarTerminal {
     static void register() {
         TerminalActions.register(TYPE, BUY_MOLE, HangarTerminal::buyMole);
         TerminalActions.register(TYPE, RESTORE_WRECK, HangarTerminal::restoreWreck);
-        TerminalWares.register(TYPE, BUY_MOLE, BUY_MOLE.getPath(), "screen.deepcharter.hangar.about.buy_mole");
+        TerminalWares.register(TYPE, BUY_MOLE, ware(BUY_MOLE), "screen.deepcharter.hangar.about.buy_mole");
         TerminalWares.register(
-                TYPE, RESTORE_WRECK, RESTORE_WRECK.getPath(), "screen.deepcharter.hangar.about.restore_wreck");
+                TYPE, RESTORE_WRECK, ware(RESTORE_WRECK), "screen.deepcharter.hangar.about.restore_wreck");
         TerminalFeatures.register(TYPE, HangarView.STREAM_CODEC, HangarTerminal::view);
+    }
+
+    /** The ware id of a row that one action sells. */
+    public static String ware(Identifier action) {
+        return action.getPath();
     }
 
     /** What the Prospector's advance has left for the viewing charter. Never throws: unreadable records show none. */

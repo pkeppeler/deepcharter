@@ -406,6 +406,13 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                 contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN), contentBottom(MARGIN), introTop());
     }
 
+    /** The readouts the tip must not cover: the account, the hull and, while the list scrolls, which rows are shown. */
+    public List<AboutTip.Rect> tipReadouts() {
+        return textLines().stream()
+                .map(line -> AboutTip.Rect.ofText(font, line.text(), line.x(), line.y()))
+                .toList();
+    }
+
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         CrtTuning tuning = CrtTuning.current();
@@ -427,6 +434,6 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                     line.dim() ? PanelLook.dimText(tuning.dimColor()) : tuning.phosphorColor());
         }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-        AboutTip.draw(graphics, font, this, tipBounds(), mouseX, mouseY);
+        AboutTip.draw(graphics, font, this, tipBounds(), tipReadouts(), mouseX, mouseY);
     }
 }

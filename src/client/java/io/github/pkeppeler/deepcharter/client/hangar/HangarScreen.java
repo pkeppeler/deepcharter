@@ -118,7 +118,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                         Component.translatable(
                                 "screen.deepcharter.hangar.buy", tuning.refurbishedMole(), tuning.registrationFee()),
                         button -> send(HangarTerminal.BUY_MOLE))
-                .about(TerminalWares.about(HangarTerminal.TYPE, HangarTerminal.BUY_MOLE.getPath())));
+                .about(TerminalWares.about(HangarTerminal.TYPE, HangarTerminal.ware(HangarTerminal.BUY_MOLE))));
         // The wreck the server restores is the nearest one, so the lines under the button name the price of
         // each chassis.
         addRenderableWidget(new CrtButton(
@@ -128,7 +128,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                         BUTTON_HEIGHT,
                         Component.translatable("screen.deepcharter.hangar.restore"),
                         button -> send(HangarTerminal.RESTORE_WRECK))
-                .about(TerminalWares.about(HangarTerminal.TYPE, HangarTerminal.RESTORE_WRECK.getPath())));
+                .about(TerminalWares.about(HangarTerminal.TYPE, HangarTerminal.ware(HangarTerminal.RESTORE_WRECK))));
     }
 
     private List<String> wrap(String text) {
@@ -172,6 +172,23 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                 contentTop(MARGIN) + font.lineHeight + 14);
     }
 
+    /**
+     * The readouts the tip must not cover: the account line and the price lines, as they stand once the welcome has
+     * typed out.
+     */
+    public List<AboutTip.Rect> tipReadouts() {
+        List<AboutTip.Rect> readouts = new ArrayList<>();
+        readouts.add(new AboutTip.Rect(
+                contentLeft(MARGIN), headerBottom() - font.lineHeight, contentWidth(MARGIN), font.lineHeight));
+        for (PriceLine line : priceLines) {
+            readouts.add(AboutTip.Rect.ofText(font, line.text(), line.x(), line.y()));
+        }
+        for (PriceLine line : advanceLines) {
+            readouts.add(AboutTip.Rect.ofText(font, line.text(), line.x(), line.y()));
+        }
+        return readouts;
+    }
+
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         CrtTuning tuning = CrtTuning.current();
@@ -200,6 +217,6 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
             CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
         }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-        AboutTip.draw(graphics, font, this, tipBounds(), mouseX, mouseY);
+        AboutTip.draw(graphics, font, this, tipBounds(), tipReadouts(), mouseX, mouseY);
     }
 }

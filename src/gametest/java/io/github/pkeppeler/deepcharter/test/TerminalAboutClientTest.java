@@ -67,7 +67,8 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
                 context.runOnClient(client -> fuel.resize(size[0], size[1]));
                 ClientChecks.requireNone(
                         "the fuel pump" + at,
-                        context.computeOnClient(client -> problem(fuel, fuel.tipBounds(), TerminalTypes.FUEL_PUMP)));
+                        context.computeOnClient(client ->
+                                problem(fuel, fuel.tipBounds(), fuel.tipReadouts(), TerminalTypes.FUEL_PUMP)));
 
                 TerminalView console = view(HangarTerminal.TYPE);
                 context.setScreen(() -> new HangarScreen(console));
@@ -76,7 +77,8 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
                 context.runOnClient(client -> hangar.resize(size[0], size[1]));
                 ClientChecks.requireNone(
                         "the hangar console" + at,
-                        context.computeOnClient(client -> problem(hangar, hangar.tipBounds(), HangarTerminal.TYPE)));
+                        context.computeOnClient(client ->
+                                problem(hangar, hangar.tipBounds(), hangar.tipReadouts(), HangarTerminal.TYPE)));
             }
             context.setScreen(() -> null);
         }
@@ -92,7 +94,7 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
         Set<String> seen = new HashSet<>();
         for (int first = 0; first < screen.rowCount(); first++) {
             ScreenScroll.scrollTo(screen, first);
-            Optional<String> problem = rowsProblem(screen, bounds, seen);
+            Optional<String> problem = rowsProblem(screen, bounds, screen.tipReadouts(), seen);
             if (problem.isPresent()) {
                 return Optional.of("scrolled to row " + first + ": " + problem.get());
             }
@@ -100,14 +102,16 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
         return missing(TerminalTypes.REPAIR_STATION, seen, NEEDS_A_POD);
     }
 
-    private static Optional<String> problem(Screen screen, AboutTip.Bounds bounds, TerminalType type) {
+    private static Optional<String> problem(
+            Screen screen, AboutTip.Bounds bounds, List<AboutTip.Rect> readouts, TerminalType type) {
         Set<String> seen = new HashSet<>();
-        Optional<String> problem = rowsProblem(screen, bounds, seen);
+        Optional<String> problem = rowsProblem(screen, bounds, readouts, seen);
         return problem.isPresent() ? problem : missing(type, seen, Set.of());
     }
 
     /** Every row but CLOSE has a line, the tip shows it by pointer and by focus, and it fits the screen. */
-    private static Optional<String> rowsProblem(Screen screen, AboutTip.Bounds bounds, Set<String> seen) {
+    private static Optional<String> rowsProblem(
+            Screen screen, AboutTip.Bounds bounds, List<AboutTip.Rect> readouts, Set<String> seen) {
         Minecraft client = Minecraft.getInstance();
         List<CrtButton> rows = screen.children().stream()
                 .filter(CrtButton.class::isInstance)
@@ -137,7 +141,7 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
             if (!AboutTip.pointed(screen, button.getX() + 1, button.getY() + 1).equals(Optional.of(button))) {
                 return Optional.of("the tip does not show the pointed-at '" + label + "'");
             }
-            AboutTip.Box box = AboutTip.boxFor(client.font, bounds, screen, button);
+            AboutTip.Box box = AboutTip.boxFor(client.font, bounds, screen, button, readouts);
             if (box.lines().size() > AboutTip.MAX_LINES) {
                 return Optional.of(
                         "the line for '" + label + "' wraps to " + box.lines().size() + " rows, over the "
@@ -149,13 +153,21 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
                     || box.y() + box.height() > bounds.bottom()) {
                 return Optional.of("the tip for '" + label + "' leaves the content area " + bounds + ": " + box);
             }
-            if (box.covers(button)) {
+            if (box.covers(AboutTip.Rect.of(button))) {
                 return Optional.of("the tip for '" + label + "' covers the row it belongs to: " + box);
             }
             for (CrtButton other : rows) {
-                if (other != button && other.about().isPresent() && other.visible && box.covers(other)) {
+                if (other != button
+                        && other.about().isPresent()
+                        && other.visible
+                        && box.covers(AboutTip.Rect.of(other))) {
                     return Optional.of("the tip for '" + label + "' covers the row '"
                             + other.getMessage().getString() + "': " + box);
+                }
+            }
+            for (AboutTip.Rect readout : readouts) {
+                if (box.covers(readout)) {
+                    return Optional.of("the tip for '" + label + "' covers a readout " + readout + ": " + box);
                 }
             }
         }

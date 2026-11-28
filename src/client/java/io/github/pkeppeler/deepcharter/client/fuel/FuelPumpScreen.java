@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.client.ui.AboutTip;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
+import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
@@ -106,7 +107,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
                 Component.translatable("screen.deepcharter.terminal.close"),
                 button -> onClose()));
         int rowY = closeY - GAP - BUTTON_HEIGHT;
-        Component buyAbout = TerminalWares.about(TerminalTypes.FUEL_PUMP, FuelPump.BUY.getPath());
+        Component buyAbout = TerminalWares.about(TerminalTypes.FUEL_PUMP, FuelPump.ware(FuelPump.BUY));
         int x = contentLeft(MARGIN);
         for (int litres : FuelTuning.DEFAULT.purchaseSteps()) {
             buyButtons.add(addRenderableWidget(new CrtButton(
@@ -126,7 +127,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
                         BUTTON_HEIGHT,
                         Component.translatable("screen.deepcharter.fuel_pump.fill"),
                         button -> fill())
-                .about(TerminalWares.about(TerminalTypes.FUEL_PUMP, FuelPump.FILL.getPath())));
+                .about(TerminalWares.about(TerminalTypes.FUEL_PUMP, FuelPump.ware(FuelPump.FILL))));
     }
 
     private void buy(int litres) {
@@ -172,7 +173,22 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
                 contentTop(MARGIN),
                 contentRight(MARGIN),
                 contentBottom(MARGIN),
-                contentTop(MARGIN) + font.lineHeight + 14);
+                contentTop(MARGIN) + font.lineHeight + 14 + noticeHeight());
+    }
+
+    /**
+     * The readouts the tip must not cover: the account line and the tank line, as they stand once the intro has
+     * typed out.
+     */
+    public List<AboutTip.Rect> tipReadouts() {
+        int step = font.lineHeight + CrtTuning.current().lineSpacing();
+        int introLines = Math.max(
+                CrtText.wrap(font, typewriter.text(), contentWidth(MARGIN)).size(), 1);
+        int account = contentTop(MARGIN) + font.lineHeight + 14 + noticeHeight() + introLines * step + GAP;
+        int tank = account + font.lineHeight + GAP;
+        return List.of(
+                new AboutTip.Rect(contentLeft(MARGIN), account, contentWidth(MARGIN), font.lineHeight),
+                new AboutTip.Rect(contentLeft(MARGIN), tank, contentWidth(MARGIN), font.lineHeight));
     }
 
     @Override
@@ -214,6 +230,6 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
         CrtDraw.glowText(graphics, font, tank, contentLeft(MARGIN), y, tuning.phosphorColor());
         refreshButtons(pod);
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-        AboutTip.draw(graphics, font, this, tipBounds(), mouseX, mouseY);
+        AboutTip.draw(graphics, font, this, tipBounds(), tipReadouts(), mouseX, mouseY);
     }
 }

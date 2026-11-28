@@ -35,6 +35,8 @@ public class TerminalAboutScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
     private static final int HOLD_FRAMES = 6;
     private static final int TYPING_FRAMES = 60;
+    private static final int SMALL_WIDTH = 320;
+    private static final int SMALL_HEIGHT = 240;
     /** The repair station's rows that are looked at: the hull, an item, a suit track. */
     private static final List<String> REPAIR_ROWS = List.of("REPAIR ALL", "BUY DYNAMITE $120", "SUIT HEAT T1 $450");
 
@@ -59,6 +61,10 @@ public class TerminalAboutScenario extends EvidenceScenario {
                 focusRow(context, screen, row);
                 screenshot(context, "repair-" + row.toLowerCase(Locale.ROOT).replaceAll("[^a-z]+", "-"));
             }
+            // The smallest GUI, 320 by 240: the screen is laid out for it in the corner of the window.
+            context.runOnClient(client -> screen.resize(SMALL_WIDTH, SMALL_HEIGHT));
+            focusRow(context, screen, "BUY DYNAMITE $120");
+            screenshot(context, "repair-320-buy-dynamite");
             context.setScreen(() -> null);
         }
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
@@ -88,6 +94,9 @@ public class TerminalAboutScenario extends EvidenceScenario {
             screenshot(context, "hangar-buy");
             focusRow(context, screen, "RESTORE NEAREST WRECK");
             screenshot(context, "hangar-restore");
+            context.runOnClient(client -> screen.resize(SMALL_WIDTH, SMALL_HEIGHT));
+            focusRow(context, screen, "RESTORE NEAREST WRECK");
+            screenshot(context, "hangar-320-restore");
             context.setScreen(() -> null);
         }
     }

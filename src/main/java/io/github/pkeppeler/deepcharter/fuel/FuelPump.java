@@ -44,9 +44,13 @@ public final class FuelPump {
         TerminalActions.register(TerminalTypes.FUEL_PUMP, BUY, OutpostAccess.guarded(FuelPump::buy));
         TerminalActions.register(TerminalTypes.FUEL_PUMP, FILL, OutpostAccess.guarded(FuelPump::fill));
         ParkedPodView.register(TerminalTypes.FUEL_PUMP);
-        TerminalWares.register(TerminalTypes.FUEL_PUMP, BUY, BUY.getPath(), "screen.deepcharter.fuel_pump.about.buy");
-        TerminalWares.register(
-                TerminalTypes.FUEL_PUMP, FILL, FILL.getPath(), "screen.deepcharter.fuel_pump.about.fill");
+        TerminalWares.register(TerminalTypes.FUEL_PUMP, BUY, ware(BUY), "screen.deepcharter.fuel_pump.about.buy");
+        TerminalWares.register(TerminalTypes.FUEL_PUMP, FILL, ware(FILL), "screen.deepcharter.fuel_pump.about.fill");
+    }
+
+    /** The ware id of a row that one action sells. */
+    public static String ware(Identifier action) {
+        return action.getPath();
     }
 
     /** The litres in the tank now. */
