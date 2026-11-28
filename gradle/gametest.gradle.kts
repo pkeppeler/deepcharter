@@ -69,10 +69,10 @@ object GametestScan {
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
 	// A server test that stages at a fixed place of the shared worlds names its columns in test/support/TestSiteTable (#1182), so two tests never
 	// share a column of a layer. TestSites fails a carve or a force outside the caller's claims at run time; this scan is the part a run cannot
-	// see: a server test that calls FarChunks to wait for or force a chunk, RoomCarver.carve, or holds a coordinate constant (int/long/float/double
+	// see: a server test that calls FarChunks to wait for or force a chunk, adds a chunk ticket itself (addTicket..., #1694), RoomCarver.carve, or holds a coordinate constant (int/long/float/double
 	// whose name is x, z, *X, *Z, *COLUMN, *SITE or *ORIGIN set to a literal of 1000 or more) must be named in the table, as a claim or an exempt.
 	private const val SITE_TABLE = "TestSiteTable.java"
-	private val stagingCall = Regex("""\bFarChunks\s*\.\s*(?:force|pin|release|await\w*|whenBlocksLoaded)\s*\(|\bRoomCarver\s*\.\s*carve\w*\s*\(""")
+	private val stagingCall = Regex("""\bFarChunks\s*\.\s*(?:force|pin|release|await\w*|whenBlocksLoaded)\s*\(|\bRoomCarver\s*\.\s*carve\w*\s*\(|\.\s*addTicket\w*\s*\(""")
 	private val coordinateConstant = Regex("""\b(?:int|long|float|double)\s+(\w+)\s*=\s*-?(\d[\d_]*)(?:\.\d+)?[dDfFlL]?\s*;""")
 	private val coordinateName = Regex("""^[xz]$|(?:^|_)[XZ]$|[a-z][XZ]$|(?:^|_)(?:COLUMN|SITE|ORIGIN)$|[a-z](?:Column|Site|Origin)$""")
 	private const val MIN_COORDINATE = 1000

@@ -482,6 +482,7 @@ public class LamplessFigureTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
     public void aLoadedRailSiteOfLayerTwoGetsOneFigureWhenAPlayerIsNear(GameTestHelper helper) {
+        // cap-shared: it only reads layer 2's count, a band no other figure test fills for more than one callback.
         ServerLevel level = TestLayers.level(helper.getLevel().getServer(), StructureKind.RAILS.layer());
         LayerChain.Band levelBand = TestLayers.band(level, StructureKind.RAILS.layer());
         BlockPos conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT)
