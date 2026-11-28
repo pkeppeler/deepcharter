@@ -246,7 +246,7 @@ public class BlastingChargeTest {
 
     /**
      * A charge is never a suicide button (#1458): a pod left sitting on a full-depth charge takes the blast and then falls the
-     * {@code chargeDepth} rows, braked only by the ground cushion. At exactly that cost the charge is refused; just over it the pod lives through both.
+     * {@code chargeDepth} rows, with no braking. At exactly that cost the charge is refused; just over it the pod lives through both.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodJustOverTheGuardSurvivesTheBlastAndTheDrop(GameTestHelper helper) {

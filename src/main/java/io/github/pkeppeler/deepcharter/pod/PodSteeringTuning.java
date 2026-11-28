@@ -21,5 +21,5 @@ public record PodSteeringTuning(
         float alignTolerance,
         float sprintBoost,
         float sprintBurn) {
-    public static final PodSteeringTuning DEFAULT = new PodSteeringTuning(6f, 0.4f, 15f, 0.5f, 1.4f, 1.8f);
+    public static final PodSteeringTuning DEFAULT = new PodSteeringTuning(6f, 0.4f, 15f, 0.5f, 2f, 2.58f);
 }

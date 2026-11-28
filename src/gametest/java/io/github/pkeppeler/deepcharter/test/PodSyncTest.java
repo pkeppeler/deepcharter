@@ -38,15 +38,14 @@ import net.minecraft.world.phys.Vec3;
 public class PodSyncTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 12;
-    /** Ticks of the drive: the cruise speed keeps the pod on the floor for all of them. */
-    private static final int DRIVE_TICKS = 24;
+    private static final int DRIVE_TICKS = 40;
     /** Ticks the pod gets to reach cruising speed before the steady stretch is judged. */
     private static final int SETTLE_TICKS = 6;
     /** Ticks a vehicle has ticked before a pilot's claim is sent, so the connection has seen the pilot ride it. */
     private static final int CLAIM_AFTER_TICKS = 5;
 
     private static final double EPSILON = 1e-6;
-    /** How far a hacked client claims the vehicle went in one tick: five blocks, far past the pod's top speed. */
+    /** How far a hacked client claims the vehicle went in one tick: five blocks, where the pod's own top speed is a fifth of one. */
     private static final double CLAIMED_STEP = 5;
 
     /** Lays the floor and awaits entity ticking in every chunk under it; the result is true once they all tick (#1083). */

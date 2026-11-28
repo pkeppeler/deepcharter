@@ -362,8 +362,7 @@ final class ChassisChecks {
             expect(
                     helper,
                     bricks == ring && PodLining.of(pod[0]).bricks() == 10,
-                    "lava 3 blocks beside the ring of a %d x %d footprint, %d tall, floods all %d cells: %d bricks"
-                            + " laid, %d left",
+                    "lava 3 blocks beside the ring of a %d x %d footprint, %d tall, floods all %d cells: %d bricks laid, %d left",
                     width,
                     width,
                     height,
@@ -493,13 +492,13 @@ final class ChassisChecks {
         });
         helper.succeedWhen(() -> {
             expect(helper, pod[0] != null && pod[0].onGround() && pod[0].tickCount >= 5, "the pod has not landed");
-            // The same fall of 10 blocks costs the Mole 19 to 25 hull (PodHardLandingTest): the cost reads sink speed
+            // The same fall of 10 blocks costs the Mole 28 to 34 hull (PodHardLandingTest): the cost reads sink speed
             // and stats, not the hitbox.
             float lost = PodTuning.DEFAULT.shell().fullHull() - pod[0].hull();
             expect(
                     helper,
-                    lost >= 19f && lost <= 25f,
-                    "a free fall of 10 blocks should cost 19 to 25 hull, cost %s",
+                    lost >= 28f && lost <= 34f,
+                    "a free fall of 10 blocks should cost 28 to 34 hull, cost %s",
                     lost);
             pod[0].discard();
         });

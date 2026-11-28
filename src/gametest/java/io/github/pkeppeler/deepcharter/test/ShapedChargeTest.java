@@ -282,7 +282,7 @@ public class ShapedChargeTest {
 
     /**
      * A charge is never a suicide button (#1458): a pod left sitting on a shaped charge over a full {@code shapedDepth} column takes the blast
-     * and then falls the whole column, braked only by the ground cushion. At exactly that cost the charge is refused; just over it the pod lives through both.
+     * and then falls the whole column, with no braking. At exactly that cost the charge is refused; just over it the pod lives through both.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodJustOverTheGuardSurvivesTheBlastAndTheDropDownAFullColumn(GameTestHelper helper) {
@@ -304,7 +304,7 @@ public class ShapedChargeTest {
                     if (guard[0] <= TUNING.chargeDamage()) {
                         throw failure(
                                 helper,
-                                "the %d row drop should cost hull over the cushion, the guard is only %.2f",
+                                "the %d row drop should cost hull over the blast alone, the guard is only %.2f",
                                 depth,
                                 guard[0]);
                     }
