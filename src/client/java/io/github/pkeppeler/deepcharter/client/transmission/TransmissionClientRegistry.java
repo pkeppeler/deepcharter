@@ -18,5 +18,6 @@ public final class TransmissionClientRegistry {
         ClientTickEvents.END_CLIENT_TICK.register(client -> TransmissionOverlay.tick());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> TransmissionOverlay.reset());
         TransmissionHud.init();
+        TransmissionLogKeys.register();
     }
 }
