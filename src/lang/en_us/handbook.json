@@ -392,7 +392,7 @@
   "deepcharter.spec.item.thrown_charge": "A charge, thrown by hand. The fuse is short; so is the advice.",
   "deepcharter.spec.item.thrown_decoy": "A decoy, thrown by hand. Rings out to draw attention away from you.",
   "deepcharter.spec.item.thrown_flare": "A flare, thrown by hand. Lights the dark and keeps the Retained off.",
-  "deepcharter.spec.item.tow_cable": "On foot: right-click the working pod, then the pod to tow (a wreck too), within 30 seconds. Get out of your pod first.",
+  "deepcharter.spec.item.tow_cable": "Get out, right-click the working pod, then the pod to tow, in 30 s.",
   "deepcharter.spec.item.tread_assembly": "A spare tread assembly for the Mole.",
   "deepcharter.spec.item.upgrade_board": "Spare board for the upgrade terminal. Fits where it fits.",
   "deepcharter.spec.item.upgrade_terminal": "Buy pod parts here. Prices are posted, and final.",
