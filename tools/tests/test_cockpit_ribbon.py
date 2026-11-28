@@ -379,16 +379,16 @@ class Digits(unittest.TestCase):
             with self.subTest(char=char):
                 self.assertTrue(char == " " or char in cockpit_ribbon.GLYPHS, "the client refuses a character with no glyph")
 
-    def test_the_recess_is_the_longest_reading_and_a_pixel_each_side_and_the_glyphs_sit_in_its_height(self):
-        self.assertEqual(37, cockpit_ribbon.LONGEST_READING_W)
-        self.assertEqual(40, cockpit_ribbon.RECESS_W, "37 and a pixel each side is 39, made even so the centred band keeps its bars on whole pixels")
+    def test_the_recess_holds_the_longest_reading_and_a_pixel_each_side_and_the_glyphs_sit_in_its_height(self):
+        self.assertEqual(31, cockpit_ribbon.LONGEST_READING_W, "-12,345 m: 7 wide glyphs, 2 narrow ones and 8 gaps")
+        self.assertEqual(40, cockpit_ribbon.RECESS_W, "kept at the feet-era width so the gauges round it do not move (#1604)")
         self.assertGreaterEqual(cockpit_ribbon.RECESS_W - cockpit_ribbon.LONGEST_READING_W, 2, "a pixel each side at least")
         self.assertEqual(cockpit_ribbon.RECESS_Y + 1, THEME[STYLE + "AltimeterY"])
         self.assertEqual(cockpit_ribbon.RECESS_Y + cockpit_ribbon.RECESS_H - 1, THEME[STYLE + "AltimeterY"] + THEME["digitsH"])
 
     def test_a_character_with_no_glyph_is_refused_as_the_client_does(self):
         with self.assertRaises(ValueError):
-            cockpit_ribbon.digits_width("12 m")
+            cockpit_ribbon.digits_width("12 ft")
 
     def test_the_digits_are_smaller_than_the_font_they_replace(self):
         self.assertLess(THEME["digitsH"], THEME["titleTextHeight"], "the font's capitals are 7 pixels tall")

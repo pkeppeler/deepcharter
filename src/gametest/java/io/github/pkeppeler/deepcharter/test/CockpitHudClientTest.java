@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.charter.CharterTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitDecay;
@@ -67,6 +68,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
 import net.minecraft.data.AtlasIds;
@@ -118,6 +120,13 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     private static final int[] GUI_SCALES = {0, 1, 2, 3, 4};
     /** The width of the altimeter's recess in the ribbon sprite (tools/cockpit_ribbon.py), which its longest reading must fit. */
     private static final int ALTIMETER_RECESS_WIDTH = 40;
+
+    /** The widest account line: the longest charter name and a balance in the millions (#1642). */
+    private static final Component LONGEST_ACCOUNT =
+            Component.translatable(AccountHud.KEY, "W".repeat(CharterTuning.DEFAULT.maxNameLength()), "9,999,999");
+
+    /** The balance alone, which the widest account line falls back to where it would run into the cockpit. */
+    private static final Component LONGEST_MONEY = Component.translatable(AccountHud.MONEY_KEY, "9,999,999");
     /** The recess's top from the band's top, and its height. */
     private static final int ALTIMETER_RECESS_TOP = 2;
 
@@ -194,7 +203,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
                 expectTheCockpitHidesExactlyTheVanillaBars();
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
-                expectTheAccountLineIsANote();
+                expectTheAccountLineIsNotOnThePlate(context);
+                expectTheAccountMoneyReadsTheSameInBothForms();
+                expectTheAccountLineKeepsItsSpotSeated(context);
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
                 expectTheAltimeterIsSmallPixelDigitsInItsRecessAtGuiScales(context);
                 expectEveryPlateMessageIsAPlateCase();
@@ -210,6 +221,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectTheSignalDecayDarkensTheCockpitAndKeepsTheFairChannels(context, singleplayer, pod);
                 expectAPackCanTurnTheCockpitOff(context);
                 expectASmallGuiGivesBackThePlainHud(context);
+                expectTheAccountLineClearsVanillaOnFootOnEveryGui(context);
                 expectTheSinkPlateShowsWhileThePodSinks(context, singleplayer, pod);
             } finally {
                 EvidencePins.reset();
@@ -310,18 +322,63 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The account line under the tally is a note: a plate with more rows than room drops it before a warning, and asking its kind does not throw (#1457: it had none, so
-     * a long plate of warnings crashed the game).
+     * The charter's account line is not a row of the plate (#1642): it is drawn by the account HUD at the left edge, in
+     * the spot it has on foot, so the plate holds the tally and the pod's lines only.
      */
-    private static void expectTheAccountLineIsANote() {
-        CockpitHud.Row tally = CockpitHud.Row.of(line("tally_hull", 100, 100));
-        CockpitHud.Row account = CockpitHud.Row.of(
-                new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0));
-        CockpitHud.Row burning = CockpitHud.Row.of(line("burning"));
-        CockpitHud.Row overloaded = CockpitHud.Row.of(line("overloaded"));
-        List<CockpitHud.Row> kept = CockpitHud.fitting(List.of(tally, account, burning, overloaded), 2);
-        if (!kept.equals(List.of(tally, burning, overloaded))) {
-            throw new AssertionError("A plate with room for two rows keeps the tally and the warnings, got " + kept);
+    private static void expectTheAccountLineIsNotOnThePlate(ClientGameTestContext context) {
+        boolean onPlate = context.computeOnClient(client -> {
+            LocalPlayer player = ClientSession.player(client);
+            PodEntity shown = TestEntities.vehicle(player, PodEntity.class);
+            CockpitReading reading = CockpitReading.of(shown, 0);
+            return CockpitHud.rows(shown, reading, CockpitLook.current(), PodStatusHud.readout(player, shown)).stream()
+                    .flatMap(row -> row.cells().stream())
+                    .map(cell -> cell.line().text().getContents())
+                    .anyMatch(contents -> contents instanceof TranslatableContents translatable
+                            && translatable.getKey().equals(AccountHud.KEY));
+        });
+        if (onPlate) {
+            throw new AssertionError("The account line is drawn at the left edge, not as a row of the plate");
+        }
+    }
+
+    /**
+     * The whole line and the balance alone group the money the same way, so it does not change as the line shortens.
+     */
+    private static void expectTheAccountMoneyReadsTheSameInBothForms() {
+        String whole = AccountHud.whole("Scanner Player0", 12_345).getString();
+        String money = AccountHud.money(12_345).getString();
+        if (!whole.equals("Scanner Player0  $12,345") || !money.equals("$12,345")) {
+            throw new AssertionError("the account line reads 'Scanner Player0  $12,345' and '$12,345', got '" + whole
+                    + "' and '" + money + "'");
+        }
+    }
+
+    /**
+     * Seated with the cockpit up, the account line is drawn where it is on foot (#1642): the left edge,
+     * {@code accountY} down, one line of the font. The pod's charter is founded by {@link ScannerPods#fit}.
+     */
+    private static void expectTheAccountLineKeepsItsSpotSeated(ClientGameTestContext context) {
+        ClientWait.until(
+                context,
+                "the charter's account on the client",
+                client -> AccountHud.text().isPresent());
+        String problem = context.computeOnClient(client -> {
+            int width = client.getWindow().getGuiScaledWidth();
+            int height = client.getWindow().getGuiScaledHeight();
+            if (!CockpitHud.showsReadout(client, width, height)) {
+                return "the cockpit's plate is not up, so this does not test the seated HUD";
+            }
+            HudKeepClear.Rect expected =
+                    AccountHud.box(client.font, AccountHud.text().orElseThrow(), height);
+            List<HudKeepClear.Rect> drawn = HudKeepClear.rects(client, width, height).stream()
+                    .filter(rect -> rect.what().equals(expected.what()))
+                    .toList();
+            return drawn.equals(List.of(expected))
+                    ? ""
+                    : "seated, the account line is drawn at " + drawn + ", not where it is on foot, " + expected;
+        });
+        if (!problem.isEmpty()) {
+            throw new AssertionError(problem);
         }
     }
 
@@ -648,7 +705,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                             client,
                             client.getWindow().getGuiScaledWidth(),
                             client.getWindow().getGuiScaledHeight(),
-                            Component.literal("-1,200 ft."))
+                            Component.literal("-1,200 m"))
                     .isPresent()) {
                 throw new AssertionError("In the blackout the altimeter is dark with the depth gauge");
             }
@@ -785,6 +842,45 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             }
         } finally {
             context.runOnClient(client -> client.getWindow().setGuiScale(GUI_SCALE));
+        }
+    }
+
+    /**
+     * On foot, the account line clears vanilla's hotbar, status rows and crosshair on every window at every GUI
+     * scale, the smallest plain-HUD GUI (854 x 480 at GUI scale 4, 213 x 120) included, where it rises above the
+     * status rows and gives way to the balance alone rather than cross the crosshair (#1642). On a GUI 240 or more
+     * high it also clears the title, subtitle, held item name and action bar.
+     */
+    private void expectTheAccountLineClearsVanillaOnFootOnEveryGui(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            List<String> found = new ArrayList<>();
+            List<int[]> guis = new ArrayList<>(List.of(new int[] {213, 120}));
+            for (int[] window : WINDOWS) {
+                for (int requested : GUI_SCALES) {
+                    guis.add(guiSize(window[0], window[1], requested));
+                }
+            }
+            Component line = Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345");
+            Component money = Component.translatable(AccountHud.MONEY_KEY, "12,345");
+            for (int[] gui : guis) {
+                HudKeepClear.Rect crosshair = AccountHud.crosshair(gui[0], gui[1]);
+                HudKeepClear.Rect box = AccountHud.box(
+                        client.font, AccountHud.fitted(client.font, line, money, gui[1], List.of(crosshair)), gui[1]);
+                if (box.overlaps(crosshair)) {
+                    found.add(gui[0] + " x " + gui[1] + ": the account line " + box + " crosses the crosshair");
+                }
+                for (HudKeepClear.Rect row : VanillaHudRows.rects(gui[0], gui[1])) {
+                    boolean always = row.what().equals("hotbar") || row.what().equals("status rows");
+                    if ((always || gui[1] >= 240) && box.overlaps(row)) {
+                        found.add(gui[0] + " x " + gui[1] + ": the account line " + box + " is in vanilla's "
+                                + row.what() + " " + row);
+                    }
+                }
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The account line must clear vanilla's HUD on foot: " + problems);
         }
     }
 
@@ -951,8 +1047,6 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 "hud.deepcharter.pod.fuel",
                 "hud.deepcharter.pod.cargo",
                 "hud.deepcharter.pod.depth"));
-        // The account line under the tally, a note though not a pod line.
-        expected.add(AccountHud.KEY);
         expected.add("hud.deepcharter.pod.signal_failing");
         expected.add("hud.deepcharter.pod.signal_lost");
         if (!covered.equals(expected)) {
@@ -1074,6 +1168,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             problems.add(where + ": the altimeter reading does not fit its recess in the band");
         }
         problems.addAll(sinkProblems(font, layout, look, pieces, gauges, guiWidth, guiHeight, where));
+        List<HudKeepClear.Rect> fixed = new ArrayList<>();
+        pieces.forEach((name, piece) ->
+                fixed.add(new HudKeepClear.Rect(name, piece[0], piece[1], piece[2] - piece[0], piece[3] - piece[1])));
+        fixed.add(CockpitHud.sinkBox(font, layout, look, guiWidth, guiHeight).rect("sink plate"));
         for (List<CockpitHud.Row> rows : plateCases()) {
             long alerts = rows.stream()
                     .filter(row -> row.first().kind() == PodStatusHud.Kind.ALERT)
@@ -1096,6 +1194,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece.getKey());
                     }
                 }
+                problems.addAll(accountProblems(font, guiWidth, guiHeight, fixed, plate, slots, where));
                 for (HudKeepClear.Rect slot : slots) {
                     if (overlap(plateBox, box(slot))) {
                         problems.add(where + ": the plate with " + kept.size() + " rows covers the " + slot.what()
@@ -1111,6 +1210,39 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 }
             }
         }
+        return problems;
+    }
+
+    /**
+     * The account line with the longest name and balance, as {@link AccountHud#fitted} draws it beside a plate of
+     * {@code plate}: at the left edge, one line, clear of the cockpit's pieces, the plate and the hotbar's slots, so a
+     * name too long for the room gives way to the balance alone (#1642).
+     */
+    private static List<String> accountProblems(
+            Font font,
+            int guiWidth,
+            int guiHeight,
+            List<HudKeepClear.Rect> fixed,
+            CockpitHud.Box plate,
+            List<HudKeepClear.Rect> slots,
+            String where) {
+        List<HudKeepClear.Rect> covered = new ArrayList<>(fixed);
+        covered.add(plate.rect("plate"));
+        covered.addAll(slots);
+        Component shown = AccountHud.fitted(font, LONGEST_ACCOUNT, LONGEST_MONEY, guiHeight, covered);
+        HudKeepClear.Rect line = AccountHud.box(font, shown, guiHeight);
+        List<String> problems = new ArrayList<>();
+        if (line.x() != HudLook.current().accountMargin() || line.height() != font.lineHeight) {
+            problems.add(where + ": the account line is not one line at the left edge: " + line);
+        }
+        covered.stream()
+                .filter(line::overlaps)
+                .forEach(piece -> problems.add(where + ": the account line covers the " + piece.what()));
+        // Between vanilla's subtitle and its action bar, so a title, a subtitle or an action-bar line never lands on it
+        // and the left column above it stays whole for a step popup.
+        VanillaHudRows.rects(guiWidth, guiHeight).stream()
+                .filter(line::overlaps)
+                .forEach(row -> problems.add(where + ": the account line is in vanilla's " + row.what() + " row"));
         return problems;
     }
 
@@ -1433,14 +1565,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("soot", 11, 44, 44),
                 line("sprint", 100));
         // The tally as the cockpit draws it, each number after its icon.
-        List<CockpitHud.Row> head = List.of(
-                new CockpitHud.Row(List.of(
-                        new CockpitHud.Cell(line("tally_hull", 100, 100), CockpitHud.Meter.HULL.icon()),
-                        new CockpitHud.Cell(line("tally_fuel", 78), CockpitHud.Meter.FUEL.icon()),
-                        new CockpitHud.Cell(line("tally_cargo", 24), CockpitHud.Icon.CART),
-                        new CockpitHud.Cell(line("tally_depth", -420), CockpitHud.Meter.DEPTH.icon()))),
-                CockpitHud.Row.of(
-                        new PodStatusHud.Line(Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345"), 0)));
+        List<CockpitHud.Row> head = List.of(new CockpitHud.Row(List.of(
+                new CockpitHud.Cell(line("tally_hull", 100, 100), CockpitHud.Meter.HULL.icon()),
+                new CockpitHud.Cell(line("tally_fuel", 78), CockpitHud.Meter.FUEL.icon()),
+                new CockpitHud.Cell(line("tally_cargo", 24), CockpitHud.Icon.CART),
+                new CockpitHud.Cell(line("tally_depth", "-12,345"), CockpitHud.Meter.DEPTH.icon()))));
         List<List<CockpitHud.Row>> cases = new ArrayList<>();
         for (PodStatusHud.Line alert : alerts) {
             cases.add(rowsOf(head, List.of(alert)));
@@ -1517,8 +1646,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
         if (!context.computeOnClient(CockpitHud::showsReadout)) {
             throw new AssertionError(
-                    "The pilot's seat shows the readout on the plate, so the plain readout and the account line stay"
-                            + " quiet");
+                    "The pilot's seat shows the readout on the plate, so the plain readout stays quiet");
         }
     }
 }

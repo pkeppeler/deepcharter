@@ -136,12 +136,12 @@ public class CompanyRockBiteTest {
             bite.pilot().releaseInput();
             PodStats stats = PodStats.of(pod);
             int ticks = pod.tickCount - startTick[0];
-            int expected = PodRockBite.drillTicks(stats, Depth.feet(Depth.of(bite.level(), FLOOR - 1)));
+            int expected = PodRockBite.drillTicks(stats, Depth.of(bite.level(), FLOOR - 1));
             if (Math.abs(ticks - expected) > 4) {
                 throw failure(helper, "the slab should take about %d ticks, it took %d", expected, ticks);
             }
-            int stone = PodDrill.drillTicks(
-                    stats, Blocks.STONE.defaultDestroyTime(), Depth.feet(Depth.of(bite.level(), FLOOR - 1)));
+            int stone =
+                    PodDrill.drillTicks(stats, Blocks.STONE.defaultDestroyTime(), Depth.of(bite.level(), FLOOR - 1));
             if (expected < stone * 5) {
                 throw failure(
                         helper,

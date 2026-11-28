@@ -507,10 +507,10 @@ public class PodDrillTest {
 
     @GameTest
     public void drillTimeIsHardnessTimesDepthFactor(GameTestHelper helper) {
-        // Stone is 1.5: the original's 1.2 s a tile at the surface, doubling at 1,000 ft.
+        // Stone is 1.5: the original's 1.2 s a tile at the surface, doubling at its 1,000 ft, which is 305 m (#1604).
         expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, 0), 24);
-        expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, 1000), 48);
-        expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, 3000), 96);
+        expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, 305), 48);
+        expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, 915), 96);
         // Above sea level the depth is negative: the drill gets no faster for it.
         expectTicks(helper, PodDrill.drillTicks(PodStats.base(), 1.5f, -500), 24);
         // Crust is hardness 5: slower than stone at the same depth.
@@ -716,8 +716,7 @@ public class PodDrillTest {
                 start[0] = pod.hull();
             }
             if (!level.getBlockState(pocket).is(HazardBlocks.GAS_POCKET)) {
-                float whole =
-                        GasHazard.damage(Depth.feet(Depth.of(level, pocket.getY())), PodComponents.radiatorRatio(pod));
+                float whole = GasHazard.damage(Depth.of(level, pocket.getY()), PodComponents.radiatorRatio(pod));
                 float lost = start[0] - pod.hull();
                 rig.pilot.releaseInput();
                 pod.discard();
@@ -1014,7 +1013,7 @@ public class PodDrillTest {
         return PodDrill.drillTicks(
                 PodStats.base(),
                 Blocks.STONE.defaultBlockState().getDestroySpeed(level, BlockPos.ZERO),
-                Depth.feet(Depth.of(level, y)));
+                Depth.of(level, y));
     }
 
     private static void expectNear(GameTestHelper helper, int actual, int expected, String label) {

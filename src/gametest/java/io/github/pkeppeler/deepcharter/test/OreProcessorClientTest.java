@@ -520,6 +520,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
     }
 
     private static String hud(Minecraft client) {
-        return AccountHud.text().map(text -> text.getString()).orElse("");
+        // The amounts, not their grouping (AccountHud pins "$12,345"), are what this test checks.
+        return AccountHud.text().map(text -> text.getString().replace(",", "")).orElse("");
     }
 }
