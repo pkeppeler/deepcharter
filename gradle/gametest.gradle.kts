@@ -644,10 +644,6 @@ object GametestScan {
 	/** What one pass over a source tree finds: the lists before any filter or shard, and each server class's campaign environments. */
 	class ScannedTree(val server: List<String>, val client: List<String>, val environments: Map<String, Set<String>>)
 
-	// The pass is the expensive part (every gate over every file) and does not depend on the filter or the shard, so the fixture
-	// cases that shard one real tree in turn (gradle checkGametestFixtures) run it once.
-	private val scannedTrees = mutableMapOf<String, ScannedTree>()
-
 	/** One pass over a source tree: the entrypoint lists, or a GradleException naming every problem. */
 	private fun scanTree(
 		javaRoot: File,
@@ -818,7 +814,10 @@ object GametestScan {
 	}
 
 	/**
-	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [mainSources] and
+	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [trees] holds the passes over
+	 * trees already scanned (the pass does not depend on the filter or the shard): the fixture runner, whose cases shard one real tree
+	 * in turn, passes one map for the whole run; a build's own scan passes none, since a Gradle daemon keeps this object between builds
+	 * and a map kept here would serve a tree from before the sources changed. [mainSources] and
 	 * [guardSource] are the files WorldDataGuard must list every saved-data record of the mod in, or it misses a swap of a new one.
 	 */
 	fun scan(
@@ -834,8 +833,9 @@ object GametestScan {
 		guardSource: File,
 		blankLiterals: (String) -> String,
 		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+		trees: MutableMap<String, ScannedTree> = mutableMapOf(),
 	): GametestFound {
-		val tree = scannedTrees.getOrPut(javaRoot.canonicalPath) { scanTree(javaRoot, mainSources, guardSource, blankLiterals, markedNear) }
+		val tree = trees.getOrPut(javaRoot.canonicalPath) { scanTree(javaRoot, mainSources, guardSource, blankLiterals, markedNear) }
 		var server = tree.server.toMutableList()
 		var client = tree.client.toMutableList()
 		val serverEnvironments = tree.environments
@@ -977,6 +977,7 @@ tasks.register("checkGametestFixtures") {
 			throw GradleException("-PfixtureCases and -PfixtureResults are required: $cases")
 		}
 		val report = linkedMapOf<String, Map<String, Any>>()
+		val trees = mutableMapOf<String, GametestScan.ScannedTree>()
 		for (c in JsonSlurper().parse(cases) as List<*>) {
 			c as Map<*, *>
 			val name = c["name"] as String
@@ -1059,7 +1060,7 @@ tasks.register("checkGametestFixtures") {
 					continue
 				}
 				fun weights(key: String) = (c[key] as Map<*, *>? ?: emptyMap<String, Int>()).entries.associate { it.key as String to (it.value as Number).toInt() }
-				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, c["clientShard"] as String?, weights("clientWeights"), c["serverShard"] as String?, weights("serverWeights"), (c["serverUnitLimit"] as Number?)?.toInt() ?: Int.MAX_VALUE, "name", mainSources.files, guardSource, blankLiterals, markedNear)
+				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, c["clientShard"] as String?, weights("clientWeights"), c["serverShard"] as String?, weights("serverWeights"), (c["serverUnitLimit"] as Number?)?.toInt() ?: Int.MAX_VALUE, "name", mainSources.files, guardSource, blankLiterals, markedNear, trees)
 				report[name] = linkedMapOf("ok" to true, "message" to "", "server" to found.server, "client" to found.client)
 			} catch (e: GradleException) {
 				report[name] = linkedMapOf("ok" to false, "message" to e.message!!, "server" to emptyList<String>(), "client" to emptyList<String>())

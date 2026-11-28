@@ -128,7 +128,11 @@ class GateCheckJobsFitTheBudgetTest(unittest.TestCase):
 
     def test_the_real_tree_is_scanned_once_per_run(self):
         # The cost model above holds only while the fixture runner scans a tree once however many shards it is cut into.
-        self.assertIn("scannedTrees.getOrPut(javaRoot.canonicalPath)", (REPO / "gradle/gametest.gradle.kts").read_text())
+        kts = (REPO / "gradle/gametest.gradle.kts").read_text()
+        self.assertIn("trees.getOrPut(javaRoot.canonicalPath)", kts)
+        # One map per fixture run, never kept in the object: a Gradle daemon keeps it between builds, and a tree edited since would be served stale.
+        self.assertIn("val trees = mutableMapOf<String, GametestScan.ScannedTree>()", kts)
+        self.assertNotIn("private val scannedTrees", kts)
 
     def test_no_gate_check_job_outweighs_the_worst_job_on_a_slow_runner(self):
         budget = shards.budgets()
