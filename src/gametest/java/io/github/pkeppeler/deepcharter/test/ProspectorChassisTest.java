@@ -943,7 +943,7 @@ public class ProspectorChassisTest {
     }
 
     @GameTest(maxTicks = FoundingMoleHangarTest.MAX_TICKS)
-    public void aMoleStillRestoresForOneHundredAndOneCicatriumWithoutT17(GameTestHelper helper) {
+    public void aMoleRestoresForOneHundredAndNoCicatriumWithoutT17(GameTestHelper helper) {
         FoundingMoleHangarTest.inTheHangar(
                 helper,
                 before -> FoundingMoleHangarTest.withFreshWorld(helper, () -> {
@@ -966,9 +966,9 @@ public class ProspectorChassisTest {
                             helper,
                             FoundingMoleHangarTest.balance(helper, owner) == FoundingMoleHangarTest.RICH - 100
                                     && FoundingMoleHangarTest.count(owner.player(), FoundingMoleHangarTest.CATALYST)
-                                            == 1
+                                            == 2
                                     && !Wrecks.isWreck(mole),
-                            "a Mole restores for $100 and 1 Cicatrium: the account holds %s",
+                            "a Mole restores for $100 and no Cicatrium: the account holds %s",
                             FoundingMoleHangarTest.balance(helper, owner));
                     expect(helper, !fired(helper, charter), "restoring a Mole does not fire T17");
                     FoundingMoleHangarTest.clearFloor(helper);

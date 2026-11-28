@@ -26,16 +26,20 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * The online screen of the hangar console: buy a refurbished Mole, or restore the wreck nearest the console. The prices on the
- * buttons are the tuning's, and the server decides every press, so the screen never needs to know how many pods the charter has.
- * The server's answer to an action is a new view, which this screen takes in place.
+ * The online screen of the hangar console: assemble the player's one Mole from four parts, restore or scrap the wreck
+ * nearest the console, or write off the player's own wreck. The prices are the tuning's, and the server decides every
+ * press. A line under the prices says where the player's Mole stands. The server's answer to an action is a new view,
+ * which this screen takes in place.
  */
 public final class HangarScreen extends CrtScreen implements TerminalViewScreen {
     private static final int MARGIN = 24;
     private static final int BUTTON_WIDTH = 260;
     private static final int BUTTON_HEIGHT = 20;
-    private static final int GAP = 6;
+    private static final int GAP = 4;
     private static final int CLOSE_WIDTH = 90;
+    private static final int TICKS_PER_MINUTE = 1200;
+    private static final int MILLIS_PER_TICK = 50;
+    private static final int HALF_WIDTH = (BUTTON_WIDTH - GAP) / 2;
 
     /** One wrapped line of the restore prices, where it is drawn. */
     private record PriceLine(String text, int x, int y) {}
@@ -43,11 +47,16 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
     private TerminalView view;
     private List<PriceLine> priceLines = List.of();
     private List<PriceLine> advanceLines = List.of();
+    private List<PriceLine> moleLines = List.of();
+    /** The wall-clock time at which the armed Write Off lapses, 0 when it is not armed. */
+    private long armedUntilMillis;
+
     private final Typewriter typewriter;
 
     public HangarScreen(TerminalView view) {
         super(Component.translatable(HangarTerminal.TYPE.block().getDescriptionId()));
         this.view = view;
+        this.armedUntilMillis = armedUntil(view);
         this.typewriter =
                 typewriter(Component.translatable("screen.deepcharter.hangar.welcome"), new TypewriterSound());
     }
@@ -60,6 +69,7 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
     @Override
     public void update(TerminalView newer) {
         view = newer;
+        armedUntilMillis = armedUntil(newer);
         rebuildWidgets();
     }
 
@@ -89,7 +99,6 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
         String prices = Component.translatable(
                         "screen.deepcharter.hangar.restore_prices",
                         mole.money(),
-                        mole.catalysts(),
                         prospector.money(),
                         prospector.catalysts(),
                         catalyst)
@@ -101,30 +110,88 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                 ? wrap(Component.translatable("screen.deepcharter.hangar.advance", advanceLeft, catalyst)
                         .getString())
                 : List.of();
+        HangarView hangar = view.feature(HangarView.class).orElse(new HangarView(0, HangarView.MoleState.NONE, 0, 0));
+        List<String> status = wrap(moleLine(hangar));
         List<String> wrapped = wrap(prices);
         int lineHeight = font.lineHeight + CrtTuning.current().lineSpacing();
-        int pricesY = closeY - GAP - (wrapped.size() + advance.size()) * lineHeight;
+        int moleY = closeY - GAP - status.size() * lineHeight;
+        // A blank line's gap above the status, so it reads apart from the prices and the advance.
+        int pricesY = moleY - GAP - (wrapped.size() + advance.size()) * lineHeight;
         priceLines = placed(wrapped, pricesY, lineHeight);
         advanceLines = placed(advance, pricesY + wrapped.size() * lineHeight, lineHeight);
-        int restoreY = pricesY - GAP - BUTTON_HEIGHT;
-        int buyY = restoreY - GAP - BUTTON_HEIGHT;
+        moleLines = placed(status, moleY, lineHeight);
+        // Two rows of two buttons: the stack of four would reach the header on the smallest GUI.
+        int lowerY = pricesY - GAP - BUTTON_HEIGHT;
+        int upperY = lowerY - GAP - BUTTON_HEIGHT;
+        int rightX = left + HALF_WIDTH + GAP;
         addRenderableWidget(new CrtButton(
                 left,
-                buyY,
-                BUTTON_WIDTH,
+                upperY,
+                HALF_WIDTH,
                 BUTTON_HEIGHT,
-                Component.translatable(
-                        "screen.deepcharter.hangar.buy", tuning.refurbishedMole(), tuning.registrationFee()),
-                button -> send(HangarTerminal.BUY_MOLE)));
-        // The wreck the server restores is the nearest one, so the lines under the button name the price of
+                Component.translatable("screen.deepcharter.hangar.assemble"),
+                button -> send(HangarTerminal.ASSEMBLE_MOLE)));
+        // The wreck the server restores or scraps is the nearest one, so the lines under the buttons name the price of
         // each chassis.
         addRenderableWidget(new CrtButton(
-                left,
-                restoreY,
-                BUTTON_WIDTH,
+                rightX,
+                upperY,
+                HALF_WIDTH,
                 BUTTON_HEIGHT,
                 Component.translatable("screen.deepcharter.hangar.restore"),
                 button -> send(HangarTerminal.RESTORE_WRECK)));
+        addRenderableWidget(new CrtButton(
+                left,
+                lowerY,
+                HALF_WIDTH,
+                BUTTON_HEIGHT,
+                Component.translatable("screen.deepcharter.hangar.scrap"),
+                button -> send(HangarTerminal.SCRAP_WRECK)));
+        addRenderableWidget(new CrtButton(
+                rightX,
+                lowerY,
+                HALF_WIDTH,
+                BUTTON_HEIGHT,
+                armed()
+                        ? Component.translatable("screen.deepcharter.hangar.write_off_confirm", tuning.writeOffCost())
+                        : Component.translatable("screen.deepcharter.hangar.write_off", tuning.writeOffCost()),
+                button -> send(HangarTerminal.WRITE_OFF)));
+    }
+
+    /** One sentence on where the player's one Mole stands, so a refused button has its reason on the screen. */
+    private String moleLine(HangarView hangar) {
+        if (armed()) {
+            return Component.translatable(
+                            "screen.deepcharter.hangar.mole.armed",
+                            HangarTuning.DEFAULT.writeOffCost(),
+                            HangarTuning.DEFAULT.writeOffTicks() / TICKS_PER_MINUTE)
+                    .getString();
+        }
+        return switch (hangar.mole()) {
+            case NONE ->
+                Component.translatable("screen.deepcharter.hangar.mole.none").getString();
+            case WORKING ->
+                Component.translatable("screen.deepcharter.hangar.mole.working").getString();
+            case WRECKED ->
+                Component.translatable("screen.deepcharter.hangar.mole.wrecked").getString();
+            case WRITING_OFF ->
+                Component.translatable(
+                                "screen.deepcharter.hangar.mole.writing_off",
+                                (hangar.writeOffTicksLeft() + TICKS_PER_MINUTE - 1) / TICKS_PER_MINUTE)
+                        .getString();
+        };
+    }
+
+    /** The wall-clock time at which the armed Write Off in {@code shown} lapses, 0 when it is not armed. */
+    private static long armedUntil(TerminalView shown) {
+        int ticks =
+                shown.feature(HangarView.class).map(HangarView::armedTicksLeft).orElse(0);
+        return ticks > 0 ? System.currentTimeMillis() + ticks * (long) MILLIS_PER_TICK : 0;
+    }
+
+    /** True from the first press on Write Off until the second must come: the screen then shows the terms. */
+    private boolean armed() {
+        return armedUntilMillis > System.currentTimeMillis();
     }
 
     private List<String> wrap(String text) {
@@ -160,6 +227,11 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        if (armedUntilMillis != 0 && !armed()) {
+            // The window lapsed: the button and the status go back to what they were.
+            armedUntilMillis = 0;
+            rebuildWidgets();
+        }
         CrtTuning tuning = CrtTuning.current();
         CrtDraw.header(
                 graphics,
@@ -183,6 +255,9 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
             CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
         }
         for (PriceLine line : advanceLines) {
+            CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
+        }
+        for (PriceLine line : moleLines) {
             CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
         }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);

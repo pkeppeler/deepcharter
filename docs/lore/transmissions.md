@@ -43,7 +43,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 
 > That's one less thing in the dark!
 
-**T06 · Event: Mole repaired (first charter) or bought (later charters) · Personnel · B1**
+**T06 · Event: Mole repaired (first charter) or assembled (later members) · Personnel · B1**
 > The Mole is flying again! She was the first pod Prosperity ever put to work, and she's served more crews than we can count. Take good care of her. The ground beneath the colony is full of opportunity, and it's all yours to dig.
 
 **T07 · Layer 1 entered · Personnel · B1**

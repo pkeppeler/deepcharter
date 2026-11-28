@@ -38,7 +38,6 @@ import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
-import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -67,8 +66,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for #77: the derelict Mole in the hangar, its repair by the first charter, a refurbished Mole for a later
- * one, and the restore of a wreck.
+ * Server GameTests for #77: the derelict Mole in the hangar, its repair by the first charter, a Mole assembled by a
+ * later member, and the restore of a wreck. {@link MoleSlotTest} has the one-Mole rule.
  *
  * <p>The hangar data, the repair state and the serials are one each per world. A test that changes them swaps in fresh ones for
  * its own duration ({@link #withFreshWorld}) and puts the world's back at the end. Each such test does all its work inside one
@@ -80,15 +79,13 @@ public class FoundingMoleHangarTest {
 
     static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + MOLE_LOAD_TICKS + 200;
     static final long RICH = 100_000;
-    /** What T06, the first Mole a charter buys, pays it. */
-    private static final long MOLE_BONUS = Transmission.Bonus.B1.amount();
 
     private static final int FLOOR = 9; // fixed-pos: the side of a square pad, not a Y
     private static final String FUTURE_HANGAR = "7741";
     private static final String FUTURE_SERIALS = "7742";
 
     static final Item CATALYST = OreRegistry.item(HangarTuning.DEFAULT.catalyst());
-    private static final List<Item> PARTS = HangarParts.ALL;
+    static final List<Item> PARTS = HangarParts.ALL;
     private static final List<String> REPAIRED_BY = new ArrayList<>();
 
     static {
@@ -164,7 +161,7 @@ public class FoundingMoleHangarTest {
                         PodEntity.class, new AABB(hangarAnchor(helper)).inflate(HangarTuning.DEFAULT.bayRadius() + 4));
     }
 
-    private static List<PodEntity> madeSince(GameTestHelper helper, Set<UUID> before) {
+    static List<PodEntity> madeSince(GameTestHelper helper, Set<UUID> before) {
         return podsInTheHangar(helper).stream()
                 .filter(pod -> !before.contains(pod.getUUID()))
                 .toList();
@@ -237,7 +234,7 @@ public class FoundingMoleHangarTest {
     }
 
     /** A pod on the floor of the test, owned by {@code owner} if there is one, and a wreck if {@code wrecked}. */
-    private static PodEntity pod(GameTestHelper helper, Optional<CharterId> owner, boolean wrecked) {
+    static PodEntity pod(GameTestHelper helper, Optional<CharterId> owner, boolean wrecked) {
         PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(5.5, 2, 5.5));
         owner.ifPresent(charter -> PodComponents.register(pod, charter));
         if (wrecked) {
@@ -464,85 +461,7 @@ public class FoundingMoleHangarTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void aRefurbishedMoleCostsOneFiftyPlusSeventyFiveForEachPodTheCharterHas(GameTestHelper helper) {
-        inTheHangar(
-                helper,
-                before -> withFreshWorld(helper, () -> {
-                    repairTheConsole(helper);
-                    MockPlayer buyer = member(helper, "Buyer");
-                    MockPlayer newcomer = member(helper, "Newcomer");
-                    BlockPos console = console(helper, buyer);
-                    stand(helper, newcomer, console);
-                    deposit(helper, buyer, RICH);
-                    deposit(helper, newcomer, RICH);
-                    CharterId charter = charterOf(helper, buyer).id();
-                    // The founding Mole is the buyer's first pod. Pods of another charter do not count.
-                    pod(helper, Optional.of(charter), false);
-                    pod(helper, Optional.of(charterOf(helper, newcomer).id()), false);
-                    pod(helper, Optional.of(charterOf(helper, newcomer).id()), false);
-
-                    long[] prices = {150 + 75, 150 + 75 * 2, 150 + 75 * 3};
-                    long expected = RICH;
-                    for (int owned = 1; owned <= prices.length; owned++) {
-                        long price = prices[owned - 1];
-                        expect(
-                                helper,
-                                HangarTuning.DEFAULT.refurbishedPrice(owned) == price,
-                                "the price for %s pods is %s, the tuning says %s",
-                                owned,
-                                price,
-                                HangarTuning.DEFAULT.refurbishedPrice(owned));
-                        int podsBefore = madeSince(helper, before).size();
-                        expectDone(
-                                helper,
-                                act(buyer.player(), console, HangarTerminal.BUY_MOLE),
-                                "buying a refurbished Mole with " + owned + " pods");
-                        expected -= price;
-                        if (owned == 1) {
-                            // A charter's first bought Mole brings T06 and its bonus.
-                            expected += MOLE_BONUS;
-                        }
-                        expect(
-                                helper,
-                                balance(helper, buyer) == expected,
-                                "with %s pods the Mole costs exactly $%s: the account holds %s, should hold %s",
-                                owned,
-                                price,
-                                balance(helper, buyer),
-                                expected);
-                        List<PodEntity> bought = madeSince(helper, before);
-                        expect(
-                                helper,
-                                bought.size() == podsBefore + 1,
-                                "buying makes one pod in the hangar, the hangar holds %s new",
-                                bought.size());
-                        PodEntity newest = bought.stream()
-                                .filter(pod -> !pod.isRemoved()
-                                        && PodComponents.registration(pod).isPresent()
-                                        && PodComponents.registration(pod)
-                                                .get()
-                                                .owner()
-                                                .equals(charter))
-                                .reduce((a, b) -> b)
-                                .orElseThrow();
-                        expect(helper, !Wrecks.isWreck(newest) && newest.hull() > 0f, "a refurbished Mole works");
-                        // The bought pod is a pod of the charter now, so the next one costs $75 more.
-                    }
-                    // A charter with two pods pays $150 + $150, and is not charged for the buyer's pods.
-                    long newcomerBefore = balance(helper, newcomer);
-                    expectDone(helper, act(newcomer.player(), console, HangarTerminal.BUY_MOLE), "the newcomer buying");
-                    expect(
-                            helper,
-                            newcomerBefore - balance(helper, newcomer) == 150 + 75 * 2 - MOLE_BONUS,
-                            "the newcomer has two pods, so it pays $300, less the bonus of its first bought Mole: it paid %s",
-                            newcomerBefore - balance(helper, newcomer));
-                    clearFloor(helper);
-                    helper.succeed();
-                }));
-    }
-
-    @GameTest(maxTicks = MAX_TICKS)
-    public void aMoleIsNotForSaleUntilTheFoundingMoleIsRepaired(GameTestHelper helper) {
+    public void aMoleCannotBeAssembledUntilTheFoundingMoleIsRepaired(GameTestHelper helper) {
         inTheHangar(
                 helper,
                 before -> withFreshWorld(helper, () -> {
@@ -550,70 +469,23 @@ public class FoundingMoleHangarTest {
                     MockPlayer buyer = member(helper, "Early Buyer");
                     BlockPos console = console(helper, buyer);
                     deposit(helper, buyer, RICH);
+                    PARTS.forEach(part -> give(buyer.player(), part, 1));
 
                     expectRefused(
                             helper,
-                            act(buyer.player(), console, HangarTerminal.BUY_MOLE),
-                            "buying before the founding Mole is repaired");
+                            act(buyer.player(), console, HangarTerminal.ASSEMBLE_MOLE),
+                            "assembling before the founding Mole is repaired");
                     expect(
                             helper,
-                            balance(helper, buyer) == RICH
+                            count(buyer.player(), HangarParts.DRILL_HEAD) == 1
                                     && madeSince(helper, before).isEmpty(),
-                            "the refusal takes nothing and makes no pod");
+                            "the refusal takes no part and makes no pod");
 
                     WorldData.replace(server(helper), HangarData.TYPE, foundedHangar());
                     expectDone(
                             helper,
-                            act(buyer.player(), console, HangarTerminal.BUY_MOLE),
-                            "buying once the founding Mole is repaired");
-                    clearFloor(helper);
-                    helper.succeed();
-                }));
-    }
-
-    @GameTest(maxTicks = MAX_TICKS)
-    public void aRefurbishedMoleRefusesOnInsufficientFundsAndChangesNothing(GameTestHelper helper) {
-        inTheHangar(
-                helper,
-                before -> withFreshWorld(helper, () -> {
-                    repairTheConsole(helper);
-                    MockPlayer buyer = member(helper, "Poor Buyer");
-                    BlockPos console = console(helper, buyer);
-                    CharterId charter = charterOf(helper, buyer).id();
-                    pod(helper, Optional.of(charter), false);
-                    long price = HangarTuning.DEFAULT.refurbishedPrice(1);
-                    deposit(helper, buyer, price - 1);
-
-                    expectRefused(
-                            helper, act(buyer.player(), console, HangarTerminal.BUY_MOLE), "buying one dollar short");
-                    expect(
-                            helper,
-                            balance(helper, buyer) == price - 1,
-                            "a refused purchase takes nothing: the account holds %s",
-                            balance(helper, buyer));
-                    expect(helper, madeSince(helper, before).isEmpty(), "a refused purchase makes no pod");
-
-                    deposit(helper, buyer, 1);
-                    expectDone(
-                            helper,
-                            act(buyer.player(), console, HangarTerminal.BUY_MOLE),
-                            "buying with exactly the price");
-                    expect(
-                            helper,
-                            balance(helper, buyer) == MOLE_BONUS,
-                            "exactly the price empties the account, and T06 pays its bonus into it: it holds %s",
-                            balance(helper, buyer));
-                    PodEntity bought = madeSince(helper, before).getFirst();
-                    // The refused purchase used no serial: the pod made before it is MOLE-0001, so this one
-                    // is MOLE-0002.
-                    expect(
-                            helper,
-                            PodComponents.registration(bought)
-                                    .orElseThrow()
-                                    .serial()
-                                    .equals("MOLE-0002"),
-                            "a refused purchase burns no serial, the bought Mole is %s",
-                            PodComponents.registration(bought).orElseThrow().serial());
+                            act(buyer.player(), console, HangarTerminal.ASSEMBLE_MOLE),
+                            "assembling once the founding Mole is repaired");
                     clearFloor(helper);
                     helper.succeed();
                 }));
@@ -767,7 +639,7 @@ public class FoundingMoleHangarTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void aRestoreRefusesWithoutTheCatalystOrTheMoneyAndChangesNothing(GameTestHelper helper) {
+    public void aRestoreRefusesWithoutTheMoneyOrForAnotherChartersWreckAndChangesNothing(GameTestHelper helper) {
         inTheHangar(
                 helper,
                 before -> withFreshWorld(helper, () -> {
@@ -780,18 +652,9 @@ public class FoundingMoleHangarTest {
                     PodEntity wreck = pod(helper, Optional.of(charter), true);
                     long money = HangarTuning.DEFAULT.restoreCost(Chassis.MOLE).money();
 
-                    // Money but no catalyst.
                     deposit(helper, owner, RICH);
-                    expectRefused(
-                            helper,
-                            act(owner.player(), console, HangarTerminal.RESTORE_WRECK),
-                            "restoring without the catalyst");
-                    expect(
-                            helper,
-                            Wrecks.isWreck(wreck) && balance(helper, owner) == RICH,
-                            "a restore without the catalyst changes nothing");
 
-                    // A catalyst but a dollar short.
+                    // A dollar short.
                     MockPlayer poor = member(helper, "Poor");
                     stand(helper, poor, console);
                     PodEntity poorWreck =
@@ -1025,8 +888,8 @@ public class FoundingMoleHangarTest {
                             .onRepaired(server, HangarTerminal.TYPE, charterOf(helper, player), player.player());
                     expectRefused(
                             helper,
-                            act(player.player(), console, HangarTerminal.BUY_MOLE),
-                            "buying with an unreadable hangar");
+                            act(player.player(), console, HangarTerminal.ASSEMBLE_MOLE),
+                            "assembling with an unreadable hangar");
                     expectRefused(
                             helper,
                             act(player.player(), console, HangarTerminal.RESTORE_WRECK),
@@ -1058,14 +921,15 @@ public class FoundingMoleHangarTest {
                             Serials.TYPE,
                             Serials.CODEC.parse(NbtOps.INSTANCE, futureSerials).getOrThrow());
                     LogCapture serialsLog = LogCapture.start(FUTURE_SERIALS);
+                    PARTS.forEach(part -> give(player.player(), part, 1));
                     expectRefused(
                             helper,
-                            act(player.player(), console, HangarTerminal.BUY_MOLE),
-                            "buying with unreadable serials");
+                            act(player.player(), console, HangarTerminal.ASSEMBLE_MOLE),
+                            "assembling with unreadable serials");
                     expectRefused(
                             helper,
-                            act(player.player(), console, HangarTerminal.BUY_MOLE),
-                            "buying again with unreadable serials");
+                            act(player.player(), console, HangarTerminal.ASSEMBLE_MOLE),
+                            "assembling again with unreadable serials");
                     expect(
                             helper,
                             serialsLog.errors().size() == 1,
@@ -1074,9 +938,9 @@ public class FoundingMoleHangarTest {
                             serialsLog.errors());
                     expect(
                             helper,
-                            balance(helper, player) == RICH
+                            count(player.player(), HangarParts.DRILL_HEAD) == 1
                                     && podsInTheHangar(helper).size() == pods,
-                            "a purchase refused for the serials takes nothing and makes no pod");
+                            "an assembly refused for the serials takes no part and makes no pod");
 
                     // A pod whose wreck state is unreadable is not a wreck the hangar can see.
                     odd.setAttached(WreckRegistry.STATE, new Versioned.Unreadable<>(new CompoundTag()));
