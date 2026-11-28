@@ -34,6 +34,7 @@ public final class PodInit {
         PodBrace.init();
         PodHeatShield.init();
         PodTowing.init();
+        PodRescueHint.init();
         PodTether.init();
     }
 }

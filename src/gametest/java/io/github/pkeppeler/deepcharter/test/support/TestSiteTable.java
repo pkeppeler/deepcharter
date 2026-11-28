@@ -584,6 +584,7 @@ final class TestSiteTable {
         row("TowingTest", 1, 15294, 15328, 128, 3, 15102, 15120);
         claim("TowingTest", 2, 2098, 2102, 2098, 2102);
         claim("TowingTest", 2, 2198, 2202, 2198, 2202);
+        claim("TowRescueHintTest", 2, 120000, 120335, 120000, 120015);
 
         claim("VoidBelowTest", 1, 9096, 9104, 9146, 9154);
         claim("VoidBelowTest", 2, 9096, 9104, 9146, 9154);
