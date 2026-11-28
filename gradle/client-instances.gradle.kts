@@ -24,10 +24,13 @@ val clientInstances = providers.gradleProperty("clientInstances").orNull?.let {
 // 0.84 GB at 4G, and 1.07 GB at 3G (run-jvm.gradle.kts), so 2.5 GB at four instances still leaves G1 room.
 fun clientInstanceHeapMb(instances: Int): Int = minOf(4096, 10240 / instances / 256 * 256)
 
+// EXPERIMENT (#1722): -PclientInstanceCpus=c caps each instance's JVM at c processors (thread pools size from it).
+val clientInstanceCpus = providers.gradleProperty("clientInstanceCpus").orNull?.toInt()
+
 if (clientInstances > 1) {
 	val heap = "-Xmx${clientInstanceHeapMb(clientInstances)}m"
 	val instanceTasks = (1..clientInstances).map { k ->
-		copyClientGameTestRun("clientGameTest$k", "build/run/clientGameTest-$k", listOf(heap, "-Ddeepcharter.clientInstance=$k"))
+		copyClientGameTestRun("clientGameTest$k", "build/run/clientGameTest-$k", listOf(heap, "-Ddeepcharter.clientInstance=$k") + listOfNotNull(clientInstanceCpus?.let { "-XX:ActiveProcessorCount=$it" }))
 		val task = "runClientGameTest$k"
 		tasks.named<JavaExec>(task) {
 			val log = layout.buildDirectory.file("client-instance-$k.log")

@@ -32,25 +32,31 @@ jobs:
           name: compiled-exp
 
   run:
-    name: exp n=${{ matrix.n }} ${{ matrix.slice }} rep ${{ matrix.rep }}
+    name: exp n=${{ matrix.n }} ${{ matrix.slice }} rep ${{ matrix.rep }} lp${{ matrix.lp }} cpu${{ matrix.cpus }}
     needs: compile
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      LP_NUM_THREADS: ${{ matrix.lp }}
+      CLIENT_INSTANCE_CPUS: ${{ matrix.cpus }}
     strategy:
       fail-fast: false
       matrix:
-        rep: [1, 2]
-        n: [1]
-        slice: [a, b, c, d]
         include:
-          - { rep: 1, n: 2, slice: ab }
-          - { rep: 1, n: 2, slice: cd }
-          - { rep: 1, n: 3, slice: abc }
-          - { rep: 1, n: 4, slice: abcd }
-          - { rep: 2, n: 2, slice: ab }
-          - { rep: 2, n: 2, slice: cd }
-          - { rep: 2, n: 3, slice: abc }
-          - { rep: 2, n: 4, slice: abcd }
+          - { n: 1, slice: a, lp: "", cpus: "", rep: 1 }
+          - { n: 1, slice: b, lp: "", cpus: "", rep: 1 }
+          - { n: 1, slice: c, lp: "", cpus: "", rep: 1 }
+          - { n: 1, slice: d, lp: "", cpus: "", rep: 1 }
+          - { n: 2, slice: ab, lp: "", cpus: "", rep: 1 }
+          - { n: 2, slice: cd, lp: "", cpus: "", rep: 1 }
+          - { n: 2, slice: ab, lp: "2", cpus: "2", rep: 1 }
+          - { n: 2, slice: cd, lp: "2", cpus: "2", rep: 1 }
+          - { n: 2, slice: ab, lp: "2", cpus: "2", rep: 2 }
+          - { n: 2, slice: cd, lp: "2", cpus: "2", rep: 2 }
+          - { n: 2, slice: ab, lp: "1", cpus: "2", rep: 1 }
+          - { n: 2, slice: cd, lp: "1", cpus: "2", rep: 1 }
+          - { n: 3, slice: abc, lp: "1", cpus: "1", rep: 1 }
+          - { n: 3, slice: abc, lp: "1", cpus: "2", rep: 1 }
     steps:
       - run: echo "JOB_START=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -69,6 +75,7 @@ jobs:
           list=
           for ((i = 0; i < ${#SLICE}; i++)); do list="${list:+$list,}${part[${SLICE:$i:1}]}"; done
           echo "list=$list" >> "$GITHUB_OUTPUT"
+      - run: nohup vmstat 5 > "$RUNNER_TEMP/vmstat.log" 2>&1 &
       - id: compiled
         uses: ./.github/actions/download-compiled
         with:
@@ -81,5 +88,7 @@ jobs:
           client-instances: ${{ matrix.n }}
           gradle-cache-read-only: "true"
           artifact-suffix: -exp-${{ matrix.n }}-${{ matrix.slice }}-${{ matrix.rep }}
+      - if: always()
+        run: cat "$RUNNER_TEMP/vmstat.log"
       - if: always()
         run: echo "JOB_END=$(( $(date +%s) - JOB_START )) s after the job start"

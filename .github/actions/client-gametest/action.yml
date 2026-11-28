@@ -149,6 +149,7 @@ runs:
           # N client JVMs side by side (#1722); --continue lets the others finish when one fails, and the task names each failure.
           task=runClientGameTestInstances
           filter+=("-PclientInstances=$INSTANCES" --continue)
+          if [ -n "${CLIENT_INSTANCE_CPUS:-}" ]; then filter+=("-PclientInstanceCpus=$CLIENT_INSTANCE_CPUS"); fi
         fi
         # SKIP_COMPILE is word-split on purpose: `-x compileJava -x ...`.
         # shellcheck disable=SC2086
