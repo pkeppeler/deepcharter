@@ -64,6 +64,7 @@ public class LamplessFigureScenario extends EvidenceScenario {
                 BlockPos floor = player.blockPosition().below();
                 buildRailLine(level, floor);
                 // Facing north (yaw 180), down the rails, with the pod ahead, beside them, and the figure beyond it.
+                // arrived-ok: a few blocks from the spawn, in chunks the player already holds
                 player.teleportTo(
                         level,
                         floor.getX() + 0.5,
