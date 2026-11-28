@@ -35,8 +35,8 @@ public final class GasHazard {
     }
 
     /**
-     * Hull points a blast costs: the depth in metres times the radiator factor times {@code OreTuning.gasDamagePerMetre}.
-     * The depth is clamped to 0, so gas above sea level does nothing.
+     * Hull points a blast costs: the depth in metres times the radiator factor times
+     * {@code OreTuning.gasDamagePerMetre}. The depth is clamped to 0, so gas above sea level does nothing.
      *
      * @throws IllegalArgumentException if {@code radiator} is negative or not a finite number
      */

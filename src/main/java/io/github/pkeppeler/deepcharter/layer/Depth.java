@@ -4,7 +4,10 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.Optional;
 import net.minecraft.world.level.Level;
 
-/** Depth below sea level in blocks, which the game reads as metres (#1604), read from the dimension-type registry so the client can compute it too. */
+/**
+ * Depth below sea level in blocks, which the game reads as metres (#1604), read from the dimension-type registry so
+ * the client can compute it too.
+ */
 public final class Depth {
     private Depth() {}
 

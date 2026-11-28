@@ -5,8 +5,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 
 /**
- * The depth readout, for example "-1,234 m": the HUD's altimeter and the Continuity Event's chat line (#1337). Below sea
- * level is negative. A block is a metre (#1604).
+ * The depth readout, for example "-1,234 m": the HUD's altimeter and the Continuity Event's chat line (#1337).
+ * Below sea level is negative. A block is a metre (#1604).
  */
 public final class Altimeter {
     private Altimeter() {}

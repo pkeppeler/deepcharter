@@ -211,7 +211,10 @@ public final class CockpitHud {
         return look.fits(guiWidth, guiHeight) ? Optional.of(look.ribbon()) : Optional.empty();
     }
 
-    /** Whether the cockpit's plate shows the text readout: the local player is the pilot of a pod and the Ribbon fits. The plain HUD's readout stays quiet then. */
+    /**
+     * Whether the cockpit's plate shows the text readout: the local player is the pilot of a pod and the Ribbon fits.
+     * The plain HUD's readout stays quiet then.
+     */
     public static boolean showsReadout(Minecraft client) {
         return showsReadout(
                 client,
@@ -670,8 +673,9 @@ public final class CockpitHud {
     }
 
     /**
-     * The rows of the plate: the tally on one row (hull, fuel and depth each in its gauge's colour after its gauge's icon, and the bay's ore count in the cargo colour
-     * after the {@link Icon#CART}), and under it every other line of the readout, so the numbers stay where they are as lines come and go.
+     * The rows of the plate: the tally on one row (hull, fuel and depth each in its gauge's colour after its gauge's
+     * icon, and the bay's ore count in the cargo colour after the {@link Icon#CART}), and under it every other line of
+     * the readout, so the numbers stay where they are as lines come and go.
      */
     public static List<Row> rows(PodEntity pod, CockpitReading reading, CockpitLook look, List<Line> readout) {
         boolean fuelLow = PodFuel.isLow(pod.fuel());

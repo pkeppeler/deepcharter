@@ -312,9 +312,9 @@ public final class PodStatusHud {
     /** A line of the readout and the colour it is drawn in. */
     public record Line(Component text, int color) {
         /**
-         * The kind of a line from its key in {@link #KINDS}; a line of plain text is a note. A plate too long for its room
-         * drops notes from the end up and asks each row it passes for its kind, so every line must have one (#1457: a
-         * burning, stranded pod on a 320 wide GUI crashed the game here).
+         * The kind of a line from its key in {@link #KINDS}; a line of plain text is a note. A plate too long for its
+         * room drops notes from the end up and asks each row it passes for its kind, so every line must have one
+         * (#1457: a burning, stranded pod on a 320 wide GUI crashed the game here).
          */
         public Kind kind() {
             if (!(text.getContents() instanceof TranslatableContents contents)) {

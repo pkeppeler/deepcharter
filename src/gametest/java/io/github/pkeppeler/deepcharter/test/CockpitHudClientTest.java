@@ -337,8 +337,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Seated with the cockpit up, the account line is drawn where it is on foot (#1642): the left edge, {@code accountY}
-     * down, one line of the font. The pod's charter is founded by {@link ScannerPods#fit}.
+     * Seated with the cockpit up, the account line is drawn where it is on foot (#1642): the left edge,
+     * {@code accountY} down, one line of the font. The pod's charter is founded by {@link ScannerPods#fit}.
      */
     private static void expectTheAccountLineKeepsItsSpotSeated(ClientGameTestContext context) {
         ClientWait.until(

@@ -22,7 +22,7 @@ public final class PodRockBite {
         return pod.hull() <= PodRockBiteTuning.DEFAULT.hullFloor();
     }
 
-    /** Ticks to bore a Company rock slab {@code depth} metres down, as {@link PodDrill#drillTicks} says for any block. */
+    /** Ticks to bore a Company rock slab {@code depth} metres down, as {@link PodDrill#drillTicks} says for a block. */
     public static int drillTicks(PodStats stats, int depth) {
         return PodDrill.drillTicks(stats, PodRockBiteTuning.DEFAULT.hardness(), depth);
     }
