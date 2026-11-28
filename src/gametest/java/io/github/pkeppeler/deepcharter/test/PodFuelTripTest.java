@@ -55,7 +55,7 @@ public class PodFuelTripTest {
 
     private static final int MAX_DRILL_SECONDS_PER_TANK = 190;
     private static final double MAX_MIXED_MINUTES_PER_TANK = 4.5;
-    /** Minutes of the first trip's mix of drilling, driving and climbing that a tank must last (#1596 cut it by 30%). */
+    /** Minutes of the first trip's mix of drilling, driving and climbing that a tank must last (#1596 cut it 30%). */
     private static final double MIN_MIXED_MINUTES_PER_TANK = 2.5;
     /** Share of the tank a first trip must come home with, as slack for a slow pilot, a wrong turn and ore. */
     private static final double MIN_SPARE_SHARE = 0.1;

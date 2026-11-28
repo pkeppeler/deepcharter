@@ -509,9 +509,11 @@ public class EconomyAffordabilityTest {
     }
 
     /**
-     * Tank refills that a one-way bore of all of layer 1 takes, for a Mole whose tank is of tier 0 to 6, in the deepest zone (it
-     * changes drill time per slab through the ore's hardness, so it is the dearest). Literals: a change to the tank ladder, the burn
-     * rates (#963 cut them to about a seventh and #1596 raised them by 1 / 0.7, so a bore is 29 L and the tank ladder (10, 13, 17, 22, 30, 45, 65 L) buys it in 3 refills or fewer), the drill or layer 1's height moves them.
+     * Tank refills that a one-way bore of all of layer 1 takes, for a Mole whose tank is of tier 0 to 6, in the deepest
+     * zone (it changes drill time per slab through the ore's hardness, so it is the dearest). Literals: a change to the
+     * tank ladder, the burn rates (#963 cut them to about a seventh and #1596 raised them by 1 / 0.7, so a bore is 29 L
+     * and the tank ladder of 10, 13, 17, 22, 30, 45 and 65 L buys it in 3 refills or fewer), the drill or layer 1's
+     * height moves them.
      */
     private static final int[] BORE_TANKS_BY_TANK_TIER = {3, 3, 2, 2, 1, 1, 1};
 

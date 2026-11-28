@@ -50,19 +50,21 @@ public final class EarlyRunModel {
     public static final double DRIVE_DOWN_SINK = 0.6;
 
     /**
-     * (A) The share of a tank that one pricing run burns. The prices are counted in runs, and a run was a whole tank at the original's burn rates.
-     * Issue 963 slowed the burn to a seventh so that a first tank lasts minutes of play, and left the drill and the ore alone, so what a run earns
-     * for the minute it takes is as it was: a run stays the trip a seventh of the tank paid for, and "runs to afford" keeps its meaning. A pilot
-     * who burns the whole tank makes seven runs of ore, but the bay is full long before, so the model keeps the old run. Issue 1596 made a tank
-     * last 70% as long (the burn is 1 / 0.7 times higher), so the same run now takes 1 / 0.7 times the share of the tank.
+     * (A) The share of a tank that one pricing run burns. The prices are counted in runs, and a run was a whole tank at
+     * the original's burn rates. Issue 963 slowed the burn to a seventh so that a first tank lasts minutes of play, and
+     * left the drill and the ore alone, so what a run earns for the minute it takes is as it was: a run stays the trip
+     * a seventh of the tank paid for, and "runs to afford" keeps its meaning. A pilot who burns the whole tank makes
+     * seven runs of ore, but the bay is full long before, so the model keeps the old run. Issue 1596 made a tank last
+     * 70% as long (the burn is 1 / 0.7 times higher), so the same run now takes 1 / 0.7 times the share of the tank.
      */
     public static final double PRICING_RUN_TANK_SHARE = 1.0 / 7.0 / 0.7;
 
     /**
-     * (A) The tank sizes the economy was priced on, by the size a tier has now (#1596 flattened the ladder from 10, 15, 25, 40, 60, 100 and 150 L
-     * to 10, 13, 17, 22, 30, 45 and 65 L). A run is a share of the tank, so a smaller tank would shorten the pricing run of every tier and
-     * make every part dearer in runs; the user asked for less fuel, not for dearer parts, so a run is still priced on the old tank. A tank that
-     * is on neither ladder (a stock tank with litres lost to a grip) is its own size.
+     * (A) The tank sizes the economy was priced on, by the size a tier has now (#1596 flattened the ladder from 10, 15,
+     * 25, 40, 60, 100 and 150 L to 10, 13, 17, 22, 30, 45 and 65 L). A run is a share of the tank, so a smaller tank
+     * would shorten the pricing run of every tier and make every part dearer in runs; the user asked for less fuel, not
+     * for dearer parts, so a run is still priced on the old tank. A tank that is on neither ladder (a stock tank with
+     * litres lost to a grip) is its own size.
      */
     private static final Map<Integer, Float> PRICING_TANK_LITRES = Map.of(
             13, 15f,
