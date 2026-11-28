@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.outpost.IncidentReportScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionLogScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtMenuScreen;
@@ -65,6 +66,9 @@ import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
+import io.github.pkeppeler.deepcharter.transmission.Transmission;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionLogPayload;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -194,7 +198,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                         new WorkOrdersView(true, orders),
                         Arrays.stream(OreType.values())
                                 .map(ore -> new ProcessorView.Hold(ore, 99999))
-                                .toList()));
+                                .toList(),
+                        new ProcessorView.Bricks(999, 999, 9999)));
         return features;
     }
 
@@ -652,7 +657,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         return new TerminalView(
                 view.pos(),
                 view.type(),
-                Optional.of(new ProcessorView(new WorkOrdersView(true, orders), processor.cargo())),
+                Optional.of(new ProcessorView(new WorkOrdersView(true, orders), processor.cargo(), processor.bricks())),
                 view.notices());
     }
 
@@ -911,6 +916,15 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                 }))));
         cases.add(new Case("incident report", () -> new IncidentReportScreen(longestIncidentReport(), null)));
         // The longest sheet there is: a part with a stock tier and six bought ones.
+        cases.add(new Case(
+                "comms log",
+                () -> new TransmissionLogScreen(new TransmissionLogPayload(
+                        TransmissionCatalog.all().stream().map(Transmission::id).toList(),
+                        "W".repeat(NAME_LENGTH),
+                        "W".repeat(NAME_LENGTH)))));
+        cases.add(new Case(
+                "comms log, no charter",
+                () -> new TransmissionLogScreen(new TransmissionLogPayload(List.of(), "", "the Director"))));
         cases.add(new Case("spec sheet", () -> new SpecSheetScreen(ComponentItems.item(ComponentTrack.DRILL))));
         // The recipe console a chest's R opens, at the longest recipe of the fixtures: the nanobots' 3 x 3 grid and
         // long name.

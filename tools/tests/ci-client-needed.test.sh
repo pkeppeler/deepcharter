@@ -24,6 +24,7 @@ check "tools-only skips" false 0 tools/merge-pr.sh tools/tests/merge-pr.test.sh
 check "workflow-only skips" false 0 .github/workflows/ci.yml
 check "client-tests workflow change runs" true 0 .github/workflows/client-tests.yml
 check "client-gametest action change runs" true 0 .github/actions/client-gametest/action.yml
+check "loom-assets action change runs" true 0 .github/actions/loom-assets/action.yml
 check "shard weights change runs" true 0 gradle/client-test-weights.txt
 check "gametest scan change runs" true 0 gradle/gametest.gradle.kts
 check "other gradle file skips" false 0 gradle/libs.versions.toml .github/actions/merge-main/action.yml

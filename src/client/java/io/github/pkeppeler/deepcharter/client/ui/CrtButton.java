@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.ui;
 
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
+import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -14,6 +15,7 @@ import net.minecraft.network.chat.Component;
  */
 public final class CrtButton extends Button implements PanelButton {
     private boolean marked;
+    private Optional<Component> about = Optional.empty();
 
     public CrtButton(int x, int y, int width, int height, Component label, OnPress onPress) {
         super(x, y, width, height, label, onPress, DEFAULT_NARRATION);
@@ -26,6 +28,17 @@ public final class CrtButton extends Button implements PanelButton {
     public CrtButton marked(boolean marked) {
         this.marked = marked;
         return this;
+    }
+
+    /** Sets what the row does, which {@link AboutTip} shows while the player points at the button, before the press. */
+    public CrtButton about(Component about) {
+        this.about = Optional.of(about);
+        return this;
+    }
+
+    /** What the row does, when it says. */
+    public Optional<Component> about() {
+        return about;
     }
 
     @Override

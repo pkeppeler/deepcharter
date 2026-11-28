@@ -12,6 +12,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
@@ -51,7 +52,8 @@ public final class TransmissionHud {
         int width = Math.min(look.maxWidth(), guiWidth - 2 * look.screenMargin());
         int step = font.lineHeight + tuning.lineSpacing();
         List<String> lines = wrap(font, TransmissionOverlay.bodyFull(), width - 2 * padding);
-        int height = 2 * padding + step + look.headerGap() + lines.size() * step;
+        // One more step for the comms log hint under the text, so the panel does not grow when it shows.
+        int height = 2 * padding + step + look.headerGap() + (lines.size() + 1) * step;
         int top = Math.max(look.screenMargin(), Math.round(guiHeight * (float) look.centerY() - height / 2f));
         return new Panel(lines, (guiWidth - width) / 2, top, width, height);
     }
@@ -105,6 +107,12 @@ public final class TransmissionHud {
         }
         if (!TransmissionOverlay.typed()) {
             graphics.fill(lastX + 1, lastY, lastX + font.width("W"), lastY + font.lineHeight - 1, look.textColor());
+        } else {
+            // Once typed, the panel says how to read it again (#1615), with the player's own binding.
+            String hint = Component.translatable(
+                            "deepcharter.transmission.log_hint", TransmissionLogKeys.OPEN.getTranslatedKeyMessage())
+                    .getString();
+            CrtDraw.glowText(graphics, font, hint, x, bottom - padding - font.lineHeight, tuning.dimColor());
         }
 
         graphics.enableScissor(left, top, right, bottom);

@@ -62,9 +62,10 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
     }
 
     /**
-     * Stock-pod tank and burn rates; FUEL is a percentage of the tank (litres / tankLitres * 100). The tank is the original's 10 L, but the rates
-     * are about a seventh of the original's per-second 0.063, 0.19 and 0.32 (#963): our drill takes 2.4 s a block in layer 1, so the original's
-     * rates left a first tank 13 blocks and 31 s of drilling. {@code PodFuelTripTest} measures what a tank buys now.
+     * Stock-pod tank and burn rates; FUEL is a percentage of the tank (litres / tankLitres * 100). The tank is the
+     * original's 10 L, but the rates are about a fifth of the original's per-second 0.063, 0.19 and 0.32 (#963 cut them
+     * to a seventh, #1596 raised those by 1 / 0.7): our drill takes 2.4 s a block in layer 1, so the original's rates
+     * left a first tank 13 blocks and 31 s of drilling. {@code PodFuelTripTest} measures what a tank buys now.
      * What a fuel item gives is data (PodFuelItems). The beep sounds at lowFuelPercent and below, faster at urgentFuelPercent.
      */
     public record Fuel(
@@ -74,6 +75,6 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
             float drillingLitresPerSecond,
             float lowFuelPercent,
             float urgentFuelPercent) {
-        public static final Fuel DEFAULT = new Fuel(10f, 0.009f, 0.027f, 0.046f, 21f, 6f);
+        public static final Fuel DEFAULT = new Fuel(10f, 0.01286f, 0.03857f, 0.06571f, 21f, 6f);
     }
 }

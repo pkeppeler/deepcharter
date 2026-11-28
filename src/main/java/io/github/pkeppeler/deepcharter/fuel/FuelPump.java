@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
@@ -43,6 +44,13 @@ public final class FuelPump {
         TerminalActions.register(TerminalTypes.FUEL_PUMP, BUY, OutpostAccess.guarded(FuelPump::buy));
         TerminalActions.register(TerminalTypes.FUEL_PUMP, FILL, OutpostAccess.guarded(FuelPump::fill));
         ParkedPodView.register(TerminalTypes.FUEL_PUMP);
+        TerminalWares.register(TerminalTypes.FUEL_PUMP, BUY, ware(BUY), "screen.deepcharter.fuel_pump.about.buy");
+        TerminalWares.register(TerminalTypes.FUEL_PUMP, FILL, ware(FILL), "screen.deepcharter.fuel_pump.about.fill");
+    }
+
+    /** The ware id of a row that one action sells. */
+    public static String ware(Identifier action) {
+        return action.getPath();
     }
 
     /** The litres in the tank now. */
