@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.market;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import java.util.List;
@@ -22,6 +23,9 @@ public final class AccountHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "account");
     /** The account line's lang key. */
     public static final String KEY = "hud.deepcharter.account";
+
+    /** The balance alone, which the line falls back to where the whole of it would run into the cockpit. */
+    public static final String MONEY_KEY = "hud.deepcharter.account_money";
 
     private AccountHud() {}
 
@@ -44,8 +48,30 @@ public final class AccountHud {
                 font.lineHeight);
     }
 
+    /**
+     * The line as it is drawn: {@code full}, the charter's name and balance, or {@code money}, the balance alone, where
+     * the whole line would run into one of {@code covered} (the cockpit's plate or bezel on a narrow GUI). The line
+     * keeps its spot either way, so the money never moves (#1642).
+     */
+    public static Component fitted(
+            Font font, Component full, Component money, int guiHeight, List<HudKeepClear.Rect> covered) {
+        HudKeepClear.Rect whole = box(font, full, guiHeight);
+        return covered.stream().anyMatch(whole::overlaps) ? money : full;
+    }
+
+    /** The line drawn now, or empty when the player is on no charter. */
+    private static Optional<Component> shown(Minecraft client, int guiWidth, int guiHeight) {
+        return ClientCharter.view()
+                .map(charter -> fitted(
+                        client.font,
+                        Component.translatable(KEY, charter.name(), charter.balance()),
+                        Component.translatable(MONEY_KEY, charter.balance()),
+                        guiHeight,
+                        CockpitHud.covers(client, guiWidth, guiHeight)));
+    }
+
     private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
-        text().ifPresent(text -> into.add(box(client.font, text, guiHeight)));
+        shown(client, guiWidth, guiHeight).ifPresent(text -> into.add(box(client.font, text, guiHeight)));
     }
 
     /** The text shown, or empty when the player is on no charter. Public so tests can check it without reading pixels. */
@@ -55,7 +81,7 @@ public final class AccountHud {
 
     public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
-        text().ifPresent(text -> {
+        shown(client, graphics.guiWidth(), graphics.guiHeight()).ifPresent(text -> {
             HudKeepClear.Rect box = box(client.font, text, graphics.guiHeight());
             graphics.text(client.font, text, box.x(), box.y(), HudLook.current().accountColor());
         });

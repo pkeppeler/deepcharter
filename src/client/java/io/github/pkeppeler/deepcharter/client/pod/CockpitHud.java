@@ -236,10 +236,19 @@ public final class CockpitHud {
      * the scanner's bezel when the pod has a map, and, with the readout, each gauge's title and the plate where it hangs.
      */
     private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        into.addAll(covers(client, guiWidth, guiHeight));
+    }
+
+    /**
+     * What the cockpit covers on a GUI {@code guiWidth} x {@code guiHeight} as it draws now, the rectangles
+     * {@link #keepClear} gives a popup; empty when it is not drawn. The account line reads it to stay clear (#1642).
+     */
+    public static List<HudKeepClear.Rect> covers(Minecraft client, int guiWidth, int guiHeight) {
+        List<HudKeepClear.Rect> into = new ArrayList<>();
         Optional<Layout> seated = seated(client, guiWidth, guiHeight);
         PodEntity pod = seatedPod(client);
         if (seated.isEmpty() || pod == null || client.player == null) {
-            return;
+            return into;
         }
         Layout layout = seated.get();
         into.add(rect("cockpit ribbon", layout.band(), guiWidth, guiHeight));
@@ -269,6 +278,7 @@ public final class CockpitHud {
             into.add(plateBox(client.font, layout, look, rows, guiWidth, guiHeight)
                     .rect("cockpit readout plate"));
         }
+        return into;
     }
 
     private static HudKeepClear.Rect rect(String what, Decal decal, int guiWidth, int guiHeight) {

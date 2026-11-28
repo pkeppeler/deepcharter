@@ -124,6 +124,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     /** The widest account line: the longest charter name and a balance in the millions (#1642). */
     private static final Component LONGEST_ACCOUNT =
             Component.translatable(AccountHud.KEY, "W".repeat(CharterTuning.DEFAULT.maxNameLength()), "9,999,999");
+
+    /** The balance alone, which the widest account line falls back to where it would run into the cockpit. */
+    private static final Component LONGEST_MONEY = Component.translatable(AccountHud.MONEY_KEY, "9,999,999");
     /** The recess's top from the band's top, and its height. */
     private static final int ALTIMETER_RECESS_TOP = 2;
 
@@ -1112,23 +1115,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             problems.add(where + ": the altimeter reading does not fit its recess in the band");
         }
         problems.addAll(sinkProblems(font, layout, look, pieces, gauges, guiWidth, guiHeight, where));
-        int[] account = box(AccountHud.box(font, LONGEST_ACCOUNT, guiHeight));
-        if (account[0] != HudLook.current().accountMargin()) {
-            problems.add(where + ": the account line is not at the left edge: " + Arrays.toString(account));
-        }
-        if (account[3] - account[1] != font.lineHeight) {
-            problems.add(where + ": the account line is more than one line of text: " + Arrays.toString(account));
-        }
-        for (Map.Entry<String, int[]> piece : pieces.entrySet()) {
-            if (overlap(account, piece.getValue())) {
-                problems.add(where + ": the account line covers the " + piece.getKey());
-            }
-        }
-        if (overlap(
-                account,
-                box(CockpitHud.sinkBox(font, layout, look, guiWidth, guiHeight).rect("sink plate")))) {
-            problems.add(where + ": the account line covers the sink plate");
-        }
+        List<HudKeepClear.Rect> fixed = new ArrayList<>();
+        pieces.forEach((name, piece) ->
+                fixed.add(new HudKeepClear.Rect(name, piece[0], piece[1], piece[2] - piece[0], piece[3] - piece[1])));
+        fixed.add(CockpitHud.sinkBox(font, layout, look, guiWidth, guiHeight).rect("sink plate"));
         for (List<CockpitHud.Row> rows : plateCases()) {
             long alerts = rows.stream()
                     .filter(row -> row.first().kind() == PodStatusHud.Kind.ALERT)
@@ -1151,15 +1141,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece.getKey());
                     }
                 }
-                if (overlap(plateBox, account)) {
-                    problems.add(where + ": the plate with " + kept.size() + " rows covers the account line "
-                            + Arrays.toString(plateBox) + " " + Arrays.toString(account) + " gui " + guiWidth + "x"
-                            + guiHeight);
-                }
+                problems.addAll(accountProblems(font, guiHeight, fixed, plate, slots, where));
                 for (HudKeepClear.Rect slot : slots) {
-                    if (overlap(account, box(slot))) {
-                        problems.add(where + ": the account line covers the " + slot.what());
-                    }
                     if (overlap(plateBox, box(slot))) {
                         problems.add(where + ": the plate with " + kept.size() + " rows covers the " + slot.what()
                                 + " of "
@@ -1174,6 +1157,33 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 }
             }
         }
+        return problems;
+    }
+
+    /**
+     * The account line with the longest name and balance, as {@link AccountHud#fitted} draws it beside a plate of
+     * {@code plate}: at the left edge, one line, clear of the cockpit's pieces, the plate and the hotbar's slots, so a
+     * name too long for the room gives way to the balance alone (#1642).
+     */
+    private static List<String> accountProblems(
+            Font font,
+            int guiHeight,
+            List<HudKeepClear.Rect> fixed,
+            CockpitHud.Box plate,
+            List<HudKeepClear.Rect> slots,
+            String where) {
+        List<HudKeepClear.Rect> covered = new ArrayList<>(fixed);
+        covered.add(plate.rect("plate"));
+        covered.addAll(slots);
+        Component shown = AccountHud.fitted(font, LONGEST_ACCOUNT, LONGEST_MONEY, guiHeight, covered);
+        HudKeepClear.Rect line = AccountHud.box(font, shown, guiHeight);
+        List<String> problems = new ArrayList<>();
+        if (line.x() != HudLook.current().accountMargin() || line.height() != font.lineHeight) {
+            problems.add(where + ": the account line is not one line at the left edge: " + line);
+        }
+        covered.stream()
+                .filter(line::overlaps)
+                .forEach(piece -> problems.add(where + ": the account line covers the " + piece.what()));
         return problems;
     }
 

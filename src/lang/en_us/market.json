@@ -25,6 +25,7 @@
   "deepcharter.market.work_order.founders_hands": "Restore the Founder's hands",
   "deepcharter.market.work_order.morale_initiative": "Morale Initiative",
   "hud.deepcharter.account": "%s  $%s",
+  "hud.deepcharter.account_money": "$%s",
   "screen.deepcharter.processor.account": "ACCOUNT $%s",
   "screen.deepcharter.processor.back": "BACK",
   "screen.deepcharter.processor.close": "CLOSE",
