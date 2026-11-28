@@ -44,6 +44,19 @@ runs:
     - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       with:
         cache-read-only: ${{ inputs.gradle-cache-read-only }}
+    # The GL libraries install in the background while Gradle resolves (the step below waits for them). `apt-get update` runs only
+    # if the install fails on a stale index, which costs about 50 s a job otherwise.
+    - name: Install the GL libraries (background)
+      shell: bash
+      run: |
+        rm -f "$RUNNER_TEMP/apt.status"
+        setsid nohup bash -c '
+          pkgs="libegl1 libegl-mesa0 libgl1-mesa-dri"
+          status=0
+          sudo apt-get install -y --no-install-recommends $pkgs \
+            || { sudo apt-get update && sudo apt-get install -y --no-install-recommends $pkgs; } || status=$?
+          echo "$status" > "$RUNNER_TEMP/apt.status"
+        ' > "$RUNNER_TEMP/apt.log" 2>&1 &
     # A restored Gradle home can be broken: its module metadata points at dependency files that
     # were never restored, so verification fails and the failed run saves the broken state again
     # (#830). This resolves everything the run needs first (the compile classpaths through `classes`,
@@ -66,19 +79,6 @@ runs:
         else
           tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime
         fi
-    # The GL libraries install in the background while Gradle resolves (the step below waits for them). `apt-get update` runs only
-    # if the install fails on a stale index, which costs about 50 s a job otherwise.
-    - name: Install the GL libraries (background)
-      shell: bash
-      run: |
-        rm -f "$RUNNER_TEMP/apt.status"
-        setsid nohup bash -c '
-          pkgs="libegl1 libegl-mesa0 libgl1-mesa-dri"
-          status=0
-          sudo apt-get install -y --no-install-recommends $pkgs \
-            || { sudo apt-get update && sudo apt-get install -y --no-install-recommends $pkgs; } || status=$?
-          echo "$status" > "$RUNNER_TEMP/apt.status"
-        ' > "$RUNNER_TEMP/apt.log" 2>&1 &
     - name: Wait for the GL libraries
       shell: bash
       run: |

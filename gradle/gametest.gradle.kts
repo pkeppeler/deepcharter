@@ -641,24 +641,21 @@ object GametestScan {
 		throw GradleException("${file.name} has no '$name' line")
 	}
 
-	/**
-	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [mainSources] and
-	 * [guardSource] are the files WorldDataGuard must list every saved-data record of the mod in, or it misses a swap of a new one.
-	 */
-	fun scan(
+	/** What one pass over a source tree finds: the lists before any filter or shard, and each server class's campaign environments. */
+	class ScannedTree(val server: List<String>, val client: List<String>, val environments: Map<String, Set<String>>)
+
+	// The pass is the expensive part (every gate over every file) and does not depend on the filter or the shard, so the fixture
+	// cases that shard one real tree in turn (gradle checkGametestFixtures) run it once.
+	private val scannedTrees = mutableMapOf<String, ScannedTree>()
+
+	/** One pass over a source tree: the entrypoint lists, or a GradleException naming every problem. */
+	private fun scanTree(
 		javaRoot: File,
-		clientFilter: String?,
-		clientShard: String?,
-		clientWeights: Map<String, Int>,
-		serverShard: String?,
-		serverWeights: Map<String, Int>,
-		serverUnitLimit: Int,
-		order: String,
 		mainSources: Collection<File>,
 		guardSource: File,
 		blankLiterals: (String) -> String,
 		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
-	): GametestFound {
+	): ScannedTree {
 		val javaFiles = javaRoot.walkTopDown().filter { it.isFile && it.name.endsWith(".java") }.toList().sorted()
 		var server = mutableListOf<String>()
 		// Server class to the campaign environments it names, for -PgametestShard.
@@ -817,6 +814,31 @@ object GametestScan {
 			throw GradleException("gametest entrypoints:\n  " + problems.joinToString("\n  "))
 		}
 
+		return ScannedTree(server, client, serverEnvironments)
+	}
+
+	/**
+	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [mainSources] and
+	 * [guardSource] are the files WorldDataGuard must list every saved-data record of the mod in, or it misses a swap of a new one.
+	 */
+	fun scan(
+		javaRoot: File,
+		clientFilter: String?,
+		clientShard: String?,
+		clientWeights: Map<String, Int>,
+		serverShard: String?,
+		serverWeights: Map<String, Int>,
+		serverUnitLimit: Int,
+		order: String,
+		mainSources: Collection<File>,
+		guardSource: File,
+		blankLiterals: (String) -> String,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): GametestFound {
+		val tree = scannedTrees.getOrPut(javaRoot.canonicalPath) { scanTree(javaRoot, mainSources, guardSource, blankLiterals, markedNear) }
+		var server = tree.server.toMutableList()
+		var client = tree.client.toMutableList()
+		val serverEnvironments = tree.environments
 		if (clientFilter != null) {
 			val terms = clientFilter.split(",").map { it.trim() }
 			if (terms.any { it.isEmpty() }) {
