@@ -52,10 +52,25 @@ public final class EarlyRunModel {
     /**
      * (A) The share of a tank that one pricing run burns. The prices are counted in runs, and a run was a whole tank at the original's burn rates.
      * Issue 963 slowed the burn to a seventh so that a first tank lasts minutes of play, and left the drill and the ore alone, so what a run earns
-     * for the minute it takes is as it was: a run stays the trip a seventh of the tank pays for, and "runs to afford" keeps its meaning. A pilot
-     * who burns the whole tank makes seven runs of ore, but the bay is full long before, so the model keeps the old run.
+     * for the minute it takes is as it was: a run stays the trip a seventh of the tank paid for, and "runs to afford" keeps its meaning. A pilot
+     * who burns the whole tank makes seven runs of ore, but the bay is full long before, so the model keeps the old run. Issue 1596 made a tank
+     * last 70% as long (the burn is 1 / 0.7 times higher), so the same run now takes 1 / 0.7 times the share of the tank.
      */
-    public static final double PRICING_RUN_TANK_SHARE = 1.0 / 7.0;
+    public static final double PRICING_RUN_TANK_SHARE = 1.0 / 7.0 / 0.7;
+
+    /**
+     * (A) The tank sizes the economy was priced on, by the size a tier has now (#1596 flattened the ladder from 10, 15, 25, 40, 60, 100 and 150 L
+     * to 10, 13, 17, 22, 30, 45 and 65 L). A run is a share of the tank, so a smaller tank would shorten the pricing run of every tier and
+     * make every part dearer in runs; the user asked for less fuel, not for dearer parts, so a run is still priced on the old tank. A tank that
+     * is on neither ladder (a stock tank with litres lost to a grip) is its own size.
+     */
+    private static final Map<Integer, Float> PRICING_TANK_LITRES = Map.of(
+            13, 15f,
+            17, 25f,
+            22, 40f,
+            30, 60f,
+            45, 100f,
+            65, 150f);
 
     private static final int TICKS_PER_SECOND = 20;
 
@@ -246,6 +261,12 @@ public final class EarlyRunModel {
         return run(Start.OUTPOST, chassis, zone, stats, layerOneBlocks(), extraMass);
     }
 
+    private static double pricingTankLitres(PodStats stats) {
+        int whole = Math.round(stats.tankLitres());
+        boolean onTheLadder = Math.abs(stats.tankLitres() - whole) < 1e-3;
+        return onTheLadder ? PRICING_TANK_LITRES.getOrDefault(whole, stats.tankLitres()) : stats.tankLitres();
+    }
+
     private static Run run(Start start, Chassis chassis, Zone zone, PodStats stats, int shaftBlocks, float extraMass) {
         int cells = chassis.slabCells();
         double oreChance = zone.oreChance();
@@ -261,7 +282,7 @@ public final class EarlyRunModel {
                     + drillSeconds * next * stats.drillingLitresPerSecond()
                     + climbSeconds * stats.movingLitresPerSecond()
                     + (drillSeconds * next + climbSeconds) * stats.idleLitresPerSecond();
-            if (used > stats.tankLitres() * PRICING_RUN_TANK_SHARE) {
+            if (used > pricingTankLitres(stats) * PRICING_RUN_TANK_SHARE) {
                 break;
             }
             slabs = next;

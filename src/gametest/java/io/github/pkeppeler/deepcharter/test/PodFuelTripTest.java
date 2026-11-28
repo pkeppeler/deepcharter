@@ -3,9 +3,11 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
+import io.github.pkeppeler.deepcharter.test.support.Failures;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -44,22 +46,35 @@ public class PodFuelTripTest {
     /** What a first tank must buy (#963): the playtest got 13 blocks and 31 s of drilling and then a stranding. */
     private static final int MIN_BLOCKS_PER_TANK = 60;
 
-    private static final int MIN_DRILL_SECONDS_PER_TANK = 180;
-    /** And no more: a tank that never runs dry makes the beep, the pump and the tank ladder pointless (a tank is 4 minutes of drilling, not 15). */
-    private static final int MAX_BLOCKS_PER_TANK = 98;
+    private static final int MIN_DRILL_SECONDS_PER_TANK = 125;
+    /**
+     * And no more: a tank that never runs dry makes the beep, the pump and the tank ladder pointless. The playtest
+     * (#1596) found that one tank almost got a pod through layer 1 (93 blocks of its 98); it now stops well short.
+     */
+    private static final int MAX_BLOCKS_PER_TANK = 75;
 
-    private static final int MAX_DRILL_SECONDS_PER_TANK = 360;
-    private static final double MAX_MIXED_MINUTES_PER_TANK = 6.0;
-    /** Minutes of the first trip's mix of drilling, driving and climbing that a tank must last (the issue asks 3 to 4). */
-    private static final double MIN_MIXED_MINUTES_PER_TANK = 3.5;
+    private static final int MAX_DRILL_SECONDS_PER_TANK = 190;
+    private static final double MAX_MIXED_MINUTES_PER_TANK = 4.5;
+    /** Minutes of the first trip's mix of drilling, driving and climbing that a tank must last (#1596 cut it by 30%). */
+    private static final double MIN_MIXED_MINUTES_PER_TANK = 2.5;
     /** Share of the tank a first trip must come home with, as slack for a slow pilot, a wrong turn and ore. */
-    private static final double MIN_SPARE_SHARE = 0.3;
+    private static final double MIN_SPARE_SHARE = 0.1;
+
+    /** What a full tank of each tier lasted before #1596, in seconds of each activity: tank litres over these rates. */
+    private static final float OLD_IDLE_LITRES_PER_SECOND = 0.009f;
+
+    private static final float OLD_MOVING_LITRES_PER_SECOND = 0.027f;
+    private static final float OLD_DRILLING_LITRES_PER_SECOND = 0.046f;
+    /** The user's call (#1596): a full tank of every tier lasts this share of the time it did, the litres unchanged. */
+    private static final double TANK_TIME_SHARE = 0.7;
+
+    private static final double TANK_TIME_TOLERANCE = 0.01;
     /** The litres at the beep over the litres the climb home takes: room for a pilot who turns round late. */
     private static final double BEEP_CLIMB_MARGIN = 2.0;
     /** A beep earlier than this share of the tank nags a pilot who has fuel to spare. */
     private static final double MAX_BEEP_PERCENT = 40.0;
     /** Each tank tier, and the reserve tank, must multiply the minutes of play by at least this. */
-    private static final double MIN_TIER_GAIN = 1.4;
+    private static final double MIN_TIER_GAIN = 1.25;
 
     /** Blocks of stone bed under the floor: less than layer 1's stone, so the crust is never reached. */
     private static final int BED = 98;
@@ -96,6 +111,62 @@ public class PodFuelTripTest {
                 onFinish.accept(script.get());
             }
         });
+    }
+
+    /**
+     * (#1596) The same litres last 70% of the time in every activity, and the tank ladder is flatter (the user's pick,
+     * 2026-11-28): 10, 13, 17, 22, 30, 45 and 65 L, so tier 2 no longer makes fuel a non-issue.
+     */
+    @GameTest
+    public void theSameLitresLastSeventyPercentAsLongAndTheTankLadderIsFlatter(GameTestHelper helper) {
+        PodStats stock = PodStats.base();
+        expectTankLitres(helper, stock.tankLitres(), 10f);
+        float[] tanks = {10f, 13f, 17f, 22f, 30f, 45f, 65f};
+        for (int tier = 0; tier < tanks.length; tier++) {
+            PodStats stats = EarlyRunModel.mole(0, tier, 0);
+            expectTankLitres(helper, stats.tankLitres(), tanks[tier]);
+            expectTime(
+                    helper, tier, "idle", stats.tankLitres(), OLD_IDLE_LITRES_PER_SECOND, stats.idleLitresPerSecond());
+            expectTime(
+                    helper,
+                    tier,
+                    "moving",
+                    stats.tankLitres(),
+                    OLD_MOVING_LITRES_PER_SECOND,
+                    stats.movingLitresPerSecond());
+            expectTime(
+                    helper,
+                    tier,
+                    "drilling",
+                    stats.tankLitres(),
+                    OLD_DRILLING_LITRES_PER_SECOND,
+                    stats.drillingLitresPerSecond());
+        }
+        helper.succeed();
+    }
+
+    private static void expectTankLitres(GameTestHelper helper, float actual, float expected) {
+        if (actual != expected) {
+            throw Failures.failure(helper, "the tank must keep its litres: %s against %s", actual, expected);
+        }
+    }
+
+    private static void expectTime(
+            GameTestHelper helper, int tier, String activity, float tankLitres, float oldRate, float newRate) {
+        double before = tankLitres / oldRate;
+        double after = tankLitres / newRate;
+        LOGGER.info("[fuel-trip] tier {} {}: a full tank lasted {} s, now {} s", tier, activity, before, after);
+        if (Math.abs(after / before - TANK_TIME_SHARE) > TANK_TIME_TOLERANCE) {
+            throw Failures.failure(
+                    helper,
+                    "a full tier %d tank should last %.0f%% of its old %.0f s %s, it lasts %.0f s (%.1f%%)",
+                    tier,
+                    TANK_TIME_SHARE * 100,
+                    before,
+                    activity,
+                    after,
+                    after / before * 100);
+        }
     }
 
     @GameTest(maxTicks = MAX_TICKS)
