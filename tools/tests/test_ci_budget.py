@@ -116,20 +116,28 @@ class ShardsFitTheBudgetTest(unittest.TestCase):
         self.assertLessEqual((b["server-overhead-seconds"] + 1.55 * b["server-shard-seconds"]) * factor, b["worst-job-seconds"])
         self.assertLessEqual((40 + b["tool-part-seconds"]) * factor, b["worst-job-seconds"])
 
-    # What runs outside the client action's run step, at the measured speed: the job's setup, the checkout, the download and the
-    # dependency resolve before it, and the post steps after it.
-    PRE_STEP_SECONDS = 65
-    POST_STEP_SECONDS = 15
+    # What runs after the client action's run step, at the measured speed: the heap and artifact post steps and the runner's teardown.
+    POST_STEP_SECONDS = 30
 
-    def test_the_client_actions_deadline_ends_the_run_before_the_job_limit_kills_it(self):
+    def test_the_client_actions_deadline_counts_from_the_job_start_and_ends_the_run_before_the_limit_kills_it(self):
         action = (REPO / ".github/actions/client-gametest/action.yml").read_text()
-        deadline = int(re.search(r"^\s+max_seconds=(\d+)$", action, re.M)[1])
+        deadline = int(re.search(r"^\s+job_deadline=(\d+)$", action, re.M)[1])
+        self.assertEqual(self.budget["client-deadline-seconds"], deadline)
         limit = self.budget["job-limit-minutes"] * 60
-        self.assertLessEqual(deadline + self.PRE_STEP_SECONDS + self.POST_STEP_SECONDS, limit)
-        # And it does not end a shard that would still finish inside the worst-job seconds on a slow runner: the step's own
-        # Gradle and Minecraft start-up (42 s) and the budget's tests, both slower by the factor.
-        slow_step = (42 + self.budget["client-shard-seconds"]) * self.budget["slow-runner-factor"]
-        self.assertGreaterEqual(deadline, slow_step)
+        self.assertLessEqual(deadline + self.POST_STEP_SECONDS, limit)
+        # The run step reads the job's start, and what calls the action passes it from the job's first step.
+        self.assertIn("setup_seconds=$(( $(date +%s) - JOB_START ))", action)
+        self.assertIn("max_seconds=$((job_deadline - setup_seconds))", action)
+        for workflow in ("client-tests.yml", "record-evidence.yml"):
+            text = (REPO / ".github/workflows" / workflow).read_text()
+            self.assertIn("job-start: ${{ env.JOB_START }}", text, workflow)
+            self.assertIn('echo "JOB_START=$(date +%s)" >> "$GITHUB_ENV"', text, workflow)
+        # And it does not end a shard that would still finish inside the worst-job seconds on a slow runner: the job's setup, start-up
+        # and the budget's tests, all slower by the factor, fit the deadline.
+        slow_job = (self.budget["client-overhead-seconds"] + self.budget["client-shard-seconds"]) * self.budget["slow-runner-factor"]
+        self.assertGreaterEqual(deadline, slow_job)
+        # At the measured speed (1.0x) a full shard leaves at least 30 s of the limit.
+        self.assertLessEqual(self.budget["client-overhead-seconds"] + self.budget["client-shard-seconds"] + 30, limit)
 
     def test_no_client_class_outweighs_a_client_shard(self):
         budget = self.budget["client-shard-seconds"]

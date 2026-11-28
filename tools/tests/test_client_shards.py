@@ -81,8 +81,9 @@ class ClientShardWorkflowTest(unittest.TestCase):
         # The job's limit kills it with no message; the action's deadline ends the run first, with one (#1574).
         job = self.shard_job()
         self.assertEqual(5, int(re.search(r"timeout-minutes: (\d+)", job)[1]))
-        deadline = int(re.search(r"^\s+max_seconds=(\d+)$", ACTION, re.M)[1])
-        self.assertLess(deadline + 40, 5 * 60, "25 s of setup before the step and 15 s of post steps, then the step's deadline, inside the job limit")
+        deadline = int(re.search(r"^\s+job_deadline=(\d+)$", ACTION, re.M)[1])
+        self.assertLess(deadline + 15, 5 * 60, "the deadline counts from the job's start (tools/tests/test_ci_budget.py); 15 s of post steps inside the limit")
+        self.assertIn("JOB_START", job, "the shard records the job's start in its first step")
 
     def test_a_shard_downloads_the_compiled_build_and_leaves_the_cache_to_the_compile_job(self):
         job = self.shard_job()
@@ -96,7 +97,7 @@ class ClientShardWorkflowTest(unittest.TestCase):
     def test_a_step_warns_at_80_percent_of_its_budget(self):
         self.assertIn("warn_seconds=$((max_seconds * 8 / 10))", ACTION)
         self.assertIn('if [ "$SECONDS" -ge "$warn_seconds" ] && [ -z "$warned" ]; then', ACTION)
-        self.assertIn("echo \"::warning::Client GameTests passed 80% of their", ACTION)
+        self.assertIn("echo \"::warning::Client GameTests passed 80% of the", ACTION)
 
     def test_the_evidence_run_has_the_same_limit_and_no_shard(self):
         # record-evidence.yml runs one scenario with no client-shard; its jobs stop at 5 minutes like the rest.
