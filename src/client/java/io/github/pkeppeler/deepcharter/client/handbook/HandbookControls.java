@@ -149,12 +149,11 @@ public final class HandbookControls {
     }
 
     private static Component line(Sheet sheet, Row row, Options options) {
-        List<Object> keys = row.keys().stream()
-                .map(key -> (Object) Component.literal("[")
+        List<Object> args = new ArrayList<>();
+        row.keys()
+                .forEach(key -> args.add(Component.literal("[")
                         .append(key.apply(options).getTranslatedKeyMessage())
-                        .append("]"))
-                .toList();
-        List<Object> args = new ArrayList<>(keys);
+                        .append("]")));
         row.values().forEach(value -> args.add(value.get()));
         return Component.translatable(keyOf(sheet.name(), row.name()), args.toArray());
     }

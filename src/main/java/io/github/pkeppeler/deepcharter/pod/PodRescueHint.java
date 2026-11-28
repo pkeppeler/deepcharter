@@ -54,6 +54,7 @@ public final class PodRescueHint {
             boolean left = wasOccupied && !occupied && PodFuel.isLow(pod.fuel());
             if (pod.stranded() || left) {
                 tell(
+                        level,
                         pod,
                         layer.getAsInt(),
                         pod.stranded() ? "deepcharter.pod.rescue.stranded" : "deepcharter.pod.rescue.left");
@@ -64,14 +65,14 @@ public final class PodRescueHint {
     }
 
     /** Tells the online members of the pod's owner charter which pod, where, and that a tow cable brings it home. */
-    private static void tell(PodEntity pod, int layer, String key) {
+    private static void tell(ServerLevel level, PodEntity pod, int layer, String key) {
         BlockPos at = pod.blockPosition();
         Component name = pod.hasCustomName()
                 ? Objects.requireNonNull(pod.getCustomName(), "a pod with a custom name has one")
                 : Component.translatable("deepcharter.pod.rescue.unnamed");
         Component line = Component.translatable(key, name, layer, at.getX(), at.getY(), at.getZ());
         PodComponents.ownerCharter(pod).ifPresent(charter -> {
-            var players = ((ServerLevel) pod.level()).getServer().getPlayerList();
+            var players = level.getServer().getPlayerList();
             for (var member : charter.roster()) {
                 ServerPlayer player = players.getPlayer(member);
                 if (player != null) {
