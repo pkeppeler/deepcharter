@@ -1,11 +1,11 @@
 {
   "alarm/fuel_critical": {
-    "ogg_sha256": "4012de4219bef0bb6e433dfdee77443e641d696f161ccedf695965e471568343",
-    "pcm_sha256": "ca52ced2af9a49b0a1d509829dc37113fa2785acd820d922b84064d38664f653"
+    "ogg_sha256": "1892c59804ecc5bbd4f1a9efadd09ea30888ebadcde300cade9e61ed897f3846",
+    "pcm_sha256": "6db45b548d1a8eec298182a20835a57a7c245010ba1a0f1d641fce0c538cbb43"
   },
   "alarm/fuel_low": {
-    "ogg_sha256": "920f3ef7ba0ece9a631359bdaae433596334cca5ed483f69d8fd23662cff7f35",
-    "pcm_sha256": "db506fa47614ee81fcf78c8d0cfd84aa49ada5d5cac3cfdc4b0ff5a5b4fa6982"
+    "ogg_sha256": "5dad0090d4371ff73e2ac8f1ba9ba08f017061375268fdba0190afc27ea637fb",
+    "pcm_sha256": "241f74474603901af89f923c0950e65743f8c45e3ac839223c761ed184a74758"
   },
   "ambient/layer_1_creak": {
     "ogg_sha256": "3d06681e1334e584cef117bd7b903046a45aed40c7077f298d30f30b2fceb936",

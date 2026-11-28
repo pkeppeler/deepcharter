@@ -592,16 +592,20 @@ def _buzz(freqs, length, chop, drive, floor):
 def fuel_low():
     """The low-fuel alarm (#1597): one short, grating buzzer pulse. Steady pitch, at the pace of the slow beep."""
     pulse = _buzz([415.0] * dsp.seconds(0.3), 0.3, 48, 5, 220)
-    return dsp.normalize(dsp.widen(pulse, 4), 0.8)
+    return dsp.normalize(dsp.widen(pulse, 4), 0.7)
 
 
 def fuel_critical():
-    """The nearly-dry alarm (#1597): a klaxon, two harsher pulses a fourth apart (higher, faster, louder than `fuel_low`), made to repeat twice a second."""
-    count = dsp.seconds(0.46)
+    """The nearly-dry alarm (#1597): a 0.3 s klaxon, two pulses a fourth apart, then 0.2 s of silence so the pod's other cues come through.
+
+    Higher, louder and denser than `fuel_low`; the whole clip is the 10-tick period `LowFuelBeep` repeats it at.
+    """
+    count = dsp.seconds(0.3)
     half = count // 2
     freqs = [880.0] * half + [660.0] * (count - half)
-    pulse = _buzz(freqs, 0.46, 90, 9, 300)
-    return dsp.normalize(dsp.widen(pulse, 4), 0.98)
+    pulse = _buzz(freqs, 0.3, 90, 9, 300)
+    gap = [0.0] * dsp.seconds(0.2)
+    return dsp.normalize(dsp.widen(pulse + gap, 4), 0.85)
 
 
 def rest():

@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
@@ -293,6 +294,17 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     .runOnServer(server -> TestEntities.require(server.overworld(), scene.podId(), PodEntity.class)
                             .setFuel(15f));
             await(context, heard, "fuel.low", client -> heard.count("fuel.low") > 0);
+            // Exactly at the urgent level counts as urgent: the klaxon sounds again.
+            long klaxons = heard.count("alarm.fuel_critical");
+            singleplayer
+                    .getServer()
+                    .runOnServer(server -> TestEntities.require(server.overworld(), scene.podId(), PodEntity.class)
+                            .setFuel(PodTuning.DEFAULT.fuel().urgentFuelPercent()));
+            await(
+                    context,
+                    heard,
+                    "alarm.fuel_critical at the urgent level",
+                    client -> heard.count("alarm.fuel_critical") > klaxons);
             singleplayer
                     .getServer()
                     .runOnServer(server ->
