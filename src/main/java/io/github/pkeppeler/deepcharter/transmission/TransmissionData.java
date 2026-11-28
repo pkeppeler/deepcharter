@@ -72,6 +72,11 @@ public final class TransmissionData extends SavedData {
             return fired.subList(cursors.getOrDefault(member, 0), fired.size());
         }
 
+        /** The transmissions {@code member} has been sent, in order: their comms log. */
+        public List<Identifier> received(UUID member) {
+            return fired.subList(0, cursors.getOrDefault(member, 0));
+        }
+
         private Progress withFired(Identifier id) {
             List<Identifier> newFired = new ArrayList<>(fired);
             newFired.add(id);

@@ -74,12 +74,6 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
 
     /** Layer brightness is the sealed room's; a shaft that reads this close to it is at layer brightness. */
     private static final double SAME_LUMA = 3.0;
-    /**
-     * The same shaft in a surface biome reads at least this many times brighter, so the test can tell the two apart. At dusk the campaign
-     * type's timeline sets a sky light factor of 0.62 and the surface shaft reads 29.0 against the sealed room's 9.3 (3.1x), so the bar is
-     * 2.0.
-     */
-    private static final double CONTROL_RATIO = 2.0;
 
     private record View(String name, float yaw, float pitch) {}
 
@@ -179,18 +173,13 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
                     .formatted(sky.name(), room, roomSky));
             table.add(
                     "campaign type, sky timeline at %s, open shaft, surface biome: %s".formatted(sky.name(), control));
-            // Dusk only: at night the surface is dark by its own timeline, so the room's luma is within SAME_LUMA of
-            // the surface's and the control ratio holds for nothing.
-            if (sky.ticks() == SKY_DUSK) {
-                ClientChecks.require(
-                        Math.abs(shaft.luma() - room.luma()) <= SAME_LUMA,
-                        "the bottom of a layer shaft under open sky renders at layer brightness (the sealed room's "
-                                + room + ") while the sky timeline runs at " + sky.name() + ", read " + shaft);
-                ClientChecks.require(
-                        control.luma() >= CONTROL_RATIO * Math.max(room.luma(), 1.0),
-                        "the same shaft in a surface biome is much brighter than the layer's (" + room + "), read "
-                                + control);
-            }
+            // The surface is held at the deep night (#1606), as dark as the room, so the surface control's luma no
+            // longer
+            // tells the two apart: the factors above do. The shaft must still render at the room's brightness.
+            ClientChecks.require(
+                    Math.abs(shaft.luma() - room.luma()) <= SAME_LUMA,
+                    "the bottom of a layer shaft under open sky renders at layer brightness (the sealed room's " + room
+                            + ") while the sky timeline runs at " + sky.name() + ", read " + shaft);
         }
     }
 

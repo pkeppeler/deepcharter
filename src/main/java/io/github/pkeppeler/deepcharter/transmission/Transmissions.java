@@ -126,6 +126,26 @@ public final class Transmissions {
         });
     }
 
+    /**
+     * The comms log of {@code player} (#1615): every transmission they have been sent, in the order their charter received them, so a
+     * member who joined later reads the charter's whole story and nobody reads one that has not reached them. A transmission the data
+     * file no longer lists is left out. Empty, and never a throw, for a player in no charter or with unreadable data.
+     */
+    public static TransmissionLogPayload log(MinecraftServer server, ServerPlayer player) {
+        TransmissionData data = TransmissionData.get(server);
+        if (!readable(server, data)) {
+            return new TransmissionLogPayload(List.of(), "", UNKNOWN_DIRECTOR);
+        }
+        return Charters.readableCharterOf(server, player.getUUID())
+                .map(charter -> new TransmissionLogPayload(
+                        data.progress(charter.id()).received(player.getUUID()).stream()
+                                .filter(id -> TransmissionCatalog.find(id).isPresent())
+                                .toList(),
+                        charter.name(),
+                        directorName(server, charter, player)))
+                .orElseGet(() -> new TransmissionLogPayload(List.of(), "", UNKNOWN_DIRECTOR));
+    }
+
     /** Tries again the bonuses of {@code charter} that its account refused. Each is credited once and removed; a full account keeps them. */
     public static void payPending(MinecraftServer server, TransmissionData data, CharterId charter) {
         if (!data.isReadable()) {

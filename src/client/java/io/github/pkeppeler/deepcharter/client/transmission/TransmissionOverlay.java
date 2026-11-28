@@ -74,16 +74,33 @@ public final class TransmissionOverlay {
      * would disconnect the player.
      */
     public static void enqueue(TransmissionPayload payload) {
+        if (showable(payload)) {
+            PENDING.add(payload);
+        }
+    }
+
+    /**
+     * Replays a transmission from the comms log (#1615): it types out with its sounds as it did when it came, next after the one on
+     * screen, ahead of any still waiting. One that cannot be shown is dropped as {@link #enqueue} drops it.
+     */
+    public static void replay(TransmissionPayload payload) {
+        if (showable(payload)) {
+            PENDING.addFirst(payload);
+        }
+    }
+
+    /** True when {@code payload} can be shown; otherwise logs once that it is dropped. */
+    private static boolean showable(TransmissionPayload payload) {
         try {
             // Found now, not when the player is looking at the screen.
             build(payload);
+            return true;
         } catch (RuntimeException e) {
             if (DROPPED.add(payload.transmission())) {
                 DeepCharter.LOGGER.error("Dropped transmission {}: it cannot be shown", payload.transmission(), e);
             }
-            return;
+            return false;
         }
-        PENDING.add(payload);
     }
 
     /** Forgets everything on screen and waiting. */
@@ -174,12 +191,23 @@ public final class TransmissionOverlay {
         return level == null ? 0 : level.getGameTime() / TICKS_PER_DAY;
     }
 
-    private static Current build(TransmissionPayload payload) {
+    /** The header of {@code transmission} as the player sees it today. */
+    static String header(Transmission transmission) {
+        return header(transmission, day());
+    }
+
+    /** The text of {@code payload}'s transmission with its fields filled, closed by the framing's last line. */
+    static String body(TransmissionPayload payload) {
         Transmission transmission = TransmissionCatalog.require(payload.transmission());
-        String header = header(transmission, day());
-        String body = fill(translate(transmission.bodyKey()), payload.charter(), payload.director())
+        return fill(translate(transmission.bodyKey()), payload.charter(), payload.director())
                 + PARAGRAPH
                 + translate(transmission.framing().endKey());
+    }
+
+    private static Current build(TransmissionPayload payload) {
+        Transmission transmission = TransmissionCatalog.require(payload.transmission());
+        String header = header(transmission);
+        String body = body(payload);
         Typewriter.LetterHook hook = (index, letter) -> letterTyped |= !Character.isWhitespace(letter);
         return new Current(transmission, new Typewriter(header, hook), new Typewriter(body, hook));
     }

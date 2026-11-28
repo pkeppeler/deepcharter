@@ -3,8 +3,10 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.client.pod.PodChase;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -21,7 +23,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 
 /**
- * Client GameTest for #1281 (and #1268): the pilot's camera. Taking the seat switches to the third-person chase view
+ * Client GameTest for #1281 (and #1268, #1680): the crew's camera. Taking any seat switches to the third-person chase view
  * and leaving it brings back the view the player had; F5 still cycles while seated. In first person the view turns with
  * the pod, as a vanilla boat's rider does, and the angle between the view and the pod stays where the mouse put it. In
  * third person the camera settles behind a pod that drives.
@@ -85,6 +87,7 @@ public class PodChaseClientTest implements FabricClientGameTest {
                     camera(context) == CameraType.THIRD_PERSON_FRONT,
                     "leaving the pod should restore the view the player had before it, it is " + camera(context));
 
+            theSecondSeatChasesToo(context, two);
             leavingByDimensionSwapAndByDeathRestoresTheView(context, two);
         } finally {
             setCamera(context, original);
@@ -168,6 +171,43 @@ public class PodChaseClientTest implements FabricClientGameTest {
         require(
                 camera(context) == CameraType.THIRD_PERSON_FRONT,
                 "dying in the seat should restore the view the player had, it is " + camera(context));
+    }
+
+    /**
+     * #1680: the navigator's seat chases as the pilot's does. The mock takes a Prospector's pilot seat and the real player
+     * its second seat; leaving brings back the view the player had.
+     */
+    private static void theSecondSeatChasesToo(ClientGameTestContext context, TwoPlayerServer two) {
+        UUID mock = two.mock().player().getUUID();
+        two.server().runOnServer(server -> {
+            ServerPlayer real = realPlayer(server, mock);
+            PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.PROSPECTOR), real.level());
+            pod.setPos(real.position());
+            pod.setNoGravity(true);
+            real.level().addFreshEntity(pod);
+            ServerPlayer pilot = two.mock().player();
+            pilot.stopRiding();
+            require(pilot.startRiding(pod), "the mock could not take the Prospector's pilot seat");
+            require(real.startRiding(pod), "the player could not take the Prospector's second seat");
+        });
+        ClientWait.until(
+                context,
+                "the client in the Prospector's second seat",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
+                        && PodSeat.isNavigator(pod, ClientSession.player(client)));
+        context.waitTicks(5);
+        require(
+                camera(context) == CameraType.THIRD_PERSON_BACK,
+                "taking the navigator's seat should switch to the third-person chase view, it is " + camera(context));
+        two.server().runOnServer(server -> realPlayer(server, mock).stopRiding());
+        ClientWait.until(
+                context,
+                "the client out of the Prospector",
+                client -> !(ClientSession.player(client).getVehicle() instanceof PodEntity));
+        context.waitTicks(3);
+        require(
+                camera(context) == CameraType.THIRD_PERSON_FRONT,
+                "leaving the navigator's seat should restore the view the player had, it is " + camera(context));
     }
 
     /** Seats the real player in a new pod beside them, with no gravity, and waits for the client to chase. */

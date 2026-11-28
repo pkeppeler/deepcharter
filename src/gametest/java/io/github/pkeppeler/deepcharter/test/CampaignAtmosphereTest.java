@@ -183,22 +183,25 @@ public class CampaignAtmosphereTest {
                         expect(helper, compared > 10, "only %s visual attributes were compared", compared);
                     }));
         }
-        // The comparison would pass if the clocks and the weather moved nothing: they move the fog.
-        float[] fog = new float[2];
-        for (int i = 0; i < 2; i++) {
-            Moment moment = MOMENTS.get(i == 0 ? 0 : 5);
-            int index = i;
-            at(
-                    campaign,
-                    moment,
-                    () -> fog[index] = campaign.environmentAttributes()
-                            .getValue(EnvironmentAttributes.FOG_START_DISTANCE, inSurface));
-        }
+        // The comparison would pass if the clocks and the weather moved nothing. The sky is held (#1606), so the clock
+        // moves
+        // nothing; the thunder still darkens it.
+        List<Object> clear = new ArrayList<>();
+        List<Object> thunder = new ArrayList<>();
+        at(
+                campaign,
+                MOMENTS.get(2),
+                () -> clear.add(campaign.environmentAttributes().getValue(EnvironmentAttributes.SKY_COLOR, inSurface)));
+        at(
+                campaign,
+                MOMENTS.get(5),
+                () -> thunder.add(
+                        campaign.environmentAttributes().getValue(EnvironmentAttributes.SKY_COLOR, inSurface)));
         expect(
                 helper,
-                fog[0] != fog[1],
-                "the surface fog start should move with the sky clock, was %s at both ends",
-                fog[0]);
+                !clear.equals(thunder),
+                "the thunder should move the surface sky colour, was %s clear and in thunder",
+                clear);
         helper.succeed();
     }
 
@@ -495,7 +498,7 @@ public class CampaignAtmosphereTest {
         Map<Integer, Float> ratio = new TreeMap<>();
         at(level, MOMENTS.getFirst(), () -> {
             float surface = probe(level, new Vec3(0.5, CampaignBands.SURFACE.minY() + 100, 0.5));
-            expectNear(helper, "the surface's sky light factor at sky time 0", 0.62f, surface, 0.001f);
+            expectNear(helper, "the surface's held sky light factor", 0.16f, surface, 0.001f);
             for (int below : measured.keySet()) {
                 ratio.put(below, probe(level, new Vec3(0.5, edge - below + EYE_HEIGHT, 0.5)) / surface);
             }

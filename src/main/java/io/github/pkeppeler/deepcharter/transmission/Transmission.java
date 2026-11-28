@@ -70,6 +70,31 @@ public record Transmission(
         return "deepcharter.transmission." + id.getPath() + ".body";
     }
 
+    /**
+     * The lang key of when the transmission came, as the comms log shows it (#1615): the zone or breach of its trigger, which takes the
+     * layer as its one argument ({@link #whenLayer}), or for an event its own line, since only the transmission knows what the event was.
+     */
+    public String whenKey() {
+        return switch (trigger) {
+            case Trigger.Event event -> "deepcharter.transmission." + id.getPath() + ".when";
+            case Trigger.Zone zone ->
+                "deepcharter.transmission.when.zone." + zone.zone() + (zone.lowerHalf() ? ".lower_half" : "");
+            case Trigger.Breach breach ->
+                breach.toLayer() == LayerChain.SURFACE
+                        ? "deepcharter.transmission.when.surface"
+                        : "deepcharter.transmission.when.breach";
+        };
+    }
+
+    /** The layer {@link #whenKey} names, 0 for a trigger that names none. */
+    public int whenLayer() {
+        return switch (trigger) {
+            case Trigger.Event event -> 0;
+            case Trigger.Zone zone -> zone.layer();
+            case Trigger.Breach breach -> breach.toLayer();
+        };
+    }
+
     /** How the signal reaches the charter. This sets the header's and the closing line's wording, the header's colour, and the sound. */
     public enum Framing implements StringRepresentable {
         /** The sender is speaking now: {@code ▌INCOMING — <sender>} … {@code ▌END OF MESSAGE}. */

@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -24,53 +23,61 @@ import net.minecraft.world.timeline.Timeline;
 import org.joml.Vector3fc;
 
 /**
- * Server GameTests for #239 (art-direction.md section 1): the overworld sky is a visual timeline on its own world clock, dusk at its
- * brightest and near-black at its darkest, and it does not touch the gameplay clock or the layers. The timeline is evaluated at a
+ * Server GameTests for #239 and #1606 (art-direction.md section 2): the overworld sky is a visual timeline on its own world clock,
+ * held at the deep night with the dusk's fog distances, and it does not touch the gameplay clock or the layers. The timeline is evaluated at a
  * sky-clock tick of the test's choosing through a {@link ClockManager} that only the test holds, so no world clock is written and a
  * test running beside this one is not affected. The expected colours are written out here, not read from the timeline.
  */
 public class SkyTimelineTest {
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
     private static final Identifier SKY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sky");
-    private static final long DUSK = 0;
     private static final long NIGHT = 144_000;
     private static final long PERIOD = 288_000;
     private static final float EPSILON = 0.002f;
 
-    /** One reading of the timeline at a sky-clock tick. */
-    private record Sample(long skyTicks, float red, float green, float blue, float dustProbability) {
-        float luminance() {
-            return 0.2126f * red + 0.7152f * green + 0.0722f * blue;
-        }
-    }
+    /** Sky-clock ticks across the whole period, the playtest's 80993 among them: the sky must read the same at each. */
+    private static final long[] ACROSS_THE_PERIOD = {0, 40_000, 80_993, NIGHT, 200_000, PERIOD - 1};
 
+    /**
+     * #1606: the surface holds the deep night's colours (sky, fog, sky light, stars) at every tick of the sky clock, and the fog
+     * distances stay at the dusk values, so the dark does not close in. The clock still runs; only what it reads stands still.
+     */
     @GameTest
-    public void theSkySwingsFromDuskToNearBlackAndBack(GameTestHelper helper) {
+    public void theSkyHoldsTheDeepNightWithDuskFogDistances(GameTestHelper helper) {
         Timeline timeline = timeline(helper);
-        List<Sample> up = new ArrayList<>();
-        for (long ticks : new long[] {DUSK, NIGHT / 4, NIGHT / 2, NIGHT * 3 / 4, NIGHT}) {
-            up.add(sample(timeline, ticks));
-        }
-        List<Sample> back = new ArrayList<>(List.of(up.getLast()));
-        for (long ticks : new long[] {NIGHT + NIGHT / 2, PERIOD - 1}) {
-            back.add(sample(timeline, ticks));
-        }
-        Sample dusk = up.getFirst();
-        Sample night = up.getLast();
-        expectColour(helper, "dusk sky", dusk, 0x4A, 0x28, 0x20);
-        expectColour(helper, "night sky", night, 0x07, 0x05, 0x0A);
-        if (Math.abs(dusk.dustProbability() - 0.05f) > EPSILON || Math.abs(night.dustProbability() - 0.02f) > EPSILON) {
-            throw helper.assertionException(
-                    "the dust should thin from 0.05 at dusk to 0.02 at night, was %s and %s",
-                    dusk.dustProbability(), night.dustProbability());
-        }
-        expectMonotonic(helper, "darken all the way to night", up, -1);
-        expectMonotonic(helper, "brighten from night back to dusk", back, 1);
-        Sample last = back.getLast();
-        if (Math.abs(last.luminance() - dusk.luminance()) > EPSILON) {
-            throw helper.assertionException(
-                    "the swing should close: the last tick of the period is %s, the first is %s",
-                    last.luminance(), dusk.luminance());
+        for (long ticks : ACROSS_THE_PERIOD) {
+            ClockManager clocks = clock -> new FixedClock(ticks);
+            expectColour(helper, ticks, "sky", sample(timeline, EnvironmentAttributes.SKY_COLOR, clocks), 0x07050A);
+            expectColour(helper, ticks, "fog", sample(timeline, EnvironmentAttributes.FOG_COLOR, clocks), 0x160C0A);
+            expectColour(
+                    helper,
+                    ticks,
+                    "sky light",
+                    sample(timeline, EnvironmentAttributes.SKY_LIGHT_COLOR, clocks),
+                    0x6A70B0);
+            expectNear(
+                    helper,
+                    ticks,
+                    "star brightness",
+                    sample(timeline, EnvironmentAttributes.STAR_BRIGHTNESS, clocks),
+                    1f);
+            expectNear(
+                    helper,
+                    ticks,
+                    "sky light factor",
+                    sample(timeline, EnvironmentAttributes.SKY_LIGHT_FACTOR, clocks),
+                    0.16f);
+            expectNear(
+                    helper,
+                    ticks,
+                    "fog start",
+                    sample(timeline, EnvironmentAttributes.FOG_START_DISTANCE, clocks),
+                    20f);
+            expectNear(
+                    helper, ticks, "fog end", sample(timeline, EnvironmentAttributes.FOG_END_DISTANCE, clocks), 150f);
+            List<AmbientParticle> dust = timeline.createTrackSampler(EnvironmentAttributes.AMBIENT_PARTICLES, clocks)
+                    .applyTimeBased(List.of(), 0);
+            expectNear(helper, ticks, "dust", dust.getFirst().probability(), 0.02f);
         }
         helper.succeed();
     }
@@ -122,14 +129,8 @@ public class SkyTimelineTest {
         helper.succeed();
     }
 
-    private static Sample sample(Timeline timeline, long skyTicks) {
-        ClockManager clocks = clock -> new FixedClock(skyTicks);
-        Vector3fc colour = timeline.createTrackSampler(EnvironmentAttributes.SKY_COLOR, clocks)
-                .applyTimeBased(EnvironmentAttributes.SKY_COLOR.defaultValue(), 0);
-        List<AmbientParticle> dust = timeline.createTrackSampler(EnvironmentAttributes.AMBIENT_PARTICLES, clocks)
-                .applyTimeBased(List.of(), 0);
-        return new Sample(
-                skyTicks, colour.x(), colour.y(), colour.z(), dust.getFirst().probability());
+    private static <V> V sample(Timeline timeline, EnvironmentAttribute<V> attribute, ClockManager clocks) {
+        return timeline.createTrackSampler(attribute, clocks).applyTimeBased(attribute.defaultValue(), 0);
     }
 
     private static Timeline timeline(GameTestHelper helper) {
@@ -147,29 +148,23 @@ public class SkyTimelineTest {
                 .getOrThrow(ResourceKey.create(Registries.WORLD_CLOCK, SKY));
     }
 
-    private static void expectMonotonic(GameTestHelper helper, String what, List<Sample> samples, int direction) {
-        for (int i = 1; i < samples.size(); i++) {
-            if (Integer.signum(Float.compare(
-                            samples.get(i).luminance(), samples.get(i - 1).luminance()))
-                    != direction) {
-                throw helper.assertionException(
-                        "the sky should %s, but at %s it is %s after %s at %s",
-                        what,
-                        samples.get(i).skyTicks(),
-                        samples.get(i).luminance(),
-                        samples.get(i - 1).luminance(),
-                        samples.get(i - 1).skyTicks());
-            }
+    private static void expectColour(GameTestHelper helper, long ticks, String what, Vector3fc colour, int rgb) {
+        int red = (rgb >> 16) & 0xFF;
+        int green = (rgb >> 8) & 0xFF;
+        int blue = rgb & 0xFF;
+        if (Math.abs(colour.x() - red / 255f) > EPSILON
+                || Math.abs(colour.y() - green / 255f) > EPSILON
+                || Math.abs(colour.z() - blue / 255f) > EPSILON) {
+            throw helper.assertionException(
+                    "at sky tick %s the %s colour should be #%06X, was (%s, %s, %s) of 1",
+                    ticks, what, rgb, colour.x(), colour.y(), colour.z());
         }
     }
 
-    private static void expectColour(GameTestHelper helper, String what, Sample sample, int red, int green, int blue) {
-        if (Math.abs(sample.red() - red / 255f) > EPSILON
-                || Math.abs(sample.green() - green / 255f) > EPSILON
-                || Math.abs(sample.blue() - blue / 255f) > EPSILON) {
+    private static void expectNear(GameTestHelper helper, long ticks, String what, float actual, float expected) {
+        if (Math.abs(actual - expected) > EPSILON) {
             throw helper.assertionException(
-                    "%s should be #%02X%02X%02X, was (%s, %s, %s) of 1",
-                    what, red, green, blue, sample.red(), sample.green(), sample.blue());
+                    "at sky tick %s the %s should be %s, was %s", ticks, what, expected, actual);
         }
     }
 
