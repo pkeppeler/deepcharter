@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.client.ui.HoveredItemScreen;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.fuel.EngineSoot;
@@ -31,8 +32,10 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
@@ -42,7 +45,9 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The online repair station: the hull repair buttons, then the shop, in one list under the header. The list is longer than a
@@ -50,7 +55,7 @@ import net.minecraft.world.item.ItemStack;
  * list. The screen never decides anything: it sends the press and the server checks it, charges the account and answers with
  * a new {@link TerminalView}.
  */
-public final class RepairStationScreen extends CrtScreen implements TerminalViewScreen {
+public final class RepairStationScreen extends CrtScreen implements TerminalViewScreen, HoveredItemScreen {
     private static final int MARGIN = 24;
     private static final int COLUMN_WIDTH = 190;
     private static final int BUTTON_HEIGHT = 20;
@@ -64,23 +69,34 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 
     /**
      * One button of the list: what it says, the action it sends, whether it can be pressed (a track at its top tier
-     * cannot) and what the ware does, which the tip over the list shows while the player points at it (#1645).
+     * cannot), what the ware does, which the tip over the list shows while the player points at it (#1645), and the
+     * item it sells, whose sheet the spec sheet key opens (#1651), or null when it sells none.
      */
     private record Row(
-            Component label, Identifier action, CompoundTag args, boolean active, Optional<Component> about) {
+            Component label,
+            Identifier action,
+            CompoundTag args,
+            boolean active,
+            Optional<Component> about,
+            @Nullable Item item) {
         /** A row that can be pressed and says what its ware does. */
         Row(Component label, Identifier action, CompoundTag args, Component about) {
-            this(label, action, args, true, Optional.of(about));
+            this(label, action, args, true, Optional.of(about), null);
+        }
+
+        /** A row that sells {@code item}: pressable, saying what it does, and the spec sheet key opens its sheet. */
+        static Row sells(Component label, Identifier action, CompoundTag args, Component about, Item item) {
+            return new Row(label, action, args, true, Optional.of(about), item);
         }
 
         /** A row that cannot be pressed now, but still says what its ware does. */
         static Row inactive(Component label, Identifier action, CompoundTag args, Component about) {
-            return new Row(label, action, args, false, Optional.of(about));
+            return new Row(label, action, args, false, Optional.of(about), null);
         }
 
         /** A row that sells nothing and says nothing: it only reports that the suit's log cannot be read. */
         static Row silent(Component label, Identifier action, CompoundTag args) {
-            return new Row(label, action, args, false, Optional.empty());
+            return new Row(label, action, args, false, Optional.empty(), null);
         }
     }
 
@@ -90,6 +106,8 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     private TerminalView view;
     /** The labels of the rows as the list was last built, so {@link #tick} rebuilds it only when one changes. */
     private List<Component> builtLabels = List.of();
+    /** The shown buttons of the rows that sell an item, and the item, as the list was last built. */
+    private final Map<CrtButton, Item> rowItems = new HashMap<>();
 
     private final ScrollList scroll =
             new ScrollList("screen.deepcharter.repair.scroll", this::rowCount, this::visibleRows, this::rebuildWidgets);
@@ -152,15 +170,13 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
         for (Consumable consumable : Consumable.values()) {
             CompoundTag args = new CompoundTag();
             args.putString(RepairStation.ITEM_KEY, consumable.itemId().toString());
-            String name = new ItemStack(RepairRegistry.item(consumable))
-                    .getHoverName()
-                    .getString()
-                    .toUpperCase(Locale.ROOT);
+            Item item = RepairRegistry.item(consumable);
+            String name = new ItemStack(item).getHoverName().getString().toUpperCase(Locale.ROOT);
             Component label = consumable.perPurchase() > 1
                     ? Component.translatable(
                             "screen.deepcharter.repair.buy_pack", name, consumable.perPurchase(), consumable.price())
                     : Component.translatable("screen.deepcharter.repair.buy", name, consumable.price());
-            rows.add(new Row(label, RepairStation.BUY, args, about(consumable)));
+            rows.add(Row.sells(label, RepairStation.BUY, args, about(consumable), item));
         }
         return rows;
     }
@@ -326,6 +342,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     protected void layout() {
         List<Row> rows = rows();
         builtLabels = rows.stream().map(Row::label).toList();
+        rowItems.clear();
         int visible = visibleRows();
         scroll.beginLayout();
         int firstRow = scroll.first();
@@ -342,6 +359,10 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
             row.about().ifPresent(button::about);
             button.active = row.active();
             addRenderableWidget(scroll.shown(button));
+            Item item = row.item();
+            if (item != null) {
+                rowItems.put(button, item);
+            }
         }
         addRenderableWidget(new CrtButton(
                 contentLeft(MARGIN),
@@ -350,6 +371,16 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                 buttonHeight(),
                 Component.translatable("screen.deepcharter.terminal.close"),
                 button -> onClose()));
+    }
+
+    @Override
+    public @Nullable Item hoveredItem() {
+        for (Map.Entry<CrtButton, Item> row : rowItems.entrySet()) {
+            if (row.getKey().visible && row.getKey().isHovered()) {
+                return row.getValue();
+            }
+        }
+        return null;
     }
 
     /** The account line, the hull line and, when the list is longer than the screen, which rows are shown, as drawn. */

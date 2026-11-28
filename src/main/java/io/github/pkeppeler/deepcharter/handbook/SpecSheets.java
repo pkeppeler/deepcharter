@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.handbook;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.outpost.OutpostRates;
 import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
 import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.pod.PodHeatShieldTuning;
@@ -81,7 +82,7 @@ public final class SpecSheets {
         }
         for (OreType ore : OreType.values()) {
             if (ore.itemId().equals(id) || ore.blockId().equals(id)) {
-                ratings.add(rating("worth", "dollars", money(ore.value())));
+                ratings.add(rating("worth", "dollars", money(OutpostRates.colonyOrePrice(ore))));
             }
         }
         if (id.getPath().equals("reserve_tank")) {

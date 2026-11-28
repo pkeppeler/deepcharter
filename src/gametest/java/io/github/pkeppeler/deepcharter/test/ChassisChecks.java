@@ -250,7 +250,6 @@ final class ChassisChecks {
         int x = 9096 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-lining");
-        pilot.player().setGameMode(GameType.SURVIVAL);
         Vec3 start = new Vec3(x + middle, FLOOR, Z + middle);
         PodEntity[] pod = {null};
         int ring = 4 * width * height;
@@ -261,6 +260,9 @@ final class ChassisChecks {
             site(level, x);
             // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
             pilot.teleportTo(level, start, 0f, 0f);
+            // Survival only now: a survival player waiting at its join spot for the far chunks can be buried there
+            // and suffocate (#1733), and a dead mock cannot be teleported.
+            pilot.player().setGameMode(GameType.SURVIVAL);
             pod[0] = spawn(level, start);
             expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
             pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), ring));
@@ -318,7 +320,6 @@ final class ChassisChecks {
         int x = 9480 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-liner-" + OWNERS.incrementAndGet());
-        owner.player().setGameMode(GameType.SURVIVAL);
         int ring = 4 * width * height;
         int lowX = x - width / 2;
         int lowZ = Z - width / 2;
@@ -329,6 +330,9 @@ final class ChassisChecks {
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
             site(level, x);
+            // Survival only now: a survival player waiting at its join spot for the far chunks can be buried there
+            // and suffocate (#1733).
+            owner.player().setGameMode(GameType.SURVIVAL);
             pod[0] = spawn(level, new Vec3(x + middle, FLOOR, Z + middle));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod[0], ComponentTrack.LINER, 1);
             PodLining.modify(pod[0], state -> new PodLining.State(0, ring + 10, 0, false, false));
@@ -381,13 +385,15 @@ final class ChassisChecks {
             GameTestHelper helper, int x, int tier, Consumer<ServerLevel> build, Consumer<PodEntity> check) {
         ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-sounder-" + OWNERS.incrementAndGet());
-        owner.player().setGameMode(GameType.SURVIVAL);
         PodEntity[] pod = {null};
         int[] ticks = {0};
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
             site(level, x);
             build.accept(level);
+            // Survival only now: a survival player waiting at its join spot for the far chunks can be buried there
+            // and suffocate (#1733).
+            owner.player().setGameMode(GameType.SURVIVAL);
             pod[0] = spawn(level, new Vec3(x + middle, FLOOR, Z + middle));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod[0], ComponentTrack.SOUNDER, tier);
         });
@@ -444,10 +450,12 @@ final class ChassisChecks {
         int x = 9240 + shift;
         ServerLevel level = TestLayers.level(helper, 1);
         MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-scanner");
-        owner.player().setGameMode(GameType.SURVIVAL);
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
             site(level, x);
+            // Survival only now: a survival player waiting at its join spot for the far chunks can be buried there
+            // and suffocate (#1733).
+            owner.player().setGameMode(GameType.SURVIVAL);
             PodEntity pod = spawn(level, new Vec3(x, FLOOR, Z));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, 2);
             // The pod faces south, so the plane is its own X. Its bore reaches width / 2 to one side and width / 2 - 1

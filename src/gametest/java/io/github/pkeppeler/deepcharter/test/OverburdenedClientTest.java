@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
+import io.github.pkeppeler.deepcharter.market.OrePriceTooltip;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -100,9 +101,28 @@ public class OverburdenedClientTest implements FabricClientGameTest {
                     lines.equals(List.of(
                             ore.getHoverName().getString(),
                             "Mass 20",
+                            "Sells for $2,000 at the colony, $1,600 at an outpost",
                             "Heavy: it slows you while you carry it.",
                             "Won't stack. Haul it in your pod's cargo bay.")),
-                    "an ore tooltip should give its mass, say it is heavy and where to haul it, listed " + lines);
+                    "an ore tooltip should give its mass, its price, say it is heavy and where to haul it, listed "
+                            + lines);
+            // #1669: every ore's price sits beside its mass, on the tooltip the player sees.
+            for (OreType type : OreType.values()) {
+                ItemStack each = OreRegistry.stack(type);
+                List<String> tooltip =
+                        context.computeOnClient(client -> each
+                                .getTooltipLines(
+                                        Item.TooltipContext.of(client.level), client.player, TooltipFlag.NORMAL)
+                                .stream()
+                                .map(Component::getString)
+                                .toList());
+                String price = OrePriceTooltip.line(each).orElseThrow().getString();
+                require(
+                        tooltip.size() > 2
+                                && tooltip.get(1).startsWith("Mass ")
+                                && tooltip.get(2).equals(price),
+                        type + "'s tooltip should give its price under its mass, listed " + tooltip);
+            }
         }
     }
 }
