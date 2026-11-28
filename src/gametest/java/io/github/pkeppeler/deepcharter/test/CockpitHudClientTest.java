@@ -1152,7 +1152,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     }
                 }
                 if (overlap(plateBox, account)) {
-                    problems.add(where + ": the plate with " + kept.size() + " rows covers the account line");
+                    problems.add(where + ": the plate with " + kept.size() + " rows covers the account line "
+                            + Arrays.toString(plateBox) + " " + Arrays.toString(account) + " gui " + guiWidth + "x"
+                            + guiHeight);
                 }
                 for (HudKeepClear.Rect slot : slots) {
                     if (overlap(account, box(slot))) {
