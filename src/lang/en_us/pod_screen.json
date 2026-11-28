@@ -11,7 +11,6 @@
   "deepcharter.pod.screen.refusal.ore_stays": "Ore can't go in your pack. %s dumps it under the pod",
   "deepcharter.pod.screen.refusal.other_track": "That's a %s: this slot takes a %s",
   "deepcharter.pod.screen.refusal.past_the_bay": "The cargo bay has %s slots",
-  "key.deepcharter.pod_screen": "Open the pod screen (aboard)",
   "screen.deepcharter.pod.bricks": "Bricks %s",
   "screen.deepcharter.pod.condition.capped": "Works at the chassis' best tier",
   "screen.deepcharter.pod.condition.void": "Void: stamped for another charter",

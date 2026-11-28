@@ -19,7 +19,6 @@ public final class PodClientInit {
         PilotFire.init();
         LiningKeys.register();
         SonarKeys.register();
-        PodScreenKeys.register();
         PodDumpKeys.register();
         SonarHud.init();
         SonarMarksHud.init();

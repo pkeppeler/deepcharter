@@ -47,8 +47,8 @@ import net.minecraft.world.item.Items;
 
 /**
  * The pod screen (ADR 0102): one slot for each part track, the fuel slot, and a page of the hold, over the player's
- * inventory. It opens for the pod's own charter only: by sneak and use from outside, or by the pod screen key from a
- * seat ({@link PodScreenPayload}).
+ * inventory. It opens for the pod's own charter only: by sneak and use from outside, or by the inventory key from a
+ * seat ({@link PodEntity#openCustomInventoryScreen}).
  *
  * <ul>
  *   <li><b>Parts.</b> Each track's slot shows the part fitted on it, bought or crafted, or a faded stock or empty
@@ -184,9 +184,8 @@ public final class PodMenu extends SlottedMenu {
         refresh();
     }
 
-    /** Registers the menu type and the ways to open it: sneak and use on the pod, and the key's payload. */
+    /** Registers the way to open it from outside: sneak and use on the pod. The seat's way is on {@link PodEntity}. */
     public static void init() {
-        PodScreenPayload.register();
         UseEntityCallback.EVENT.register((user, level, hand, entity, hit) -> {
             if (!(entity instanceof PodEntity target) || !user.isSecondaryUseActive() || user.isSpectator()) {
                 return InteractionResult.PASS;
