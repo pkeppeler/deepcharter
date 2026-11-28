@@ -278,9 +278,9 @@ public final class PodTowing {
     }
 
     /**
-     * True when the person picked their pod this tick or the one before. One right-click on a pod sends the use of the
-     * pod and then, when the client's own result passes, the use of the item in the same tick, so {@link TowCableItem}
-     * must not read that second use as a click on nothing.
+     * True when the person picked their pod within {@link #PICK_GRACE_TICKS}. One right-click on a pod sends the use of
+     * the pod and then, when the client's own result passes, the use of the item, so {@link TowCableItem} must not read
+     * that second use as a click on nothing.
      */
     static boolean pickedJustNow(ServerPlayer person) {
         Long at = PICKED_AT.get(person);

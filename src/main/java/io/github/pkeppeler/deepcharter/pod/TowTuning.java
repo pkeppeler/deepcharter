@@ -15,8 +15,7 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param drag           share of its speed a towed pod keeps each tick; it is what damps a swing, so it is under 1
  * @param groundFriction share of its speed a towed pod keeps each tick that it rests on a floor
  * @param pickTicks      ticks a person's first click with the cable stays picked before it slips off the pod; the
- * second
- *                       click must come within it
+ *                       second click must come within it
  */
 public record TowTuning(
         double reach,
