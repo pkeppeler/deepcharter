@@ -4,7 +4,6 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -509,15 +508,17 @@ public class EconomyAffordabilityTest {
     }
 
     /**
-     * Tank refills that a one-way bore of all of layer 1 takes, for a Mole whose tank is of tier 0 to 6, in the deepest zone (it
-     * changes drill time per slab through the ore's hardness, so it is the dearest). Literals: a change to the tank ladder, the burn
-     * rates (#963 cut them to about a seventh, so a bore is 20 L and the tank ladder buys it in 3 refills or fewer), the drill or layer 1's height moves them.
+     * Tank refills that a one-way bore of all of layer 1 takes, for a Mole whose tank is of tier 0 to 6, in the deepest
+     * zone (it changes drill time per slab through the ore's hardness, so it is the dearest). Literals: a change to the
+     * tank ladder, the burn rates (#963 cut them to about a seventh and #1596 raised them by 1 / 0.7, so a bore is 29 L
+     * and the tank ladder of 10, 13, 17, 22, 30, 45 and 65 L buys it in 3 refills or fewer), the drill or layer 1's
+     * height moves them.
      */
-    private static final int[] BORE_TANKS_BY_TANK_TIER = {3, 2, 1, 1, 1, 1, 1};
+    private static final int[] BORE_TANKS_BY_TANK_TIER = {3, 3, 2, 2, 1, 1, 1};
 
-    private static final int BORE_LITRES = 20;
+    private static final int BORE_LITRES = 29;
     /** Litres (in tenths) of a braked drive down layer 1's 192 blocks at 0.6 blocks per tick: 16 s, the rotor on half of it. */
-    private static final int DRIVE_DOWN_DECILITRES = 3;
+    private static final int DRIVE_DOWN_DECILITRES = 4;
     /** The terminal sink speed of a pod in blocks per tick: gravity 0.08 times drag 0.98 over the 0.02 the drag removes. */
     private static final double FREE_FALL_TERMINAL_SINK = 3.92;
 
@@ -586,9 +587,9 @@ public class EconomyAffordabilityTest {
     /** The slabs and the net dollars of a Mole with tier 2 parts in `upper_levels`, from the outpost (#320) and, as before, from the surface. Literals: a change to the fuel, the drill, the ore or the outpost's terms moves them. */
     private static final int OUTPOST_RUN_SLABS = 48;
 
-    private static final int OUTPOST_RUN_NET = 455;
+    private static final int OUTPOST_RUN_NET = 452;
     private static final int SURFACE_START_RUN_SLABS = 31;
-    private static final int SURFACE_START_RUN_NET = 370;
+    private static final int SURFACE_START_RUN_NET = 368;
     /** What the outpost's prices take from a layer 2 run, as a share of what the same run nets at the colony's prices, at least and at most. */
     private static final double OUTPOST_TERMS_SHARE_MIN = 0.15;
 
@@ -933,9 +934,8 @@ public class EconomyAffordabilityTest {
         double depth = EarlyRunModel.layerOneBlocks() + 50;
         EarlyRunModel.Bite bite = EarlyRunModel.biteSlab(drill, depth);
         double chargePerSlab = (double) Consumable.BLASTING_CHARGE.price() / RepairTuning.DEFAULT.chargeDepth();
-        double stoneSeconds = PodDrill.drillTicks(
-                        drill, Blocks.STONE.defaultDestroyTime(), (int) (depth * LayerTuning.DEFAULT.feetPerBlock()))
-                / 20.0;
+        double stoneSeconds =
+                PodDrill.drillTicks(drill, Blocks.STONE.defaultDestroyTime(), (int) Math.round(depth)) / 20.0;
         long price = UpgradeTuning.DEFAULT.price(ComponentTrack.DRILL, tier);
         Run layerTwo = upgradedRunInLayerTwo();
         LOGGER.info(

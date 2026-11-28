@@ -12,8 +12,10 @@ import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -60,6 +62,39 @@ public final class RepairStation {
         TerminalActions.register(TerminalTypes.REPAIR_STATION, SCRAPE_FLUE, RepairStation::scrapeFlue);
         TerminalActions.register(TerminalTypes.REPAIR_STATION, BUY, RepairStation::buy);
         ParkedPodView.register(TerminalTypes.REPAIR_STATION);
+        declareWares();
+    }
+
+    /**
+     * What the station sells, each with the line that says what it does before the buy (#1645): the hull repairs,
+     * the engine's soot and the suit tracks (see {@code SuitShop}) have a line of their own, an item has its spec
+     * sheet's.
+     */
+    private static void declareWares() {
+        for (Identifier action : List.of(REPAIR, REPAIR_TOTAL, SERVICE_ENGINE, SCRAPE_FLUE)) {
+            TerminalWares.register(
+                    TerminalTypes.REPAIR_STATION,
+                    action,
+                    ware(action),
+                    "screen.deepcharter.repair.about." + action.getPath());
+        }
+        for (Consumable consumable : Consumable.values()) {
+            TerminalWares.register(
+                    TerminalTypes.REPAIR_STATION,
+                    BUY,
+                    ware(consumable),
+                    "deepcharter.spec.item." + consumable.itemId().getPath());
+        }
+    }
+
+    /** The ware id of a row that one action sells. */
+    public static String ware(Identifier action) {
+        return action.getPath();
+    }
+
+    /** The ware id of an item the station sells. */
+    public static String ware(Consumable consumable) {
+        return "item:" + consumable.itemId().getPath();
     }
 
     private static Optional<Component> repair(TerminalAction.Context context, Optional<Integer> requested) {

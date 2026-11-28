@@ -88,7 +88,7 @@ public class PodComponentsTest {
             expectEqual(helper, "engine tier 2 speed", stock.horizontalSpeed() * 170f / 150f, stats.horizontalSpeed());
             expectEqual(
                     helper, "drill tier 2 ticks per hardness", stock.ticksPerHardness() / 2f, stats.ticksPerHardness());
-            expectEqual(helper, "tank tier 1 litres", 15f, stats.tankLitres());
+            expectEqual(helper, "tank tier 1 litres", 13f, stats.tankLitres());
 
             // The pod really behaves differently, not only its stats record.
             pod.setHull(1000f);
@@ -133,8 +133,8 @@ public class PodComponentsTest {
             pod.setFuel(60f);
             pod.setHull(70f);
             install(helper, pod, ComponentTrack.FUEL_TANK, 1, charter);
-            // 60% of 10 litres is 6 litres, which is 40% of 15.
-            expectEqual(helper, "fuel percent after a bigger tank", 40f, pod.fuel());
+            // 60% of 10 litres is 6 litres, which is 600/13 % of 13.
+            expectEqual(helper, "fuel percent after a bigger tank", 600f / 13f, pod.fuel());
             install(helper, pod, ComponentTrack.HULL, 1, charter);
             // 30 points were taken off 100, and 30 stay taken off 170.
             expectEqual(helper, "hull after a bigger hull", 140f, pod.hull());
@@ -142,8 +142,8 @@ public class PodComponentsTest {
             if (replaced.isEmpty() || replaced.get().tier() != 1) {
                 throw failure(helper, "installing over the tier 1 tank should return it, got %s", replaced);
             }
-            // 6 litres of 15 is 40%; a 25 litre tank holds the same 6 litres as 24%.
-            expectEqual(helper, "fuel percent after the next tank", 24f, pod.fuel());
+            // 6 litres of 13 is 600/13 %; a 17 litre tank holds the same 6 litres as 600/17 %.
+            expectEqual(helper, "fuel percent after the next tank", 600f / 17f, pod.fuel());
             helper.succeed();
         } finally {
             pod.discard();
@@ -712,9 +712,9 @@ public class PodComponentsTest {
             expectEqual(
                     helper,
                     "tank litres after registering",
-                    15f,
+                    13f,
                     PodStats.of(pod).tankLitres());
-            expectEqual(helper, "fuel percent keeps the 6 litres", 40f, pod.fuel());
+            expectEqual(helper, "fuel percent keeps the 6 litres", 600f / 13f, pod.fuel());
             expectEqual(helper, "hull keeps the 30 points of damage", 140f, pod.hull());
             helper.succeed();
         } finally {
