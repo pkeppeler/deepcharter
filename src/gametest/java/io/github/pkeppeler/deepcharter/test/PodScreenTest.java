@@ -48,8 +48,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -68,6 +70,8 @@ import net.minecraft.world.level.storage.TagValueOutput;
  */
 public class PodScreenTest {
     private static final AtomicInteger PLAYERS = new AtomicInteger();
+    /** The inside of a slot, where its item is drawn: two slots closer than this overlap. */
+    private static final int SLOT_INSIDE = 16;
 
     /** The pod's charter's player and the pod, beside each other; both go when the test ends, however it ends. */
     private record Scene(MockPlayer mock, ServerPlayer player, PodEntity pod, CharterId charter) {
@@ -925,6 +929,143 @@ public class PodScreenTest {
                     wrong.isEmpty(),
                     "these tracks' slots do not lock, show a ghost and take the unit: %s",
                     wrong);
+            helper.succeed();
+        } finally {
+            scene.clean();
+        }
+    }
+
+    // ---- the offhand (#1670) ----
+
+    /**
+     * The offhand slot sits beside the pack, as in the vanilla inventory, and moves items as vanilla's does: a click
+     * puts a stack in and takes it out, a shift-click sends it back to the pack (not into the hold), and the swap-hands
+     * key over a pack slot swaps that slot with the offhand.
+     */
+    @GameTest
+    public void theOffhandSlotTakesAndGivesByClickShiftClickAndTheSwapKey(GameTestHelper helper) {
+        Scene scene = scene(helper);
+        try {
+            ServerPlayer player = scene.player();
+            player.getInventory().add(new ItemStack(Items.TORCH, 4));
+            PodMenu menu = open(helper, scene.player(), scene.pod());
+            Slot offhand = menu.offhandSlot();
+            expect(
+                    helper,
+                    offhand.container == player.getInventory() && offhand.getContainerSlot() == Inventory.SLOT_OFFHAND,
+                    "the offhand slot shows the player's offhand, it shows slot %s of %s",
+                    offhand.getContainerSlot(),
+                    offhand.container);
+
+            click(menu, player, SlotClicks.inventorySlot(menu, Items.TORCH).index, ContainerInput.PICKUP);
+            click(menu, player, offhand.index, ContainerInput.PICKUP);
+            expect(
+                    helper,
+                    player.getOffhandItem().is(Items.TORCH)
+                            && player.getOffhandItem().getCount() == 4
+                            && menu.getCarried().isEmpty(),
+                    "a click puts the torches in the offhand, it holds %s",
+                    player.getOffhandItem());
+
+            click(menu, player, offhand.index, ContainerInput.QUICK_MOVE);
+            expect(
+                    helper,
+                    player.getOffhandItem().isEmpty()
+                            && held(player, Items.TORCH) == 4
+                            && inHold(scene.pod(), Items.TORCH) == 0,
+                    "a shift-click sends the offhand to the pack, not the hold: offhand %s, %s in the hold",
+                    player.getOffhandItem(),
+                    inHold(scene.pod(), Items.TORCH));
+
+            menu.clicked(
+                    SlotClicks.inventorySlot(menu, Items.TORCH).index,
+                    Inventory.SLOT_OFFHAND,
+                    ContainerInput.SWAP,
+                    player);
+            expect(
+                    helper,
+                    player.getOffhandItem().is(Items.TORCH)
+                            && player.getOffhandItem().getCount() == 4,
+                    "the swap-hands key over the torches moves them to the offhand, it holds %s",
+                    player.getOffhandItem());
+
+            click(menu, player, offhand.index, ContainerInput.PICKUP);
+            expect(
+                    helper,
+                    player.getOffhandItem().isEmpty() && menu.getCarried().is(Items.TORCH),
+                    "a click takes the torches out of the offhand, the cursor holds %s",
+                    menu.getCarried());
+            helper.succeed();
+        } finally {
+            scene.clean();
+        }
+    }
+
+    /**
+     * A shift-click from the hold or the fuel slot goes to the pack's 36 slots, never into the offhand: not when it is
+     * empty, and not when it holds the same item with room on its stack while the pack has room too.
+     */
+    @GameTest
+    public void aShiftClickFromTheHoldOrTheFuelSlotNeverLandsInTheOffhand(GameTestHelper helper) {
+        Scene scene = scene(helper);
+        try {
+            ServerPlayer player = scene.player();
+            PodEntity pod = scene.pod();
+            PodMenu menu = open(helper, player, pod);
+
+            pod.cargo().setAt(pod, 0, new ItemStack(Items.TORCH, 4));
+            click(menu, player, menu.holdSlot(0).index, ContainerInput.QUICK_MOVE);
+            expect(
+                    helper,
+                    player.getOffhandItem().isEmpty() && held(player, Items.TORCH) == 4,
+                    "torches shift-clicked from the hold go to the pack, not the empty offhand: offhand %s, %s held",
+                    player.getOffhandItem(),
+                    held(player, Items.TORCH));
+
+            player.getInventory().clearContent();
+            player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.TORCH, 1));
+            pod.cargo().setAt(pod, 0, new ItemStack(Items.TORCH, 4));
+            click(menu, player, menu.holdSlot(0).index, ContainerInput.QUICK_MOVE);
+            expect(
+                    helper,
+                    player.getOffhandItem().getCount() == 1 && held(player, Items.TORCH) == 5,
+                    "torches shift-clicked from the hold skip the offhand's torch stack: offhand %s, %s held",
+                    player.getOffhandItem(),
+                    held(player, Items.TORCH));
+
+            player.getInventory().clearContent();
+            player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.COAL, 1));
+            pod.setFuel(PodTuning.DEFAULT.shell().fullFuel());
+            menu.fuelSlot().set(new ItemStack(Items.COAL, 4));
+            click(menu, player, menu.fuelSlot().index, ContainerInput.QUICK_MOVE);
+            expect(
+                    helper,
+                    player.getOffhandItem().getCount() == 1 && held(player, Items.COAL) == 5,
+                    "coal shift-clicked from the fuel slot skips the offhand's coal stack: offhand %s, %s held",
+                    player.getOffhandItem(),
+                    held(player, Items.COAL));
+            helper.succeed();
+        } finally {
+            scene.clean();
+        }
+    }
+
+    /** No slot of the screen sits on another: the offhand fits between the pack and the hold. */
+    @GameTest
+    public void noTwoSlotsOfTheScreenOverlap(GameTestHelper helper) {
+        Scene scene = scene(helper);
+        try {
+            PodMenu menu = open(helper, scene.player(), scene.pod());
+            List<String> overlaps = new ArrayList<>();
+            for (int i = 0; i < menu.slots.size(); i++) {
+                Slot a = menu.slots.get(i);
+                for (Slot b : menu.slots.subList(i + 1, menu.slots.size())) {
+                    if (Math.abs(a.x - b.x) < SLOT_INSIDE && Math.abs(a.y - b.y) < SLOT_INSIDE) {
+                        overlaps.add(a.index + " at " + a.x + "," + a.y + " and " + b.index + " at " + b.x + "," + b.y);
+                    }
+                }
+            }
+            expect(helper, overlaps.isEmpty(), "these slots overlap: %s", overlaps);
             helper.succeed();
         } finally {
             scene.clean();
