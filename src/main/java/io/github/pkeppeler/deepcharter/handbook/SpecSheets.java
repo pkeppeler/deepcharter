@@ -159,12 +159,12 @@ public final class SpecSheets {
             case DYNAMITE -> ratings.add(rating("clears", "cube", cube(tuning.dynamiteRadius())));
             case PLASTIC_EXPLOSIVES -> ratings.add(rating("clears", "cube", cube(tuning.plasticRadius())));
             case BLASTING_CHARGE -> {
-                ratings.add(rating("clears", "slabs", tuning.chargeDepth()));
+                ratings.add(rating("clears_below", "slabs", tuning.chargeDepth()));
                 ratings.add(rating("clears_ahead", "slabs", tuning.chargeSideDepth()));
                 ratings.add(rating("fuse", "seconds", number(tuning.chargeFuseTicks() / 20f)));
             }
             case SHAPED_CHARGE -> {
-                ratings.add(rating("clears", "slabs", tuning.shapedDepth()));
+                ratings.add(rating("clears_below", "slabs", tuning.shapedDepth()));
                 ratings.add(rating("clears_ahead", "slabs", tuning.shapedSideDepth()));
                 ratings.add(rating("fuse", "seconds", number(tuning.chargeFuseTicks() / 20f)));
             }

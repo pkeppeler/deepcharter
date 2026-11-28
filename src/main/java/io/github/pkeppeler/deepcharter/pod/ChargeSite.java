@@ -1,9 +1,13 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -42,6 +46,32 @@ public record ChargeSite(BlockPos low, BlockPos high, Direction facing) {
                         Math.max(faceHigh.getY(), farHigh.getY()),
                         Math.max(faceHigh.getZ(), farHigh.getZ())),
                 facing);
+    }
+
+    /**
+     * The site a charge set from the seat of {@code pod} blasts (ADR 0120): the face of its next sideways slab,
+     * {@code aheadDepth} slabs deep, when that face holds Company rock and the pod is square to the compass; the slab
+     * under the pod, {@code belowDepth} rows deep, when the face holds none. Empty when the face holds Company rock but
+     * the pod is off the compass: the pilot squares up to blast ahead or turns off the wall to blast below, and the
+     * charge does not guess which.
+     */
+    static Optional<ChargeSite> forPod(PodEntity pod, LoadedBlocks blocks, int belowDepth, int aheadDepth) {
+        PodFootprint foot = PodFootprint.of(pod);
+        Direction facing = PodSteering.nearestCardinal(pod);
+        BlockPos[] face = foot.faceAhead(facing);
+        ChargeSite ahead = ahead(face[0], face[1], facing, aheadDepth);
+        if (ahead.faceCells().stream()
+                .anyMatch(cell -> blocks.getBlockState(cell).is(HazardBlocks.UNDIGGABLE))) {
+            boolean square = Math.abs(Mth.wrapDegrees(facing.toYRot() - pod.getYRot()))
+                    <= PodSteeringTuning.DEFAULT.alignDegrees();
+            return square ? Optional.of(ahead) : Optional.empty();
+        }
+        int top = Mth.ceil(pod.getY() - PodFootprint.EPSILON) - 1;
+        return Optional.of(ahead(
+                new BlockPos(foot.lowX(), top, foot.lowZ()),
+                new BlockPos(foot.lowX() + foot.width() - 1, top, foot.lowZ() + foot.width() - 1),
+                Direction.DOWN,
+                belowDepth));
     }
 
     /** Layers of cells along the facing: the rows of a downward blast, the slabs of a sideways one. */

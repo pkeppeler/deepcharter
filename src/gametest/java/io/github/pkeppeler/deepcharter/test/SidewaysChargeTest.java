@@ -321,14 +321,14 @@ public class SidewaysChargeTest {
                                 helper2, "a pod that backed out should lose no hull, it lost %.2f", hull - pod.hull());
                     }
                     expectAir(helper2, level, cell(x, facing, 0, 0, 0), "the charge still went off");
-                    String line = Component.translatable("message.deepcharter.repair.charge_set_sideways", 3)
+                    String line = Component.translatable("message.deepcharter.repair.charge_set_sideways", "3", 3)
                             .getString();
                     if (line.contains("message.deepcharter")
                             || pilot.actionBarMessages().stream()
                                     .noneMatch(message -> message.getString().equals(line))) {
                         throw failure(helper2, "the bar should say '%s', it said %s", line, pilot.actionBarMessages());
                     }
-                    if (!line.contains("BACK AWAY")) {
+                    if (!line.contains("BACK AWAY 3 blocks") || !line.contains("face ahead")) {
                         throw failure(helper2, "the line should tell the pilot to back away: %s", line);
                     }
                 });
@@ -555,5 +555,69 @@ public class SidewaysChargeTest {
                 cell(x, facing, 0, 0, 0),
                 "20.0",
                 "15.0");
+    }
+
+    /** Puts Company rock in the slab under the pod's footprint. */
+    private static void rockUnderPod(ServerLevel level, int x) {
+        for (BlockPos cell : BlockPos.betweenClosed(x - 1, FLOOR - 1, Z - 1, x, FLOOR - 1, Z)) {
+            put(level, cell.immutable(), HazardBlocks.COMPANY_ROCK);
+        }
+    }
+
+    /** Rock ahead beats rock below: a square pod with Company rock both ahead and under it blasts the face. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSquarePodWithCompanyRockAheadAndBelowBlastsTheFaceAhead(GameTestHelper helper) {
+        int x = 4928;
+        Direction facing = Direction.SOUTH;
+        scene(
+                helper,
+                x,
+                facing,
+                0f,
+                Consumable.BLASTING_CHARGE,
+                level -> {
+                    fillSlab(level, x, facing, 0, HazardBlocks.COMPANY_ROCK);
+                    rockUnderPod(level, x);
+                },
+                pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()),
+                (helper2, level, pod, pilot, hull) -> {
+                    expectAir(helper2, level, cell(x, facing, 0, 0, 0), "the face ahead clears");
+                    expectAir(helper2, level, cell(x, facing, 0, 1, 2), "the face ahead clears");
+                    for (BlockPos cell : BlockPos.betweenClosed(x - 1, FLOOR - 1, Z - 1, x, FLOOR - 1, Z)) {
+                        expectBlock(
+                                helper2,
+                                level,
+                                cell.immutable(),
+                                HazardBlocks.COMPANY_ROCK,
+                                "the slab under the pod stays");
+                    }
+                });
+    }
+
+    /**
+     * Off the compass with Company rock ahead and under it, the charge does not guess: it is refused with a line that
+     * names both ways out, and the slab under the pod stays.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void anOffAnglePodWithCompanyRockAheadAndBelowIsRefusedWithBothWaysOut(GameTestHelper helper) {
+        int x = 4992;
+        Direction facing = Direction.WEST;
+        refusal(
+                helper,
+                x,
+                facing,
+                30f,
+                Consumable.BLASTING_CHARGE,
+                level -> {
+                    fillSlab(level, x, facing, 0, HazardBlocks.COMPANY_ROCK);
+                    rockUnderPod(level, x);
+                },
+                "charge_not_square",
+                new BlockPos(x, FLOOR - 1, Z));
+        String line = Component.translatable("message.deepcharter.repair.charge_not_square")
+                .getString();
+        if (!line.contains("north, east, south or west") || !line.contains("blast below")) {
+            throw failure(helper, "the line should name both ways out: %s", line);
+        }
     }
 }
