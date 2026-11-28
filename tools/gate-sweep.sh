@@ -179,19 +179,20 @@ run_gradle() {
 
 # run_tool <kind> <file>: one non-Gradle gate in the scratch tree; its output (without uv's warnings) in $tool_out.
 run_tool() {
-  local args=()
+  local args=() ok=1
   case $1 in
     py)
       [[ $2 != tools/comment_length_gate.py ]] || args=(--base "$base" --head HEAD)
-      tool_out=$(cd "$tree" && tools/py "$2" ${args[@]+"${args[@]}"} 2>&1) || { tool_out=$(grep -v '^warning:' <<<"$tool_out" || true); return 1; }
+      tool_out=$(cd "$tree" && tools/py "$2" ${args[@]+"${args[@]}"} 2>&1) || ok=
       ;;
     unittest)
-      tool_out=$(cd "$tree" && tools/py -m unittest discover -s tools/tests -p "${2##*/}" 2>&1) || { tool_out=$(grep -v '^warning:' <<<"$tool_out" || true); return 1; }
+      tool_out=$(cd "$tree" && tools/py -m unittest discover -s tools/tests -p "${2##*/}" 2>&1) || ok=
       ;;
     shell)
-      tool_out=$(cd "$tree" && bash "$2" 2>&1) || { tool_out=$(grep -v '^warning:' <<<"$tool_out" || true); return 1; }
+      tool_out=$(cd "$tree" && bash "$2" 2>&1) || ok=
       ;;
   esac
+  [[ -n $ok ]] || { tool_out=$(grep -v '^warning:' <<<"$tool_out" || true); return 1; }
 }
 
 failed=()

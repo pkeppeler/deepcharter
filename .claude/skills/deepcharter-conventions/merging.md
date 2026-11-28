@@ -36,7 +36,7 @@ A new or tightened gate can fail open review-passed PRs that never touched it (t
 - **Exit codes.** 0 no open PR fails; 1 at least one would; 2 usage, a read failure or a sweep error (no body line is printed); 3 nothing in the gate files can run (all UNSWEPT: "not swept", no passes counted).
 - **Fix or notify.** Push the fix to the affected PR's branch (it needs a new cycle 2: a push voids its pass), or comment on it with the gate's message when the author's session owns the fix. Re-run the sweep after a change to the gate.
 - **Body line.** The gate PR's body carries the line the sweep prints: `Gate sweep (<sha>): none affected`, or `Gate sweep (<sha>): #N fixed, #M notified` naming each PR the sweep listed. `<sha>` is the gate PR's head at the sweep. `tools/merge-pr.sh` (so `--preflight`, the batch and the queue) and `tools/mark-review-passed.sh` refuse a gate PR without the line, or whose sha is not an ancestor of its head (a rebase or reset since the sweep). The line is a prompt to look, not proof the sweep ran or covered everything: a gate PR that gains a commit after the sweep still passes the ancestor check, so re-run the sweep when the gate changes. A PR numbered below `GATE_SWEEP_FIRST_PR` in `tools/lib/pr-body-checks.sh` is exempt.
-- **Limits.** A PR opened after the sweep is not covered: re-run before cycle 2 and before the merge. A gate PR that conflicts with `main` is not swept.
+- **Limits.** A PR opened after the sweep is not covered: re-run before cycle 2 and before the merge.
 
 ## GitHub and CI gotchas
 
