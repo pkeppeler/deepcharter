@@ -29,10 +29,10 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "rock-gradient" (#1551): the long gradient of layer 1's rock on the scanner. A bore is cut down
- * through layer 1 and a pod is held at a row every {@value #STRIDE} rows from over the hardpan's gradient to under the
- * packed shale's, first with a tier 1 scanner (a slice of a few dozen rows, in which the colour barely changes) and then
- * with the top tier (a wide view, in which it drifts from the hardpan's olive through the packed shale's rust to the
- * black shale's cold blue). A still at each row for each tier, and a frame for the recording.
+ * through layer 1 and a pod is held at a row every {@value #STRIDE} rows from over the hardpan's gradient to under
+ * the packed shale's, first with a tier 1 scanner (a slice of a few dozen rows, in which the colour barely changes)
+ * and then with the top tier (a wide view, in which it drifts from the hardpan's olive through the packed shale's rust
+ * to the black shale's cold blue). A still at each row for each tier, and a frame for the recording.
  */
 public class RockGradientScenario extends EvidenceScenario {
     private static final int X = 3000;
@@ -95,7 +95,10 @@ public class RockGradientScenario extends EvidenceScenario {
         }
     }
 
-    /** Mounts the first player on a new pod with a scanner of {@code tier} over the open shaft and holds it at {@code top}. */
+    /**
+     * Mounts the first player on a new pod with a scanner of {@code tier} over the open shaft and holds it at
+     * {@code top}.
+     */
     private static void ride(ClientGameTestContext context, TestServerContext server, int top, int tier) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();

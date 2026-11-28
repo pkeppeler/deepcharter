@@ -239,7 +239,9 @@ public class StrataTransitionsTest {
         helper.succeed();
     }
 
-    /** A rule that moves nothing by noise or surface depth (layer 3's beds) reads neither, and never builds the sampler. */
+    /**
+     * A rule that moves nothing by noise or surface depth (layer 3's beds) reads neither, and never builds the sampler.
+     */
     @GameTest
     public void aRuleWithNoAmplitudeOrRiseReadsNothing(GameTestHelper helper) {
         AtomicInteger reads = new AtomicInteger();
