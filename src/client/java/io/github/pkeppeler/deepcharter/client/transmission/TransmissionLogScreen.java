@@ -37,7 +37,10 @@ public final class TransmissionLogScreen extends CrtScreen {
     private final TransmissionLogPayload log;
     private final List<Transmission> entries;
     private final ScrollList scroll = new ScrollList(
-            "screen.deepcharter.transmission_log.rows", this::rowCount, this::visibleRows, this::rebuildWidgets);
+            "screen.deepcharter.transmission_log.rows", this::rowCount, this::visibleRows, this::relayout);
+    /** False until the first layout, which scrolls the chosen row into view: before it the screen has no size. */
+    private boolean laidOut;
+
     private int chosen;
     /** The first line of the chosen text drawn, which the wheel over the text moves. */
     private int textLine;
@@ -54,7 +57,6 @@ public final class TransmissionLogScreen extends CrtScreen {
                 .flatMap(Optional::stream)
                 .toList();
         this.chosen = Math.max(0, entries.size() - 1);
-        scroll.scrollTo(chosen);
     }
 
     /** The transmissions listed, oldest first. */
@@ -125,8 +127,19 @@ public final class TransmissionLogScreen extends CrtScreen {
         rebuildWidgets();
     }
 
+    private void relayout() {
+        if (laidOut) {
+            rebuildWidgets();
+        }
+    }
+
     @Override
     protected void layout() {
+        if (!laidOut) {
+            // Before laidOut is set, so the scroll does not lay the screen out again from inside this layout.
+            scroll.scrollTo(chosen);
+            laidOut = true;
+        }
         scroll.beginLayout();
         int first = scroll.first();
         int width = contentWidth(MARGIN);

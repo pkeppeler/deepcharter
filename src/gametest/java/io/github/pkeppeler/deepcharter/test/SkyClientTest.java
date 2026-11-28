@@ -32,6 +32,8 @@ public class SkyClientTest implements FabricClientGameTest {
                     context, "the client in the world", client -> client.player != null && client.level != null);
             TestServerContext server = singleplayer.getServer();
             server.runCommand("gamerule advance_time false");
+            // A spectator hangs where it is put: a player would fall from the height and die over the shots.
+            server.runCommand("gamemode spectator @p");
             server.runCommand(LOOK_UP);
             for (long sky : SKY_TICKS) {
                 server.runCommand("time of deepcharter:sky set " + sky);
