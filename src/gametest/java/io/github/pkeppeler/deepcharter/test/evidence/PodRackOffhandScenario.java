@@ -138,9 +138,11 @@ public class PodRackOffhandScenario extends EvidenceScenario {
         }
     }
 
+    /** Holds still for a few frames, with the toasts the repairs raise cleared so none covers the screen. */
     private void hold(ClientGameTestContext context) {
         for (int i = 0; i < HOLD_FRAMES; i++) {
             context.waitTicks(TICKS_PER_FRAME);
+            context.runOnClient(client -> client.gui.toastManager().clear());
             frame(context);
         }
     }

@@ -1001,6 +1001,55 @@ public class PodScreenTest {
         }
     }
 
+    /**
+     * A shift-click from the hold or the fuel slot goes to the pack's 36 slots, never into the offhand: not when it is
+     * empty, and not when it holds the same item with room on its stack while the pack has room too.
+     */
+    @GameTest
+    public void aShiftClickFromTheHoldOrTheFuelSlotNeverLandsInTheOffhand(GameTestHelper helper) {
+        Scene scene = scene(helper);
+        try {
+            ServerPlayer player = scene.player();
+            PodEntity pod = scene.pod();
+            PodMenu menu = open(helper, player, pod);
+
+            pod.cargo().setAt(pod, 0, new ItemStack(Items.TORCH, 4));
+            click(menu, player, menu.holdSlot(0).index, ContainerInput.QUICK_MOVE);
+            expect(
+                    helper,
+                    player.getOffhandItem().isEmpty() && held(player, Items.TORCH) == 4,
+                    "torches shift-clicked from the hold go to the pack, not the empty offhand: offhand %s, %s held",
+                    player.getOffhandItem(),
+                    held(player, Items.TORCH));
+
+            player.getInventory().clearContent();
+            player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.TORCH, 1));
+            pod.cargo().setAt(pod, 0, new ItemStack(Items.TORCH, 4));
+            click(menu, player, menu.holdSlot(0).index, ContainerInput.QUICK_MOVE);
+            expect(
+                    helper,
+                    player.getOffhandItem().getCount() == 1 && held(player, Items.TORCH) == 5,
+                    "torches shift-clicked from the hold skip the offhand's torch stack: offhand %s, %s held",
+                    player.getOffhandItem(),
+                    held(player, Items.TORCH));
+
+            player.getInventory().clearContent();
+            player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.COAL, 1));
+            pod.setFuel(PodTuning.DEFAULT.shell().fullFuel());
+            menu.fuelSlot().set(new ItemStack(Items.COAL, 4));
+            click(menu, player, menu.fuelSlot().index, ContainerInput.QUICK_MOVE);
+            expect(
+                    helper,
+                    player.getOffhandItem().getCount() == 1 && held(player, Items.COAL) == 5,
+                    "coal shift-clicked from the fuel slot skips the offhand's coal stack: offhand %s, %s held",
+                    player.getOffhandItem(),
+                    held(player, Items.COAL));
+            helper.succeed();
+        } finally {
+            scene.clean();
+        }
+    }
+
     /** No slot of the screen sits on another: the offhand fits between the pack and the hold. */
     @GameTest
     public void noTwoSlotsOfTheScreenOverlap(GameTestHelper helper) {

@@ -127,6 +127,12 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
                 CrtDraw.border(graphics, x - 1, y - 1, x + SLOT - 1, y + SLOT - 1, tuning.refusalColor());
             }
         }
+        // The offhand's frame is lit, so it does not read as a tenth hotbar slot.
+        Slot offhand = menu.offhandSlot();
+        int offhandX = leftPos + offhand.x;
+        int offhandY = topPos + offhand.y;
+        CrtDraw.border(
+                graphics, offhandX - 1, offhandY - 1, offhandX + SLOT - 1, offhandY + SLOT - 1, tuning.phosphorColor());
         gauge(graphics, tuning);
         readouts(graphics, tuning);
     }

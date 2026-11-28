@@ -27,5 +27,5 @@
   "screen.deepcharter.pod.dump_tip": "%s: dump one under the pod, Ctrl+%s: the stack",
   "screen.deepcharter.pod.loose": "Loose ore: weighs x%s, slows the drill and steering, rattles",
   "screen.deepcharter.pod.rack": "Slag rack %s/%s",
-  "screen.deepcharter.pod.offhand": "Offhand. %s over a pack slot swaps it here"
+  "screen.deepcharter.pod.offhand": "Offhand: %s over a pack slot swaps it here"
 }
