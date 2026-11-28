@@ -164,8 +164,8 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Holds the key down over the item whose sheet {@code open} says is shown, lets it repeat as a held key does, and sees
-     * the sheet stay: only a new press puts it away.
+     * Holds the key down over the item whose sheet {@code open} says is shown, lets it repeat as a held key does, and
+     * sees the sheet stay: only a new press puts it away.
      */
     private static void theHeldKeyKeepsTheSheet(ClientGameTestContext context, BooleanSupplier open) {
         int key = context.computeOnClient(client ->
@@ -304,7 +304,9 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
         context.setScreen(() -> null);
     }
 
-    /** From the sheet open over {@code chest}: RECIPES shows {@code item}'s recipes on a console, and Escape goes back. */
+    /**
+     * From the sheet open over {@code chest}: RECIPES shows {@code item}'s recipes on a console, and Escape goes back.
+     */
     private static void theRecipesLinkShowsTheRecipesOverTheChest(
             ClientGameTestContext context, ContainerScreen chest, Item item) {
         SpecSheetScreen sheet = context.computeOnClient(client -> ClientSession.screen(client, SpecSheetScreen.class));

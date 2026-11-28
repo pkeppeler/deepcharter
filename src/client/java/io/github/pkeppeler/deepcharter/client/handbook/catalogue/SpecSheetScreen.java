@@ -81,8 +81,8 @@ public final class SpecSheetScreen extends Screen {
 
     /**
      * Whether the Recipes link shows the recipes on a console of their own over the screen under the sheet, as R over a
-     * chest's slot does: under the sheet is a container (a chest, the pod screen), whose menu the inventory the catalogue
-     * stands beside would close, or a recipe console.
+     * chest's slot does: under the sheet is a container (a chest, the pod screen), whose menu the inventory the
+     * catalogue stands beside would close, or a recipe console.
      */
     private boolean recipesOnAConsole() {
         return parent instanceof AbstractContainerScreen<?> || parent instanceof RecipeConsoleScreen;

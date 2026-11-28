@@ -120,7 +120,9 @@ public final class SpecSheetOpener {
         return true;
     }
 
-    /** Whether the cursor is on a slot with nothing in it, where the key opens nothing rather than an unrelated sheet. */
+    /**
+     * Whether the cursor is on a slot with nothing in it, where the key opens nothing rather than an unrelated sheet.
+     */
     private static boolean onEmptySlot(Screen screen) {
         // The screen sets it each frame from the mouse; it is public through deepcharter.classtweaker.
         return screen instanceof AbstractContainerScreen<?> container
