@@ -200,10 +200,7 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
         pressTheKeyAndSeeTheSheetOverTheScreen(context, pod, dynamite, "a hovered pod screen slot");
     }
 
-    /**
-     * Presses the key over {@code under}, sees {@code item}'s sheet on its own screen, and Escape brings {@code under}
-     * back.
-     */
+    /** Presses the key over {@code under}, sees {@code item}'s sheet on a screen of its own; Escape brings it back. */
     private static void pressTheKeyAndSeeTheSheetOverTheScreen(
             ClientGameTestContext context, Screen under, Item item, String what) {
         context.getInput().pressKey(CatalogueKeys.SPEC_SHEET);

@@ -67,8 +67,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 
     /**
      * One button of the list: what it says, the action it sends, whether it can be pressed (a track at its top tier
-     * cannot), and the item it sells, which the spec sheet key opens the sheet of (#1651), or null for a row that sells
-     * none.
+     * cannot), and the item it sells, whose sheet the spec sheet key opens (#1651), or null when it sells none.
      */
     private record Row(
             Component label,

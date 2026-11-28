@@ -122,10 +122,7 @@ public final class SpecSheetOpener {
                 || (panel != null && panel.searchFocused());
     }
 
-    /**
-     * The item under the cursor in {@code screen}: a catalogue cell, a slot, a recipe console's item or a terminal's
-     * row.
-     */
+    /** The item under the cursor in {@code screen}: a catalogue cell, a slot, a console's item or a terminal row. */
     private static @Nullable Item hoveredIn(Screen screen) {
         CataloguePanel panel = CatalogueScreens.panelOf(screen);
         Item inPanel = panel == null ? null : panel.hoveredItem();
