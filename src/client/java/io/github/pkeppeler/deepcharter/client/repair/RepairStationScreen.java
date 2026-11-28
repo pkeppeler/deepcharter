@@ -66,8 +66,9 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     private static final int[] REPAIR_STEPS = {10, 25, 50};
 
     /**
-     * One button of the list: what it says, the action it sends, whether it can be pressed (a track at its top tier cannot), and the
-     * item it sells, which the spec sheet key opens the sheet of (#1651), or null for a row that sells none.
+     * One button of the list: what it says, the action it sends, whether it can be pressed (a track at its top tier
+     * cannot), and the item it sells, which the spec sheet key opens the sheet of (#1651), or null for a row that sells
+     * none.
      */
     private record Row(
             Component label,

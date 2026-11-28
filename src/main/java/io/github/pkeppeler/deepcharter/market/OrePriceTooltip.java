@@ -9,10 +9,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The price line of an ore's tooltip (#1669): what the ore processor pays for one at the colony and what an outpost's sell
- * terminal pays at depth, read from {@link OutpostRates}, which the processor pays from, so the line and the sale cannot drift.
- * The figures are written as the ore's spec sheet writes its worth. A tooltip provider is not handed the stack, so the client
- * adds this line from the tooltip event, under the mass line.
+ * The price line of an ore's tooltip (#1669): what the ore processor pays for one at the colony and what an outpost's
+ * sell terminal pays at depth, read from {@link OutpostRates}, which the processor pays from, so the line and the sale
+ * cannot drift. The figures are written as the ore's spec sheet writes its worth. A tooltip provider is not handed the
+ * stack, so the client adds this line from the tooltip event, under the mass line.
  */
 public final class OrePriceTooltip {
     private OrePriceTooltip() {}

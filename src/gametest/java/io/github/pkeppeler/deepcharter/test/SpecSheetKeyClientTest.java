@@ -44,10 +44,11 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Client GameTest for #1651: the spec sheet key, pressed through the real keyboard, opens the sheet of the item under the cursor
- * wherever an item can be hovered: a cell of the parts catalogue, a slot of the inventory beside it, a chest's slot, the pod screen's
- * slot and a row of the repair station's shop. Over the catalogue the sheet opens there; over any other screen it opens on its own
- * screen, and Escape goes back to the screen under it. With nothing hovered the key opens the latest sheet offered, as before.
+ * Client GameTest for #1651: the spec sheet key, pressed through the real keyboard, opens the sheet of the item under
+ * the cursor wherever an item can be hovered: a cell of the parts catalogue, a slot of the inventory beside it, a
+ * chest's slot, the pod screen's slot and a row of the repair station's shop. Over the catalogue the sheet opens there;
+ * over any other screen it opens on its own screen, and Escape goes back to the screen under it. With nothing hovered
+ * the key opens the latest sheet offered, as before.
  */
 public class SpecSheetKeyClientTest implements FabricClientGameTest {
     @Override
@@ -79,7 +80,9 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
         }
     }
 
-    /** A catalogue cell, an inventory slot beside it, and nothing hovered: the sheet opens over the catalogue each time. */
+    /**
+     * A catalogue cell, an inventory slot beside it, and nothing hovered: the sheet opens over the catalogue each time.
+     */
     private static void overTheCatalogue(ClientGameTestContext context, Item latest, Item dynamite) {
         CatalogueScene.openInventory(context);
         CataloguePanel panel = CatalogueScene.panel(context);
@@ -162,7 +165,9 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
         context.setScreen(() -> null);
     }
 
-    /** A seated pilot's pod screen: the key over a slot opens the item's sheet, and Escape goes back to the pod screen. */
+    /**
+     * A seated pilot's pod screen: the key over a slot opens the item's sheet, and Escape goes back to the pod screen.
+     */
     private static void overThePodScreen(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, Item dynamite) {
         context.setScreen(() -> null);
@@ -195,7 +200,10 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
         pressTheKeyAndSeeTheSheetOverTheScreen(context, pod, dynamite, "a hovered pod screen slot");
     }
 
-    /** Presses the key over {@code under}, sees {@code item}'s sheet on its own screen, and Escape brings {@code under} back. */
+    /**
+     * Presses the key over {@code under}, sees {@code item}'s sheet on its own screen, and Escape brings {@code under}
+     * back.
+     */
     private static void pressTheKeyAndSeeTheSheetOverTheScreen(
             ClientGameTestContext context, Screen under, Item item, String what) {
         context.getInput().pressKey(CatalogueKeys.SPEC_SHEET);

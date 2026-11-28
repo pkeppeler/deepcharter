@@ -21,9 +21,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * Server GameTests for #1669: an ore's tooltip says what the ore processor pays for it, at the colony and at an outpost's sell
- * terminal, read from the {@link OutpostRates} the processor pays from, and the colony figure is the one the handbook's sheet shows.
- * {@code OreProcessorTest} sells each ore and checks the account moves by the tooltip's figure.
+ * Server GameTests for #1669: an ore's tooltip says what the ore processor pays for it, at the colony and at an
+ * outpost's sell terminal, read from the {@link OutpostRates} the processor pays from, and the colony figure is the one
+ * the handbook's sheet shows. {@code OreProcessorTest} sells each ore and checks the account moves by the tooltip's
+ * figure.
  */
 public class OrePriceTooltipTest {
     private static final String KEY = "deepcharter.market.tooltip.price";

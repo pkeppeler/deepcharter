@@ -20,10 +20,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Evidence scenario "spec-key-ore-price" for #1669 and #1651: an einsteinium's tooltip in the inventory, with its sale price at the
- * colony and at an outpost under its mass (still {@code ore-tooltip-price}); then a chest with dynamite in it, the cursor on the
- * dynamite (still {@code chest-slot-hovered}), and the spec sheet key pressed there, which opens the dynamite's sheet over the chest
- * (still {@code sheet-from-hovered-slot}).
+ * Evidence scenario "spec-key-ore-price" for #1669 and #1651: an einsteinium's tooltip in the inventory, with its sale
+ * price at the colony and at an outpost under its mass (still {@code ore-tooltip-price}); then a chest with dynamite in
+ * it, the cursor on the dynamite (still {@code chest-slot-hovered}), and the spec sheet key pressed there, which opens
+ * the dynamite's sheet over the chest (still {@code sheet-from-hovered-slot}).
  */
 public class SpecKeyOrePriceScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;

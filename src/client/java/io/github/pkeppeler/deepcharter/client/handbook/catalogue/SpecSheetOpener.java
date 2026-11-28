@@ -22,13 +22,13 @@ import org.jspecify.annotations.Nullable;
 /**
  * Opens spec sheets: the one a player asks for, and the latest the server offered the first time they craft or buy an
  * item ({@link SpecSheetPayload}). An offer opens nothing: it shows a corner slip with the item's name and the key
- * ({@link CatalogueKeys#SPEC_SHEET}) that opens its sheet, and remembers the item. In a screen that shows items, the key
- * opens the sheet of the item under the cursor, and with none under it the latest offered (#1651): over the parts catalogue
- * where there is one, else on a sheet screen over the screen, which comes back when it closes. Every request joins one queue, and
- * the queue is drained in order whenever a sheet can be shown: over the parts catalogue of the screen that is open
- * (where the player is when they craft), on a screen of its own when nothing is open ({@link SpecSheetScreen}), and
- * never over anything else, so a sheet waits for a terminal to close and never takes its session away. A sheet being
- * shown is never replaced: the next waits until it is put away.
+ * ({@link CatalogueKeys#SPEC_SHEET}) that opens its sheet, and remembers the item. In a screen that shows items, the
+ * key opens the sheet of the item under the cursor, and with none under it the latest offered (#1651): over the parts
+ * catalogue where there is one, else on a sheet screen over the screen, which comes back when it closes. Every request
+ * joins one queue, and the queue is drained in order whenever a sheet can be shown: over the parts catalogue of the
+ * screen that is open (where the player is when they craft), on a screen of its own when nothing is open
+ * ({@link SpecSheetScreen}), and never over anything else, so a sheet waits for a terminal to close and never takes its
+ * session away. A sheet being shown is never replaced: the next waits until it is put away.
  *
  * <p>The queue and the latest offer are memory only, and a disconnect drops both: the player can look a sheet up in the
  * catalogue any time.
@@ -76,8 +76,9 @@ public final class SpecSheetOpener {
     }
 
     /**
-     * Lets the spec sheet key act on the item under the cursor in {@code screen}, when it is a screen that shows items. Called on
-     * each init, after the catalogue's own keys are attached, so a key the catalogue takes (its search, an open sheet) never gets here.
+     * Lets the spec sheet key act on the item under the cursor in {@code screen}, when it is a screen that shows items.
+     * Called on each init, after the catalogue's own keys are attached, so a key the catalogue takes (its search, an
+     * open sheet) never gets here.
      */
     static void attach(Screen screen) {
         if (screen instanceof AbstractContainerScreen<?>
@@ -87,7 +88,10 @@ public final class SpecSheetOpener {
         }
     }
 
-    /** The spec sheet key in {@code screen}, before the screen sees it. Returns whether it opened, or had already opened, a sheet. */
+    /**
+     * The spec sheet key in {@code screen}, before the screen sees it. Returns whether it opened, or had already
+     * opened, a sheet.
+     */
     private static boolean keyPressed(Screen screen, KeyEvent event) {
         Minecraft client = Minecraft.getInstance();
         if (!CatalogueKeys.SPEC_SHEET.matches(event) || typing(screen) || client.player == null) {
@@ -118,7 +122,10 @@ public final class SpecSheetOpener {
                 || (panel != null && panel.searchFocused());
     }
 
-    /** The item under the cursor in {@code screen}: a catalogue cell, a slot, a recipe console's item or a terminal's row. */
+    /**
+     * The item under the cursor in {@code screen}: a catalogue cell, a slot, a recipe console's item or a terminal's
+     * row.
+     */
     private static @Nullable Item hoveredIn(Screen screen) {
         CataloguePanel panel = CatalogueScreens.panelOf(screen);
         Item inPanel = panel == null ? null : panel.hoveredItem();

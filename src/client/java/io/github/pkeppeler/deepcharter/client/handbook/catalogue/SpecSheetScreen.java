@@ -18,11 +18,12 @@ import net.minecraft.world.item.Item;
 import org.jspecify.annotations.Nullable;
 
 /**
- * An item's spec sheet on a screen of its own, in the recipe console's look: where a sheet pops up when no inventory with the parts
- * catalogue is open to hold it (nothing open, or a window too small for the catalogue's consoles, once the screen over it has
- * closed), and where the spec sheet key opens one over a screen with no catalogue (a chest, the pod screen, a terminal), which
- * comes back when it closes. Any key, the close switch and a click off the console close it, so the next sheet waiting
- * ({@link SpecSheetOpener}) can follow; the Recipes link closes it and shows the item's recipes in the catalogue, over the inventory.
+ * An item's spec sheet on a screen of its own, in the recipe console's look: where a sheet pops up when no inventory
+ * with the parts catalogue is open to hold it (nothing open, or a window too small for the catalogue's consoles, once
+ * the screen over it has closed), and where the spec sheet key opens one over a screen with no catalogue (a chest, the
+ * pod screen, a terminal), which comes back when it closes. Any key, the close switch and a click off the console close
+ * it, so the next sheet waiting ({@link SpecSheetOpener}) can follow; the Recipes link closes it and shows the item's
+ * recipes in the catalogue, over the inventory.
  */
 public final class SpecSheetScreen extends Screen {
     private final @Nullable Screen parent;
