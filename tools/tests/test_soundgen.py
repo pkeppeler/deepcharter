@@ -242,5 +242,63 @@ class ChannelTest(unittest.TestCase):
             self.assertEqual(1 if name in recipes.MONO else 2, self.channels(name), name)
 
 
+class FuelAlarmTest(unittest.TestCase):
+    """#1597: the low-fuel alarms are our own harsh pulses, and critical is plainly more urgent than low."""
+
+    @staticmethod
+    def sounding(name):
+        """The sounding part, not the klaxon's gap."""
+        return recipes.render(name).left[: dsp.seconds(0.3)]
+
+    @classmethod
+    def rms(cls, name):
+        left = cls.sounding(name)
+        return math.sqrt(sum(v * v for v in left) / len(left))
+
+    @classmethod
+    def crossings(cls, name):
+        left = cls.sounding(name)
+        return sum(1 for a, b in zip(left, left[1:]) if (a < 0) != (b < 0)) / (len(left) / recipes.RATE)
+
+    def test_critical_is_louder_denser_and_higher_than_low(self):
+        self.assertGreater(self.rms("alarm/fuel_critical"), self.rms("alarm/fuel_low") * 1.15)
+        self.assertGreater(self.crossings("alarm/fuel_critical"), self.crossings("alarm/fuel_low") * 1.3)
+
+    def test_each_pulse_has_its_designed_length(self):
+        # LowFuelBeep repeats the buzzer every 30 ticks and the klaxon every 10; the klaxon is its whole period.
+        self.assertIn(ticks_played("alarm/fuel_low"), (6, 7))
+        self.assertEqual(10, ticks_played("alarm/fuel_critical"))
+
+    def test_the_klaxon_leaves_a_gap_for_the_pods_other_cues(self):
+        left = recipes.render("alarm/fuel_critical").left
+        sounding, gap = left[: dsp.seconds(0.3)], left[dsp.seconds(0.3) :]
+        self.assertEqual(dsp.seconds(0.2), len(gap))
+        self.assertEqual(0.0, max(abs(v) for v in gap))
+        self.assertGreater(sum(abs(v) for v in sounding) / len(sounding), 0.1)
+
+    def test_peaks_leave_headroom_and_critical_is_louder(self):
+        low = max(abs(v) for v in recipes.render("alarm/fuel_low").left)
+        critical = max(abs(v) for v in recipes.render("alarm/fuel_critical").left)
+        self.assertAlmostEqual(0.7, low, places=2)
+        self.assertAlmostEqual(0.85, critical, places=2)
+
+    @staticmethod
+    def bright(signal):
+        """The share of a signal's energy above 1.5 kHz: a buzz has it in its harmonics, a plain tone does not."""
+        high = dsp.filt(signal, "hp", 1500, 0.7)
+        return sum(v * v for v in high) / sum(v * v for v in signal)
+
+    def test_each_alarm_is_a_buzz_and_a_plain_tone_is_not(self):
+        # Measured: 0.18 for the buzzer, 0.41 for the klaxon. A sine of the alarm's pitch measures 0.006 to 0.10.
+        for name, floor, pitch in (("alarm/fuel_low", 0.12, 415.0), ("alarm/fuel_critical", 0.3, 880.0)):
+            self.assertGreater(self.bright(recipes.render(name).left), floor, name)
+            self.assertLess(self.bright(dsp.sine(dsp.seconds(0.3), pitch)), floor, f"a sine at {pitch} Hz")
+
+    def test_neither_alarm_maps_to_a_vanilla_sound(self):
+        sounds = json.loads((SOUNDS.parent.parent / "src/main/resources/assets/deepcharter/sounds.json").read_text())
+        for event, file in (("fuel.low", "alarm/fuel_low"), ("alarm.fuel_critical", "alarm/fuel_critical")):
+            self.assertEqual([{"name": f"deepcharter:{file}"}], sounds[event]["sounds"], event)
+
+
 if __name__ == "__main__":
     unittest.main()
