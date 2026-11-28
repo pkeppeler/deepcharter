@@ -27,15 +27,9 @@ public record ChargeSite(BlockPos low, BlockPos high, Direction facing) {
 
     /** The site whose face is the box {@code faceLow} to {@code faceHigh} (inclusive corners, one layer thick) and
      * that is {@code depth} layers deep along {@code facing}. */
-    public static ChargeSite ahead(BlockPos faceLow, BlockPos faceHigh, Direction facing, int depth) {
-        BlockPos far = new BlockPos(
-                faceLow.getX() + facing.getStepX() * (depth - 1),
-                faceLow.getY() + facing.getStepY() * (depth - 1),
-                faceLow.getZ() + facing.getStepZ() * (depth - 1));
-        BlockPos farHigh = new BlockPos(
-                faceHigh.getX() + facing.getStepX() * (depth - 1),
-                faceHigh.getY() + facing.getStepY() * (depth - 1),
-                faceHigh.getZ() + facing.getStepZ() * (depth - 1));
+    private static ChargeSite ahead(BlockPos faceLow, BlockPos faceHigh, Direction facing, int depth) {
+        BlockPos far = faceLow.relative(facing, depth - 1);
+        BlockPos farHigh = faceHigh.relative(facing, depth - 1);
         return new ChargeSite(
                 new BlockPos(
                         Math.min(faceLow.getX(), far.getX()),

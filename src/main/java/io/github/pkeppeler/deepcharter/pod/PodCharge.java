@@ -168,10 +168,10 @@ public final class PodCharge {
 
     /**
      * Why {@code kind} may not be set at {@code site}, or empty when it may: the refusals every way of placing a
-     * charge shares. A blasting charge needs Company rock
-     * somewhere in its volume; a shaped charge needs some column to start in Company rock and none to end on lava.
+     * charge shares. A blasting charge needs Company rock somewhere in its volume; a shaped charge needs some column
+     * to start in Company rock and none to end on lava.
      */
-    static Optional<Component> refuse(ServerLevel level, LoadedBlocks blocks, Kind kind, ChargeSite site) {
+    private static Optional<Component> refuse(ServerLevel level, LoadedBlocks blocks, Kind kind, ChargeSite site) {
         if (kind == Kind.SHAPED) {
             return checkShaped(level, blocks, site);
         }
