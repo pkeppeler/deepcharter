@@ -51,7 +51,9 @@ import net.minecraft.world.phys.Vec3;
  * <p>Every method here is safe on a callback path: unreadable hangar data is logged once and skipped.
  */
 public final class Hangar {
-    /** T06, "The Mole is flying again!": the founding Mole handed to its charter, or the first Mole a charter crafts. */
+    /**
+     * T06, "The Mole is flying again!": the founding Mole handed to its charter, or the first Mole a charter crafts.
+     */
     public static final Identifier MOLE_TRANSMISSION = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "t06");
     /** The console stands this far from the hangar anchor, at its east side facing the bay. */
     private static final BlockPos CONSOLE_OFFSET = new BlockPos(5, 0, -3);
@@ -76,7 +78,9 @@ public final class Hangar {
         ServerTickEvents.END_SERVER_TICK.register(Hangar::onTick);
     }
 
-    /** A wreck was made a working pod again: its place says so, and a write-off filed for it is cancelled and refunded. */
+    /**
+     * A wreck was made a working pod again: its place says so, and a write-off filed for it is cancelled and refunded.
+     */
     private static void onRestored(PodEntity pod) {
         markWrecked(pod, false);
         if (pod.level() instanceof ServerLevel level) {
@@ -126,7 +130,10 @@ public final class Hangar {
         }
     }
 
-    /** Checks the write-offs once a second, against the game time, not the time of day: sleeping must not shorten the day one takes. */
+    /**
+     * Checks the write-offs once a second, against the game time, not the time of day: sleeping must not shorten the
+     * day one takes.
+     */
     private static void onTick(MinecraftServer server) {
         if (server.getTickCount() % WRITE_OFF_CHECK_TICKS == 0) {
             settleWriteOffs(server, server.overworld().getGameTime());

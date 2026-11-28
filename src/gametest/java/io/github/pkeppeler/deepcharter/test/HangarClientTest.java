@@ -70,7 +70,10 @@ public class HangarClientTest implements FabricClientGameTest {
         }
     }
 
-    /** Every button and price, advance or Mole status line lies inside the screen, a button holds its whole label, and no price line is under a button. */
+    /**
+     * Every button and price, advance or Mole status line lies inside the screen, a button holds its whole label, and
+     * no price line is under a button.
+     */
     private static Optional<String> problem(HangarScreen screen, int advanceLeft, String moleKey, int moleArguments) {
         Font font = Minecraft.getInstance().font;
         List<Button> buttons = ClientChecks.buttons(screen);

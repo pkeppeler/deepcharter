@@ -20,7 +20,10 @@ public final class HangarDrawn {
 
     private HangarDrawn() {}
 
-    /** The wrapped lines of the status of the player's Mole as {@code key} words them, top to bottom; empty when the screen draws none. */
+    /**
+     * The wrapped lines of the status of the player's Mole as {@code key} words them, top to bottom; empty when the
+     * screen draws none.
+     */
     public static List<Drawn> moleLines(Screen screen, String key, int arguments) {
         return block(DrawnText.of(screen), key, arguments);
     }

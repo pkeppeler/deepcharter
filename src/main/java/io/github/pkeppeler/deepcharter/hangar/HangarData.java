@@ -323,7 +323,10 @@ public final class HangarData extends SavedData {
                 .toList();
     }
 
-    /** Gives {@code player} their one place, held by {@code pod}. A player with a place already, or a pod that holds one, throws. */
+    /**
+     * Gives {@code player} their one place, held by {@code pod}. A player with a place already, or a pod that holds
+     * one, throws.
+     */
     void claim(UUID player, UUID pod, boolean wrecked) {
         if (slotOf(player).isPresent() || slotHolding(pod).isPresent()) {
             throw new IllegalStateException("player " + player + " or pod " + pod + " holds a Mole place already");
@@ -335,7 +338,9 @@ public final class HangarData extends SavedData {
         });
     }
 
-    /** Records that the pod holding a place is a wreck, or is not any more. A pod that holds no place changes nothing. */
+    /**
+     * Records that the pod holding a place is a wreck, or is not any more. A pod that holds no place changes nothing.
+     */
     void markWrecked(UUID pod, boolean wrecked) {
         changeSlot(pod, slot -> slot.withWrecked(wrecked));
     }

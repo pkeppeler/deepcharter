@@ -71,7 +71,10 @@ public final class HangarTerminal {
     private static final int TICKS_PER_MINUTE = 1200;
     /** How long a first press on Write Off stays armed for the second, in ticks: thirty seconds. */
     private static final int ARM_WINDOW_TICKS = 600;
-    /** Players who pressed Write Off once, by the game time they did. Forgotten when the server stops; a lapsed one is ignored. */
+    /**
+     * Players who pressed Write Off once, by the game time they did. Forgotten when the server stops; a lapsed one is
+     * ignored.
+     */
     private static final Map<UUID, Long> ARMED = new HashMap<>();
 
     private HangarTerminal() {}
@@ -85,7 +88,10 @@ public final class HangarTerminal {
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> ARMED.clear());
     }
 
-    /** What the Prospector's advance has left for the viewing charter, and the state of the viewing player's Mole. Never throws: unreadable records show none. */
+    /**
+     * What the Prospector's advance has left for the viewing charter, and the state of the viewing player's Mole. Never
+     * throws: unreadable records show none.
+     */
     public static HangarView view(
             MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
         Optional<HangarData> data = HangarData.readable(server);
@@ -109,7 +115,10 @@ public final class HangarTerminal {
                         .orElse(0));
     }
 
-    /** The write-off's wait in real minutes, the one unit every line about it uses: a Minecraft day is 24,000 ticks, 20 minutes. */
+    /**
+     * The write-off's wait in real minutes, the one unit every line about it uses: a Minecraft day is 24,000 ticks, 20
+     * minutes.
+     */
     static long writeOffMinutes(HangarTuning tuning) {
         return tuning.writeOffTicks() / TICKS_PER_MINUTE;
     }

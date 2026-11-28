@@ -36,7 +36,10 @@ public final class WreckRegistry {
                             Versioned.streamCodec(WreckState.VERSION, WreckState.STREAM),
                             AttachmentSyncPredicate.all()));
 
-    /** What the crew carried when the hull ran out, kept in the wreck. Saved, not synced; read it through {@link Wrecks}. */
+    /**
+     * What the crew carried when the hull ran out, kept in the wreck. Saved, not synced; read it through {@link
+     * Wrecks}.
+     */
     public static final AttachmentType<Versioned<WreckPack>> PACK = AttachmentRegistry.create(
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "wreck_pack"),
             builder -> builder.persistent(Versioned.codec(WreckPack.VERSION, WreckPack.BODY))

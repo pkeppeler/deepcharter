@@ -64,7 +64,9 @@ public final class TransmissionTriggers {
         }
     }
 
-    /** A terminal action that took effect: assembling a Mole is how a charter after the first gets its Mole, and T06. */
+    /**
+     * A terminal action that took effect: assembling a Mole is how a charter after the first gets its Mole, and T06.
+     */
     public static void onActed(MinecraftServer server, TerminalType type, ServerPlayer player, Identifier action) {
         if (type == HangarTerminal.TYPE && action.equals(HangarTerminal.ASSEMBLE_MOLE)) {
             Charters.readableCharterOf(server, player.getUUID())
