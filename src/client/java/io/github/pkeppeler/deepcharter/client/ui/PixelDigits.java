@@ -18,13 +18,13 @@ public final class PixelDigits {
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "textures/gui/cockpit/digits.png");
 
     /** The glyphs of the full width, in sheet order. */
-    static final String WIDE = "0123456789-ft";
+    static final String WIDE = "0123456789-m";
 
     /** The narrow glyphs, in sheet order after the wide ones. */
     static final String NARROW = ",.";
 
     /** The widest reading the altimeter can show in this game's depth range, which its recess and the scanner panel's clearance are sized for. */
-    public static final String LONGEST_READING = "-12,345 ft.";
+    public static final String LONGEST_READING = "-12,345 m";
 
     private static final char SPACE = ' ';
 

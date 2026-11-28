@@ -5,7 +5,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.OutpostTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -336,9 +335,9 @@ public final class EarlyRunModel {
                 .max(Float::compare)
                 .orElseThrow();
         double slabHasOre = 1 - Math.pow(1 - zone.oreChance(), chassis.slabCells());
-        int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
-        double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthFeet);
-        double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthFeet);
+        int depthMetres = (int) Math.round(depthBlocks);
+        double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthMetres);
+        double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthMetres);
         return (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
     }
 
@@ -351,8 +350,8 @@ public final class EarlyRunModel {
     /** (A) The drill's own stats and a slab {@code depthBlocks} below the surface; the heat is repaired at the station's price. */
     public static Bite biteSlab(PodStats stats, double depthBlocks) {
         PodRockBiteTuning bite = PodRockBiteTuning.DEFAULT;
-        int depthFeet = (int) (depthBlocks * LayerTuning.DEFAULT.feetPerBlock());
-        double seconds = PodRockBite.drillTicks(stats, depthFeet) / (double) TICKS_PER_SECOND;
+        int depthMetres = (int) Math.round(depthBlocks);
+        double seconds = PodRockBite.drillTicks(stats, depthMetres) / (double) TICKS_PER_SECOND;
         double litres =
                 seconds * (stats.drillingLitresPerSecond() * bite.fuelMultiplier() + stats.idleLitresPerSecond());
         double hull = seconds * bite.heatHullPerSecond();

@@ -167,7 +167,7 @@ public final class SpecSheets {
                 ratings.add(rating("fuse", "seconds", number(tuning.chargeFuseTicks() / 20f)));
             }
             case QUANTUM_TELEPORTER ->
-                ratings.add(rating("scatter", "blocks", number((float) tuning.quantumScatter())));
+                ratings.add(rating("scatter", "metres", number((float) tuning.quantumScatter())));
             case AIR_CANISTER -> ratings.add(rating("adds", "seconds", number(SuitTuning.DEFAULT.canisterSeconds())));
             case MATTER_TRANSMITTER, TETHER, THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE, BOLT_DRIVER, BOLT -> {}
         }
