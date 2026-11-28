@@ -22,8 +22,8 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.core.BlockPos;
 
 /**
- * Client GameTest for #222 and #1595: the hangar console shows the price of every action and the state of the player's Mole inside the screen, at the GUI size of an
- * 854 by 480 window (about 427 by 240) and at 320 by 240, the smallest GUI.
+ * Client GameTest for #222 and #1595: the hangar console shows the price of every action and the state of the player's
+ * Mole inside the screen, at the GUI size of an 854 by 480 window (about 427 by 240) and at 320 by 240, the smallest GUI.
  */
 public class HangarClientTest implements FabricClientGameTest {
     @Override

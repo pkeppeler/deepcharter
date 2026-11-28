@@ -32,8 +32,8 @@ public final class WreckEvents {
             });
 
     /**
-     * A pod became a wreck: its hull ran out, or it loaded at hull 0. Fires after the state is set and before the crew die, once per
-     * change. A listener that throws is logged and does not stop the others.
+     * A pod became a wreck: its hull ran out, or it loaded at hull 0. Fires after the state is set and before the crew
+     * die, once per change. A listener that throws is logged and does not stop the others.
      */
     public static final Event<Wrecked> WRECKED = EventFactory.createArrayBacked(Wrecked.class, listeners -> pod -> {
         for (Wrecked listener : listeners) {
@@ -47,8 +47,8 @@ public final class WreckEvents {
     });
 
     /**
-     * A wreck was made a working pod again, by whatever repairs it: the hangar console today, the field kit later. Fires from
-     * {@link Wrecks#restore} after the state is set. A listener that throws is logged and does not stop the others.
+     * A wreck was made a working pod again, by whatever repairs it: the hangar console today, the field kit later.
+     * Fires from {@link Wrecks#restore} after the state is set. A listener that throws is logged and does not stop the others.
      */
     public static final Event<Restored> RESTORED = EventFactory.createArrayBacked(Restored.class, listeners -> pod -> {
         for (Restored listener : listeners) {

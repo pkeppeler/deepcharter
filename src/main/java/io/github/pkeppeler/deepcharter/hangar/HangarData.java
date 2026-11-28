@@ -71,12 +71,13 @@ public final class HangarData extends SavedData {
     }
 
     /**
-     * One player's crafted Mole: the one place a charter member has (ADR 0117). It stays until the pod is scrapped or written off,
-     * wrecked or working.
+     * One player's crafted Mole: the one place a charter member has (ADR 0117). It stays until the pod is scrapped or
+     * written off, wrecked or working.
      *
      * @param player   the member who holds the place
      * @param pod      the Mole that holds it
-     * @param wrecked  the Mole is a wreck now, recorded from the wreck events, so a write-off can be checked without loading the pod
+     * @param wrecked  the Mole is a wreck now, recorded from the wreck events, so a write-off can be checked without
+     * loading the pod
      * @param writeOff the filed write-off, if there is one
      */
     public record Slot(UUID player, UUID pod, boolean wrecked, Optional<WriteOff> writeOff) {
@@ -110,11 +111,15 @@ public final class HangarData extends SavedData {
      * @param held     every pod registered to each charter, recorded when it is registered ({@code PodEvents.REGISTERED}) or, for a pod registered earlier, when it first loads
      * @param advanced the catalysts of the Company's advance that each charter has used. Absent from data saved before the advance
      *                 (it reads as nothing used), so the version stays 1.
-     * @param moles    the crafted Mole of each player who has one. Absent from data saved before the one-Mole rule (it reads as
-     *                 none): a Mole of an older world holds no place, except the founding Mole ({@code legacyFoundingPlace}).
-     * @param legacyFoundingPlace true for data saved before version 2, whose founding Mole has no place on record yet: it is given to
+     * @param moles    the crafted Mole of each player who has one. Absent from data saved before the one-Mole rule (it
+     * reads as
+     *                 none): a Mole of an older world holds no place, except the founding Mole ({@code
+     * legacyFoundingPlace}).
+     * @param legacyFoundingPlace true for data saved before version 2, whose founding Mole has no place on record yet:
+     * it is given to
      *                 the founding charter's Director when it loads, once (see {@code Hangar})
-     * @param condemned the pods of written-off wrecks that were not loaded when the write-off took effect: each is destroyed when it
+     * @param condemned the pods of written-off wrecks that were not loaded when the write-off took effect: each is
+     * destroyed when it
      *                 loads. Absent from older data (none).
      */
     public record State(

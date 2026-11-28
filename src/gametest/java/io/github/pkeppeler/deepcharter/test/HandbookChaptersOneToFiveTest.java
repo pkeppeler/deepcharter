@@ -1348,8 +1348,8 @@ public class HandbookChaptersOneToFiveTest {
     }
 
     /**
-     * A charter that came after the founding charter repairs no Mole: it assembles one at the hangar from four parts, and the
-     * assembly completes "Repair the Mole".
+     * A charter that came after the founding charter repairs no Mole: it assembles one at the hangar from four parts,
+     * and the assembly completes "Repair the Mole".
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aLateCharterCompletesRepairTheMoleByAssemblingOneAtTheHangar(GameTestHelper helper) {

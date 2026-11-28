@@ -86,8 +86,8 @@ public final class Hangar {
     }
 
     /**
-     * Takes back the write-off filed for the pod, if one is, and gives its price back to the charter that paid it (when that charter
-     * still exists). Used when the wreck is restored or scrapped before the day is out.
+     * Takes back the write-off filed for the pod, if one is, and gives its price back to the charter that paid it (when
+     * that charter still exists). Used when the wreck is restored or scrapped before the day is out.
      */
     static void cancelWriteOff(MinecraftServer server, HangarData data, UUID pod) {
         Optional<HangarData.WriteOff> filed = data.slotHolding(pod).flatMap(HangarData.Slot::writeOff);
@@ -105,8 +105,8 @@ public final class Hangar {
     }
 
     /**
-     * A pod that is removed for good (killed or discarded, not unloaded with its chunk or moved across a seam) frees the place it
-     * held, so no way of losing a Mole can lock its owner out of another.
+     * A pod that is removed for good (killed or discarded, not unloaded with its chunk or moved across a seam) frees
+     * the place it held, so no way of losing a Mole can lock its owner out of another.
      */
     private static void onUnload(Entity entity, ServerLevel level) {
         if (!(entity instanceof PodEntity pod)) {
@@ -134,9 +134,9 @@ public final class Hangar {
     }
 
     /**
-     * Takes the write-offs that are due at game time {@code now}: frees the place, and destroys the wreck with its parts and cargo,
-     * without a drop. A wreck that is not loaded is condemned and destroyed when it loads ({@link #onLoad}). One bad record never
-     * stops the rest.
+     * Takes the write-offs that are due at game time {@code now}: frees the place, and destroys the wreck with its
+     * parts and cargo, without a drop. A wreck that is not loaded is condemned and destroyed when it loads ({@link #onLoad}). One bad
+     * record never stops the rest.
      */
     public static void settleWriteOffs(MinecraftServer server, long now) {
         Optional<HangarData> data = HangarData.readable(server);
@@ -306,9 +306,9 @@ public final class Hangar {
     }
 
     /**
-     * A founding Mole repaired before the one-Mole rule (data of version 1) has no place on record, because the repair kept only the
-     * charter. It is given to the Director of the founding charter, once, unless they have a place already. Other Moles of an older
-     * world hold no place: the rule counts only what is crafted after it (ADR 0117). Never throws.
+     * A founding Mole repaired before the one-Mole rule (data of version 1) has no place on record, because the repair
+     * kept only the charter. It is given to the Director of the founding charter, once, unless they have a place already. Other Moles
+     * of an older world hold no place: the rule counts only what is crafted after it (ADR 0117). Never throws.
      */
     private static void giveLegacyFoundingPlace(MinecraftServer server, HangarData data, PodEntity pod) {
         HangarData.State state = data.state();

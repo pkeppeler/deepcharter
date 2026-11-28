@@ -119,8 +119,9 @@ public final class HangarTerminal {
     }
 
     /**
-     * Assembles the player's one Mole from the four {@link HangarParts} in their pack, with no fee. It stands in a free place in the
-     * bay, registered to the player's charter, and holds the player's place until it is scrapped or written off ({@link HangarData.Slot}).
+     * Assembles the player's one Mole from the four {@link HangarParts} in their pack, with no fee. It stands in a free
+     * place in the bay, registered to the player's charter, and holds the player's place until it is scrapped or written off ({@link
+     * HangarData.Slot}).
      */
     private static Optional<Component> assembleMole(TerminalAction.Context context) {
         MinecraftServer server = context.server();
@@ -181,8 +182,9 @@ public final class HangarTerminal {
     }
 
     /**
-     * Every wreck in reach of the console, the nearest first, except the founding Mole before it is repaired. Scrap and restore both
-     * take the first one the charter may use: the player names no wreck, so the client sends nothing the server must trust.
+     * Every wreck in reach of the console, the nearest first, except the founding Mole before it is repaired. Scrap and
+     * restore both take the first one the charter may use: the player names no wreck, so the client sends nothing the server must
+     * trust.
      */
     private static List<PodEntity> wrecksInReach(TerminalAction.Context context, HangarData data, HangarTuning tuning) {
         Vec3 console = Vec3.atCenterOf(context.pos());
@@ -215,9 +217,10 @@ public final class HangarTerminal {
     }
 
     /**
-     * Scraps the nearest wreck of the charter in reach of the console, for no money: the hold's contents go to the player's pack
-     * (what does not fit drops at their feet), the fitted parts drop as items at the wreck, and the pod is gone. If it held a
-     * player's Mole place, the place is free. Only a wreck the charter owns can be scrapped, so a wreck nobody owns is restored first.
+     * Scraps the nearest wreck of the charter in reach of the console, for no money: the hold's contents go to the
+     * player's pack (what does not fit drops at their feet), the fitted parts drop as items at the wreck, and the pod is gone. If it
+     * held a player's Mole place, the place is free. Only a wreck the charter owns can be scrapped, so a wreck nobody owns is
+     * restored first.
      */
     private static Optional<Component> scrapWreck(TerminalAction.Context context) {
         MinecraftServer server = context.server();
@@ -282,10 +285,10 @@ public final class HangarTerminal {
     }
 
     /**
-     * Files a write-off of the player's own wreck, wherever it lies: for a wreck that cannot be reached (lava, the void). It costs
-     * {@link HangarTuning#writeOffCost} from the charter's account now. One in-game day later the place is free and the wreck is
-     * destroyed with its parts and cargo ({@code Hangar.settleWriteOffs}). Only a recorded wreck can be written off: a working Mole
-     * that is merely stuck cannot, so no one writes a pod off to skip the way home.
+     * Files a write-off of the player's own wreck, wherever it lies: for a wreck that cannot be reached (lava, the
+     * void). It costs {@link HangarTuning#writeOffCost} from the charter's account now. One in-game day later the place is free and the
+     * wreck is destroyed with its parts and cargo ({@code Hangar.settleWriteOffs}). Only a recorded wreck can be written off: a
+     * working Mole that is merely stuck cannot, so no one writes a pod off to skip the way home.
      */
     private static Optional<Component> writeOff(TerminalAction.Context context) {
         MinecraftServer server = context.server();

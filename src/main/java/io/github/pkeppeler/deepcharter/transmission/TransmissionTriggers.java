@@ -25,7 +25,8 @@ import net.minecraft.world.entity.Entity;
  *   <li>a charter founded: T01, then the repairs the world has fired ({@link Transmissions#replayTo});
  *   <li>a colony terminal repaired: T02 for the fuel pump, T03 for the ore processor, T04 for the upgrade terminal, T05 for any
  *       other;
- *   <li>a Mole assembled at the hangar: T06, which the hangar also fires when it hands the founding Mole to the charter that repaired the
+ *   <li>a Mole assembled at the hangar: T06, which the hangar also fires when it hands the founding Mole to the charter
+ * that repaired the
  *       hangar console;
  *   <li>the Prospector restored: T17, fired by the hangar from its tuning.
  * </ul>

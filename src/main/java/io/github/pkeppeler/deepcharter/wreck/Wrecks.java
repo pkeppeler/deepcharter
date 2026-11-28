@@ -68,9 +68,9 @@ public final class Wrecks {
     }
 
     /**
-     * Server only: moves everything in the wreck's hold and the pack its crew carried to {@code player}, ore and the crew's stores
-     * alike, dropping what does not fit. Anyone may do this. Tells the player what happened, and returns how many stacks moved.
-     * Unreadable cargo is left alone and reported, not thrown.
+     * Server only: moves everything in the wreck's hold and the pack its crew carried to {@code player}, ore and the
+     * crew's stores alike, dropping what does not fit. Anyone may do this. Tells the player what happened, and returns how many
+     * stacks moved. Unreadable cargo is left alone and reported, not thrown.
      */
     public static int salvage(ServerPlayer player, PodEntity pod) {
         if (!isWreck(pod)) {
@@ -93,8 +93,8 @@ public final class Wrecks {
     }
 
     /**
-     * Server only: gives {@code player} the pack the wreck's crew carried (what the hangar restore and the scrap hand back), and
-     * returns how many stacks moved. The hold is not touched. Unreadable saved pack is left alone.
+     * Server only: gives {@code player} the pack the wreck's crew carried (what the hangar restore and the scrap hand
+     * back), and returns how many stacks moved. The hold is not touched. Unreadable saved pack is left alone.
      */
     public static int returnPack(ServerPlayer player, PodEntity pod) {
         List<ItemStack> pack = takePack(pod);
@@ -130,8 +130,8 @@ public final class Wrecks {
     }
 
     /**
-     * Moves the carried stacks of each player in the crew into the wreck, so the crew's death drops nothing. A wreck whose pack
-     * state is unreadable keeps the vanilla drops (logged once): nothing is overwritten.
+     * Moves the carried stacks of each player in the crew into the wreck, so the crew's death drops nothing. A wreck
+     * whose pack state is unreadable keeps the vanilla drops (logged once): nothing is overwritten.
      */
     private static void stashCrewPacks(PodEntity pod, List<Entity> crew) {
         Optional<WreckPack> saved = Versioned.readable(pod, WreckRegistry.PACK);

@@ -66,8 +66,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for #77: the derelict Mole in the hangar, its repair by the first charter, a Mole assembled by a later
- * member, and the restore of a wreck. {@link MoleSlotTest} has the one-Mole rule.
+ * Server GameTests for #77: the derelict Mole in the hangar, its repair by the first charter, a Mole assembled by a
+ * later member, and the restore of a wreck. {@link MoleSlotTest} has the one-Mole rule.
  *
  * <p>The hangar data, the repair state and the serials are one each per world. A test that changes them swaps in fresh ones for
  * its own duration ({@link #withFreshWorld}) and puts the world's back at the end. Each such test does all its work inside one
