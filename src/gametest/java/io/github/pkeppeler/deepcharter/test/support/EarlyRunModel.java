@@ -308,7 +308,7 @@ public final class EarlyRunModel {
                 .max(Float::compare)
                 .orElseThrow();
         double slabHasOre = 1 - Math.pow(1 - zone.oreChance(), chassis.slabCells());
-        int depthMetres = (int) depthBlocks;
+        int depthMetres = (int) Math.round(depthBlocks);
         double stoneTicks = PodDrill.drillTicks(stats, stoneHardness, depthMetres);
         double oreTicks = PodDrill.drillTicks(stats, oreHardness, depthMetres);
         return (stoneTicks * (1 - slabHasOre) + oreTicks * slabHasOre) / 20;
@@ -323,7 +323,7 @@ public final class EarlyRunModel {
     /** (A) The drill's own stats and a slab {@code depthBlocks} below the surface; the heat is repaired at the station's price. */
     public static Bite biteSlab(PodStats stats, double depthBlocks) {
         PodRockBiteTuning bite = PodRockBiteTuning.DEFAULT;
-        int depthMetres = (int) depthBlocks;
+        int depthMetres = (int) Math.round(depthBlocks);
         double seconds = PodRockBite.drillTicks(stats, depthMetres) / (double) TICKS_PER_SECOND;
         double litres =
                 seconds * (stats.drillingLitresPerSecond() * bite.fuelMultiplier() + stats.idleLitresPerSecond());

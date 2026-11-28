@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
-import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Kind;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Line;
@@ -12,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;

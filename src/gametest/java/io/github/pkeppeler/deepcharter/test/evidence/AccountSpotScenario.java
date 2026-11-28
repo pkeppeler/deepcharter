@@ -78,7 +78,8 @@ public class AccountSpotScenario extends EvidenceScenario {
                 try {
                     context.runOnClient(client -> client.getWindow().setGuiScale(BIG_GUI_SCALE));
                     settle(context);
-                    if (!context.computeOnClient(client -> CockpitHud.seated(client).isPresent())) {
+                    if (!context.computeOnClient(
+                            client -> CockpitHud.seated(client).isPresent())) {
                         throw new AssertionError("the Ribbon should fit a 1920 x 1080 window at GUI scale 4");
                     }
                     context.takeScreenshot("account-spot-seated-gui4");
@@ -140,8 +141,7 @@ public class AccountSpotScenario extends EvidenceScenario {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             if (seated) {
-                PodEntity seat =
-                        TestEntities.require(TestLayers.level(server, 1), this.pod[0], PodEntity.class);
+                PodEntity seat = TestEntities.require(TestLayers.level(server, 1), this.pod[0], PodEntity.class);
                 if (!player.startRiding(seat)) {
                     throw new AssertionError("the pilot could not board the pod");
                 }

@@ -932,7 +932,8 @@ public class EconomyAffordabilityTest {
         double depth = EarlyRunModel.layerOneBlocks() + 50;
         EarlyRunModel.Bite bite = EarlyRunModel.biteSlab(drill, depth);
         double chargePerSlab = (double) Consumable.BLASTING_CHARGE.price() / RepairTuning.DEFAULT.chargeDepth();
-        double stoneSeconds = PodDrill.drillTicks(drill, Blocks.STONE.defaultDestroyTime(), (int) depth) / 20.0;
+        double stoneSeconds =
+                PodDrill.drillTicks(drill, Blocks.STONE.defaultDestroyTime(), (int) Math.round(depth)) / 20.0;
         long price = UpgradeTuning.DEFAULT.price(ComponentTrack.DRILL, tier);
         Run layerTwo = upgradedRunInLayerTwo();
         LOGGER.info(
