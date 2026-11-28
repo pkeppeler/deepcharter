@@ -2,7 +2,10 @@
 """Writes gradle/client-test-weights.txt from client GameTest job logs (#1553).
 
 A class's seconds are the gap between its `CLIENT-GAMETEST START` line and the next one in the shard's log; a shard's
-last class runs to the log's final `BUILD SUCCESSFUL` line. Each run's times are scaled so its total over the classes
+last class runs to the log's final `BUILD SUCCESSFUL` line. A job that ran several client JVMs side by side (#1722) prefixes
+each one's lines `[client k/N]`: a class runs to the next START of the same instance, and an instance's last class to its
+`CLIENT-INSTANCE END k/N` line. Those seconds were spent beside N - 1 other clients, so they are divided by the budget's
+`client-instance-slowdown` (gradle/ci-budget.txt) to give the lone-client seconds the file holds. Each run's times are scaled so its total over the classes
 every run ran equals the mean of those totals (runner speed varies about 1.3x), then each class gets the mean over the
 runs that ran it, rounded, at least 1 (the least the file accepts). Use at least three runs, and give every shard's log
 of a run under one --run.
@@ -16,12 +19,20 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ci_shards  # noqa: E402
 
 START = "CLIENT-GAMETEST START "
 END = "BUILD SUCCESSFUL"
 # 26 characters cover the date, the time and six fractional digits of a log line's timestamp.
 STAMP_LENGTH = 26
+# The prefix the client-gametest action puts on each instance's lines when a job runs several (#1722).
+INSTANCE = re.compile(r"\[client (\d+)/(\d+)\] ")
+INSTANCE_END = "CLIENT-INSTANCE END "
 
 HEADER = """\
 # Client GameTest weights for -PclientShard=i/n (gradle/gametest.gradle.kts): `<simple class name> <seconds>`.
@@ -36,17 +47,41 @@ def stamp(line: str) -> datetime.datetime:
     return datetime.datetime.fromisoformat(line[:STAMP_LENGTH])
 
 
+def instance_of(line: str) -> str | None:
+    """The `k/N` of the client instance a prefixed line came from, or None for a lone client's or the step's own line."""
+    match = INSTANCE.search(line[STAMP_LENGTH:])
+    return f"{match[1]}/{match[2]}" if match else None
+
+
+def instances_in(log: str) -> int:
+    """How many client JVMs the job ran side by side: 1 for a log with no instance prefix."""
+    counts = {int(m[2]) for m in INSTANCE.finditer(log)}
+    return max(counts, default=1)
+
+
 def class_seconds(log: str) -> dict[str, float]:
-    """Seconds per class in one shard's job log."""
+    """Seconds per class in one shard's job log, as spent there (beside the job's other instances, if any)."""
     lines = log.splitlines()
+    tagged = {instance_of(line) for line in lines if START in line} - {None}
+    if tagged:
+        seconds: dict[str, float] = {}
+        for instance in sorted(tagged):
+            own = [line for line in lines if instance_of(line) == instance]
+            seconds.update(_seconds_to_end(own, INSTANCE_END + instance))
+        return seconds
+    return _seconds_to_end(lines, END)
+
+
+def _seconds_to_end(lines: list[str], end: str) -> dict[str, float]:
+    """Each START line's class runs to the next START line, and the last to the final line holding `end`."""
     starts = [(stamp(line), line.split(START, 1)[1].strip()) for line in lines if START in line]
-    ends = [stamp(line) for line in lines if END in line]
+    ends = [stamp(line) for line in lines if end in line]
     if not starts:
         raise ValueError("no CLIENT-GAMETEST START line in the log")
     if not ends:
-        raise ValueError(f"no {END} line in the log, so its last class has no end")
+        raise ValueError(f"no {end} line in the log, so its last class has no end")
     boundaries = [when for when, _ in starts[1:]] + [ends[-1]]
-    return {name: (end - begin).total_seconds() for (begin, name), end in zip(starts, boundaries)}
+    return {name: (finish - begin).total_seconds() for (begin, name), finish in zip(starts, boundaries)}
 
 
 def weights(runs: list[dict[str, float]]) -> dict[str, int]:
@@ -79,8 +114,11 @@ def main() -> None:
         if not logs:
             parser.error(f"--run {label} has no log")
         merged: dict[str, float] = {}
+        slowdown = ci_shards.budgets().get("client-instance-slowdown", 1.0)
         for log in logs:
-            merged.update(class_seconds(Path(log).read_text(errors="replace")))
+            text = Path(log).read_text(errors="replace")
+            factor = slowdown if instances_in(text) > 1 else 1.0
+            merged.update({name: seconds / factor for name, seconds in class_seconds(text).items()})
         labels.append(label)
         runs.append(merged)
     if len(runs) < 3:

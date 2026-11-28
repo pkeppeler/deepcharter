@@ -96,6 +96,11 @@ val copyClientGameTestRun: (String, String, List<String>) -> Unit = { name, dir,
 		@Suppress("DEPRECATION")
 		vmArgs(vmArgs)
 	}
+	// On CI Loom starts a client run under xvfb-run through its own exec, which ignores the task's output streams and leaves no
+	// exit result; the copies need both, and SDL's offscreen driver (the client-gametest action) needs no X server.
+	tasks.named<net.fabricmc.loom.task.AbstractRunTask>("run" + name.replaceFirstChar { it.uppercase() }) {
+		useXvfb.set(false)
+	}
 }
 extra["copyClientGameTestRun"] = copyClientGameTestRun
 extra["addVmArgToRuns"] = addVmArgToRuns
