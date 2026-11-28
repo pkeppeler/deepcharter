@@ -1,0 +1,24 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+Calculating task graph as no cached configuration is available for tasks: checkVanillaSoundGate
+
+> Configure project :
+Fabric Loom: 1.19.4
+
+> Task :checkVanillaSoundGate FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':checkVanillaSoundGate' (registered in script 'gradle/vanilla-sound-gate.gradle.kts').
+> Banned vanilla sounds. A vanilla sound on this list breaks the tone (the explosion on a breach, music in the unbuilt depth). Use a mod sound (DeepSound) or make one in tools/sounds. A Java line that must keep the vanilla sound ends with '// vanilla-ok: <reason>', or has it on the contiguous // lines above its statement; a sound id in a JSON data file is listed in gradle/vanilla-sound-allowlist.txt as '<path>  <id>  <reason>'. The list is gradle/banned-vanilla-sounds.txt: add a line to ban another.
+    src/main/java/io/github/pkeppeler/deepcharter/hangar/HangarTerminal.java:94 banned vanilla sound 'MoleState.WRECKED': : held.wrecked() ? HangarView.MoleState.WRECKED : HangarView.MoleState.WORKING)
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 9s
+1 actionable task: 1 executed
+Configuration cache entry stored.

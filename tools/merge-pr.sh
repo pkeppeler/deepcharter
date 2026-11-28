@@ -144,6 +144,7 @@ if [[ $mode == preflight ]]; then
   check_demo
   check_map_change
   check_map_fresh
+  check_gate_sweep
   echo "PREFLIGHT OK: PR #$pr at $sha"
   exit 0
 fi
@@ -193,6 +194,7 @@ done
 check_demo
 check_map_change
 check_map_fresh
+check_gate_sweep
 
 check_client_suite_ran
 
