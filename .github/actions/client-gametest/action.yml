@@ -1,11 +1,14 @@
 # Runs the client GameTests headless on a Linux runner. Shared by client-tests.yml (all
 # tests) and record-evidence.yml (one evidence scenario). The caller checks out the repo
-# first; this action does the rest. Composite steps take no timeout, so the run step
-# enforces its own deadline.
+# (and, for a shard, downloads the compiled build) first; this action does the rest. Composite steps take no timeout, so the run
+# step enforces its own deadline.
 name: Client GameTests
 description: Headless client GameTests on a Linux runner, optionally selecting one evidence scenario.
 
 inputs:
+  job-start:
+    description: Epoch seconds the job began (`date +%s` in its first step). The run step's deadline counts from it, not from the step's own start, so the setup before the step cannot push the job past its limit.
+    required: true
   evidence-scenario:
     description: Evidence scenario to record (DEEPCHARTER_EVIDENCE). Empty runs the normal tests, which skip every scenario.
     required: false
@@ -18,6 +21,14 @@ inputs:
     description: Shard i/n of the client classes (-PclientShard, balanced by gradle/client-test-weights.txt), so parallel jobs split the suite. Empty runs them all.
     required: false
     default: ""
+  skip-compile:
+    description: Gradle arguments that skip the compile tasks when the classes were downloaded from the compile job (download-compiled's skip output); empty compiles here.
+    required: false
+    default: ""
+  gradle-cache-read-only:
+    description: "'true' to restore the Gradle cache without saving it (a shard: the compile job saves it, and a save costs seconds of the job's five minutes)."
+    required: false
+    default: "false"
   artifact-suffix:
     description: Appended to the screenshots artifact name, so parallel shards do not collide.
     required: false
@@ -32,7 +43,20 @@ runs:
         java-version: 25
     - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       with:
-        cache-read-only: false
+        cache-read-only: ${{ inputs.gradle-cache-read-only }}
+    # The GL libraries install in the background while Gradle resolves (the step below waits for them). `apt-get update` runs only
+    # if the install fails on a stale index, which costs about 50 s a job otherwise.
+    - name: Install the GL libraries (background)
+      shell: bash
+      run: |
+        rm -f "$RUNNER_TEMP/apt.status"
+        setsid nohup bash -c '
+          pkgs="libegl1 libegl-mesa0 libgl1-mesa-dri"
+          status=0
+          sudo apt-get install -y --no-install-recommends $pkgs \
+            || { sudo apt-get update && sudo apt-get install -y --no-install-recommends $pkgs; } || status=$?
+          echo "$status" > "$RUNNER_TEMP/apt.status"
+        ' > "$RUNNER_TEMP/apt.log" 2>&1 &
     # A restored Gradle home can be broken: its module metadata points at dependency files that
     # were never restored, so verification fails and the failed run saves the broken state again
     # (#830). This resolves everything the run needs first (the compile classpaths through `classes`,
@@ -40,11 +64,33 @@ runs:
     # failure only, clears the module cache and retries once with --refresh-dependencies; when a
     # repository fails to answer (Maven Central's 429s, #1358), it waits and retries with backoff. It is
     # work the client run would do anyway, moved ahead of it, so a healthy run costs about nothing.
+    # Never skipped: ci-gradle-resolve.sh is every job's first Gradle call and installs the Central mirror the build refuses to run
+    # without (tools/tests/ci-gradle-resolve-gate.test.sh). With the compile job's classes downloaded (skip-compile) it resolves
+    # only the run's runtime classpaths, with the compile tasks off.
     - name: Resolve dependencies
       shell: bash
-      run: tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime
-    - shell: bash
-      run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri
+      env:
+        SKIP_COMPILE: ${{ inputs.skip-compile }}
+      # SKIP_COMPILE is word-split on purpose: `-x compileJava -x ...`.
+      # shellcheck disable=SC2086
+      run: |
+        if [ -n "$SKIP_COMPILE" ]; then
+          tools/ci-gradle-resolve.sh resolveClientGameTestRuntime $SKIP_COMPILE
+        else
+          tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime
+        fi
+    - name: Wait for the GL libraries
+      shell: bash
+      run: |
+        for _ in $(seq 1 150); do
+          [ -f "$RUNNER_TEMP/apt.status" ] && break
+          sleep 2
+        done
+        cat "$RUNNER_TEMP/apt.log"
+        if [ "$(cat "$RUNNER_TEMP/apt.status" 2>/dev/null || echo missing)" != 0 ]; then
+          echo "::error::The GL libraries did not install"
+          exit 1
+        fi
     # One backend, not a matrix, to save minutes. `version` is the data version that
     # stops Minecraft's datafixer from resetting the backend to its default
     # (OptionsForceDefaultGraphicsApiFix).
@@ -69,8 +115,10 @@ runs:
         # Where EvidenceScenario writes frames and screenshots (build/evidence/<scenario>/).
         DEEPCHARTER_EVIDENCE: ${{ inputs.evidence-scenario }}
         DEEPCHARTER_EVIDENCE_DIR: ${{ github.workspace }}/build/evidence
+        JOB_START: ${{ inputs.job-start }}
         CLIENT_TESTS: ${{ inputs.client-tests }}
         CLIENT_SHARD: ${{ inputs.client-shard }}
+        SKIP_COMPILE: ${{ inputs.skip-compile }}
         # The live heap by class at the start of each test class (HeapHistogram): the leak shows as the type that grows.
         DEEPCHARTER_CLIENT_HEAP_HISTOGRAM: ${{ github.workspace }}/build/client-heap
       run: |
@@ -82,7 +130,9 @@ runs:
         if [ -n "$CLIENT_SHARD" ]; then
           filter+=("-PclientShard=$CLIENT_SHARD")
         fi
-        ./gradlew runClientGameTest -x deleteGameTestRunDir "${filter[@]}" > "$log" 2>&1 &
+        # SKIP_COMPILE is word-split on purpose: `-x compileJava -x ...`.
+        # shellcheck disable=SC2086
+        ./gradlew runClientGameTest -x deleteGameTestRunDir $SKIP_COMPILE "${filter[@]}" > "$log" 2>&1 &
         gradle_pid=$!
         tail -n +1 -f "$log" --pid="$gradle_pid" &
         tail_pid=$!
@@ -99,20 +149,17 @@ runs:
           wait "$tail_pid" 2>/dev/null || true
           exit 1
         }
-        deadline=$((SECONDS + 180))
-        # One shard runs its share of the suite: the tests took about 44 minutes whole under load (run
-        # 45590213665), so a shard takes about 10-14 minutes of tests plus 3 of build and client start-up, all inside
-        # this deadline. $SECONDS starts after the dependency resolve; the job limits (30 minutes for a shard, 60
-        # for a whole-suite run) leave room for setup, the post steps and the stop. Raise only together with
-        # the job limits.
-        # Compat shim (#1135, remove with #1116): a pre-shard workflow on a queued PR passes no client-shard and
-        # runs the whole suite (about 30 minutes) in one 60-minute job, so it keeps the pre-#1093 3000 s. So does
-        # record-evidence.yml.
-        if [ -n "$CLIENT_SHARD" ]; then
-          max_seconds=1200
-        else
-          max_seconds=3000
-        fi
+        deadline=$((SECONDS + 120))
+        # The job stops at 5 minutes with no message, so the run ends first, with one. Its deadline counts from the job's start
+        # (JOB_START, the first step's `date +%s`), not from this step's: the setup before the step (checkout, download, Gradle
+        # cache, apt) takes 60 to 150 s and is not ours to bound. job_deadline leaves 30 s of the 300 for the post steps and the
+        # runner's own teardown (tools/tests/test_ci_budget.py ties it to gradle/ci-budget.txt). Within it the step runs Gradle
+        # (about 17 s), Minecraft (about 25 s) and the shard's tests, at most the budget's seconds by weight.
+        # The whole-suite branch (no client-shard) is record-evidence.yml's one scenario: the same limit.
+        job_deadline=270
+        setup_seconds=$(( $(date +%s) - JOB_START ))
+        max_seconds=$((job_deadline - setup_seconds))
+        echo "Setup before this step took ${setup_seconds} s; the run has ${max_seconds} s of its ${job_deadline}-second job deadline left."
         warn_seconds=$((max_seconds * 8 / 10))
         warned=
         while kill -0 "$gradle_pid" 2>/dev/null; do
@@ -121,14 +168,14 @@ runs:
           fi
           if [ "$SECONDS" -ge "$warn_seconds" ] && [ -z "$warned" ]; then
             warned=1
-            echo "::warning::Client GameTests passed 80% of their $((max_seconds / 60))-minute budget: rebalance gradle/client-test-weights.txt or add a shard (#1325)"
+            echo "::warning::Client GameTests passed 80% of the ${max_seconds} seconds the job deadline left them: rebalance gradle/client-test-weights.txt or add a shard (gradle/ci-budget.txt)"
           fi
           if [ "$SECONDS" -ge "$max_seconds" ]; then
-            stop_gradle "Client GameTests exceeded $((max_seconds / 60)) minutes"
+            stop_gradle "Client GameTests out of time: ${setup_seconds} s of setup before the step left ${max_seconds} s of the ${job_deadline}-second job deadline, and the tests ran past it (setup, shard weight or runner speed: gradle/ci-budget.txt)"
           fi
           if [ "$SECONDS" -ge "$deadline" ] \
             && ! grep -q 'Created window using SDL video driver' "$log"; then
-            stop_gradle "No Minecraft window after 3 minutes"
+            stop_gradle "No Minecraft window after 120 seconds"
           fi
           sleep 2
         done

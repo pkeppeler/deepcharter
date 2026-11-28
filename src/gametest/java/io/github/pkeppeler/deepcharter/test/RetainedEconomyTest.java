@@ -208,6 +208,7 @@ public class RetainedEconomyTest {
      */
     @GameTest
     public void theFiguresRiseWithDepthAndStayFairInLayerOne(GameTestHelper helper) {
+        // cap-shared: it reads the cap as a number for its arithmetic and counts no figure in a world.
         CreatureTuning tuning = CreatureTuning.DEFAULT;
         PodStats stock = PodStats.base();
         double whole = runLitres(EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0));
