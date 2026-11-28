@@ -30,8 +30,8 @@ public final class AboutTip {
     private static final int PAD = 3;
     private static final int GAP = 2;
 
-    /** The area of the screen the tip stays inside, and the y where its intro text starts. */
-    public record Bounds(int left, int top, int right, int bottom, int introY) {}
+    /** The area of the screen the tip stays inside, and where its intro text starts and, typed out in full, ends. */
+    public record Bounds(int left, int top, int right, int bottom, int introY, int introBottom) {}
 
     /** A rectangle of the screen: a row, or a readout the tip must not cover. */
     public record Rect(int x, int y, int width, int height) {
@@ -110,7 +110,14 @@ public final class AboutTip {
             int y = Math.max(bounds.top(), Math.min(beside.y(), bounds.bottom() - beside.height()));
             candidates.add(new Box(beside.x(), y, beside.width(), beside.height(), beside.lines()));
         }
-        Box intro = box(font, button, bounds.left(), bounds.introY(), bounds.right() - bounds.left(), false);
+        Box over = box(font, button, bounds.left(), bounds.introY(), bounds.right() - bounds.left(), false);
+        // The box covers the whole intro, so that no line of it shows in part under the box's edge.
+        Box intro = new Box(
+                over.x(),
+                over.y(),
+                over.width(),
+                Math.max(over.height(), bounds.introBottom() - bounds.introY()),
+                over.lines());
         candidates.add(intro);
         return candidates.stream()
                 .filter(box -> inside(box, bounds)

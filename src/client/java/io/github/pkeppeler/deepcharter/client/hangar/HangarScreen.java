@@ -169,7 +169,8 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
                 contentTop(MARGIN),
                 contentRight(MARGIN),
                 contentBottom(MARGIN),
-                contentTop(MARGIN) + font.lineHeight + 14);
+                contentTop(MARGIN) + font.lineHeight + 14,
+                headerBottom() - font.lineHeight - GAP);
     }
 
     /**

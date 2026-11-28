@@ -173,7 +173,16 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
                 contentTop(MARGIN),
                 contentRight(MARGIN),
                 contentBottom(MARGIN),
-                contentTop(MARGIN) + font.lineHeight + 14 + noticeHeight());
+                contentTop(MARGIN) + font.lineHeight + 14 + noticeHeight(),
+                contentTop(MARGIN)
+                        + font.lineHeight
+                        + 14
+                        + noticeHeight()
+                        + Math.max(
+                                        CrtText.wrap(font, typewriter.text(), contentWidth(MARGIN))
+                                                .size(),
+                                        1)
+                                * (font.lineHeight + CrtTuning.current().lineSpacing()));
     }
 
     /**

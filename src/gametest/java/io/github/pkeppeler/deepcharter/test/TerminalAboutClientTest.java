@@ -165,6 +165,11 @@ public class TerminalAboutClientTest implements FabricClientGameTest {
                             + other.getMessage().getString() + "': " + box);
                 }
             }
+            boolean overIntro = box.x() == bounds.left() && box.y() == bounds.introY();
+            if (overIntro && (box.y() > bounds.introY() || box.y() + box.height() < bounds.introBottom())) {
+                return Optional.of("the tip for '" + label + "' over the intro leaves a line of it in part showing: "
+                        + box + " " + bounds);
+            }
             for (AboutTip.Rect readout : readouts) {
                 if (box.covers(readout)) {
                     return Optional.of("the tip for '" + label + "' covers a readout " + readout + ": " + box);

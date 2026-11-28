@@ -403,7 +403,12 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
     /** The content area, which a row's tip stays inside. */
     public AboutTip.Bounds tipBounds() {
         return new AboutTip.Bounds(
-                contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN), contentBottom(MARGIN), introTop());
+                contentLeft(MARGIN),
+                contentTop(MARGIN),
+                contentRight(MARGIN),
+                contentBottom(MARGIN),
+                introTop(),
+                introTop() + Math.max(introLines().size(), 1) * lineStep());
     }
 
     /** The readouts the tip must not cover: the account, the hull and, while the list scrolls, which rows are shown. */

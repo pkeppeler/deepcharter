@@ -123,10 +123,13 @@ public class TerminalAboutScenario extends EvidenceScenario {
                     ScreenScroll.scrollTo(screen, first);
                 }
             }
+            // A toast the scene raised (an advancement) must not sit in the still.
+            client.gui.toastManager().clear();
             screen.setFocused(shown(screen, label).orElseThrow(() -> new AssertionError("no row '" + label + "'")));
         });
         for (int i = 0; i < HOLD_FRAMES; i++) {
             context.waitTicks(TICKS_PER_FRAME);
+            context.runOnClient(client -> client.gui.toastManager().clear());
             frame(context);
         }
     }
