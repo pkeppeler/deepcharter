@@ -231,7 +231,7 @@ public record StrataRule(
                 case SHARP -> {
                     int above = y - (contact.y() + shift);
                     if (above >= 0) {
-                        return above >= ON_CONTACT && above < ON_CONTACT + BED_ROWS ? lowerOf(i) : contact.upper();
+                        return inBed(above) ? lowerOf(i) : contact.upper();
                     }
                 }
                 case SHORT_GRADIENT, LONG_GRADIENT -> {
@@ -258,10 +258,18 @@ public record StrataRule(
     }
 
     /**
-     * Whether row {@code depth} below the top of an interbedded transition of {@code length} rows is in a band of the
-     * lower rock.
+     * Whether row {@code above} over a sharp contact, 0 for the contact's own row, is in its thin bed of the lower rock.
+     * {@code RockTint} draws a tint-only sharp contact with the same bed.
      */
-    private static boolean lowerBand(int depth, int length) {
+    public static boolean inBed(int above) {
+        return above >= ON_CONTACT && above < ON_CONTACT + BED_ROWS;
+    }
+
+    /**
+     * Whether row {@code depth} below the top of an interbedded transition of {@code length} rows is in a band of the
+     * lower rock. {@code RockTint} draws a tint-only interbedding with the same bands.
+     */
+    public static boolean lowerBand(int depth, int length) {
         int cycle = (depth - 1) / BED_PERIOD;
         int cycles = Math.ceilDiv(length, BED_PERIOD);
         int lowerRows = (cycle + 1) * BED_PERIOD / (cycles + 1);
@@ -304,7 +312,7 @@ public record StrataRule(
             if (contact.style() == Style.SHARP) {
                 int above = y - (contact.y() + shift);
                 if (above >= 0) {
-                    boolean bed = above >= ON_CONTACT && above < ON_CONTACT + BED_ROWS;
+                    boolean bed = inBed(above);
                     found.add((bed ? lowerOf(i) : contact.upper()).getBlock());
                     return;
                 }

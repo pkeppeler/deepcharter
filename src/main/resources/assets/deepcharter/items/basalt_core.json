@@ -1,6 +1,12 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "deepcharter:block/basalt_core_0"
+    "model": "deepcharter:block/basalt_core_0",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": 7242929
+      }
+    ]
   }
 }

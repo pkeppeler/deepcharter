@@ -3,7 +3,7 @@
   "textures": {
     "side": "deepcharter:block/columnar_basalt_5",
     "end": "deepcharter:block/columnar_basalt_end_1",
-    "core": "deepcharter:block/basalt_core_0",
+    "core": "deepcharter:block/columnar_basalt_core",
     "particle": "deepcharter:block/columnar_basalt_5"
   },
   "elements": [

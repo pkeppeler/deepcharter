@@ -17,10 +17,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 
 /**
- * The block colours of layer 1's strata rock (#1551): the rock's models draw a neutral grey texture under tint index 0,
- * and this multiplies it by {@link RockTint}'s colour for the block's height, so the rock drifts from one stratum's
- * colour to the next without a block between. An ore's host layer carries the same tint index, so an ore in a strata
- * rock drifts with the wall round it; the item of each carries its home colour in its item definition.
+ * The block colours of the layers' rock (#1551): the rock's models draw a neutral grey texture under tint index 0, and
+ * this multiplies it by {@link RockTint}'s colour for the block's height, so the rock takes each zone's colour and
+ * gives way from one to the next without a block between. An ore's host layer carries the same tint index, so an ore
+ * takes the colour of the wall round it; the item of each carries its home colour in its item definition.
  */
 final class RockTints {
     /** The alpha byte of an opaque ARGB colour. */
@@ -34,7 +34,12 @@ final class RockTints {
 
     static void init() {
         BlockColorRegistry.register(
-                List.of(ROCK), LayerBlocks.HARDPAN, LayerBlocks.PACKED_SHALE, LayerBlocks.BLACK_SHALE);
+                List.of(ROCK),
+                LayerBlocks.HARDPAN,
+                LayerBlocks.PACKED_SHALE,
+                LayerBlocks.BLACK_SHALE,
+                LayerBlocks.GREEN_SHALE,
+                LayerBlocks.BASALT_CORE);
         Block[] ores = Arrays.stream(OreType.values())
                 .map(type -> BuiltInRegistries.BLOCK.getValue(type.blockId()))
                 .toArray(Block[]::new);

@@ -246,14 +246,19 @@ class GridTest(unittest.TestCase):
 
 
 class RockTintTest(unittest.TestCase):
-    """#1551: layer 1's strata rock is drawn in one grey and the client multiplies it by RockTint's colour for the depth, so the numbers of the
+    """#1551: the layers' rock is drawn in one grey and the client multiplies it by RockTint's colour for the depth, so the numbers of the
     tooling, the Java and the data must be one set."""
 
     JAVA = ROOT / "src/main/java/io/github/pkeppeler/deepcharter/layer/RockTint.java"
     LAYER_BLOCKS = ROOT / "src/main/java/io/github/pkeppeler/deepcharter/layer/LayerBlocks.java"
     STRATA_RULE = ROOT / "src/main/resources/data/deepcharter/worldgen/material_rule/claim_strata.json"
-    OLD_RAMP = {"hardpan": "hardpan_rock", "packed_shale": "shale1", "black_shale": "shale_black"}
-    JAVA_NAME = {"hardpan": "HARDPAN", "packed_shale": "PACKED_SHALE", "black_shale": "BLACK_SHALE"}
+    OLD_RAMP = {"hardpan": "hardpan_rock", "packed_shale": "shale1", "black_shale": "shale_black", "green_shale": "shale2",
+                "basalt_core": "basalt3"}
+    # Green shale and the basalt core take their home colour from the zone they head, the Upper Levels and the Garden.
+    JAVA_NAME = {"hardpan": "HARDPAN", "packed_shale": "PACKED_SHALE", "black_shale": "BLACK_SHALE", "green_shale": "UPPER_LEVELS",
+                 "basalt_core": "GARDEN"}
+    # The shade a rock's texture sits on: a layer's MID, and the core's middle tone (art.core draws shades 1 to 3).
+    MID_SHADE = {"hardpan": make.MID[1], "packed_shale": make.MID[1], "black_shale": make.MID[1], "green_shale": make.MID[2], "basalt_core": 2}
 
     def test_the_tints_of_the_tooling_are_the_javas(self):
         text = self.JAVA.read_text()
@@ -268,9 +273,9 @@ class RockTintTest(unittest.TestCase):
         def rgb(name):
             return [int(colours[name].lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]
 
-        grey = rgb(f"{make.CLAIM_GREY}.{make.MID[1]}")
         for block, tint in make.HOME_TINT.items():
-            old = rgb(f"{self.OLD_RAMP[block]}.{make.MID[1]}")
+            grey = rgb(f"{make.CLAIM_GREY}.{self.MID_SHADE[block]}")
+            old = rgb(f"{self.OLD_RAMP[block]}.{self.MID_SHADE[block]}")
             tinted = [round(grey[c] * ((tint >> (16 - 8 * c)) & 0xFF) / 255) for c in range(3)]
             with self.subTest(block=block):
                 for got, want in zip(tinted, old):
@@ -284,6 +289,9 @@ class RockTintTest(unittest.TestCase):
             for at in range(0, len(image.pixels), 4):
                 r, g, b = image.pixels[at:at + 3]
                 self.assertTrue(r == g == b, f"{name} has a coloured pixel {(r, g, b)}")
+        # A column is not tinted, so the core inside it keeps basalt's own ramp.
+        image = pngio.decode((SHIPPED_TEXTURES / f"{make.COLUMN_CORE}.png").read_bytes(), make.COLUMN_CORE)
+        self.assertTrue(any(len(set(image.pixels[at:at + 3])) > 1 for at in range(0, len(image.pixels), 4)), "the columns' core is grey")
 
     def test_the_gradient_length_of_the_data_is_the_javas(self):
         found = re.search(r"CLAIM_GRADIENT_LENGTH = (\d+);", self.LAYER_BLOCKS.read_text())
