@@ -23,7 +23,8 @@
 # 3. A throttled Maven Central (#1365, ADR 0101). On GitHub Actions (GITHUB_ACTIONS=true) the script first copies
 #    gradle/ci-central-mirror.init.gradle.kts into $GRADLE_USER_HOME/init.d, so this run and every later Gradle call
 #    in the job resolve Central's artifacts from Google's mirror of it. A dev machine never gets the file. The
-#    first-call gate (ci-gradle-resolve-gate.test.sh) is what makes "every later call" true.
+#    first-call gate (ci-gradle-resolve-gate.test.sh) is what makes "every later call" true. It also turns the Gradle build cache on
+#    (org.gradle.caching in $GRADLE_USER_HOME/gradle.properties), so a PR's compile reuses what main's cache seed built.
 #
 # Usage: tools/ci-gradle-resolve.sh ARGS...   (run from the repo root, after setup-gradle)
 # Env: GRADLE_USER_HOME (default $HOME/.gradle); CI_GRADLE_RESOLVE_ATTEMPTS (download failures allowed, default 3);
@@ -71,6 +72,10 @@ if [[ ${GITHUB_ACTIONS:-} == true ]]; then
   init_d="${GRADLE_USER_HOME:-$HOME/.gradle}/init.d"
   mkdir -p "$init_d"
   cp "$(dirname "${BASH_SOURCE[0]}")/../gradle/ci-central-mirror.init.gradle.kts" "$init_d/"
+  # The Gradle build cache, on CI only: setup-gradle saves the cache's directory with the Gradle home, main's seed (cache-seed.yml) fills
+  # it, and a PR's compile takes the source sets it did not change from it instead of compiling them (ADR 0116).
+  props="${GRADLE_USER_HOME:-$HOME/.gradle}/gradle.properties"
+  grep -qxF 'org.gradle.caching=true' "$props" 2>/dev/null || echo 'org.gradle.caching=true' >>"$props"
   mirror=https://maven-central.storage-download.googleapis.com/maven2
   PROBE_REPOS+=("$mirror")
   KNOWN_GOOD+=("$mirror/junit/junit/4.13.2/junit-4.13.2.pom")

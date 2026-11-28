@@ -22,26 +22,47 @@ def job(key: str) -> str:
 
 
 class BuildShardWorkflowTest(unittest.TestCase):
-    def test_the_matrix_is_every_shard_from_one_to_the_count(self):
-        matrix = re.search(r"^\s+shard: \[([\d, ]+)\]", job("build"), re.M)
-        count = re.search(r"^\s+BUILD_SHARDS: (\d+)\s*$", WORKFLOW, re.M)
-        self.assertIsNotNone(matrix, "no shard matrix")
-        self.assertIsNotNone(count, "no BUILD_SHARDS")
-        self.assertEqual([int(n) for n in matrix[1].split(",")], list(range(1, int(count[1]) + 1)))
+    def test_the_matrix_is_the_plans_and_the_plan_gets_the_full_count(self):
+        # The plan job (tools/ci_affected.py) lists the shards a run takes: every shard from one to BUILD_SHARDS for a full run, fewer for
+        # the PR tier. test_ci_budget.py checks BUILD_SHARDS against the weights.
+        self.assertIn("shard: ${{ fromJSON(needs.plan.outputs.server-matrix) }}", job("build"))
+        self.assertIn('--server-shards "$BUILD_SHARDS"', job("plan"))
+        self.assertRegex(WORKFLOW, r"(?m)^\s+BUILD_SHARDS: \d+\s*$")
+
+    def test_a_shard_takes_the_plans_count_and_classes_and_runs_only_when_there_are_some(self):
+        shard = job("build")
+        self.assertIn("needs: [setup, plan, compile]", shard)
+        self.assertIn("needs.plan.outputs.server-count != '0'", shard)
+        self.assertIn("SHARD: ${{ matrix.shard }}/${{ needs.plan.outputs.server-count }}", shard)
+        self.assertIn('-PgametestClasses=$CLASSES', shard)
 
     def test_each_shard_runs_its_share_of_the_server_suite_only(self):
         shard = job("build")
         self.assertIn("name: build-shard ${{ matrix.shard }}\n", shard)
-        self.assertIn('runGameTest "-PgametestShard=${{ matrix.shard }}/${{ env.BUILD_SHARDS }}"', shard)
+        self.assertIn('tools/ci-gradle-resolve.sh runGameTest "${args[@]}"', shard)
+        self.assertIn('args=("-PgametestShard=$SHARD")', shard)
         self.assertIn("fail-fast: false", shard)
 
-    def test_the_checks_job_runs_the_rest_of_the_build_and_the_gate_checks_once(self):
+    def test_the_checks_job_runs_the_rest_of_the_build(self):
         checks = job("checks")
         self.assertIn("name: build-checks\n", checks)
         self.assertIn("tools/ci-gradle-resolve.sh build -x runGameTest", checks)
         self.assertIn("--dry-run --configuration-cache", checks)
+
+    def test_the_gate_checks_run_once_in_the_tool_gates_job(self):
         self.assertEqual(WORKFLOW.count("tools/tests/gate_checks.py"), 1)
-        self.assertIn("tools/tests/gate_checks.py", checks)
+        self.assertIn("tools/tests/gate_checks.py", job("tool-gates"))
+
+    def test_the_shards_and_the_checks_job_download_what_the_compile_job_built(self):
+        self.assertIn("name: compile\n", job("compile"))
+        self.assertIn("name: compiled-ci", job("compile"))
+        for key in ("build", "checks"):
+            with self.subTest(key):
+                self.assertRegex(job(key), r"needs: \[setup, (plan, )?compile\]\n")
+                self.assertIn("name: compiled-ci", job(key))
+
+    def test_the_shards_run_at_most_6_at_once_so_a_full_run_leaves_runners_for_other_prs(self):
+        self.assertIn("max-parallel: 6", job("build"))
 
     def test_every_job_that_tests_uploads_the_main_sha_it_merged(self):
         for key, suffix in (("build", "${{ matrix.shard }}"), ("checks", "checks")):
@@ -50,17 +71,20 @@ class BuildShardWorkflowTest(unittest.TestCase):
 
     def test_the_upload_action_names_the_file_and_artifact_and_survives_a_rerun(self):
         action = (REPO / ".github/actions/upload-merged-main/action.yml").read_text()
-        self.assertIn('"$RUNNER_TEMP/main-sha-$NAME"', action)
-        self.assertIn("name: merged-main-${{ inputs.name }}", action)
-        self.assertIn("path: ${{ runner.temp }}/main-sha-${{ inputs.name }}", action)
+        self.assertIn('"$RUNNER_TEMP/main-sha-$FILE"', action)
+        self.assertIn("FILE: ${{ inputs.file || inputs.name }}", action)
+        self.assertIn("name: ${{ inputs.artifact || format('merged-main-{0}', inputs.name) }}", action)
+        self.assertIn("path: ${{ runner.temp }}/main-sha-${{ inputs.file || inputs.name }}", action)
         # upload-artifact v4+ rejects a name already used in the run, so a re-run job would fail before its tests.
         self.assertIn("overwrite: true", action)
 
     def test_the_aggregate_is_build_needs_every_job_and_runs_after_a_failure(self):
         aggregate = job("build-result")
         self.assertIn("name: build\n", aggregate)
-        self.assertIn("needs: [build, checks]", aggregate)
+        self.assertIn("needs: [plan, compile, build, checks]", aggregate)
+        self.assertIn("needs.plan.result", aggregate)
         self.assertIn("always()", aggregate)
+        self.assertIn("needs.compile.result", aggregate)
         self.assertIn("needs.build.result", aggregate)
         self.assertIn("needs.checks.result", aggregate)
 
@@ -68,9 +92,53 @@ class BuildShardWorkflowTest(unittest.TestCase):
         aggregate = job("build-result")
         self.assertIn("pattern: merged-main-*", aggregate)
         self.assertIn("merge-multiple: true", aggregate)
-        self.assertIn('.ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$BUILD_SHARDS"', aggregate)
-        self.assertIn("main-sha-checks", aggregate)
+        self.assertIn('.ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"', aggregate)
+        self.assertIn("main-sha-$other", aggregate)
+        self.assertIn("for other in checks compile", aggregate)
+        self.assertIn("main-sha-plan", aggregate)
         self.assertNotIn("merge-main", aggregate.replace("merged-main", ""), "the aggregate must not merge main itself")
+
+    def test_the_aggregate_says_which_tier_ran(self):
+        aggregate = job("build-result")
+        self.assertIn("::notice title=ci-tier::", aggregate)
+        self.assertIn("needs.plan.outputs.server-full", aggregate)
+        # A skipped shard job is a pass only when the plan selected none.
+        self.assertIn('shards_skippable=false', aggregate)
+        self.assertIn("::notice title=ci-gradle::skipped", aggregate)
+
+    def test_the_plan_merges_main_and_hands_its_sha_to_the_aggregate(self):
+        plan = job("plan")
+        self.assertIn("name: ci-plan\n", plan)
+        self.assertIn("name: plan\n", plan)
+        self.assertIn("tools/ci_affected.py", plan)
+
+    def test_the_compile_job_hands_its_merged_main_to_the_aggregate_too(self):
+        self.assertIn("name: compile\n", job("compile").split("upload-merged-main")[1])
+        self.assertIn("main-sha-$other", job("build-result"))
+        self.assertIn("for other in checks compile", job("build-result"))
+
+    def test_a_push_that_changes_nothing_gradle_reads_runs_no_gradle_job(self):
+        for key in ("checks", "build"):
+            with self.subTest(key):
+                self.assertIn("needs.plan.outputs.build-needed", WORKFLOW[WORKFLOW.index(f"\n  {key}:"):])
+        self.assertIn("needs.plan.outputs.build-needed == 'true'", job("checks"))
+        self.assertIn("needs.plan.outputs.build-needed == 'true'", job("tool-gates"))
+        # A job without the compile job's output compiles for itself, and the compile job runs only for a full run.
+        self.assertIn("needs.plan.outputs.server-full == 'true'", job("compile"))
+        for key in ("build", "checks", "tool-gates"):
+            with self.subTest(key):
+                self.assertIn("if: needs.compile.result == 'success'", job(key))
+
+    def test_a_cold_gradle_cache_sends_the_run_through_the_compile_job(self):
+        # A PR-tier job that compiled for itself from nothing would not fit its five minutes (ADR 0116): the plan looks up the seed's marker.
+        plan = job("plan")
+        self.assertIn("lookup-only: true", plan)
+        self.assertIn("deepcharter-seed-marker-v1-", plan)
+        self.assertIn("cache-warm: ${{ steps.seeded.outputs.cache-matched-key != '' }}", plan)
+        self.assertIn("needs.plan.outputs.cache-warm != 'true'", job("compile"))
+        seed = (REPO / ".github/workflows/cache-seed.yml").read_text()
+        self.assertIn("key: deepcharter-seed-marker-v1-${{ github.sha }}", seed)
+        self.assertIn('WARM: ${{ needs.plan.outputs.cache-warm }}', job("build-result"))
 
     def test_no_other_job_is_named_build(self):
         self.assertEqual(re.findall(r"^    name: build$", WORKFLOW, re.M), ["    name: build"])
