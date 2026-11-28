@@ -36,9 +36,6 @@ jobs:
     needs: compile
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    env:
-      LP_NUM_THREADS: ${{ matrix.lp }}
-      CLIENT_INSTANCE_CPUS: ${{ matrix.cpus }}
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +72,12 @@ jobs:
           list=
           for ((i = 0; i < ${#SLICE}; i++)); do list="${list:+$list,}${part[${SLICE:$i:1}]}"; done
           echo "list=$list" >> "$GITHUB_OUTPUT"
+      - env:
+          LP: ${{ matrix.lp }}
+          CPUS: ${{ matrix.cpus }}
+        run: |
+          if [ -n "$LP" ]; then echo "LP_NUM_THREADS=$LP" >> "$GITHUB_ENV"; fi
+          if [ -n "$CPUS" ]; then echo "CLIENT_INSTANCE_CPUS=$CPUS" >> "$GITHUB_ENV"; fi
       - run: nohup vmstat 5 > "$RUNNER_TEMP/vmstat.log" 2>&1 &
       - id: compiled
         uses: ./.github/actions/download-compiled
