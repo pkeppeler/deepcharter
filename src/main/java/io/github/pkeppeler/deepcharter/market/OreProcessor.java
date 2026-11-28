@@ -171,20 +171,38 @@ public final class OreProcessor {
                 .findFirst();
     }
 
-    /** The processor's view: the work orders, and the ore in the cargo of the readable pods parked here that the player may use. Never throws on unreadable saved data. */
+    /**
+     * The processor's view: the work orders, the ore in the cargo of the readable pods parked here that the player
+     * may use, and the slag brick in their racks beside the brick in the player's pack. Never throws on unreadable
+     * saved data.
+     */
     public static ProcessorView view(
             MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
         List<ProcessorView.Hold> cargo = new ArrayList<>();
-        List<PodEntity> pods = Terminals.parkedPods(player.level(), pos, charter).stream()
-                .filter(pod -> pod.cargo().isReadable())
-                .toList();
+        List<PodEntity> parked = Terminals.parkedPods(player.level(), pos, charter);
+        List<PodEntity> pods =
+                parked.stream().filter(pod -> pod.cargo().isReadable()).toList();
         for (OreType type : OreType.values()) {
             int count = pods.stream().mapToInt(pod -> pod.cargo().count(type)).sum();
             if (count > 0) {
                 cargo.add(new ProcessorView.Hold(type, count));
             }
         }
-        return new ProcessorView(WorkOrders.view(server, player, charter, pos), cargo);
+        return new ProcessorView(WorkOrders.view(server, player, charter, pos), cargo, bricks(player, parked));
+    }
+
+    /** The racked brick of the parked pods whose lining can be read, and the brick in the player's pack. */
+    private static ProcessorView.Bricks bricks(ServerPlayer player, List<PodEntity> parked) {
+        int racked = 0;
+        int rackSize = 0;
+        for (PodEntity pod : parked) {
+            Optional<PodLining.State> state = PodLining.readable(pod);
+            if (state.isPresent()) {
+                racked += state.get().bricks();
+                rackSize += PodLiningTuning.DEFAULT.brickCapacity();
+            }
+        }
+        return new ProcessorView.Bricks(racked, rackSize, player.getInventory().countItem(SlagBrick.item()));
     }
 
     /** What the fuse does for one pod: the bricks it can make from the pod's spoil, and where each goes. */

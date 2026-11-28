@@ -41,6 +41,9 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
 
     private final List<RuleSlot> ruleSlots = new ArrayList<>();
     private int inventoryStart = -1;
+    /** One past the inventory's last slot: a menu may add slots of its own after it, such as the offhand. */
+    private int inventoryEnd = -1;
+
     private Optional<Component> refusal = Optional.empty();
 
     protected SlottedMenu(MenuType<?> type, int containerId) {
@@ -68,6 +71,12 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
     protected final void addPlayerInventory(Inventory inventory, int y) {
         inventoryStart = slots.size();
         addStandardInventorySlots(inventory, FRAME, y);
+        inventoryEnd = slots.size();
+    }
+
+    /** Moves what fits of {@code stack} into the inventory's rows, then its hotbar. True when anything moved. */
+    protected final boolean moveToInventory(ItemStack stack) {
+        return inventoryStart >= 0 && moveItemStackTo(stack, inventoryStart, inventoryEnd, false);
     }
 
     /** The typed slots, in the order they were added. */
@@ -191,7 +200,7 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
     }
 
     private boolean isInventory(int index) {
-        return inventoryStart >= 0 && index >= inventoryStart;
+        return inventoryStart >= 0 && index >= inventoryStart && index < inventoryEnd;
     }
 
     @Override
@@ -203,7 +212,7 @@ public abstract class SlottedMenu extends AbstractContainerMenu {
         ItemStack stack = slot.getItem();
         ItemStack before = stack.copy();
         if (slot instanceof RuleSlot) {
-            if (inventoryStart < 0 || !moveItemStackTo(stack, inventoryStart, slots.size(), true)) {
+            if (inventoryStart < 0 || !moveItemStackTo(stack, inventoryStart, inventoryEnd, true)) {
                 return ItemStack.EMPTY;
             }
         } else if (!toRuleSlots(stack)) {
