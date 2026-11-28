@@ -563,7 +563,8 @@ public class OvergrowthVeneerTest {
 
     /**
      * The column's stone box, all in the hollows biome, then {@code setup} carves what the test needs; {@code body}
-     * runs once the chunk ticks.
+     * runs once the chunk ticks. {@code setup} places static blocks only: anything that moves or flows goes in
+     * {@code body}.
      */
     private static void onceReady(GameTestHelper helper, int x, Body setup, Body body) {
         ServerLevel level = TestLayers.level(helper, 1);
