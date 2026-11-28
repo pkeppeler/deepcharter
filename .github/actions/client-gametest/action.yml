@@ -33,6 +33,10 @@ inputs:
     description: Appended to the screenshots artifact name, so parallel shards do not collide.
     required: false
     default: ""
+  client-instances:
+    description: Client JVMs the job runs side by side (-PclientInstances, gradle/client-instances.gradle.kts), each with its slice of the classes and its own run dir; 1 runs the one runClientGameTest. Their lines are prefixed `[client k/N]`.
+    required: false
+    default: "1"
 
 runs:
   using: composite
@@ -96,9 +100,18 @@ runs:
     # (OptionsForceDefaultGraphicsApiFix).
     - name: Choose the OpenGL backend
       shell: bash
+      env:
+        INSTANCES: ${{ inputs.client-instances }}
       run: |
-        mkdir -p build/run/clientGameTest
-        printf 'version:4896\npreferredGraphicsBackend:"opengl"\n' > build/run/clientGameTest/options.txt
+        dirs=(build/run/clientGameTest)
+        if [ "$INSTANCES" -gt 1 ]; then
+          dirs=()
+          for k in $(seq 1 "$INSTANCES"); do dirs+=("build/run/clientGameTest-$k"); done
+        fi
+        for dir in "${dirs[@]}"; do
+          mkdir -p "$dir"
+          printf 'version:4896\npreferredGraphicsBackend:"opengl"\n' > "$dir/options.txt"
+        done
     # Minecraft logs "Failed to create backend" and then hangs, so watch the log and
     # fail at once. The final assertion catches a Minecraft bump that resets options.txt.
     # -x deleteGameTestRunDir: Loom deletes the run dir first, which would delete options.txt.
@@ -119,6 +132,7 @@ runs:
         CLIENT_TESTS: ${{ inputs.client-tests }}
         CLIENT_SHARD: ${{ inputs.client-shard }}
         SKIP_COMPILE: ${{ inputs.skip-compile }}
+        INSTANCES: ${{ inputs.client-instances }}
         # The live heap by class at the start of each test class (HeapHistogram): the leak shows as the type that grows.
         DEEPCHARTER_CLIENT_HEAP_HISTOGRAM: ${{ github.workspace }}/build/client-heap
       run: |
@@ -130,10 +144,27 @@ runs:
         if [ -n "$CLIENT_SHARD" ]; then
           filter+=("-PclientShard=$CLIENT_SHARD")
         fi
+        task=runClientGameTest
+        if [ "$INSTANCES" -gt 1 ]; then
+          # N client JVMs side by side (#1722); --continue lets the others finish when one fails, and the task names each failure.
+          task=runClientGameTestInstances
+          filter+=("-PclientInstances=$INSTANCES" --continue)
+        fi
         # SKIP_COMPILE is word-split on purpose: `-x compileJava -x ...`.
         # shellcheck disable=SC2086
-        ./gradlew runClientGameTest -x deleteGameTestRunDir $SKIP_COMPILE "${filter[@]}" > "$log" 2>&1 &
+        ./gradlew "$task" -x deleteGameTestRunDir $SKIP_COMPILE "${filter[@]}" > "$log" 2>&1 &
         gradle_pid=$!
+        # Each instance writes build/client-instance-<k>.log; its lines join the step's log with a `[client k/N]` prefix, so the
+        # checks below and the stall watch see every instance, and a line names the client it came from.
+        prefix_pids=()
+        if [ "$INSTANCES" -gt 1 ]; then
+          for k in $(seq 1 "$INSTANCES"); do
+            rm -f "build/client-instance-$k.log"
+            tail -n +1 -F --pid="$gradle_pid" "build/client-instance-$k.log" 2>/dev/null \
+              | sed -u "s|^|[client $k/$INSTANCES] |" >> "$log" &
+            prefix_pids+=($!)
+          done
+        fi
         tail -n +1 -f "$log" --pid="$gradle_pid" &
         tail_pid=$!
         # Thread dump of the client JVM (it hosts TwoPlayerServer too) when the log is silent
@@ -174,19 +205,29 @@ runs:
             stop_gradle "Client GameTests out of time: ${setup_seconds} s of setup before the step left ${max_seconds} s of the ${job_deadline}-second job deadline, and the tests ran past it (setup, shard weight or runner speed: gradle/ci-budget.txt)"
           fi
           if [ "$SECONDS" -ge "$deadline" ] \
-            && ! grep -q 'Created window using SDL video driver' "$log"; then
-            stop_gradle "No Minecraft window after 120 seconds"
+            && [ "$(grep -c 'Created window using SDL video driver' "$log")" -lt "$INSTANCES" ]; then
+            stop_gradle "Fewer than $INSTANCES Minecraft window(s) after 120 seconds"
           fi
           sleep 2
         done
         status=0
         wait "$gradle_pid" || status=$?
+        for pid in "${prefix_pids[@]}"; do wait "$pid" || true; done
         wait "$tail_pid" || true
+        if [ "$INSTANCES" -gt 1 ]; then
+          # Name each client that failed or never finished, so the failing slice is found without reading the whole log.
+          for k in $(seq 1 "$INSTANCES"); do
+            end=$(grep -o "CLIENT-INSTANCE END $k/$INSTANCES exit [0-9]*" "build/client-instance-$k.log" 2>/dev/null || true)
+            if [ "$end" != "CLIENT-INSTANCE END $k/$INSTANCES exit 0" ]; then
+              echo "::error::Client instance $k of $INSTANCES failed (${end:-no exit recorded}): its lines are prefixed [client $k/$INSTANCES], its screenshots are under clientGameTest-$k/"
+            fi
+          done
+        fi
         if [ "$status" -ne 0 ]; then
           exit "$status"
         fi
-        if ! grep -q 'Using graphics backend OpenGL' "$log"; then
-          echo "::error::The client did not use the OpenGL backend that options.txt asks for"
+        if [ "$(grep -c 'Using graphics backend OpenGL' "$log")" -lt "$INSTANCES" ]; then
+          echo "::error::A client did not use the OpenGL backend that options.txt asks for"
           exit 1
         fi
     # The heap the client JVM used, from its GC log (gradle/run-jvm.gradle.kts): the largest occupancy before any collection is the
@@ -196,29 +237,33 @@ runs:
       if: always()
       shell: bash
       run: |
-        gclog=build/client-gc.log
-        if [ ! -f "$gclog" ]; then
-          echo "No $gclog: the client JVM never started."
-          exit 0
+        found=
+        for gclog in build/run/clientGameTest*/client-gc.log; do
+          [ -f "$gclog" ] || continue
+          found=1
+          name=$(basename "$(dirname "$gclog")")
+          peak=$(grep -oE '[0-9]+[MG]->[0-9]+[MG]\([0-9]+[MG]\)' "$gclog" | awk -F'[>(]' '
+            function mb(v) { n = v + 0; return v ~ /G$/ ? n * 1024 : n }
+            { sub(/-$/, "", $1); before = mb($1); if (before > peak) peak = before }
+            END { printf "%d", peak }')
+          live=$(grep 'Pause Full' "$gclog" | grep -oE '[0-9]+[MG]->[0-9]+[MG]\([0-9]+[MG]\)' | awk -F'[>(]' '
+            function mb(v) { n = v + 0; return v ~ /G$/ ? n * 1024 : n }
+            { after = mb($2); if (after > live) live = after; fulls++ }
+            END { if (fulls) printf "largest live set after a full collection %d MB, %d full collections", live, fulls; else printf "no full collection logged" }')
+          summary="$name: peak before a collection $peak MB, $live"
+          echo "::notice title=Client heap::$summary"
+          echo "Client heap: $summary" >> "$GITHUB_STEP_SUMMARY"
+        done
+        if [ -z "$found" ]; then
+          echo "No client-gc.log in a client run dir: no client JVM started."
         fi
-        peak=$(grep -oE '[0-9]+[MG]->[0-9]+[MG]\([0-9]+[MG]\)' "$gclog" | awk -F'[>(]' '
-          function mb(v) { n = v + 0; return v ~ /G$/ ? n * 1024 : n }
-          { sub(/-$/, "", $1); before = mb($1); if (before > peak) peak = before }
-          END { printf "%d", peak }')
-        live=$(grep 'Pause Full' "$gclog" | grep -oE '[0-9]+[MG]->[0-9]+[MG]\([0-9]+[MG]\)' | awk -F'[>(]' '
-          function mb(v) { n = v + 0; return v ~ /G$/ ? n * 1024 : n }
-          { after = mb($2); if (after > live) live = after; fulls++ }
-          END { if (fulls) printf "largest live set after a full collection %d MB, %d full collections", live, fulls; else printf "no full collection logged" }')
-        summary="peak before a collection $peak MB, $live"
-        echo "::notice title=Client heap::$summary"
-        echo "Client heap: $summary" >> "$GITHUB_STEP_SUMMARY"
     - name: Upload the client GC log
       if: always()
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: client-gc-log${{ inputs.artifact-suffix }}
         path: |
-          build/client-gc.log
+          build/run/clientGameTest*/client-gc.log
           build/client-heap
         if-no-files-found: ignore
         retention-days: 7
@@ -228,6 +273,7 @@ runs:
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: client-gametest-screenshots${{ inputs.artifact-suffix }}
-        path: build/run/clientGameTest/screenshots
+        # One directory per client instance (clientGameTest-<k>/screenshots), so their frames stay apart.
+        path: build/run/clientGameTest*/screenshots
         if-no-files-found: ignore
         retention-days: 7

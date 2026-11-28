@@ -29,6 +29,7 @@
     "ClientGameTestImplMixin",
     "ClientPacketListenerMixin",
     "DrifterRendererMixin",
+    "FabricClientGameTestRunnerMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudMixin",

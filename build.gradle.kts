@@ -86,6 +86,18 @@ val addVmArgToRun: (String, String) -> Unit = { run, arg ->
 	loom.runs.named(run) { vmArg(arg) }
 }
 val runVmArgs: () -> Map<String, List<String>> = { loom.runs.associate { it.name to it.vmArgs.toList() } }
+// A copy of the clientGameTest run named `name`, in its own run dir, with `vmArgs` after the copied ones (gradle/client-instances.gradle.kts).
+val copyClientGameTestRun: (String, String, List<String>) -> Unit = { name, dir, vmArgs ->
+	val parent = loom.runs.getByName("clientGameTest")
+	loom.runs.create(name) {
+		inherit(parent)
+		@Suppress("DEPRECATION")
+		runDir(dir)
+		@Suppress("DEPRECATION")
+		vmArgs(vmArgs)
+	}
+}
+extra["copyClientGameTestRun"] = copyClientGameTestRun
 extra["addVmArgToRuns"] = addVmArgToRuns
 extra["addVmArgToRun"] = addVmArgToRun
 extra["runVmArgs"] = runVmArgs
@@ -301,6 +313,7 @@ apply(from = "gradle/clientlock.gradle.kts")
 apply(from = "gradle/lambdynamiclights.gradle.kts")
 apply(from = "gradle/resolve-client-runtime.gradle.kts")
 apply(from = "gradle/run-jvm.gradle.kts")
+apply(from = "gradle/client-instances.gradle.kts")
 
 tasks.processResources {
 	val modVersion = project.version.toString()
