@@ -347,8 +347,7 @@ public class RockTintTest {
                 RockTint.of(state(LayerBlocks.HARDPAN), CampaignBands.SURFACE.maxY())
                         == RockTint.home(LayerBlocks.HARDPAN),
                 "hardpan in the surface band is not its own colour");
-        // Layer 1's floor gradient into green shale, and layer 3's top beds of it: green shale out of layer 2 is its
-        // own.
+        // Layer 1's floor gradient and layer 3's top beds hold green shale out of layer 2: it has its home colour.
         expect(
                 helper,
                 RockTint.of(state(LayerBlocks.GREEN_SHALE), LAYER.minY()) == RockTint.home(LayerBlocks.GREEN_SHALE)
