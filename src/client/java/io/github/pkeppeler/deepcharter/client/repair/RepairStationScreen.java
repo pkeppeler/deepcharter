@@ -69,8 +69,8 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
 
     /**
      * One button of the list: what it says, the action it sends, whether it can be pressed (a track at its top tier
-     * cannot), what the ware does, which the tip over the list shows while the player points at it (#1645), and the item
-     * it sells, whose sheet the spec sheet key opens (#1651), or null when it sells none.
+     * cannot), what the ware does, which the tip over the list shows while the player points at it (#1645), and the
+     * item it sells, whose sheet the spec sheet key opens (#1651), or null when it sells none.
      */
     private record Row(
             Component label,
@@ -84,7 +84,7 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
             this(label, action, args, true, Optional.of(about), null);
         }
 
-        /** A row that sells {@code item}: it can be pressed, says what the item does, and the spec sheet key opens its sheet. */
+        /** A row that sells {@code item}: pressable, saying what it does, and the spec sheet key opens its sheet. */
         static Row sells(Component label, Identifier action, CompoundTag args, Component about, Item item) {
             return new Row(label, action, args, true, Optional.of(about), item);
         }
