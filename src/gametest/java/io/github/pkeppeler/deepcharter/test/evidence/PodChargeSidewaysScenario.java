@@ -26,8 +26,10 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "pod-charge-sideways" (#1613): a pod faces a band of Company rock in a sealed stone room. The pilot sets a blasting charge on the face
- * ahead (a right click), the fuse counts down on the action bar with "BACK AWAY", the pod backs out of the reach, and the charge blows: the 2 slabs of the
+ * Evidence scenario "pod-charge-sideways" (#1613): a pod faces a band of Company rock in a sealed stone room. The
+  * pilot sets a blasting charge on the face
+ * ahead (a right click), the fuse counts down on the action bar with "BACK AWAY", the pod backs out of the reach, and
+  * the charge blows: the 2 slabs of the
  * bore's face go and the rock behind them stays; a spectator then looks at the hole from the side.
  */
 public class PodChargeSidewaysScenario extends EvidenceScenario {
@@ -37,9 +39,11 @@ public class PodChargeSidewaysScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
     private static final int MAX_TICKS = 900;
     private static final float LOOK_DOWN = -15f;
-    /** Past the reach of the blast: the pod's box (1.9 wide) ends more than the 3 blocks of chargeReach from the volume, whose east side is X - 1. */
+    /** Past the reach of the blast: the pod's box (1.9 wide) ends more than the 3 blocks of chargeReach from the
+     * volume, whose east side is X - 1. */
     private static final double SAFE_X = X + 3.5;
-    /** The slabs of the band: the face at X - 2 and the one behind it, which a blasting charge clears, and the one behind that, which stays. */
+    /** The slabs of the band: the face at X - 2 and the one behind it, which a blasting charge clears, and the one
+     * behind that, which stays. */
     private static final int[] BAND = {X - 2, X - 3};
 
     private static final int STAYS_X = X - 4;
@@ -186,7 +190,8 @@ public class PodChargeSidewaysScenario extends EvidenceScenario {
         }
     }
 
-    /** Floats the first player, as a spectator, at the side of the room and above the pod's place, looking at the face of the band. */
+    /** Floats the first player, as a spectator, at the side of the room and above the pod's place, looking at the
+     * face of the band. */
     private static void lookAtBand(TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();

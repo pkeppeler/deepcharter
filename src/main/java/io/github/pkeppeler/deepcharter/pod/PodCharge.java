@@ -50,10 +50,14 @@ import net.minecraft.world.phys.Vec3;
  * hovers through both.
  * The fuse belongs to the pod and is neither saved nor synced: a pod that is discarded or unloaded before the blast loses it.
  *
- * <p>Sideways (#1613, ADR 0120): a pod square to the compass with Company rock on the face of its next bore slab sets the same charges on that face
- * instead of under it: a blasting charge clears {@code chargeSideDepth} slabs along the facing, a shaped charge the Company rock along the facing to
- * the first other block, at most {@code shapedSideDepth}. The hull guard counts the blast alone, as nothing opens under the pod, and the pilot gets clear
- * by backing out of {@code chargeReach}. Every blast is computed from a {@link ChargeSite}, a volume and a facing, not from the pod.
+ * <p>Sideways (#1613, ADR 0120): a pod square to the compass with Company rock on the face of its next bore slab sets
+  * the same charges on that face
+ * instead of under it: a blasting charge clears {@code chargeSideDepth} slabs along the facing, a shaped charge the
+  * Company rock along the facing to
+ * the first other block, at most {@code shapedSideDepth}. The hull guard counts the blast alone, as nothing opens
+  * under the pod, and the pilot gets clear
+ * by backing out of {@code chargeReach}. Every blast is computed from a {@link ChargeSite}, a volume and a facing,
+  * not from the pod.
  */
 public final class PodCharge {
     private static final int TICKS_PER_SECOND = 20;
@@ -67,7 +71,8 @@ public final class PodCharge {
         SHAPED
     }
 
-    /** A burning fuse: the site it will clear, the kind of charge, the numbers of the tuning it was set with, and the charter that set it. */
+    /** A burning fuse: the site it will clear, the kind of charge, the numbers of the tuning it was set with, and the
+     * charter that set it. */
     record Fuse(
             Kind kind,
             ChargeSite site,
@@ -97,7 +102,8 @@ public final class PodCharge {
     }
 
     /**
-     * Server only: sets a charge for {@code pod}, under it or, when it is square to the compass in front of Company rock, on the face ahead. Empty when it
+     * Server only: sets a charge for {@code pod}, under it or, when it is square to the compass in front of Company
+      * rock, on the face ahead. Empty when it
      * is set (the caller uses the item up), or the reason it was not.
      */
     public static Optional<Component> set(PodEntity pod, RepairTuning tuning, Kind kind) {
@@ -152,7 +158,8 @@ public final class PodCharge {
     }
 
     /**
-     * Why {@code kind} may not be set at {@code site}, or empty when it may: the refusals every way of placing a charge shares. A blasting charge needs Company rock
+     * Why {@code kind} may not be set at {@code site}, or empty when it may: the refusals every way of placing a
+      * charge shares. A blasting charge needs Company rock
      * somewhere in its volume; a shaped charge needs some column to start in Company rock and none to end on lava.
      */
     static Optional<Component> refuse(ServerLevel level, LoadedBlocks blocks, Kind kind, ChargeSite site) {
@@ -176,8 +183,10 @@ public final class PodCharge {
     }
 
     /**
-     * The rows a pod sitting on the charge drops once it blows: a blasting charge's whole depth, or a shaped charge's deepest column run, and none when the
-     * charge bores sideways, as nothing opens under the pod. Both count the deepest the hole may be: a shallower column may hold the pod sooner, but the
+     * The rows a pod sitting on the charge drops once it blows: a blasting charge's whole depth, or a shaped charge's
+      * deepest column run, and none when the
+     * charge bores sideways, as nothing opens under the pod. Both count the deepest the hole may be: a shallower
+      * column may hold the pod sooner, but the
      * refusal must never let a charge wreck the pod.
      */
     private static int dropRows(ServerLevel level, LoadedBlocks blocks, Kind kind, ChargeSite site) {
@@ -194,7 +203,8 @@ public final class PodCharge {
         return deepest;
     }
 
-    /** Refuses a shaped charge that has no Company rock to start in, or that would open onto lava: some column's run must start at the face and none may end on lava. */
+    /** Refuses a shaped charge that has no Company rock to start in, or that would open onto lava: some column's run
+     * must start at the face and none may end on lava. */
     private static Optional<Component> checkShaped(ServerLevel level, LoadedBlocks blocks, ChargeSite site) {
         boolean anyRock = false;
         for (BlockPos start : site.faceCells()) {
@@ -210,7 +220,8 @@ public final class PodCharge {
         return anyRock ? Optional.empty() : refusal("charge_no_company_rock");
     }
 
-    /** Cells of Company rock in a row along the site's facing from {@code start}, as far as the site goes and no further. */
+    /** Cells of Company rock in a row along the site's facing from {@code start}, as far as the site goes and no
+     * further. */
     private static int runLength(ServerLevel level, LoadedBlocks blocks, BlockPos start, ChargeSite site) {
         int run = 0;
         for (int row = 0; row < site.depth(); row++) {

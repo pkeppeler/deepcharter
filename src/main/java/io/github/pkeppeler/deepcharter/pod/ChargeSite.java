@@ -8,10 +8,14 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Where a charge blasts, whatever set it (#1613): the box of cells it may clear (inclusive corners) and the way it bores,
- * {@link Direction#DOWN} or one of the four horizontal directions. The blast is computed from this alone, never from a pod
- * at rest, so a charge dropped from a flying pod or set by hand on foot is another way to build a site, not another blast.
- * The face is the layer of cells nearest the setter, where a charge starts; the runs of a shaped charge go from it along
+ * Where a charge blasts, whatever set it (#1613): the box of cells it may clear (inclusive corners) and the way it
+  * bores,
+ * {@link Direction#DOWN} or one of the four horizontal directions. The blast is computed from this alone, never from
+  * a pod
+ * at rest, so a charge dropped from a flying pod or set by hand on foot is another way to build a site, not another
+  * blast.
+ * The face is the layer of cells nearest the setter, where a charge starts; the runs of a shaped charge go from it
+  * along
  * {@link #facing}, and the box is {@link #depth} layers deep.
  */
 public record ChargeSite(BlockPos low, BlockPos high, Direction facing) {
@@ -21,7 +25,8 @@ public record ChargeSite(BlockPos low, BlockPos high, Direction facing) {
         }
     }
 
-    /** The site whose face is the box {@code faceLow} to {@code faceHigh} (inclusive corners, one layer thick) and that is {@code depth} layers deep along {@code facing}. */
+    /** The site whose face is the box {@code faceLow} to {@code faceHigh} (inclusive corners, one layer thick) and
+     * that is {@code depth} layers deep along {@code facing}. */
     public static ChargeSite ahead(BlockPos faceLow, BlockPos faceHigh, Direction facing, int depth) {
         BlockPos far = new BlockPos(
                 faceLow.getX() + facing.getStepX() * (depth - 1),
