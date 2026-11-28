@@ -17,8 +17,8 @@ of blank or comment lines on each side (the gates read a marker on the line or i
 see MARKER.
 
 Everything else voids: an added, removed, renamed, mode- or type-changed path, any file type but Java (markdown, JSON
-and docs included), a file with a backslash-u escape anywhere (Java reads it before it lexes, so it can hide a comment end or a
-quote), a lone carriage return (a Java line end that a `//` comment does not stop at), and an unparseable file.
+and docs included), a file with a backslash-u escape anywhere (Java reads it before it lexes, so it can hide a comment
+end or a quote), a lone carriage return (a Java line end that a `//` comment does not stop at), and an unparseable file.
 """
 
 import re

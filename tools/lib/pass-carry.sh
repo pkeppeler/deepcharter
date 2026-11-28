@@ -1,13 +1,15 @@
 # Sourced by tools/merge-pr.sh and tools/mark-review-passed.sh: carry a review pass across a clean merge of main (#1568).
 # Any push voids a pass, because the `review-passed <sha>` comment names one head. A merge of origin/main into the
 # passed head adds nothing a reviewer judged, so the pass survives it when git can prove that. So does a commit that
-# leaves the code untouched and changes only comments (a rewrap), which tools/semantic_diff.py proves (#1640, ADR 0118). The caller sets $repo and $pr and sources tools/lib/gh-rest.sh (TRUSTED_LOGIN, gh_list) first.
+# leaves the code untouched and changes only comments (a rewrap), which tools/semantic_diff.py proves (#1640, ADR 0118). The caller sets $repo and $pr and sources
+# tools/lib/gh-rest.sh (TRUSTED_LOGIN, gh_list) first.
 
 # A chain of merges is followed back to a commit with a pass; more than this many steps voids the carry.
 PASS_CARRY_MAX_MERGES=20
 
-pass_carry_semantic_diff=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/semantic_diff.py
-pass_carry_py=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/py
+pass_carry_tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+pass_carry_semantic_diff=$pass_carry_tools/semantic_diff.py
+pass_carry_py=$pass_carry_tools/py
 
 # carry_review_pass <head sha>: 0 when the PR's head is a chain, on a commit that holds a `review-passed` comment from
 # the trusted account, of links that are each one of:

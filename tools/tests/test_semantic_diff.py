@@ -98,7 +98,7 @@ class MarkerCoverageTest(unittest.TestCase):
         for path in files:
             text = path.read_text(encoding="utf-8")
             names.update(re.findall(r"""["`']//\s?([a-z][a-z0-9-]*)""", text))
-            names.update(re.findall(r"//\\s\*([a-z][a-z0-9-]*)", text))
+            names.update(re.findall(r"//\\{1,2}s\*([a-z][a-z0-9-]*)", text))
         names -= self.NOT_MARKERS
         self.assertGreater(len(names), 20, "the scan found too few markers to be reading the gates")
         missing = sorted(n for n in names if not sd.MARKER.search(f"// {n}: a reason"))
