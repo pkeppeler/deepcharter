@@ -148,7 +148,7 @@ class ShardsFitTheBudgetTest(unittest.TestCase):
     def test_the_client_overhead_is_the_measured_one(self):
         # gradle/client-overhead.txt is generated from job logs with the weights (tools/client_weights.py). The budget's overhead is at
         # least the typical shard's, and the slow-runner factor covers the slow tail: a hand-picked 80 s let shards run out of time when
-        # the measured median was 84 s (#1695).
+        # the measured median was 85 s (#1695).
         measured = shards.parse_weights(REPO / "gradle/client-overhead.txt")
         overhead, factor = self.budget["client-overhead-seconds"], self.budget["slow-runner-factor"]
         self.assertGreaterEqual(overhead, measured["p50"], f"client-overhead-seconds is under the measured p50 of {measured['p50']} s")
