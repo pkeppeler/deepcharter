@@ -38,7 +38,6 @@ class Members:
     # A field's initializer `new R(a, b, c)` of a record R declared in the file: field key to (R, the argument texts).
     constructions: dict[str, tuple[str, list[str]]] = field(default_factory=dict)
     components: dict[str, list[str]] = field(default_factory=dict)
-    types: set[str] = field(default_factory=set)
     fields: set[str] = field(default_factory=set)
     # An instance field with an initializer, to the constructor that runs it (`Helper__new`).
     initialised: dict[str, str] = field(default_factory=dict)
@@ -69,14 +68,15 @@ def _matching(code: str, start: int, open_: str = "{", close: str = "}") -> int:
     raise Unparsable(f"unbalanced {open_} at {start}")
 
 
-def _split_top(text: str, sep: str) -> list[str]:
+def _split_top(text: str) -> list[str]:
+    """The comma-separated parts of `text` outside any bracket."""
     parts, depth, start = [], 0, 0
     for i, ch in enumerate(text):
         if ch in "([{<":
             depth += 1
         elif ch in ")]}>":
             depth -= 1
-        elif ch == sep and depth == 0:
+        elif ch == "," and depth == 0:
             parts.append(text[start:i])
             start = i + 1
     parts.append(text[start:])
@@ -134,7 +134,7 @@ def _body(code: str, members: Members, kind: str, prefix: str) -> None:
     i = 0
     if kind == "enum":
         end = _enum_constants_end(code)
-        for constant in _split_top(code[:end], ","):
+        for constant in _split_top(code[:end]):
             name = _IDENT.match(constant.strip())
             if name:
                 members.add(f"{prefix}.{name[0]}", constant)
@@ -200,7 +200,7 @@ def _plain(statement: str, members: Members, prefix: str) -> None:
     if construction:
         start = construction.end() - 1
         args = statement[start + 1 : _matching(statement, start, "(", ")") - 1]
-        members.constructions[f"{prefix}.{name}"] = (construction[1], _split_top(args, ","))
+        members.constructions[f"{prefix}.{name}"] = (construction[1], _split_top(args))
 
 
 def _block(header: str, body: str, members: Members, prefix: str) -> None:
@@ -229,13 +229,12 @@ def _block(header: str, body: str, members: Members, prefix: str) -> None:
 
 def _type(kind: str, name: str, header: str, body: str, members: Members, prefix: str = "") -> None:
     qualified = f"{prefix}.{name}".lstrip(".")
-    members.types.add(name)
     rest = header[header.index(name) + len(name) :]
     if kind == "record":
         paren = rest.find("(")
         close = _matching(rest, paren, "(", ")")
         components = []
-        for component in _split_top(rest[paren + 1 : close - 1], ","):
+        for component in _split_top(rest[paren + 1 : close - 1]):
             m = _DECLARATOR.search(_ANNOTATION.sub(" ", component).strip())
             if m:
                 components.append(m[1])
