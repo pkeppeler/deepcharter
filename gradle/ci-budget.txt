@@ -7,6 +7,7 @@
 # restore) + the program's start-up + the shard's tests. Measured on a client shard: about 80 s before its first test (25 s of setup, 25 s
 # resolving, 7 s of apt, 17 s of Gradle, 25 s of Minecraft); a server shard 59 s. A slow runner is 1.3 times slower in all of it, and the
 # worst job must stay under `worst-job-seconds` (280 s, 20 s under the limit) there: (80 + 115) * 1.3 = 254 s for a client shard.
+# A job runs one game JVM: one client already keeps a 4 vCPU runner 82 % busy, and N side by side measured no fewer jobs with CI's planner (ADR 0121, #1722).
 job-limit-minutes 5
 slow-runner-factor 1.3
 # The most any job may take at that factor, under the limit of 300 s.
