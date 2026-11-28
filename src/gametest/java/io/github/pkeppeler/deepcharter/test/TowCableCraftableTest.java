@@ -63,11 +63,11 @@ public class TowCableCraftableTest {
     }
 
     /**
-     * The towing step asks for the tow cable, the lead and the string, so the recipe of each is known and in the book
-     * of a player on that step, though they hold none of them.
+     * The towing step asks for the tow cable, so its recipe is known and in the book of a player on that step. The
+     * lead and string recipes follow the plain rule: string makes the lead known, cloth makes the string known.
      */
     @GameTest(maxTicks = 100)
-    public void aPlayerOnTheTowingStepIsShownTheWholeCableChain(GameTestHelper helper) {
+    public void theTowingStepShowsTheCableAndHoldingStringAndClothShowsTheRest(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerPlayer player = MockPlayers.join(helper, "Cabler").player();
         Identifier towStep =
@@ -90,26 +90,42 @@ public class TowCableCraftableTest {
             }
             HandbookProgressData.get(server).complete(charter, directive);
         }
-        List<Identifier> chain = List.of(
-                Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tow_cable"),
-                Identifier.withDefaultNamespace("lead"),
-                Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "string_from_cloth"));
+        Identifier cable = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tow_cable");
+        Identifier lead = Identifier.withDefaultNamespace("lead");
+        Identifier stringFromCloth = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "string_from_cloth");
 
-        helper.succeedWhen(() -> {
-            for (Identifier recipe : chain) {
-                expect(
-                        helper,
-                        KnownRecipes.knownFor(server, player.getUUID()).contains(recipe),
-                        "a player on the towing step should know %s, knows %s",
-                        recipe,
-                        KnownRecipes.knownFor(server, player.getUUID()));
-                expect(
-                        helper,
-                        player.getRecipeBook().contains(ResourceKey.create(Registries.RECIPE, recipe)),
-                        "the recipe book should hold %s",
-                        recipe);
-            }
-        });
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    expectShown(helper, server, player, cable, true);
+                    expectShown(helper, server, player, lead, false);
+                    expectShown(helper, server, player, stringFromCloth, false);
+                })
+                .thenExecute(() -> {
+                    player.getInventory().add(new ItemStack(Items.STRING));
+                    player.getInventory().add(new ItemStack(ours("salvage_cloth")));
+                })
+                .thenWaitUntil(() -> {
+                    expectShown(helper, server, player, lead, true);
+                    expectShown(helper, server, player, stringFromCloth, true);
+                })
+                .thenSucceed();
+    }
+
+    private static void expectShown(
+            GameTestHelper helper, MinecraftServer server, ServerPlayer player, Identifier recipe, boolean expected) {
+        expect(
+                helper,
+                KnownRecipes.knownFor(server, player.getUUID()).contains(recipe) == expected,
+                "%s should %sbe known, knows %s",
+                recipe,
+                expected ? "" : "not ",
+                KnownRecipes.knownFor(server, player.getUUID()));
+        expect(
+                helper,
+                player.getRecipeBook().contains(ResourceKey.create(Registries.RECIPE, recipe)) == expected,
+                "the recipe book should %shold %s",
+                expected ? "" : "not ",
+                recipe);
     }
 
     /**

@@ -138,15 +138,14 @@ public class HandbookChaptersSixToNineTest {
         CANON.put(base + "company_property.title", "Recovering Company Property");
         CANON.put(
                 base + "company_property.text.1",
-                "Somewhere in the Old Workings lies the Prospector, a two-seat pod that went missing some years ago. Find her, tow her home and restore her, and she's yours to fly. She has a navigator's seat, so bring a friend! Then take her down to the floor of the Workings. You've earned it.");
+                "Somewhere in the Old Workings lies the Prospector, a two-seat pod that went missing some years ago. Find her, tow her home and restore her, and she's yours to fly. Towing takes a tow cable: six iron around a lead. A lead takes five string, and the salvage cloth in lockers and crates spins into string. She has a navigator's seat, so bring a friend! Then take her down to the floor of the Workings. You've earned it.");
         CANON.put(base + "company_property.text.1.margin", "If you hear the song and there's no radio, leave. —R.");
         CANON.put(
                 base + "company_property.margin",
                 "Ines's pod. Read her log, then decide if you still want the job. —R.");
         CANON.put("deepcharter.handbook.directive.company_property.find_prospector", "Find the Prospector.");
         CANON.put(
-                "deepcharter.handbook.directive.company_property.tow_prospector",
-                "Tow the Prospector to the colony. A tow cable is six iron around a lead, a lead is five string, and string comes from salvage cloth found in lockers and crates.");
+                "deepcharter.handbook.directive.company_property.tow_prospector", "Tow the Prospector to the colony.");
         CANON.put("deepcharter.handbook.directive.company_property.restore_prospector", "Restore the Prospector.");
         CANON.put(
                 "deepcharter.handbook.directive.company_property.reach_workings_floor",
