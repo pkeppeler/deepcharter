@@ -50,7 +50,7 @@
   "screen.deepcharter.hangar.restore": "RESTORE WRECK",
   "screen.deepcharter.hangar.restore_prices": "RESTORE PRICES: MOLE $%s, PROSPECTOR $%s + %s (%s)",
   "screen.deepcharter.hangar.scrap": "SCRAP: HOLD TO PACK",
-  "screen.deepcharter.hangar.welcome": "HANGAR ONLINE. EACH PILOT MAY ASSEMBLE ONE MOLE. POINT AT A ROW FOR DETAILS.",
+  "screen.deepcharter.hangar.welcome": "HANGAR ONLINE. POINT AT A ROW FOR DETAILS.",
   "screen.deepcharter.hangar.write_off": "WRITE OFF: $%s",
   "screen.deepcharter.hangar.write_off_confirm": "CONFIRM: $%s"
 }

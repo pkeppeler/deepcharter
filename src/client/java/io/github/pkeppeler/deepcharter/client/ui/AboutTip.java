@@ -14,8 +14,8 @@ import net.minecraft.client.gui.screens.Screen;
  * (#1645). It reads {@link CrtButton#about}, wraps the line in a box of the CRT's own colours (the game's purple
  * tooltip would clash with the glass) and puts it where it covers no other row that sells something and no readout
  * the screen passes (the account, the prices, the scroll line). The places, in order, are under the row, over it,
- * beside it and over the screen's intro text. When none is free it covers the intro text all the same. It takes no
- * room from the list, so a list that scrolls keeps its rows.
+ * beside it, over the screen's intro text, and over the title and the intro. When none is free it covers the intro
+ * text all the same. It takes no room from the list, so a list that scrolls keeps its rows.
  */
 public final class AboutTip {
     /** The widest the box is when it goes under or over a row. */
@@ -119,6 +119,13 @@ public final class AboutTip {
                 Math.max(over.height(), bounds.introBottom() - bounds.introY()),
                 over.lines());
         candidates.add(intro);
+        // A one-line intro leaves the box too little room above the account: take the title's line too.
+        candidates.add(new Box(
+                over.x(),
+                bounds.top(),
+                over.width(),
+                Math.max(over.height(), bounds.introBottom() - bounds.top()),
+                over.lines()));
         return candidates.stream()
                 .filter(box -> inside(box, bounds)
                         && box.lines().size() <= MAX_LINES
