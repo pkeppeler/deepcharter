@@ -44,6 +44,10 @@ runs:
     - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       with:
         cache-read-only: ${{ inputs.gradle-cache-read-only }}
+        # Loom's asset objects have their own cache entry (.github/actions/loom-assets).
+        gradle-home-cache-excludes: caches/fabric-loom/assets
+    - id: assets
+      uses: ./.github/actions/loom-assets
     # The GL libraries install in the background while Gradle resolves (the step below waits for them). `apt-get update` runs only
     # if the install fails on a stale index, which costs about 50 s a job otherwise.
     - name: Install the GL libraries (background)
@@ -67,6 +71,8 @@ runs:
     # Never skipped: ci-gradle-resolve.sh is every job's first Gradle call and installs the Central mirror the build refuses to run
     # without (tools/tests/ci-gradle-resolve-gate.test.sh). With the compile job's classes downloaded (skip-compile) it resolves
     # only the run's runtime classpaths, with the compile tasks off.
+    # downloadAssets runs here too, so a Minecraft asset that fails Loom's three quick attempts gets the same waits and
+    # reruns (#1703); a rerun keeps the objects already fetched. With the assets restored it fetches nothing.
     - name: Resolve dependencies
       shell: bash
       env:
@@ -75,10 +81,21 @@ runs:
       # shellcheck disable=SC2086
       run: |
         if [ -n "$SKIP_COMPILE" ]; then
-          tools/ci-gradle-resolve.sh resolveClientGameTestRuntime $SKIP_COMPILE
+          tools/ci-gradle-resolve.sh resolveClientGameTestRuntime downloadAssets $SKIP_COMPILE
         else
-          tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime
+          tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime downloadAssets
         fi
+    - name: Loom assets fetched
+      shell: bash
+      env:
+        ASSETS: ${{ steps.assets.outputs.path }}
+        RESTORED: ${{ steps.assets.outputs.objects }}
+      run: |
+        objects=0
+        if [[ -d $ASSETS/objects ]]; then
+          objects=$(find "$ASSETS/objects" -type f | wc -l)
+        fi
+        echo "::notice title=Loom assets::downloadAssets fetched $((objects - RESTORED)) objects from Mojang ($RESTORED restored from the cache, $objects on disk)"
     - name: Wait for the GL libraries
       shell: bash
       run: |

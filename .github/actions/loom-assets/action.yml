@@ -1,0 +1,69 @@
+# Restores Loom's Minecraft asset objects (the client's sounds, lang and texture files, about 490 MB in 5,000 files for
+# 26.3) from their own cache entry, so a client run's downloadAssets finds them on disk instead of fetching each from
+# Mojang's CDN (#1703: 34 shards a PR each fetched all of them, and one object failing three times failed the shard).
+# Run it after setup-gradle and before the first Gradle call that runs downloadAssets.
+# Restore-only, like install-ffmpeg: callers run PR code after it, so only cache-seed.yml saves (main, no PR code), with
+# the outputs below. Loom checks every object's SHA-1 against the asset index and fetches again any that differs, so a
+# stale or partial restore costs downloads, never a wrong file.
+# Keyed on the Minecraft version: a release's version JSON, and so its asset index, does not change. The restore falls
+# back to the newest entry of another version, so a version bump downloads only the objects that changed; the seed
+# turns the fallback off, so it saves exactly one version's set and old objects do not pile up across bumps.
+# The objects are kept out of setup-gradle's Gradle home entry (gradle-home-cache-excludes in the callers): every
+# Gradle job restores that entry, and only the client runs need the assets.
+name: Loom assets
+description: Restore Loom's Minecraft asset objects from their cache entry. Never saves the cache.
+
+inputs:
+  allow-stale:
+    description: "'true' to fall back to the newest asset set of another Minecraft version; the seed passes 'false'."
+    default: "true"
+
+outputs:
+  cache-hit:
+    description: "'true' when the exact cache key was restored."
+    value: ${{ steps.cache.outputs.cache-hit }}
+  cache-key:
+    description: The cache key for the asset objects.
+    value: ${{ steps.key.outputs.key }}
+  path:
+    description: Loom's assets directory in the Gradle home.
+    value: ${{ steps.key.outputs.path }}
+  objects:
+    description: How many asset objects are on disk after the restore (count again after downloadAssets to see what it fetched).
+    value: ${{ steps.count.outputs.objects }}
+
+runs:
+  using: composite
+  steps:
+    - name: Key the assets cache on the Minecraft version
+      id: key
+      shell: bash
+      run: |
+        version=$(sed -nE 's/^minecraft = "([^"]+)"$/\1/p' gradle/libs.versions.toml)
+        if [[ -z $version ]]; then
+          echo "::error::Loom assets: no minecraft = \"...\" line in gradle/libs.versions.toml to key the cache on"
+          exit 1
+        fi
+        echo "key=loom-assets-v1-$version" >> "$GITHUB_OUTPUT"
+        # LoomFiles' user cache is <Gradle home>/caches/fabric-loom; DownloadAssetsTask keeps objects and indexes under assets/.
+        echo "path=${GRADLE_USER_HOME:-$HOME/.gradle}/caches/fabric-loom/assets" >> "$GITHUB_OUTPUT"
+    - name: Restore the Loom assets
+      id: cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.key.outputs.path }}
+        key: ${{ steps.key.outputs.key }}
+        restore-keys: ${{ inputs.allow-stale == 'true' && 'loom-assets-v1-' || '' }}
+    - name: Count the restored asset objects
+      id: count
+      shell: bash
+      env:
+        ASSETS: ${{ steps.key.outputs.path }}
+        MATCHED_KEY: ${{ steps.cache.outputs.cache-matched-key }}
+      run: |
+        objects=0
+        if [[ -d $ASSETS/objects ]]; then
+          objects=$(find "$ASSETS/objects" -type f | wc -l)
+        fi
+        echo "objects=$objects" >> "$GITHUB_OUTPUT"
+        echo "Loom assets: restored $objects objects from ${MATCHED_KEY:-no cache entry}."
