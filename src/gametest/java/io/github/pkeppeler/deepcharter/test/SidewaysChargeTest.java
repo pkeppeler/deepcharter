@@ -32,7 +32,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for charges set sideways (#1613, ADR 0120): a pod square to the compass in front of a Company rock
+ * Server GameTests for charges set sideways (#1613, ADR 0121): a pod square to the compass in front of a Company rock
  * face sets a blasting charge that clears the bore's face 2 slabs deep along the facing, or a shaped charge that
  * clears Company rock along the facing up to 8 slabs; backing out of {@code chargeReach} spares the hull, and the
  * refusals of a charge under the pod hold. The depths are literals here, apart from the tuning.

@@ -32,7 +32,7 @@ import net.minecraft.world.phys.Vec3;
  * The blasting charge (#509, ADR 0050) and the shaped charge (#526, ADR 0052), set from the seat of a resting pod: a
  * fuse, then a blast that clears {@code deepcharter:undiggable} (Company rock), the one thing that does.
  *
- * <p>Where it blasts is a {@link ChargeSite}, a volume and a facing, chosen by {@link ChargeSite#forPod} (ADR 0120):
+ * <p>Where it blasts is a {@link ChargeSite}, a volume and a facing, chosen by {@link ChargeSite#forPod} (ADR 0121):
  * the face of the pod's next sideways slab when that face holds Company rock and the pod is square to the compass,
  * else the slab under the pod. A pod off the compass facing Company rock is refused, and told to square up or turn off
  * the wall. The blast, the fuse's joints and sparks, and the refusals read only the site, so another way of placing a

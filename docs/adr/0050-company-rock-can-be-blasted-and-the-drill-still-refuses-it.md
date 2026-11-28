@@ -8,7 +8,7 @@ Amends [ADR 0015](0015-zones-are-filled-block-by-block-from-the-originals-rows.m
 
 Amended by [ADR 0069](0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md): a hand tool can brute-force Company rock at a ruinous cost, so "a player's hand still cannot break it" no longer holds. The blasting charge and the drill's refusal stand.
 
-Amended by [ADR 0120](0120-a-charge-is-set-on-the-face-ahead-of-the-pod-as-well-as-under-it.md): a pod square to the compass in front of Company rock sets the charge on the face ahead; "set from the seat on the slab under the pod" is the other case.
+Amended by [ADR 0121](0121-a-charge-is-set-on-the-face-ahead-of-the-pod-as-well-as-under-it.md): a pod square to the compass in front of Company rock sets the charge on the face ahead; "set from the seat on the slab under the pod" is the other case.
 
 Retuned 2026-11-26 (#1458, [mechanics.md](../design/mechanics.md#explosive-tiers-1458-a)): the blasting charge clears 4 rows for $60, and the hull guard counts the blast plus the hard landing of the drop into its own hole (`PodCharge.wreckingHull`, 20 for a blasting charge while #1432's ground cushion braked it, 21.2 since #1593 removed the cushion), so "no more hull than the damage" below now reads "no more hull than the damage and that drop". The decision stands.
 

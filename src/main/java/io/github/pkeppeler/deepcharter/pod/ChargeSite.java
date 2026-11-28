@@ -43,7 +43,7 @@ public record ChargeSite(BlockPos low, BlockPos high, Direction facing) {
     }
 
     /**
-     * The site a charge set from the seat of {@code pod} blasts (ADR 0120): the face of its next sideways slab,
+     * The site a charge set from the seat of {@code pod} blasts (ADR 0121): the face of its next sideways slab,
      * {@code aheadDepth} slabs deep, when that face holds Company rock and the pod is square to the compass; the slab
      * under the pod, {@code belowDepth} rows deep, when the face holds none. Empty when the face holds Company rock but
      * the pod is off the compass: the pilot squares up to blast ahead or turns off the wall to blast below, and the
