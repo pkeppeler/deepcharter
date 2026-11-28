@@ -18,6 +18,7 @@ public final class TransmissionRegistry {
         // Read the data file now: a broken file stops the game at start-up, never in a tick, a login or a crossing.
         TransmissionCatalog.all();
         TransmissionPayload.register();
+        TransmissionLogRequest.register();
         ServerLifecycleEvents.SERVER_STARTED.register(Transmissions::started);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> Transmissions.stopped());
         ServerPlayConnectionEvents.JOIN.register(
