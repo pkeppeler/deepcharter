@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import static io.github.pkeppeler.deepcharter.test.support.DriveJudge.coastReach;
-import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.INPUT_LAG_TICKS;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.SETTLE_TICKS;
 import static io.github.pkeppeler.deepcharter.test.support.PodDrives.SETTLE_TOLERANCE;
@@ -13,26 +12,21 @@ import static io.github.pkeppeler.deepcharter.test.support.PodDrives.standsAt;
 
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodGlideTuning;
-import io.github.pkeppeler.deepcharter.pod.PodSteeringTuning;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PacketJitter;
 import io.github.pkeppeler.deepcharter.test.support.PodDrives;
-import io.github.pkeppeler.deepcharter.test.support.PodDrives.Drive;
 import io.github.pkeppeler.deepcharter.test.support.PodDrives.Rig;
-import io.github.pkeppeler.deepcharter.test.support.PodDrives.Stall;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -41,38 +35,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The real client pilots one pod and
- * watches a mock player's pod beside it, over flat ground at the cruise and at the sprint's boost (#1276), climbing on
- * the rotor, and drilling into a wall, judged by {@link PodDrives}.
+ * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The drives over flat ground, up a climb
+ * and into a wall,
+ * under a jittery network, are {@link PodDriveSmoothDrivesClientTest}'s (a class of their own, so neither outruns a
+ * CI shard, #1574).
  *
- * <p>The harness ticks the server and client in lockstep, so the network is as regular as it never is in play. {@link PacketJitter}
- * makes it irregular the way a real connection is: every third client tick the client handles no pod move and the next tick
- * handles two. Without a slide between the server's moves the pod then stands still for a tick and lunges the next.
- *
- * <p>It also covers what a server does to a pod besides driving it (ADR 0082): a push, a teleport behind a coasting pod or one still
+ * <p>This class covers what a server does to a pod besides driving it (ADR 0082): a push, a teleport behind a
+ * coasting pod or one still
  * being driven, a pin while the server reports a speed, and a coast at a thin wall; and the two late-server drives where the pod
  * meets a block, a 6-tick stall across the arrival at a wall and a 5-tick stall across a landing from 10 blocks (never drawn inside
  * a block, never below the ground). The other late-server drives are {@link PodDriveLateClientTest}'s.
  */
 public class PodDriveSmoothClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodDriveSmoothClientTest.class);
-
-    private static final int FLAT_TICKS = 70;
-    private static final int CLIMB_TICKS = 32;
-    /** Long enough for three slabs of wall and the approach to it. */
-    private static final int DRILL_TICKS = 190;
-
-    /** A stall across the pod's arrival at the wall, which it reaches about 38 ticks into the drive. */
-    private static final int WALL_STALL_AT_TICK = 34;
-
-    private static final int WALL_STALL_TICKS = 6;
-
-    /** A drop that lands about 10 ticks in, and a stall across the landing. */
-    private static final double DROP_BLOCKS = 10;
-
-    private static final int LANDING_STALL_AT_TICK = 17;
-    private static final int LANDING_STALL_TICKS = 5;
-    private static final int LANDING_DRIVE_TICKS = 50;
 
     /** Blocks a pod is pushed away from where the client draws it, on either side of the catch-up's old cliff at 2, and past the snap gap. */
     private static final double[] PUSH_GAPS = {1.0, 2.0, 2.01, 5.0, 15.0, 20.0};
@@ -134,11 +109,6 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             Rig rig = PodDrives.rig(context, two, PodMovementClientTest.mountBoth(two));
             context.waitTicks(10);
 
-            PodTuning.Movement movement = PodTuning.DEFAULT.movement();
-            double flatSpeed = movement.horizontalSpeed();
-            double sprintSpeed = flatSpeed * PodSteeringTuning.DEFAULT.sprintBoost();
-            // Forward and up together: the pod's speed is the two at once.
-            double climbSpeed = Math.hypot(flatSpeed, movement.maxClimbSpeed());
             PodEvents.AFTER_TICK.register(pod -> {
                 Vec3 at = pinnedAt;
                 if (at != null && pod.getId() == pinnedPodId) {
@@ -150,58 +120,6 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             expectTeleportWhileDrivingSnaps(context, rig);
             expectFastCoastStopsAtThinWall(context, rig);
             expectPinnedPodSettles(context, rig);
-            PacketJitter.start();
-            try {
-                PodDrives.drive(context, rig, Drive.forward("flat drive", FLAT_TICKS, flatSpeed, true, false, null));
-                PodDrives.drive(context, rig, Drive.sprint("sprint drive", FLAT_TICKS, sprintSpeed, true, null));
-                PodDrives.drive(
-                        context,
-                        rig,
-                        Drive.forward(
-                                "drilling into a wall through a server stall",
-                                DRILL_TICKS,
-                                flatSpeed,
-                                false,
-                                true,
-                                new Stall(WALL_STALL_AT_TICK, WALL_STALL_TICKS, OptionalInt.empty(), 0, false, false)));
-                PodDrives.drive(
-                        context,
-                        rig,
-                        new Drive(
-                                "landing during a server stall",
-                                List.of(),
-                                Input.EMPTY,
-                                LANDING_DRIVE_TICKS,
-                                flatSpeed,
-                                false,
-                                false,
-                                false,
-                                new Stall(
-                                        LANDING_STALL_AT_TICK,
-                                        LANDING_STALL_TICKS,
-                                        OptionalInt.empty(),
-                                        DROP_BLOCKS,
-                                        true,
-                                        false)));
-                PodDrives.drive(
-                        context,
-                        rig,
-                        new Drive(
-                                "climb on the rotor",
-                                List.of(options -> options.keyUp, options -> options.keyJump),
-                                FORWARD_JUMP,
-                                CLIMB_TICKS,
-                                climbSpeed,
-                                true,
-                                false,
-                                false,
-                                null));
-                PodDrives.drive(
-                        context, rig, Drive.forward("drilling into a wall", DRILL_TICKS, flatSpeed, false, true, null));
-            } finally {
-                PacketJitter.stop();
-                PodDrives.releaseAll(context, rig);
-            }
         }
     }
 

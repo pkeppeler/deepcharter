@@ -1,8 +1,16 @@
 # Runs on every PR. Label events are deliberately not triggers here (they live in
 # client-tests.yml), so adding a label never re-runs or cancels the build.
-# The job names `build` (the aggregate of the build shards) and `tool-tests` are the REQUIRED_CHECKS in
-# tools/merge-pr.sh, which also reads `build-shard <i>` and `build-checks`; renaming one means changing both.
+# The job names `build` (the aggregate of the build shards) and `tool-tests` (the aggregate of the tool-test parts) are the
+# REQUIRED_CHECKS in tools/merge-pr.sh, which also reads `build-shard <i>` and `build-checks`; renaming one means changing both.
 # The weekly dependency audit lives in audit.yml.
+#
+# Two tiers (ADR 0116): a PR push runs the build, the tool tests and the GameTest classes its change can affect (tools/ci_affected.py); a
+# batch PR (head ref `batch/*`), a PR labelled `full-ci` and a change that can reach every test run the full suites. The `build` aggregate
+# records which in a `ci-tier` notice, and tools/merge-pr.sh lands only a full-tier head.
+#
+# Every job stops at 5 minutes (timeout-minutes: 5, #1574; tools/tests/test_ci_budget.py enforces it). The server suite and the tool
+# tests are split so that each shard fits it on a runner 1.3 times slower than the measured ones; gradle/ci-budget.txt holds the
+# budgets and ADR 0115 the arithmetic.
 name: CI
 
 on:
@@ -17,7 +25,8 @@ permissions:
   contents: read
 
 env:
-  BUILD_SHARDS: 4
+  # The shards of a full run; a PR-tier run takes as many as its classes need (the plan job).
+  BUILD_SHARDS: 16
 
 jobs:
   # Picks the main this run tests once; every job that merges main merges exactly that commit (#1571).
@@ -41,26 +50,28 @@ jobs:
           [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo "::error::could not read the sha of origin/main"; exit 1; }
           echo "main-sha=$sha" >> "$GITHUB_OUTPUT"
 
-  # The server GameTest suite runs as BUILD_SHARDS parallel jobs (#1327, ADR 0111). Each takes the shard `i/n` of the server
-  # classes that gradle/gametest.gradle.kts picks by weight (-PgametestShard; gradle/server-test-weights.txt), so every class runs
-  # in exactly one shard, and classes that share a campaign environment share a shard. The matrix and BUILD_SHARDS must agree:
-  # tools/tests/test_build_shards.py checks it. The job id stays `build` for the Gradle cache (cache-seed.yml says why).
-  build:
-    name: build-shard ${{ matrix.shard }}
+  # Decides the tier and the classes it runs (tools/ci_affected.py, ADR 0116): what the server shards below take. It merges main as the
+  # other jobs do, so its changed-path list is exactly the PR's.
+  plan:
+    name: ci-plan
     needs: setup
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    # One shard is ~1/4 of the suite by weight: 6 to 8 minutes of tests on 2026-11-26's runners, with 3 to 4 minutes of setup before it.
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
+    timeout-minutes: 5
+    outputs:
+      server-full: ${{ steps.plan.outputs.server-full }}
+      server-classes: ${{ steps.plan.outputs.server-classes }}
+      server-count: ${{ steps.plan.outputs.server-count }}
+      server-matrix: ${{ steps.plan.outputs.server-matrix }}
+      build-needed: ${{ steps.plan.outputs.build-needed }}
+      # `true` when main's Gradle cache is seeded, so a PR-tier job may compile for itself from it; `false` sends the jobs to the compile job.
+      cache-warm: ${{ steps.seeded.outputs.cache-matched-key != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+          filter: blob:none
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
@@ -69,7 +80,56 @@ jobs:
       - uses: ./.github/actions/upload-merged-main
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
-          name: ${{ matrix.shard }}
+          name: plan
+      # Is main's Gradle cache seeded (cache-seed.yml saves a marker)? A cold PR-tier compile does not fit a job's five minutes, so the jobs
+      # take the compile job's output instead (ADR 0116). A lookup only: nothing is downloaded.
+      - id: seeded
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/seed-marker
+          key: deepcharter-seed-marker-v1-none
+          restore-keys: deepcharter-seed-marker-v1-
+          lookup-only: true
+      - uses: ./.github/actions/setup-python-uv
+      - id: plan
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          # What the PR changed since it left its base branch (main for a PR into main): the same paths as main..merged head.
+          git diff --no-renames --name-only "$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
+          tools/py tools/ci_affected.py --head-ref "$HEAD_REF" --labels "$LABELS" \
+            --server-shards "$BUILD_SHARDS" --client-shards 1 < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
+
+  # Compiles every source set once and hands build/ and .gradle/ to the jobs below, so none of them compiles for a minute or two
+  # of its five (.github/actions/upload-compiled). It also resolves the dependencies, which seeds the Gradle cache the PR's
+  # later pushes reuse.
+  compile:
+    name: compile
+    needs: [setup, plan]
+    # For a full run, whose shards and checks download one compile instead of each compiling, and for a PR-tier run on a cold cache,
+    # where a job that compiled for itself would not fit its five minutes. A PR-tier run on a warm cache compiles for itself, from the
+    # Gradle build cache (ADR 0116), so nothing waits for a compile job in front of it.
+    if: ${{ !github.event.pull_request.draft && needs.plan.outputs.build-needed == 'true' && (needs.plan.outputs.server-full == 'true' || needs.plan.outputs.cache-warm != 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
+      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: compile
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
@@ -81,22 +141,87 @@ jobs:
           cache-read-only: false
       # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
       # if a repository fails to answer (#1358).
-      - run: tools/ci-gradle-resolve.sh runGameTest "-PgametestShard=${{ matrix.shard }}/${{ env.BUILD_SHARDS }}"
+      - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses
+      # The jobs that download this output skip their compile tasks only if their merged tree has these compile inputs.
+      - run: tools/ci-reuse-compiled.sh record
+      - uses: ./.github/actions/upload-compiled
+        with:
+          name: compiled-ci
 
-  # Everything `./gradlew build` does but the server GameTests (compile, jars, check and its gates), the gate checks on fixtures
-  # and the client run tasks' dry run: one job, beside the shards. Its job id is not the seeded `build`, so setup-gradle restores
-  # cache-seed.yml's entry through its same-OS fallback rather than the same-job-id match.
-  checks:
-    name: build-checks
-    needs: setup
-    if: ${{ !github.event.pull_request.draft }}
+  # The server GameTest suite runs as BUILD_SHARDS parallel jobs (#1327, ADR 0111). Each takes the shard `i/n` of the server
+  # classes that gradle/gametest.gradle.kts picks by weight (-PgametestShard; gradle/server-test-weights.txt), so every class runs
+  # in exactly one shard, and classes that share a campaign environment share a shard unless the group is heavier than an even shard.
+  # The matrix and BUILD_SHARDS must agree: tools/tests/test_build_shards.py checks it, and test_ci_budget.py that no shard is
+  # heavier than gradle/ci-budget.txt allows. The job id stays `build` for the Gradle cache (cache-seed.yml says why).
+  build:
+    name: build-shard ${{ matrix.shard }}
+    needs: [setup, plan, compile]
+    if: ${{ always() && !github.event.pull_request.draft && needs.plan.result == 'success' && needs.plan.outputs.server-count != '0' && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      # At most this many shards at once, so a full run leaves runners for other PRs' runs (ADR 0115).
+      max-parallel: 6
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.server-matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
+      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: ${{ matrix.shard }}
+      - id: compiled
+        if: needs.compile.result == 'success'
+        uses: ./.github/actions/download-compiled
+        with:
+          name: compiled-ci
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: 25
+      # Reads the cache seeded on main (cache-seed.yml), the Gradle build cache with it: without a compile job's output it compiles
+      # for itself, and a source set it did not change comes from the cache. Read-only: build-checks saves.
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: true
+      # First Gradle call: retries once if the restored cache fails dependency verification (#830), and with backoff
+      # if a repository fails to answer (#1358).
+      - env:
+          CLASSES: ${{ needs.plan.outputs.server-classes }}
+          SKIP_COMPILE: ${{ steps.compiled.outputs.skip }}
+          SHARD: ${{ matrix.shard }}/${{ needs.plan.outputs.server-count }}
+        # SKIP_COMPILE is word-split on purpose: `-x compileJava -x ...`.
+        # shellcheck disable=SC2086
+        run: |
+          args=("-PgametestShard=$SHARD")
+          if [ -n "$CLASSES" ]; then args+=("-PgametestClasses=$CLASSES"); fi
+          tools/ci-gradle-resolve.sh runGameTest "${args[@]}" $SKIP_COMPILE
+
+  # Everything `./gradlew build` does but the server GameTests (jars, check and its gates) and the client run tasks' dry run: one
+  # job, beside the shards. Its job id is not the seeded `build`, so setup-gradle restores cache-seed.yml's entry through its
+  # same-OS fallback rather than the same-job-id match.
+  checks:
+    name: build-checks
+    needs: [setup, plan, compile]
+    if: ${{ always() && !github.event.pull_request.draft && needs.plan.result == 'success' && needs.plan.outputs.build-needed == 'true' && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          filter: blob:none
           persist-credentials: false
       - id: merge
         uses: pkeppeler/deepcharter/.github/actions/merge-main@main
@@ -106,41 +231,59 @@ jobs:
         with:
           main-sha: ${{ steps.merge.outputs.main-sha }}
           name: checks
+      - id: compiled
+        if: needs.compile.result == 'success'
+        uses: ./.github/actions/download-compiled
+        with:
+          name: compiled-ci
       - uses: ./.github/actions/setup-python-uv
-      - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: 25
+      # The job that compiles for itself on the PR tier, so it saves the Gradle cache (and its build cache) for the PR's later pushes.
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
-          cache-read-only: false
-      - run: tools/ci-gradle-resolve.sh build -x runGameTest
-      - name: gate checks on fixtures
-        run: tools/py tools/tests/gate_checks.py
+          cache-read-only: ${{ needs.compile.result == 'success' }}
+      - run: tools/ci-gradle-resolve.sh build -x runGameTest ${{ steps.compiled.outputs.skip }}
       # The client run tasks never run on Linux. A dry run with the lock forced on still checks that
       # they serialize into the configuration cache (gradle/clientlock.gradle.kts).
       - run: ./gradlew runClient runClientGameTest runPlay --dry-run --configuration-cache
         env:
           DEEPCHARTER_CLIENT_LOCK: "1"
 
-  # The one name tools/merge-pr.sh requires for the build (REQUIRED_CHECKS). Succeeds only when every shard and the checks job did,
-  # and they merged the same main; then it records that main in its own `merged-main` notice (tools/ci-shard-main.sh, main's
-  # copy). The gate also reads each shard's and the checks job's own notice. It never merges main itself (that could record a sha
-  # the jobs did not test).
+  # The one name tools/merge-pr.sh requires for the build (REQUIRED_CHECKS). Succeeds only when the compile job, every shard and the
+  # checks job did, and the shards and the checks job merged the same main; then it records that main in its own `merged-main`
+  # notice (tools/ci-shard-main.sh, main's copy). The gate also reads each shard's and the checks job's own notice. It never merges
+  # main itself (that could record a sha the jobs did not test).
   build-result:
     name: build
-    needs: [build, checks]
+    needs: [plan, compile, build, checks]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # A job the plan skipped is a pass: no Gradle job when nothing Gradle reads changed, no compile job for a PR-tier run, no shard when it
+      # selected no class. Anything else must have succeeded.
       - env:
+          PLAN: ${{ needs.plan.result }}
+          COMPILE: ${{ needs.compile.result }}
           SHARDS: ${{ needs.build.result }}
           CHECKS: ${{ needs.checks.result }}
+          COUNT: ${{ needs.plan.outputs.server-count }}
+          NEEDED: ${{ needs.plan.outputs.build-needed }}
+          FULL: ${{ needs.plan.outputs.server-full }}
+          WARM: ${{ needs.plan.outputs.cache-warm }}
         run: |
-          if [ "$SHARDS" != success ] || [ "$CHECKS" != success ]; then
-            echo "::error::The build shards finished as '$SHARDS' and build-checks as '$CHECKS', not both success"
+          ok() { [ "$1" = success ] || { [ "$1" = skipped ] && [ "$2" = true ]; }; }
+          compile_skippable=false
+          if [ "$NEEDED" != true ] || { [ "$FULL" != true ] && [ "$WARM" = true ]; }; then compile_skippable=true; fi
+          shards_skippable=false
+          if [ "$COUNT" = 0 ]; then shards_skippable=true; fi
+          checks_skippable=false
+          if [ "$NEEDED" != true ]; then checks_skippable=true; fi
+          if [ "$PLAN" != success ] || ! ok "$COMPILE" $compile_skippable || ! ok "$SHARDS" $shards_skippable || ! ok "$CHECKS" $checks_skippable; then
+            echo "::error::plan finished as '$PLAN', compile as '$COMPILE', the build shards as '$SHARDS' ($COUNT selected) and build-checks as '$CHECKS' (build needed: $NEEDED, full: $FULL)"
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -154,51 +297,181 @@ jobs:
           pattern: merged-main-*
           merge-multiple: true
           path: ${{ runner.temp }}/shard-main
-      # ci-shard-main.sh counts the numbered shards; the checks job's sha must be the same one.
-      - run: |
-          read -r checks < "$RUNNER_TEMP/shard-main/main-sha-checks" || true
-          read -r first < "$RUNNER_TEMP/shard-main/main-sha-1" || true
-          if [ -z "$checks" ] || [ "$checks" != "$first" ]; then
-            echo "::error::build-checks merged main '$checks' but build-shard 1 merged '$first'"
-            exit 1
-          fi
-      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$BUILD_SHARDS"
-        env:
+      # Every job that ran (the plan job always, build-checks, the compile job and the shards when they did) merged one main; the notice
+      # records it. Main's tools/ci-shard-main.sh counts the numbered shards; the others are compared here.
+      - env:
+          COUNT: ${{ needs.plan.outputs.server-count }}
           SHARD_KIND: build
+        run: |
+          read -r plan < "$RUNNER_TEMP/shard-main/main-sha-plan" || true
+          [ -n "$plan" ] || { echo "::error::the plan job recorded no merged main"; exit 1; }
+          for other in checks compile; do
+            if [ -f "$RUNNER_TEMP/shard-main/main-sha-$other" ]; then
+              read -r sha < "$RUNNER_TEMP/shard-main/main-sha-$other" || true
+              [ "$sha" = "$plan" ] || { echo "::error::the $other job merged main '$sha' but the plan job merged '$plan'"; exit 1; }
+            fi
+          done
+          if [ "$COUNT" = 0 ]; then
+            echo "::notice title=merged-main::$plan"
+          else
+            read -r first < "$RUNNER_TEMP/shard-main/main-sha-1" || true
+            [ "$plan" = "$first" ] || { echo "::error::the plan job merged main '$plan' but build-shard 1 merged '$first'"; exit 1; }
+            .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$COUNT"
+          fi
+      # What ran, for tools/merge-pr.sh (ADR 0116): it lands only a head whose server suite ran whole, and needs no build-checks or
+      # shard from one whose paths no Gradle task reads.
+      - env:
+          FULL: ${{ needs.plan.outputs.server-full }}
+          NEEDED: ${{ needs.plan.outputs.build-needed }}
+        run: |
+          echo "::notice title=ci-tier::$([ "$FULL" = true ] && echo full || echo pr)"
+          [ "$NEEDED" = true ] || echo "::notice title=ci-gradle::skipped"
 
-  tool-tests:
-    name: tool-tests
+  # The tool tests run as parallel jobs: the Python unit tests in three parts, the shell tests in four, and the gate checks
+  # on fixtures (Gradle, tool-gates below) in one. tools/ci_tool_parts.py picks each part's files by weight (tools/tests/ci-tool-test-weights.txt).
+  # The matrix and the aggregate's part count must agree: tools/tests/test_tool_test_parts.py checks it. `tool-tests` below is their aggregate.
+  tool-part:
+    name: tool-tests-part ${{ matrix.part }}
     needs: setup
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15 # tests take ~1 min on a runner; leave headroom for test growth
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { part: 1, kind: python, slice: 1/3 }
+          - { part: 2, kind: python, slice: 2/3 }
+          - { part: 3, kind: python, slice: 3/3 }
+          - { part: 4, kind: shell, slice: 1/4 }
+          - { part: 5, kind: shell, slice: 2/4 }
+          - { part: 6, kind: shell, slice: 3/4 }
+          - { part: 7, kind: shell, slice: 4/4 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+          filter: blob:none
           persist-credentials: false
-      - uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
         with:
           main-sha: ${{ needs.setup.outputs.main-sha }}
-      # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
-      # has, reads or needs the original game audio.
+      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: tool-${{ matrix.part }}
+          artifact: tool-main-${{ matrix.part }}
+          file: ${{ matrix.part }}
       - uses: ./.github/actions/setup-python-uv
+      # build-audio-pack.test.sh and the Python tests that encode need ffmpeg. They make their own synthetic tones; CI never
+      # has, reads or needs the original game audio.
       - uses: ./.github/actions/install-ffmpeg
-      - run: tools/py -m unittest discover -s tools/tests -p 'test_*.py'
+      - name: Python unit tests
+        if: matrix.kind == 'python'
+        run: tools/ci-tool-tests.sh python ${{ matrix.slice }}
+      - name: Shell tool tests
+        if: matrix.kind == 'shell'
+        run: tools/ci-tool-tests.sh shell ${{ matrix.slice }}
       # Diff-scoped until #1223 rewraps the tree: the merge commit's merge base with the origin/main that merge-main fetched.
       - name: comment lines added over 120 columns
+        if: matrix.part == 1
         run: tools/py tools/comment_length_gate.py
-      - name: bash tool tests
-        run: |
-          for t in tools/tests/*.test.sh; do
-            echo "::group::$t"
-            bash "$t" || { echo "::error::$t failed"; exit 1; }
-            echo "::endgroup::"
-          done
       - name: shellcheck (pinned in tools/shellcheck.sh)
+        if: matrix.part == 1
         run: |
           tools/shellcheck.sh install "$RUNNER_TEMP/shellcheck"
           export PATH="$RUNNER_TEMP/shellcheck:$PATH"
           shellcheck --version
           tools/shellcheck.sh
+
+  # The gate checks on fixtures (gate_checks.py): hundreds of fixture trees through one Gradle run, which needs the compiled build like
+  # the shards do. Three jobs, the parts 8 to 10 of the tool tests (artifacts tool-main-8 to -10): the two checks that scan the real tree
+  # for each shard count, one job each (4:30 together), and every other check (1:30). `tool-tests` below waits for them with the others.
+  tool-gates:
+    name: tool-tests-gates ${{ matrix.part }}
+    needs: [setup, plan, compile]
+    # The gate checks run Gradle: a push that changes nothing Gradle reads (docs, most of tools/) skips them.
+    if: ${{ always() && !github.event.pull_request.draft && needs.plan.result == 'success' && needs.plan.outputs.build-needed == 'true' && (needs.compile.result == 'success' || needs.compile.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { part: 8, checks: "server_shard" }
+          - { part: 9, checks: "client_filter" }
+          - { part: 10, checks: "--except server_shard client_filter" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - id: merge
+        uses: pkeppeler/deepcharter/.github/actions/merge-main@main
+        with:
+          main-sha: ${{ needs.setup.outputs.main-sha }}
+      - uses: ./.github/actions/upload-merged-main
+        with:
+          main-sha: ${{ steps.merge.outputs.main-sha }}
+          name: tool-${{ matrix.part }}
+          artifact: tool-main-${{ matrix.part }}
+          file: ${{ matrix.part }}
+      - id: compiled
+        if: needs.compile.result == 'success'
+        uses: ./.github/actions/download-compiled
+        with:
+          name: compiled-ci
+      - uses: ./.github/actions/setup-python-uv
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: true
+      - name: gate checks on fixtures
+        env:
+          CHECKS: ${{ matrix.checks }}
+        # CHECKS is word-split on purpose: check names.
+        # shellcheck disable=SC2086
+        run: tools/ci-gradle-resolve.sh help && tools/py tools/tests/gate_checks.py $CHECKS
+
+  # The one name tools/merge-pr.sh requires for the tool tests. Succeeds only when every part did and they merged one main; then it
+  # records that main in its own `merged-main` notice (tools/ci-shard-main.sh, main's copy). It never merges main itself.
+  tool-tests:
+    name: tool-tests
+    needs: [plan, tool-part, tool-gates]
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          PARTS: ${{ needs.tool-part.result }}
+          GATES: ${{ needs.tool-gates.result }}
+          NEEDED: ${{ needs.plan.outputs.build-needed }}
+        run: |
+          # The gate checks run Gradle, so the plan skips them when nothing Gradle reads changed.
+          if [ "$PARTS" != success ] || { [ "$GATES" != success ] && { [ "$GATES" != skipped ] || [ "$NEEDED" = true ]; }; }; then
+            echo "::error::The tool-test parts finished as '$PARTS' and the gate checks as '$GATES' (Gradle needed: $NEEDED)"
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: .ci-main
+          sparse-checkout: tools/ci-shard-main.sh
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: tool-main-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/shard-main
+      - run: .ci-main/tools/ci-shard-main.sh "$RUNNER_TEMP/shard-main" "$PARTS"
+        env:
+          # Seven parts, and the three gate-check jobs when the plan ran them.
+          PARTS: ${{ needs.plan.outputs.build-needed == 'true' && '10' || '7' }}
+          SHARD_KIND: tool

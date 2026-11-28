@@ -1,5 +1,5 @@
 """Tests the fixed-site gate in gradle/gametest.gradle.kts (#1182): a server GameTest that stages at a fixed place of the shared worlds, by a call to
-FarChunks (force, pin, release, an await or whenBlocksLoaded), a call to RoomCarver.carve, or a coordinate constant (an int, long, float or double
+FarChunks (force, pin, release, an await or whenBlocksLoaded), a call to RoomCarver.carve, a chunk ticket it adds itself (addTicket..., #1694), or a coordinate constant (an int, long, float or double
 named x, z, *X, *Z, *COLUMN, *SITE or *ORIGIN set to a literal of 1000 or more), must be named, in quotes, in test/support/TestSiteTable.java: a claim
 of its block columns, or an exempt with a reason. A client test, an evidence scenario and a test that only reads a FarChunks constant are left alone.
 
@@ -79,6 +79,7 @@ VIOLATIONS = {
     "pin": ("        FarChunks.pin(level, 0, 0);", "FarChunks.pin"),
     "carve": ("        RoomCarver.carve(level, a, b, Blocks.AIR.defaultBlockState());", "RoomCarver.carve"),
     "carve of a box": ("        RoomCarver.carve(level, 1, 2, 3, 4, 5, 6, Blocks.AIR);", "RoomCarver.carve"),
+    "ticket": ("        level.getChunkSource().addTicketWithRadius(TicketType.FORCED, home, 0);", ".addTicketWithRadius"),
     "constant SITE_X": ("        int SITE_X = 4264;", "the constant SITE_X"),
     "constant with an underscore number": ("        long ORIGIN = 4_264L;", "the constant ORIGIN"),
     "lower case x": ("        double x = 2400.5;", "the constant x"),

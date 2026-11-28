@@ -368,6 +368,9 @@ final class TestSiteTable {
 
         claim("PodBraceTest", 1, 4095, 4105, 3795, 3805);
 
+        // Five sites four chunks apart: each is its chunk and the eight round it, which the test needs unloaded.
+        row("PodChunkLoadTest", 0, 55984, 56031, 64, 5, 55984, 56031);
+
         claim("PodDrillTest", 0, 3123, 3134, 2995, 3005);
         claim("PodDrillTest", 0, 3187, 3198, 2995, 3005);
         claim("PodDrillTest", 1, 3947, 3974, 2987, 3013);
