@@ -3,7 +3,8 @@
 # Gradle input or the sources change, or by hand: it fills the Gradle build cache with the
 # compile of main's sources, which a PR's jobs take the source sets they did not change from (ADR 0116). `classes` resolves dependencies and sets up
 # Minecraft (Loom's download, merge and remap) for every source set, without
-# running any tests.
+# running any tests. `downloadAssets` fetches Minecraft's asset objects, which the
+# job saves as their own entry for the client runs (.github/actions/loom-assets, #1703).
 name: Cache seed
 
 on:
@@ -15,6 +16,8 @@ on:
       - gradle.properties
       - gradle/**
       - src/**
+      - .github/workflows/cache-seed.yml
+      - .github/actions/loom-assets/**
   workflow_dispatch:
 
 concurrency:
@@ -46,9 +49,33 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: false
+          # The asset objects go in their own entry, below, which only the client runs restore.
+          gradle-home-cache-excludes: caches/fabric-loom/assets
+      # No fallback to another version's set: the entry saved below holds exactly this version's objects.
+      - id: assets
+        uses: ./.github/actions/loom-assets
+        with:
+          allow-stale: "false"
       # Restores main's previous entry, so a broken one would otherwise stay broken (#830); also retries a
-      # repository that fails to answer (#1358).
-      - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses
+      # repository or an asset download that fails to answer (#1358, #1703).
+      - run: tools/ci-gradle-resolve.sh classes clientClasses gametestClasses downloadAssets
+      - name: Loom assets fetched
+        env:
+          ASSETS: ${{ steps.assets.outputs.path }}
+          RESTORED: ${{ steps.assets.outputs.objects }}
+        run: |
+          objects=0
+          if [[ -d $ASSETS/objects ]]; then
+            objects=$(find "$ASSETS/objects" -type f | wc -l)
+          fi
+          echo "::notice title=Loom assets::downloadAssets fetched $((objects - RESTORED)) objects from Mojang ($RESTORED restored from the cache, $objects on disk)"
+      # A hit saves nothing: the key is the Minecraft version, and its asset set does not change.
+      - name: Save the Loom assets
+        if: steps.assets.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.assets.outputs.path }}
+          key: ${{ steps.assets.outputs.cache-key }}
       # Says the seed above has run: a PR's plan job looks this marker up (lookup only, a few bytes) to learn whether its jobs may compile for
       # themselves from the Gradle build cache or must take the compile job's output, because a cold compile does not fit a job's five minutes
       # (ADR 0116). The marker is evicted with the cache entries it stands for, as nearly as one can tell.
