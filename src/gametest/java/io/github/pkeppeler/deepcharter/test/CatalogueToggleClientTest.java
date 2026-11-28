@@ -250,8 +250,7 @@ public class CatalogueToggleClientTest implements FabricClientGameTest {
         Rect search = CatalogueScene.layout(context, panel).shelf().search();
         click(context, search, LEFT_MOUSE);
         require(context.computeOnClient(client -> panel.searchFocused()), "a click on the search field focuses it");
-        context.getInput().typeChars("o");
-        context.getInput().pressKey(InputConstants.KEY_O);
+        RealInput.type(context, "o");
         context.waitTicks(1);
         require(!hidden(context), "an o typed in the search does not hide the catalogue");
         require(

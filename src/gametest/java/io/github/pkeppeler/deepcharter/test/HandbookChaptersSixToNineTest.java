@@ -84,6 +84,9 @@ import net.minecraft.world.phys.Vec3;
  * Each trigger has its negatives: the wrong actor, the wrong charter, no charter, and the wrong thing done.
  */
 public class HandbookChaptersSixToNineTest {
+    /** The column the layer 1 and layer 2 parts stage at; {@code TestSiteTable} claims it. */
+    private static final int SITE = 13_000;
+
     private static final BlockPos TERMINAL = new BlockPos(0, 1, 0);
 
     /** The permanent ids of chapters 6 to 9: a world's saved progress names these directives. */
@@ -138,7 +141,7 @@ public class HandbookChaptersSixToNineTest {
         CANON.put(base + "company_property.title", "Recovering Company Property");
         CANON.put(
                 base + "company_property.text.1",
-                "Somewhere in the Old Workings lies the Prospector, a two-seat pod that went missing some years ago. Find her, tow her home and restore her, and she's yours to fly. She has a navigator's seat, so bring a friend! Then take her down to the floor of the Workings. You've earned it.");
+                "Somewhere in the Old Workings lies the Prospector, a two-seat pod that went missing some years ago. Find her, tow her home and restore her, and she's yours to fly. Towing takes a tow cable: six iron around a lead. A lead takes five string, and the salvage cloth in lockers and crates spins into string. She has a navigator's seat, so bring a friend! Then take her down to the floor of the Workings. You've earned it.");
         CANON.put(base + "company_property.text.1.margin", "If you hear the song and there's no radio, leave. —R.");
         CANON.put(
                 base + "company_property.margin",
@@ -396,8 +399,10 @@ public class HandbookChaptersSixToNineTest {
                 runTheChapters(helper, server, one, two);
             }
         };
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(9100.5, zoneY(one, 1, 2), 9100.5), arrived);
-        FarChunks.awaitEntityTicking(helper, two, BlockPos.containing(9100.5, zoneY(two, 2, 2), 9100.5), arrived);
+        FarChunks.awaitEntityTicking(
+                helper, one, BlockPos.containing(SITE + 0.5, zoneY(one, 1, 2), SITE + 0.5), arrived);
+        FarChunks.awaitEntityTicking(
+                helper, two, BlockPos.containing(SITE + 0.5, zoneY(two, 2, 2), SITE + 0.5), arrived);
     }
 
     private static void runTheChapters(
@@ -544,7 +549,7 @@ public class HandbookChaptersSixToNineTest {
                                 "standing on the surface",
                                 both,
                                 through(6, directive("staying_safe", "repair_hull")));
-                        director.teleportTo(one, new Vec3(9100.5, zoneY(one, 1, 0), 9100.5), 0, 0);
+                        director.teleportTo(one, new Vec3(SITE + 0.5, zoneY(one, 1, 0), SITE + 0.5), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
                         HandbookChaptersOneToFiveTest.expectCompleted(
                                 helper,
@@ -552,7 +557,7 @@ public class HandbookChaptersSixToNineTest {
                                 "the top of the Claim",
                                 both,
                                 through(6, directive("staying_safe", "repair_hull")));
-                        director.teleportTo(one, new Vec3(9100.5, zoneY(one, 1, 2), 9100.5), 0, 0);
+                        director.teleportTo(one, new Vec3(SITE + 0.5, zoneY(one, 1, 2), SITE + 0.5), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
                         HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 7", both, through(7));
                         HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 7);
@@ -561,7 +566,7 @@ public class HandbookChaptersSixToNineTest {
                         BreachEvents.CROSSED.invoker().onCrossed(first, two, one, 2, 1);
                         BreachEvents.CROSSED.invoker().onCrossed(first, two, two, 2, 3);
                         PodEntity carried =
-                                podIn(helper, one, PodRegistry.POD, new Vec3(9100.5, zoneY(one, 1, 2), 9100.5));
+                                podIn(helper, one, PodRegistry.POD, new Vec3(SITE + 0.5, zoneY(one, 1, 2), SITE + 0.5));
                         pods.add(carried);
                         BreachEvents.CROSSED.invoker().onCrossed(carried, one, two, 1, 2);
                         BreachEvents.CROSSED.invoker().onCrossed(drifter.player(), one, two, 1, 2);
@@ -572,21 +577,30 @@ public class HandbookChaptersSixToNineTest {
                                 both,
                                 through(7));
                         BreachEvents.CROSSED.invoker().onCrossed(first, one, two, 1, 2);
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 0), 9100.5), 0, 0);
+                        director.teleportTo(two, new Vec3(SITE + 0.5, zoneY(two, 2, 0), SITE + 0.5), 0, 0);
                         HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "chapter 8", both, through(8));
                         HandbookChaptersOneToFiveTest.expectRoadAt(helper, server, second, 8);
 
                         // Chapter 9: find the Prospector in the Workings, tow it to the colony, restore it, and take it
                         // to the floor.
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5), 0, 0);
+                        director.teleportTo(two, new Vec3(SITE + 0.5, zoneY(two, 2, 2), SITE + 0.5), 0, 0);
                         double near = HandbookTuning.DEFAULT.findProspectorBlocks() / 2.0;
                         double far = HandbookTuning.DEFAULT.findProspectorBlocks() + 6.0;
                         PodEntity farWreck = podIn(
-                                helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + far, zoneY(two, 2, 2), 9100.5));
+                                helper,
+                                two,
+                                PodRegistry.PROSPECTOR,
+                                new Vec3(SITE + 0.5 + far, zoneY(two, 2, 2), SITE + 0.5));
                         PodEntity workingProspector = podIn(
-                                helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 + near, zoneY(two, 2, 2), 9100.5));
-                        PodEntity moleWreck =
-                                podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5 + near));
+                                helper,
+                                two,
+                                PodRegistry.PROSPECTOR,
+                                new Vec3(SITE + 0.5 + near, zoneY(two, 2, 2), SITE + 0.5));
+                        PodEntity moleWreck = podIn(
+                                helper,
+                                two,
+                                PodRegistry.POD,
+                                new Vec3(SITE + 0.5, zoneY(two, 2, 2), SITE + 0.5 + near));
                         pods.addAll(List.of(farWreck, workingProspector, moleWreck));
                         farWreck.damageHull(farWreck.maxHull());
                         moleWreck.damageHull(moleWreck.maxHull());
@@ -598,7 +612,10 @@ public class HandbookChaptersSixToNineTest {
                                 both,
                                 through(8));
                         PodEntity wreck = podIn(
-                                helper, two, PodRegistry.PROSPECTOR, new Vec3(9100.5 - near, zoneY(two, 2, 2), 9100.5));
+                                helper,
+                                two,
+                                PodRegistry.PROSPECTOR,
+                                new Vec3(SITE + 0.5 - near, zoneY(two, 2, 2), SITE + 0.5));
                         pods.add(wreck);
                         wreck.damageHull(wreck.maxHull());
                         expect(helper, Wrecks.isWreck(wreck), "the Prospector should be a wreck");
@@ -691,16 +708,16 @@ public class HandbookChaptersSixToNineTest {
                                 completed(server, drifter));
 
                         // The floor of the Workings counts only from a Prospector's seat.
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5), 0, 0);
+                        director.teleportTo(two, new Vec3(SITE + 0.5, zoneY(two, 2, 2), SITE + 0.5), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
                         PodEntity workingMole =
-                                podIn(helper, two, PodRegistry.POD, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5));
+                                podIn(helper, two, PodRegistry.POD, new Vec3(SITE + 0.5, zoneY(two, 2, 2), SITE + 0.5));
                         pods.add(workingMole);
                         expect(helper, first.startRiding(workingMole, true, false), "the player should board the Mole");
                         HandbookTriggers.pollPlayer(server, first);
                         first.stopRiding();
-                        workingProspector.setPos(9100.5, zoneY(two, 2, 0), 9100.5);
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 0), 9100.5), 0, 0);
+                        workingProspector.setPos(SITE + 0.5, zoneY(two, 2, 0), SITE + 0.5);
+                        director.teleportTo(two, new Vec3(SITE + 0.5, zoneY(two, 2, 0), SITE + 0.5), 0, 0);
                         expect(
                                 helper,
                                 first.startRiding(workingProspector, true, false),
@@ -713,8 +730,8 @@ public class HandbookChaptersSixToNineTest {
                                 both,
                                 restored);
                         first.stopRiding();
-                        workingProspector.setPos(9100.5, zoneY(two, 2, 2), 9100.5);
-                        director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5), 0, 0);
+                        workingProspector.setPos(SITE + 0.5, zoneY(two, 2, 2), SITE + 0.5);
+                        director.teleportTo(two, new Vec3(SITE + 0.5, zoneY(two, 2, 2), SITE + 0.5), 0, 0);
                         expect(
                                 helper,
                                 first.startRiding(workingProspector, true, false),

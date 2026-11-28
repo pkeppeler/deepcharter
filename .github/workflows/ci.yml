@@ -186,6 +186,9 @@ jobs:
       - uses: ./.github/actions/setup-python-uv
       - uses: ./.github/actions/install-ffmpeg
       - run: tools/py -m unittest discover -s tools/tests -p 'test_*.py'
+      # Diff-scoped until #1223 rewraps the tree: the merge commit's merge base with the origin/main that merge-main fetched.
+      - name: comment lines added over 120 columns
+        run: tools/py tools/comment_length_gate.py
       - name: bash tool tests
         run: |
           for t in tools/tests/*.test.sh; do

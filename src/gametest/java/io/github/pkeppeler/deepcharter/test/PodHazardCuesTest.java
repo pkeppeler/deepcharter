@@ -7,7 +7,6 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.pod.PodCues;
-import io.github.pkeppeler.deepcharter.pod.PodDump;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLoad;
@@ -41,9 +40,6 @@ import net.minecraft.world.phys.Vec3;
 /** Server GameTests for #854: each pod hazard names its cause on the pilot's action bar and plays a sound; no hurt, no cue. */
 public class PodHazardCuesTest {
     private static final String GAS_KEY = "deepcharter.ore.gas_blast";
-    /** A rig pod thrown down this fast lands hard through the ground cushion (#1432), which brakes a crewed sink. */
-    private static final double HARD_SINK = 1.5;
-
     private static final String LANDING_KEY = "deepcharter.pod.hard_landing";
     private static final String OVERLOAD_KEY = "deepcharter.pod.overloaded";
     private static final String OVERLOAD_LOAD_KEY = "deepcharter.pod.overloaded_load";
@@ -274,7 +270,6 @@ public class PodHazardCuesTest {
     @GameTest(maxTicks = 100)
     public void aHardLandingTellsThePilotAndSoundsAtThePod(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 12);
-        rig.pod.setDeltaMovement(0, -HARD_SINK, 0);
         helper.runAfterDelay(60, () -> {
             try {
                 if (rig.pod.hull() >= rig.pod.maxHull()) {
@@ -333,8 +328,10 @@ public class PodHazardCuesTest {
                         .orElseThrow();
                 expect(
                         helper,
-                        args.length == 1 && args[0].equals(Component.keybind(PodDump.KEY)),
-                        "the overload line names the dump key as the pilot binds it, args %s",
+                        args.length == 2
+                                && args[0].equals(Component.keybind("key.inventory"))
+                                && args[1].equals(Component.keybind("key.drop")),
+                        "the overload line names the screen's key and the drop key as the pilot binds them, args %s",
                         List.of(args));
                 helper.succeed();
             } finally {
@@ -441,7 +438,6 @@ public class PodHazardCuesTest {
     public void aLandingThatEmptiesTheHullStillTellsTheEjectedPilot(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 12);
         rig.pod.setHull(1f);
-        rig.pod.setDeltaMovement(0, -HARD_SINK, 0);
         helper.runAfterDelay(60, () -> {
             try {
                 if (rig.pod.hull() != 0f) {

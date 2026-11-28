@@ -23,6 +23,7 @@ public class PodShellClientTest implements FabricClientGameTest {
     public static final float DAMAGED_HULL = 42f;
 
     /** Spawn a pod under the first player on the server and put the player in its seat. */
+    // seats-pod: adds the pod and seats the first player in it
     public static void mountFirstPlayer(TestServerContext server) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();

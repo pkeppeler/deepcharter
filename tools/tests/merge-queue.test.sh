@@ -128,6 +128,9 @@ STUB
 # by someone else. A missing file is a refusal that would fail the test by its text.
 cat >"$work/gate" <<'STUB'
 #!/usr/bin/env bash
+# The queue merges through GitHub's endpoint (--direct), so each PR shows as merged (#1567).
+[[ $1 == --direct ]] || { echo "REFUSED: the queue must call the gate with --direct (got: $*)"; exit 1; }
+shift
 n=$1
 echo "merge-pr $n" >>"$LOG"
 k=$(($(cat "$ST/calls.$n" 2>/dev/null || echo 0) + 1))

@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
-import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import java.util.Arrays;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -12,25 +11,17 @@ import net.minecraft.gametest.framework.GameTestHelper;
  * pod that keeps trailing. No world is built.
  */
 public class TrailJudgeTest {
-    /**
-     * The trails below were recorded at a drive speed of 0.2 blocks a tick. A trail is ticks of the speed behind the
-     * server, so each is scaled to the pod's speed now (0.4 since #1276), and the judgment's bounds scale with it.
-     */
-    private static final double RECORDED_SPEED = 0.2;
-
-    private static final double SCALE = PodTuning.DEFAULT.movement().horizontalSpeed() / RECORDED_SPEED;
-
     /** The trail of a steady drive, every tick of every run before #1356. */
-    private static final double STEADY = 0.6000568 * SCALE;
+    private static final double STEADY = 0.6000568;
 
     /** A trail a real lag holds: one more tick of moves behind the server (the CI value of #1356). */
-    private static final double LAGGING = 0.80001461872767 * SCALE;
+    private static final double LAGGING = 0.80001461872767;
 
     /**
      * The worst trail of every passing real run: a late spell mid-drive, then late moves to the very end of the drive
-     * ({@code PacketJitter} {@code lag(1)} from tick 35, #1363), at the recorded speed.
+     * ({@code PacketJitter} {@code lag(1)} from tick 35, #1363).
      */
-    private static final double[] REAL_LATE_TO_THE_END_RECORDED = {
+    private static final double[] REAL_LATE_TO_THE_END = {
         0.0,
         0.0,
         0.20000000298023224,
@@ -73,10 +64,6 @@ public class TrailJudgeTest {
         0.7749879062175751
     };
 
-    private static final double[] REAL_LATE_TO_THE_END = Arrays.stream(REAL_LATE_TO_THE_END_RECORDED)
-            .map(trail -> trail * SCALE)
-            .toArray();
-
     /**
      * The window is the first slide tick strictly under the margin, whichever side of the float widening the speed falls: 2 late
      * moves at 0.2 land exactly on 0.05 at tick 3, so tick 4.
@@ -105,8 +92,8 @@ public class TrailJudgeTest {
         expect(helper, "a steady drive", steady(ticks), true);
         expect(helper, "one tick over at the end (#1356's CI run)", over(steady(ticks), ticks - 1, 1), true);
         double[] twoLate = steady(ticks);
-        twoLate[20] = 0.7000568 * SCALE;
-        twoLate[21] = 0.6500568 * SCALE;
+        twoLate[20] = 0.7000568;
+        twoLate[21] = 0.6500568;
         expect(helper, "two moves in a row a tick late", twoLate, true);
         expect(helper, "over for the most ticks allowed", over(steady(ticks), 10, allowed), true);
         expect(helper, "over for one tick more than allowed", over(steady(ticks), 10, allowed + 1), false);
@@ -132,8 +119,8 @@ public class TrailJudgeTest {
             alternating[tick] = LAGGING;
         }
         expect(helper, "a lag on every other tick", alternating, false);
-        expect(helper, "1.5 blocks for 3 ticks", fill(steady(ticks), 20, 3, 1.5 * SCALE), false);
-        expect(helper, "late moves to the end (a real run at 0.2, worst 0.775)", REAL_LATE_TO_THE_END, true);
+        expect(helper, "1.5 blocks for 3 ticks", fill(steady(ticks), 20, 3, 1.5), false);
+        expect(helper, "late moves to the end (a real run, worst 0.775)", REAL_LATE_TO_THE_END, true);
         expect(
                 helper,
                 "exactly at the bound for the whole drive",

@@ -77,7 +77,6 @@ public class BoltDriverTest {
     private static final CaveInTuning CAVE_IN = CaveInTuning.DEFAULT;
     private static final BoltDriverTuning DRIVER = BoltDriverTuning.DEFAULT;
     private static final int LENGTH = 14;
-    /** Two corridor slots no other test uses. */
     private static final int SPARE_SLOT = 40;
 
     private static final float EAST = -90f;

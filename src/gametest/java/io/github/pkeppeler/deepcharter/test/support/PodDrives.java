@@ -236,6 +236,7 @@ public final class PodDrives {
      * Puts both pods on their start, behind a wall when the drive drills, holds the keys, samples every frame of the drive, and asserts
      * what the pilot's camera and the watched pod drew.
      */
+    // seats-pod: rides the rig pod: the pilot is seated before the first frame
     public static void drive(ClientGameTestContext context, Rig rig, Drive drive) {
         List<Integer> late = new ArrayList<>();
         for (int attempt = 1; attempt <= DRIVE_ATTEMPTS; attempt++) {
@@ -489,6 +490,7 @@ public final class PodDrives {
     }
 
     /** Sets the pod down at {@code at}, still, with no fall behind it. */
+    // seats-pod: moves the pod to a position
     public static void put(ServerLevel level, int podId, Vec3 at) {
         Entity pod = TestEntities.require(level, podId);
         pod.setPos(at);

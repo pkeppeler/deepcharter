@@ -298,6 +298,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
     }
 
     /** Seats the mock first and the real player second in a new Prospector at the corner of the cab's cells, facing south. Returns the pod's id. */
+    // seats-pod: adds the Prospector and seats both players
     static int board(ServerLevel level, TwoPlayerServer two) {
         ServerPlayer real = real(level, two);
         PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);

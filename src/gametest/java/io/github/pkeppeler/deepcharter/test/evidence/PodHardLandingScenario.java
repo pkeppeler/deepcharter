@@ -33,9 +33,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
     private static final int X = 5200;
     private static final int Z = 5200;
     private static final int FLOOR_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
-    /** Deep enough that a crewed free fall still wrecks the pod through the ground cushion (#1432). */
-    private static final int SHAFT_BLOCKS = 150;
-
+    private static final int SHAFT_BLOCKS = 96;
     private static final int BRAKED_TICKS_PER_FRAME = 5;
     private static final int FALL_TICKS_PER_FRAME = 2;
     private static final int MAX_TICKS = 900;

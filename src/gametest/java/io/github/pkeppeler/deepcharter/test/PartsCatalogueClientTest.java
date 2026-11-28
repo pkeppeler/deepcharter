@@ -798,6 +798,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         favouritesStarAndPersist(context, screen, panel);
         craftableNowFiltersByWhatIsHeld(context, singleplayer, screen, panel);
         tableRecipesAreCraftableNowWithTheirIconAndLongNamesShowWhole(context, singleplayer, screen, panel);
+        theLeadRecipeShowsOnceStringIsHeld(context, singleplayer, panel);
         thePanelsFollowTheWindowSize(context, screen);
         theCatalogueOpensAtAnItem(context);
         openingAnItemFromTheHandbookComesBackToIt(context);
@@ -1620,7 +1621,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         // A search too long to show is cut from the front, so the end that is typed stays on screen.
         CatalogueScene.hover(context, search);
         context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
-        context.getInput().typeChars("a very long search that cannot fit the field");
+        RealInput.type(context, "a very long search that cannot fit the field");
         context.waitTicks(1);
         everyStringIsInsideItsGlass(context, screen, "with a long search typed");
         require(
@@ -1799,6 +1800,25 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(1);
         require(!context.computeOnClient(client -> panel.state().craftableOnly()), "a second click turns it off");
+    }
+
+    /**
+     * #1602: the real lead recipe, the one the tow cable needs, reaches the catalogue from the server's book once
+     * string is held.
+     */
+    private static void theLeadRecipeShowsOnceStringIsHeld(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, CataloguePanel panel) {
+        singleplayer.getServer().runCommand("clear @p");
+        singleplayer.getServer().runCommand("give @p minecraft:string 5");
+        ClientWait.until(
+                context,
+                "the lead recipe in the catalogue",
+                client -> !panel.catalogue().recipesFor(Items.LEAD).isEmpty());
+        KnownRecipe lead = context.computeOnClient(
+                client -> panel.catalogue().recipesFor(Items.LEAD).getFirst());
+        require(
+                lead.ingredientItems().equals(Set.of(Items.STRING)),
+                "the lead is made of string alone, got " + lead.ingredientItems());
     }
 
     /** A 3 x 3 recipe is craftable now at the 2 x 2 inventory, marked with the table; its long name is shown whole in the strip and the title. */

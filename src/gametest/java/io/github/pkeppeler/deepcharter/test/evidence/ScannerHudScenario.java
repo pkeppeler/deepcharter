@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -49,7 +50,8 @@ public class ScannerHudScenario extends EvidenceScenario {
             ScannerHudTest.goToLayer(server, 1);
             ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
             context.waitTicks(40);
-            RoomCarver.carveAroundFirstPlayer(server);
+            BlockPos carved = RoomCarver.carveAroundFirstPlayer(server);
+            ClientWait.lightSettled(context, server, 1, carved.getX(), carved.getZ(), RoomCarver.ARRIVAL_RADIUS);
             ScannerHudTest.rideWithGoldAhead(context, server, 1);
             context.waitTicks(TRANSMISSION_TICKS);
             screenshot(context, "scanner-layer-1");
@@ -62,7 +64,9 @@ public class ScannerHudScenario extends EvidenceScenario {
             ScannerHudTest.goToLayer(server, 2);
             ClientWait.until(context, "the client in layer 2", client -> TestLayers.clientIsIn(client, 2));
             context.waitTicks(40);
-            RoomCarver.carveAroundFirstPlayer(server);
+            BlockPos carvedAgain = RoomCarver.carveAroundFirstPlayer(server);
+            ClientWait.lightSettled(
+                    context, server, 2, carvedAgain.getX(), carvedAgain.getZ(), RoomCarver.ARRIVAL_RADIUS);
             ScannerHudTest.rideWithGoldAhead(context, server, 1);
             context.waitTicks(TRANSMISSION_TICKS);
             screenshot(context, "scanner-layer-2");

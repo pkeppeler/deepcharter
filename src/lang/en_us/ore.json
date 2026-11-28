@@ -16,6 +16,7 @@
   "deepcharter.ore.gas_blast": "Gas blast: the hull took %s",
   "deepcharter.ore.tooltip.haul": "Won't stack. Haul it in your pod's cargo bay.",
   "deepcharter.ore.tooltip.heavy": "Heavy: it slows you while you carry it.",
+  "deepcharter.ore.tooltip.mass": "Mass %s",
   "effect.deepcharter.overburdened": "Ore/Fuel",
   "hint.deepcharter.company_rock": "Charges, or the best drill",
   "item.deepcharter.bronzium": "Bronzium",
@@ -24,5 +25,6 @@
   "item.deepcharter.goldium": "Goldium",
   "item.deepcharter.ironium": "Ironium",
   "item.deepcharter.platinium": "Platinium",
-  "item.deepcharter.silverium": "Silverium"
+  "item.deepcharter.silverium": "Silverium",
+  "tooltip.deepcharter.ore.loose_aboard": "Loose aboard: x%s"
 }

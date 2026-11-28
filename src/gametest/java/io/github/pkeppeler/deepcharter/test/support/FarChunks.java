@@ -95,6 +95,7 @@ public final class FarChunks {
 
     /** As {@link #force(GameTestHelper, ServerLevel, int, int)}, for the test with these bounds; {@link FarChunksTest} drives two. */
     public static void force(AABB testBounds, ServerLevel level, int chunkX, int chunkZ) {
+        TestSites.guardChunk(level, chunkX, chunkZ);
         Chunk chunk = new Chunk(level, ChunkPos.pack(chunkX, chunkZ));
         List<Chunk> mine = HELD_BY_TEST.computeIfAbsent(testBounds, bounds -> new ArrayList<>());
         if (mine.contains(chunk)) {

@@ -327,15 +327,26 @@ public final class PodComponents {
 
     private static PodStats applyParts(PodEntity pod, PodStats stats) {
         PodStats result = stats;
-        for (Map.Entry<ComponentTrack, List<Axis>> track : AXES.entrySet()) {
-            int tier = effectiveTier(pod, track.getKey());
-            if (tier == 0) {
-                continue;
-            }
-            float ratio = UpgradeTuning.DEFAULT.ratio(track.getKey(), tier);
-            for (Axis axis : track.getValue()) {
-                result = axis.scale(result, ratio);
-            }
+        for (ComponentTrack track : AXES.keySet()) {
+            result = withPart(result, track, effectiveTier(pod, track));
+        }
+        return result;
+    }
+
+    /**
+     * {@code stats} with a working part of {@code track} at {@code tier} applied, as {@link #applyParts} does for a fitted one: tier 0
+     * (no part) and a track that moves no stat leave it as it is. The tier is the one the part works at, so the caller has already
+     * held it to the chassis' cap.
+     */
+    static PodStats withPart(PodStats stats, ComponentTrack track, int tier) {
+        List<Axis> axes = AXES.get(track);
+        if (axes == null || tier == 0) {
+            return stats;
+        }
+        float ratio = UpgradeTuning.DEFAULT.ratio(track, tier);
+        PodStats result = stats;
+        for (Axis axis : axes) {
+            result = axis.scale(result, ratio);
         }
         return result;
     }

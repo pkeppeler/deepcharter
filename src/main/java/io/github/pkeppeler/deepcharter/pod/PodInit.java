@@ -13,6 +13,7 @@ public final class PodInit {
         PodCommands.init();
         PodMovement.init();
         PodLoad.init();
+        PodLooseOre.init();
         PodSprint.init();
         HardLanding.init();
         PodCues.init();
