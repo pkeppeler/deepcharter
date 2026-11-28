@@ -71,8 +71,8 @@ public final class Wrecks {
     }
 
     /**
-     * Server only: moves everything in the wreck's hold to {@code player}, ore and the crew's stores alike, dropping what
-     * does not fit, and the stacks that {@code player} themselves carried when the hull ran out. Anyone may take the
+     * Server only: moves everything in the wreck's hold to {@code player}, ore and the crew's stores alike, dropping
+     * what does not fit, and the stacks that {@code player} themselves carried when the hull ran out. Anyone may take the
      * hold; no one takes another player's pack. Tells the player what happened, and returns how many stacks moved.
      * Unreadable cargo is left alone and reported, not thrown.
      */
@@ -99,8 +99,8 @@ public final class Wrecks {
 
     /**
      * Server only: gives the pack back, which the hangar restore and the scrap do. Each stack goes to the player who
-     * carried it, if they are online and alive. A stack whose pilot is offline, dead or gone goes to {@code holder} (the
-     * wreck's place holder) if they are online and alive; with neither it stays in the wreck. The hold is not touched.
+     * carried it, if they are online and alive. A stack whose pilot is offline, dead or gone goes to {@code holder}
+     * (the wreck's place holder) if they are online and alive; with neither it stays in the wreck. The hold is not touched.
      * Unreadable saved pack is left alone. Returns how many stacks each player was given.
      */
     public static Map<UUID, Integer> returnPack(MinecraftServer server, PodEntity pod, Optional<UUID> holder) {

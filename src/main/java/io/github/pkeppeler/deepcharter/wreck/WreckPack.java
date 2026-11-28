@@ -9,8 +9,8 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The pack of a wreck's crew: what each pilot carried when the hull ran out, kept in the wreck instead of dropping where
- * they die (ADR 0117). The body of a {@code Versioned<WreckPack>}, saved and not synced. Only non-empty stacks are
+ * The pack of a wreck's crew: what each pilot carried when the hull ran out, kept in the wreck instead of dropping
+ * where they die (ADR 0117). The body of a {@code Versioned<WreckPack>}, saved and not synced. Only non-empty stacks are
  * kept, each with the player it came from, so it goes back to that player and to no one else.
  *
  * @param entries the stacks the crew carried, in the order they were taken
