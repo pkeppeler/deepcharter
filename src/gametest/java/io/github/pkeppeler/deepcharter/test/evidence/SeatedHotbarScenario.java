@@ -134,6 +134,11 @@ public class SeatedHotbarScenario extends EvidenceScenario {
             }
             player.getInventory().setSelectedSlot(0);
             player.teleportTo(one, X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), FACING_NORTH, 0f, true);
+        });
+        ClientWait.arrived(context, singleplayer.getServer());
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
             pod.setYRot(FACING_NORTH);

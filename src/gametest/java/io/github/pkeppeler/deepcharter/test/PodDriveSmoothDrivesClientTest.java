@@ -17,16 +17,23 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.world.entity.player.Input;
 
 /**
- * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The real client pilots one pod and watches a mock
- * player's pod beside it, over flat ground at the cruise and at the sprint's boost (#1276), climbing on the rotor, and drilling into
- * a wall, judged by {@link PodDrives}. Split from {@link PodDriveSmoothClientTest} (#1574) so that neither class outruns a CI shard.
+ * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The real client pilots one pod and
+ * watches a mock
+ * player's pod beside it, over flat ground at the cruise and at the sprint's boost (#1276), climbing on the rotor,
+ * and drilling into
+ * a wall, judged by {@link PodDrives}. Split from {@link PodDriveSmoothClientTest} (#1574) so that neither class
+ * outruns a CI shard.
  *
- * <p>The harness ticks the server and client in lockstep, so the network is as regular as it never is in play. {@link PacketJitter}
- * makes it irregular the way a real connection is: every third client tick the client handles no pod move and the next tick
+ * <p>The harness ticks the server and client in lockstep, so the network is as regular as it never is in play. {@link
+ * PacketJitter}
+ * makes it irregular the way a real connection is: every third client tick the client handles no pod move and the
+ * next tick
  * handles two. Without a slide between the server's moves the pod then stands still for a tick and lunges the next.
  *
- * <p>It also covers the two late-server drives where the pod meets a block, a 6-tick stall across the arrival at a wall and a 5-tick
- * stall across a landing from 10 blocks (never drawn inside a block, never below the ground). The other late-server drives are
+ * <p>It also covers the two late-server drives where the pod meets a block, a 6-tick stall across the arrival at a
+ * wall and a 5-tick
+ * stall across a landing from 10 blocks (never drawn inside a block, never below the ground). The other late-server
+ * drives are
  * {@link PodDriveLateClientTest}'s.
  */
 public class PodDriveSmoothDrivesClientTest implements FabricClientGameTest {

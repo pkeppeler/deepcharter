@@ -46,6 +46,7 @@ public class SkinSwapScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 // The player faces +z (south); the Mole stands 5 blocks ahead, facing the player, on a stone floor.
+                // arrived-ok: turns the player where it stands, so no chunk changes
                 player.teleportTo(player.level(), player.getX(), player.getY(), player.getZ(), Set.of(), 0f, 5f, true);
                 clearStage(player);
                 PodEntity mole = TestEntities.create(PodRegistry.POD, player.level());

@@ -31,7 +31,8 @@ public class PodDrillClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             // A stone slab high above the terrain, with the real player on it beside the mock's pod.
-            int podId = two.server().computeOnServer(server -> {
+            Vec3 at = new Vec3(X, FLOOR_Y, Z);
+            two.server().runOnServer(server -> {
                 ServerLevel level = server.overworld();
                 fill(level, FLOOR_Y - 8, FLOOR_Y - 1, Blocks.STONE);
                 fill(level, FLOOR_Y, FLOOR_Y + 10, Blocks.AIR);
@@ -40,8 +41,11 @@ public class PodDrillClientTest implements FabricClientGameTest {
                         .findFirst()
                         .orElseThrow();
                 real.teleportTo(level, X + 3.5, FLOOR_Y, Z + 0.5, Set.of(), 0, 0, true);
-                Vec3 at = new Vec3(X, FLOOR_Y, Z);
                 two.mock().teleportTo(level, at, 0, 0);
+            });
+            ClientWait.arrived(context, two.server());
+            int podId = two.server().computeOnServer(server -> {
+                ServerLevel level = server.overworld();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);

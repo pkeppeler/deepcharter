@@ -191,6 +191,7 @@ public class SeatedTerminalsClientTest implements FabricClientGameTest {
     }
 
     /** Seats the player in the scene's pod, holding the handbook they were given, until the client has them seated. */
+    // seats-pod: seats the first player in the scene's pod, which stands in the colony: no room is carved first
     public static void board(ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
         BlockPos middle = scene.pump().relative(Direction.WEST, TERMINAL_OFFSET);
         ClientWait.chunksAround(context, middle.getX(), middle.getZ(), PAD + 1);

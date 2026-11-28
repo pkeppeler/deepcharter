@@ -47,8 +47,10 @@ import org.slf4j.LoggerFactory;
 public class BoreTripsClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger("BoreTripsClientTest");
     /**
-     * Trips made. Ten took about 125 s, more than a CI shard may hold (#1574); {@link #expectSteady} compares the last trip with the first
-     * and the second, so any count from three up shows a count that grows, and a leak of one object a trip shows after six as it did
+     * Trips made. Ten took about 125 s, more than a CI shard may hold (#1574); {@link #expectSteady} compares the
+     * last trip with the first
+     * and the second, so any count from three up shows a count that grows, and a leak of one object a trip shows
+     * after six as it did
      * after ten.
      */
     private static final int TRIPS = 6;

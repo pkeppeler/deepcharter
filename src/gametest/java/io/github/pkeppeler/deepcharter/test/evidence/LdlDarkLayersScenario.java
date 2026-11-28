@@ -101,6 +101,7 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
                     floor.offset(LENGTH - 1, HEIGHT, HALF_WIDTH),
                     Blocks.AIR.defaultBlockState(),
                     Block.UPDATE_ALL);
+            // arrived-ok: into the chamber's chunks, forced and loaded above
             player.teleportTo(level, floor.getX() + 1, floor.getY() + 1, floor.getZ() + 0.5, Set.of(), -90f, 4f, true);
             PodEntity lit = TestEntities.create(PodRegistry.POD, level);
             lit.setPos(floor.getX() + LIT_X, floor.getY() + 1, floor.getZ() + 0.5);

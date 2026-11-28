@@ -65,19 +65,25 @@ public class WreckRespawnScenario extends EvidenceScenario {
                         true);
                 return at;
             });
-            context.waitTicks(120);
+            ClientWait.arrived(context, singleplayer.getServer());
 
             BlockPos[] bed = {null};
             PodEntity[] pod = {null};
+            int x = office.pos().getX() + DISTANCE;
+            int z = office.pos().getZ();
+            int ground = singleplayer.getServer().computeOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                ServerLevel level = server.overworld();
+                int surface = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                player.teleportTo(level, x + 0.5, surface, z + 0.5, Set.of(), 0f, 0f, true);
+                player.resetFallDistance();
+                player.setGameMode(GameType.SURVIVAL);
+                return surface;
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 ServerLevel level = server.overworld();
-                int x = office.pos().getX() + DISTANCE;
-                int z = office.pos().getZ();
-                int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
-                player.teleportTo(level, x + 0.5, ground, z + 0.5, Set.of(), 0f, 0f, true);
-                player.resetFallDistance();
-                player.setGameMode(GameType.SURVIVAL);
                 bed[0] = new BlockPos(x + 3, ground, z + 3);
                 BlockState state = Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING, Direction.EAST);
                 level.setBlockAndUpdate(bed[0], state.setValue(BedBlock.PART, BedPart.FOOT));

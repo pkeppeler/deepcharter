@@ -82,6 +82,11 @@ public class PodSoftLandingScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X + 0.5, FLOOR_Y + 1 + HOVER_BLOCKS, Z + 0.5, Set.of(), 0, 0, true);
+            });
+            ClientWait.arrived(context, singleplayer.getServer());
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X + 0.5, FLOOR_Y + 1 + HOVER_BLOCKS, Z + 0.5);
                 // Held still at the hover height until the release, so the drop starts from rest at a known height.

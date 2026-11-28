@@ -62,6 +62,7 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 // Face +z, where the figure stands.
+                // arrived-ok: turns the player where it stands, so no chunk changes
                 player.teleportTo(player.level(), player.getX(), player.getY(), player.getZ(), Set.of(), 0f, 10f, true);
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, player.level());
                 figure.setNoAi(true);
