@@ -511,6 +511,7 @@ final class TestSiteTable {
 
         row("ShapedChargeTest", 1, 4001, 4031, 64, 6, 5385, 5415);
         claim("ShapedChargeTest", 1, 4352, 4527, 5344, 5455);
+        row("SidewaysChargeTest", 1, 4081, 4111, 64, 12, 5785, 5815);
 
         row("ChassisChecks", 1, 10992, 11008, 48, 10, 8992, 9008);
         row("ChassisChecks", 1, 11992, 12008, 48, 10, 8992, 9008);

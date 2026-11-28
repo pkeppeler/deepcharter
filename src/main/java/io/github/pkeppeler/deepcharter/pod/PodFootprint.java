@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.pod;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 
 /**
@@ -29,5 +30,22 @@ public record PodFootprint(int lowX, int lowZ, int width, int height, int feetY)
      */
     public BlockPos feetMiddle() {
         return new BlockPos(lowX + width / 2, feetY, lowZ + width / 2);
+    }
+
+    /**
+     * The face of the bore in front of the pod along a horizontal {@code facing}: the {@code width} x {@code height}
+     * cells of the next sideways slab, as {@code [low, high]} inclusive corners.
+     */
+    public BlockPos[] faceAhead(Direction facing) {
+        boolean alongX = facing.getAxis() == Direction.Axis.X;
+        int along = alongX ? lowX : lowZ;
+        int front = facing.getAxisDirection() == Direction.AxisDirection.POSITIVE ? along + width : along - 1;
+        return alongX
+                ? new BlockPos[] {
+                    new BlockPos(front, feetY, lowZ), new BlockPos(front, feetY + height - 1, lowZ + width - 1)
+                }
+                : new BlockPos[] {
+                    new BlockPos(lowX, feetY, front), new BlockPos(lowX + width - 1, feetY + height - 1, front)
+                };
     }
 }

@@ -8,6 +8,8 @@ Amends [ADR 0050](0050-company-rock-can-be-blasted-and-the-drill-still-refuses-i
 
 Amended by [ADR 0069](0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md): a hand tool can brute-force Company rock at a ruinous cost. The bite and the shaped charge stand.
 
+Amended by [ADR 0120](0120-a-charge-is-set-on-the-face-ahead-of-the-pod-as-well-as-under-it.md): the shaped charge also works sideways, along the facing, at most 8 slabs.
+
 Retuned 2026-11-26 (#1458, [mechanics.md](../design/mechanics.md#explosive-tiers-1458-a)): the blasting charge clears 4 rows for $60 and the shaped charge 12 rows for $160. The decision stands; only the numbers moved.
 
 ## Decision
