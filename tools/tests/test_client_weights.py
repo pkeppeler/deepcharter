@@ -52,41 +52,6 @@ class ClassSecondsTest(unittest.TestCase):
             client_weights.class_seconds(log)
 
 
-def tagged(seconds: int, instance: str, text: str) -> str:
-    return f"{stamp(seconds)} [client {instance}] [17:00:00] {text}"
-
-
-def instances_log() -> str:
-    """Two clients side by side (#1722): their lines interleave, each class runs to its own client's next START, and each client's
-    last class to its own CLIENT-INSTANCE END line, not to the other client's or Gradle's."""
-    return "\n".join([
-        build(5),
-        tagged(10, "1/2", "(ClientTestLog) CLIENT-GAMETEST START AlphaClientTest"),
-        tagged(12, "2/2", "(ClientTestLog) CLIENT-GAMETEST START BetaClientTest"),
-        tagged(40, "1/2", "(ClientTestLog) CLIENT-GAMETEST START GammaClientTest"),
-        tagged(70, "2/2", "CLIENT-INSTANCE END 2/2 exit 0"),
-        tagged(90, "1/2", "CLIENT-INSTANCE END 1/2 exit 0"),
-        build(95),
-    ])
-
-
-class InstancesTest(unittest.TestCase):
-    def test_each_client_times_its_own_classes(self):
-        self.assertEqual(
-            client_weights.class_seconds(instances_log()),
-            {"AlphaClientTest": 30, "BetaClientTest": 58, "GammaClientTest": 50},
-        )
-
-    def test_the_instance_count_is_read_from_the_prefix(self):
-        self.assertEqual(client_weights.instances_in(instances_log()), 2)
-        self.assertEqual(client_weights.instances_in(shard_log()), 1)
-
-    def test_a_client_with_no_end_line_is_refused(self):
-        log = "\n".join(line for line in instances_log().splitlines() if "END 2/2" not in line)
-        with self.assertRaisesRegex(ValueError, "CLIENT-INSTANCE END 2/2"):
-            client_weights.class_seconds(log)
-
-
 class WeightsTest(unittest.TestCase):
     def test_a_slower_run_is_scaled_down_to_the_mean_total(self):
         runs = [client_weights.class_seconds(shard_log(1)), client_weights.class_seconds(shard_log(2))]

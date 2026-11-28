@@ -920,13 +920,6 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	// A campaign group heavier than a server shard may be is broken into its classes (gradle/ci-budget.txt).
 	val budgetFile = file("gradle/ci-budget.txt")
 	inputs.file(budgetFile).withPropertyName("ciBudget")
-	// -PclientInstances=N splits the client list (after the filter and the shard) into N slices by the same weights, one per client JVM
-	// that runClientGameTestInstances starts side by side (gradle/client-instances.gradle.kts, #1722). The slices go to
-	// deepcharter-client-instances.txt beside fabric.mod.json, where ClientInstances reads its JVM's own.
-	val clientInstances = providers.gradleProperty("clientInstances").orNull
-	inputs.property("clientInstances", clientInstances).optional(true)
-	val instancesFile = generatedGametestResources.map { it.file("deepcharter-client-instances.txt") }
-	outputs.file(instancesFile)
 	val outputFile = generatedGametestResources.map { it.file("fabric.mod.json") }
 	val sources = fileTree(javaRoot) { include("**/*.java") }
 	inputs.files(sources).withPropertyName("gametestSources")
@@ -944,15 +937,6 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 			json = json.replace(placeholder, names.joinToString(",\n\t\t\t") { "\"$it\"" })
 		}
 		outputFile.get().asFile.writeText(json)
-		val instances = clientInstances?.toIntOrNull()?.takeIf { it >= 1 }
-			?: if (clientInstances == null) 1 else throw GradleException("-PclientInstances is '$clientInstances', expected a whole number of 1 or more")
-		// Instance k of N runs the k-th slice. With fewer classes than instances the last ones run none (and exit at once).
-		val used = minOf(instances, found.client.size)
-		val lines = (1..used).flatMap { k ->
-			GametestScan.shardOf(found.client.map { listOf(it) }, "$k/$used", GametestScan.parseWeights(weightsFile), GametestScan.DEFAULT_CLIENT_WEIGHT, "-PclientInstances", "client class")
-				.map { "$k $it" }
-		}
-		instancesFile.get().asFile.writeText(lines.joinToString("") { "$it\n" })
 	}
 }
 

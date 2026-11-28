@@ -25,13 +25,11 @@ addVmArgToRun("gameTest", gameTestHeap)
 // (run 45308464189, 3 shards). A 3G trial (run 45316304043) made G1 compact twice in the heaviest shard, with live up to 1.07 GB, so 4G stays.
 // Watch the live set after a full collection, not the peak: G1 grows the heap to Xmx before it collects hard. Per-class table: PR #1148.
 // Re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each fit a 16 GB Mac, so the default two
-// client slots stay. The run logs its collections (-Xlog:gc, client-gc.log in the run dir); the client-gametest action prints the peak and
+// client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest action prints the peak and
 // the live set from it.
 val clientGameTestHeap = "-Xmx4G"
 addVmArgToRun("clientGameTest", clientGameTestHeap)
-// The GC log path is relative, so it lands in the run dir: build/run/clientGameTest/client-gc.log, and in each instance's own run dir
-// for the copies gradle/client-instances.gradle.kts makes (#1722).
-addVmArgToRun("clientGameTest", "-Xlog:gc:file=client-gc.log:uptime")
+addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")
 
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
 // 0 without it. The second half fails if the JVM ever stops honouring the flag; the first, if a run drops it.
