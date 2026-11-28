@@ -498,7 +498,7 @@ Swap **(c)**.
 
 ### Hangar Console screen
 
-Source `client/hangar/HangarScreen.java`. Sells a refurbished Mole.
+Source `client/hangar/HangarScreen.java`. Assembles a player's one Mole from four parts, restores or scraps the nearest wreck, and writes off the player's own wreck.
 
 ![screen-hangar-console-online](https://github.com/pkeppeler/deepcharter/blob/pr-media/317/screen-hangar-console-online.png?raw=true)
 
@@ -514,7 +514,7 @@ Swap **(c)**.
 
 ### Pod screen
 
-Opened by sneaking and using a pod, or with the pod screen key from a seat (#1270). Source `client/pod/PodScreen.java`, on the CRT menu screen
+Opened by sneaking and using a pod, or with the inventory key from a seat (#1270, #1537), as on a horse: `PodEntity` is a `HasCustomInventoryScreen`. Source `client/pod/PodScreen.java`, on the CRT menu screen
 (`client/ui/CrtMenuScreen.java`) the terminals' slot screens use: the part slots, the fuel slot and its gauge, and a page of the hold beside the inventory. Vanilla: **no**.
 
 Swap **(a)** the CRT theme, as for the terminals, **(c)** the layout, `pod/PodMenu.java` and `client/pod/PodScreen.java`.

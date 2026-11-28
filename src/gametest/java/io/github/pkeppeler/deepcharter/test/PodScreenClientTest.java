@@ -36,6 +36,9 @@ import net.minecraft.world.item.Items;
  * back; shift-clicked coal fills the fuel slot and the gauge rises as it feeds the tank; and Escape closes the screen.
  */
 public class PodScreenClientTest implements FabricClientGameTest {
+    /** A goldium (10) and an einsteinium (20) in the hold, in tenths. */
+    private static final int GOLDIUM_AND_EINSTEINIUM_TENTHS = 300;
+
     private static final Item DRILL_UNIT = PartUnits.unit(ComponentTrack.DRILL);
     private static final Item HULL_UNIT = PartUnits.unit(ComponentTrack.HULL);
 
@@ -59,7 +62,7 @@ public class PodScreenClientTest implements FabricClientGameTest {
                     "the pilot in the pod on the client",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
 
-            RealInput.key(context, InputConstants.KEY_I, 0);
+            context.getInput().pressKey(options -> options.keyInventory);
             ClientWait.screen(context, PodScreen.class);
             PodScreen screen = context.computeOnClient(client -> ClientSession.screen(client, PodScreen.class));
             ClientWait.until(
@@ -67,11 +70,10 @@ public class PodScreenClientTest implements FabricClientGameTest {
                     "the hold's two ore and their mass",
                     client -> screen.getMenu().holdSlot(0).getItem().is(OreRegistry.item(OreType.GOLDIUM))
                             && screen.getMenu().holdSlot(1).getItem().is(OreRegistry.item(OreType.EINSTEINIUM))
-                            && screen.getMenu().mass()
-                                    == Math.round(OreType.GOLDIUM.mass() + OreType.EINSTEINIUM.mass()),
+                            && screen.getMenu().massTenths() == GOLDIUM_AND_EINSTEINIUM_TENTHS,
                     client -> "hold " + screen.getMenu().holdSlot(0).getItem() + ", "
                             + screen.getMenu().holdSlot(1).getItem() + ", mass "
-                            + screen.getMenu().mass());
+                            + screen.getMenu().massTenths());
 
             fitsAUnit(context, singleplayer, screen);
             refusesAWrongUnit(context, singleplayer, screen);

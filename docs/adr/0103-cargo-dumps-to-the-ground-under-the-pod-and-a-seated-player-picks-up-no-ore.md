@@ -4,6 +4,8 @@ status: accepted
 
 # Cargo dumps to the ground under the pod, and a seated player picks up no ore
 
+Amended by [ADR 0110](0110-ore-moves-freely-between-hold-and-pack-and-loose-ore-costs-the-pod.md): ore moves between the hold and the pack, loose pack ore costs the pod, and the dump key is gone. Where this record says ore stays out of the pack, or names the dump key, ADR 0110 replaces it.
+
 A pod too heavy to lift had no way out but driving to a terminal ([#1456](https://github.com/pkeppeler/deepcharter/issues/1456), friends-server playtest). [ADR 0102](0102-the-pod-screen-holds-any-item-keeps-ore-until-a-terminal-and-feeds-the-tank-from-a-fuel-slot.md) keeps ore out of the pack: in the pack it rides weightless for the pod and past the cargo bay's size. A way to get light must not reopen that.
 
 ## Decision

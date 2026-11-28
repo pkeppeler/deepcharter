@@ -87,6 +87,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
             player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
         });
         ClientWait.lightSettled(context, singleplayer.getServer(), 1, X, Z, 13);
+        ClientWait.arrived(context, singleplayer.getServer());
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel one = TestLayers.level(server, 1);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -219,6 +220,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
             player.teleportTo(one, BITE_X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), 0, LOOK_DOWN, true);
         });
         ClientWait.lightSettled(context, singleplayer.getServer(), 1, BITE_X, Z, 13);
+        ClientWait.arrived(context, singleplayer.getServer());
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel one = TestLayers.level(server, 1);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();

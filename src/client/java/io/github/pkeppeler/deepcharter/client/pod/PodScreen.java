@@ -6,6 +6,9 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtMenuScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.menu.SlottedMenu;
+import io.github.pkeppeler.deepcharter.ore.LooseOre;
+import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
+import io.github.pkeppeler.deepcharter.pod.LooseOreTuning;
 import io.github.pkeppeler.deepcharter.pod.PodMenu;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -42,6 +45,9 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
     private static final int REFUSAL_Y = PodMenu.PARTS_Y + 2 * SLOT + 2;
     /** The line over the hold and the inventory that names them. */
     private static final int LABEL_Y = PodMenu.INVENTORY_Y - 12;
+
+    /** The line over the pack's label that says what loose ore costs. */
+    private static final int LOOSE_Y = LABEL_Y - 12;
 
     private static final int PAGE_BUTTON = 14;
 
@@ -147,7 +153,7 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
     /** The hold's mass, the hopper's spoil and the rack's bricks, and the names over the hold and the pack. */
     private void readouts(GuiGraphicsExtractor graphics, CrtTuning tuning) {
         List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable("screen.deepcharter.pod.mass", menu.mass()));
+        lines.add(Component.translatable("screen.deepcharter.pod.mass", OreEncumbrance.shown(menu.massTenths())));
         lines.add(
                 menu.spoil() >= 0
                         ? Component.translatable("screen.deepcharter.pod.spoil", menu.spoil())
@@ -179,6 +185,18 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
                 leftPos + PodMenu.HOLD_X,
                 topPos + LABEL_Y,
                 tuning.phosphorColor());
+        if (menu.seated() && packHoldsOre()) {
+            CrtDraw.glowText(
+                    graphics,
+                    font,
+                    Component.translatable(
+                                    "screen.deepcharter.pod.loose", Math.round(LooseOreTuning.DEFAULT.weightFactor()))
+                            .getString()
+                            .toUpperCase(Locale.ROOT),
+                    leftPos + 1,
+                    topPos + LOOSE_Y,
+                    tuning.refusalColor());
+        }
         CrtDraw.glowText(
                 graphics,
                 font,
@@ -206,6 +224,11 @@ public final class PodScreen extends CrtMenuScreen<PodMenu> {
                     : CrtTuning.current().refusalColor();
             graphics.text(font, tier, slot.x + SLOT - 1 - font.width(tier), slot.y + SLOT - 1 - font.lineHeight, color);
         });
+    }
+
+    /** Whether the player's pack holds ore, loose or in a container: what the loose-ore line is about. */
+    private boolean packHoldsOre() {
+        return minecraft.player != null && LooseOre.inPack(minecraft.player).any();
     }
 
     private boolean isPart(Slot slot) {

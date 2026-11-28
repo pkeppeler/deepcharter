@@ -166,6 +166,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                     ServerLevel one = TestLayers.level(server, 1);
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
+                });
+                ClientWait.arrived(context, singleplayer.getServer());
+                singleplayer.getServer().runOnServer(server -> {
+                    ServerLevel one = TestLayers.level(server, 1);
+                    ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                     pod.setPos(0.5, FEET_Y, 0.5);
                     pod.setNoGravity(true);
@@ -280,14 +285,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "glaze_holding",
                         "glaze_spent",
                         "drifter_alarm",
-                        "soot_limp")
+                        "soot_limp",
+                        "loose")
                 .map(name -> "hud.deepcharter.pod." + name)
                 .collect(Collectors.toSet());
         if (!alerts.equals(expected)) {
             throw new AssertionError(
                     "The warnings that light the fourth lamp are the burning hull, overloaded, the glaze that holds or"
                             + " is spent, stranded, the crust, the brace that cannot work, the seepage, no brick, a hard"
-                            + " landing, lava in or above the shaft and the hollows' alarm: got "
+                            + " landing, lava in or above the shaft, the hollows' alarm and loose ore in a pack: got "
                             + alerts);
         }
         PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
@@ -1398,6 +1404,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         List<PodStatusHud.Line> alerts = List.of(
                 line("burning"),
                 line("overloaded"),
+                line("loose"),
                 line("stranded"),
                 line("crust_ahead", 7, 20, 24),
                 line("crust_in", 20, 24),
@@ -1424,7 +1431,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("lining", 5),
                 line("brace_working"),
                 line("soot", 11, 44, 44),
-                line("sprint", 40, 80));
+                line("sprint", 100));
         // The tally as the cockpit draws it, each number after its icon.
         List<CockpitHud.Row> head = List.of(
                 new CockpitHud.Row(List.of(

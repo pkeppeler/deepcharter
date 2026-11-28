@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
@@ -82,6 +83,13 @@ public final class M2SliceEndState {
                     "watchCrossings was not called before the slice, so a moved player would go unseen");
         }
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            // Only the slice's own charter: another test's player, crossing at the same time in the shared world, is
+            // not the descent.
+            if (Charters.readableCharterOf(server, player.getUUID())
+                    .filter(own -> own.id().equals(charter))
+                    .isEmpty()) {
+                continue;
+            }
             if (!MOVED.getOrDefault(player.getUUID(), List.of()).isEmpty()) {
                 throw new PlayerMoved("the descent changed " + player.getName().getString() + "'s dimension: "
                         + MOVED.get(player.getUUID()));

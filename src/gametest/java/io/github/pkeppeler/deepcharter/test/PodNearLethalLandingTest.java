@@ -30,8 +30,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Server GameTests for #893: a pod whose hard landing empties or nearly empties the hull stays on the floor it landed
  * on, in the campaign world where the layers are bands of one level. A probe pod of full hull drops first and says what
- * the landing costs; the subject then drops the same way with that much hull, one more or one less. Columns 22000 to
- * 22399 are this class's; each case's two shafts sit inside one forced chunk.
+ * the landing costs; the subject then drops the same way with that much hull, one more or one less. Each case's two
+ * shafts sit inside one forced chunk.
  */
 public class PodNearLethalLandingTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -108,8 +108,7 @@ public class PodNearLethalLandingTest {
 
     /**
      * The lost hull of the probe at its landing, then {@code spare} more hull on the subject, which takes the same
-     * fall. A crewed case flies the rider in the probe too, because the ground cushion (#1432) brakes only a crewed
-     * pod.
+     * fall.
      */
     private static void drop(GameTestHelper helper, int x, Hit hit, float spare, boolean crewed) {
         ServerLevel level = helper.getLevel();
@@ -129,9 +128,6 @@ public class PodNearLethalLandingTest {
             }
             if (pods[1] == null && pods[0].onGround() && pods[0].tickCount >= 5) {
                 cost[0] = pods[0].maxHull() - pods[0].hull();
-                if (rider != null) {
-                    rider.player().stopRiding();
-                }
                 pods[0].discard();
                 PodEntity subject = TestEntities.create(PodRegistry.POD, level);
                 subject.setPos(subjectX + 0.5, startY, z + 0.5);
@@ -187,13 +183,6 @@ public class PodNearLethalLandingTest {
             pods[0] = TestEntities.create(PodRegistry.POD, level);
             pods[0].setPos(x + 0.5, startY, z + 0.5);
             level.addFreshEntity(pods[0]);
-            if (rider != null) {
-                rider.player().setGameMode(GameType.SURVIVAL);
-                rider.teleportTo(level, pods[0].position(), 0f, 0f);
-                if (!rider.player().startRiding(pods[0], true, false)) {
-                    findings.note("the rider could not board the probe");
-                }
-            }
         });
         helper.succeedWhen(() -> {
             findings.ensure(helper);

@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodLoad;
+import io.github.pkeppeler.deepcharter.pod.PodLooseOre;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodSprint;
@@ -135,6 +136,16 @@ public final class PodStatusHud {
     public static Optional<Component> overloadedLine(PodEntity pod) {
         return PodLoad.of(pod).cannotClimb()
                 ? Optional.of(Component.translatable("hud.deepcharter.pod.overloaded"))
+                : Optional.empty();
+    }
+
+    /**
+     * The warning line shown, steady, while any rider carries ore loose in their pack ({@link PodLooseOre}, ADR 0110):
+     * the ore weighs double, cramps the cab and rattles on a hard landing. It names the cause of the slowdown.
+     */
+    public static Optional<Component> looseLine(PodEntity pod) {
+        return PodLooseOre.of(pod).any()
+                ? Optional.of(Component.translatable("hud.deepcharter.pod.loose"))
                 : Optional.empty();
     }
 
@@ -276,6 +287,7 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.brace_working", Kind.INFO),
             Map.entry("hud.deepcharter.pod.burning", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.overloaded", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.loose", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_holding", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.glaze_spent", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.stranded", Kind.ALERT),
@@ -323,6 +335,7 @@ public final class PodStatusHud {
         sprintLine(pod).ifPresent(line -> readout.add(new Line(line, look.podSprintColor())));
         burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         overloadedLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+        looseLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));
         glazeLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         drifterAlarmLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));

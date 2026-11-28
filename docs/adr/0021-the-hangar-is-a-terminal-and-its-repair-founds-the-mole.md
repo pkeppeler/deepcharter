@@ -4,6 +4,8 @@ status: accepted
 
 # The hangar is a terminal, and its repair founds the Mole
 
+> Amended by [ADR 0117](0117-each-charter-member-crafts-one-mole-and-a-wreck-keeps-its-owners-place.md): the `buy_mole` action, the refurbished Mole and its prices are retired, and each member assembles one Mole from four parts.
+
 Builds on [ADR 0014](0014-terminal-repair-is-one-world-wide-chain.md) (terminal repair), [ADR 0016](0016-the-colony-is-built-once-in-code-and-the-conduit-is-set-when-its-chunk-loads.md) (the colony and its anchors) and [ADR 0006](0006-pod-seams-attachments-and-events.md) (pod seams).
 
 ## Decision

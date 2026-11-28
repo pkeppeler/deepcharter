@@ -115,7 +115,8 @@ public class SoundWiringClientTest implements FabricClientGameTest {
     /** A mock pilot's pod: the real client hears its engine, rotor and drill, once each while the state lasts. */
     private static void podLoops(ClientGameTestContext context, Heard heard) {
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
-            int podId = two.server().computeOnServer(server -> {
+            Vec3 at = new Vec3(X, FLOOR_Y, Z - 1);
+            two.server().runOnServer(server -> {
                 ServerLevel level = server.overworld();
                 for (int x = X - 4; x <= X + 5; x++) {
                     for (int z = Z - 4; z <= Z + 4; z++) {
@@ -133,8 +134,11 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                         .findFirst()
                         .orElseThrow();
                 real.teleportTo(level, X + 3.5, FLOOR_Y, Z - 3.5, Set.of(), 0, 0, true);
-                Vec3 at = new Vec3(X, FLOOR_Y, Z - 1);
                 two.mock().teleportTo(level, at, 0, 0);
+            });
+            ClientWait.arrived(context, two.server());
+            int podId = two.server().computeOnServer(server -> {
+                ServerLevel level = server.overworld();
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);

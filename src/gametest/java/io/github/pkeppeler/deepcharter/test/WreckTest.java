@@ -757,7 +757,7 @@ public class WreckTest {
     }
 
     @GameTest
-    public void aDyingCrewMemberDropsItemsButNotTheHandbook(GameTestHelper helper) {
+    public void aDyingCrewMemberLeavesItsPackInTheWreckButNotTheHandbook(GameTestHelper helper) {
         PodEntity pod = spawnOnFloor(helper);
         MockPlayer mock = joinLoaded(helper, "wreck-drops", pod.position());
         try {
@@ -773,11 +773,17 @@ public class WreckTest {
             player.startRiding(pod, true, false);
             wreck(pod);
             List<ItemEntity> items = near(player, ItemEntity.class);
-            if (items.stream().noneMatch(item -> item.getItem().is(Items.DIRT))) {
-                throw failure(helper, "the dirt should drop near the wreck, items: %s", items);
+            if (!items.isEmpty()) {
+                throw failure(helper, "nothing should drop: the pack stays in the wreck, items: %s", items);
             }
-            if (items.stream().anyMatch(item -> item.getItem().is(HandbookRegistry.HANDBOOK))) {
-                throw failure(helper, "the handbook must not drop: it is bound to its holder");
+            List<ItemStack> pack = Versioned.readable(pod, WreckRegistry.PACK).orElseThrow().entries().stream()
+                    .map(entry -> entry.stack())
+                    .toList();
+            if (pack.stream().noneMatch(stack -> stack.is(Items.DIRT))) {
+                throw failure(helper, "the dirt should be in the wreck's pack, it holds %s", pack);
+            }
+            if (pack.stream().anyMatch(stack -> stack.is(HandbookRegistry.HANDBOOK))) {
+                throw failure(helper, "the handbook must not be kept: it is bound to its holder");
             }
             helper.succeed();
         } finally {

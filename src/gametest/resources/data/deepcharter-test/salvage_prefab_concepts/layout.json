@@ -1,0 +1,130 @@
+{
+  "options": [
+    {
+      "name": "a",
+      "title": "Downed supply lander",
+      "structure": "deepcharter-test:salvage_prefab_concepts/a",
+      "offset": [
+        -18,
+        -3,
+        -37
+      ],
+      "blocks": 1411,
+      "displays": 27,
+      "bounds": [
+        -18,
+        -37,
+        14,
+        5
+      ],
+      "level": [
+        -30,
+        -49,
+        26,
+        17
+      ],
+      "focus": [
+        0.0,
+        5.0,
+        -5.0
+      ],
+      "side": [
+        0.95,
+        0.3
+      ],
+      "reach": 10.0,
+      "pod": [
+        8,
+        1
+      ],
+      "player": [
+        9,
+        -5
+      ]
+    },
+    {
+      "name": "b",
+      "title": "Toppled survey derrick",
+      "structure": "deepcharter-test:salvage_prefab_concepts/b",
+      "offset": [
+        -8,
+        0,
+        -12
+      ],
+      "blocks": 655,
+      "displays": 20,
+      "bounds": [
+        -8,
+        -12,
+        27,
+        15
+      ],
+      "level": [
+        -20,
+        -24,
+        39,
+        27
+      ],
+      "focus": [
+        11.0,
+        4.0,
+        1.0
+      ],
+      "side": [
+        0.2,
+        0.98
+      ],
+      "reach": 10.0,
+      "pod": [
+        10,
+        12
+      ],
+      "player": [
+        16,
+        9
+      ]
+    },
+    {
+      "name": "c",
+      "title": "Derailed ore train",
+      "structure": "deepcharter-test:salvage_prefab_concepts/c",
+      "offset": [
+        -10,
+        -2,
+        -46
+      ],
+      "blocks": 1638,
+      "displays": 10,
+      "bounds": [
+        -10,
+        -46,
+        28,
+        6
+      ],
+      "level": [
+        -22,
+        -58,
+        40,
+        18
+      ],
+      "focus": [
+        12.0,
+        4.0,
+        -18.0
+      ],
+      "side": [
+        -0.78,
+        0.62
+      ],
+      "reach": 17.0,
+      "pod": [
+        -4,
+        -11
+      ],
+      "player": [
+        2,
+        -6
+      ]
+    }
+  ]
+}

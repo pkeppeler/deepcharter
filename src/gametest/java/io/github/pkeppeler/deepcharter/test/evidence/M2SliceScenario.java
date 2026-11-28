@@ -68,6 +68,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -1026,7 +1027,7 @@ public class M2SliceScenario extends EvidenceScenario {
             say("13. The tow cable goes on the wreck. SHORTCUT: the cable is handed over, not crafted.");
             board(mole.get());
             refuelWithCoal();
-            useTowCable("fitted");
+            hookWreckWithTowCable();
             snap(HOLD_FRAMES);
             still("39-the-wreck-on-the-cable");
         }
@@ -1122,7 +1123,7 @@ public class M2SliceScenario extends EvidenceScenario {
             say("15. Handbook chapter 7. The crust cost the Mole hull. SHORTCUT: the Mole is moved by hand to the"
                     + " repair station.");
             BlockPos station = TestColony.anchor(site.colony(), ColonyAnchor.REPAIR_STATION);
-            useTowCable("removed");
+            freeWreckFromTowCable();
             dismount();
             onServer(server -> {
                 PodEntity tower = pod(server, mole.get());
@@ -1158,7 +1159,7 @@ public class M2SliceScenario extends EvidenceScenario {
             openTerminal(Vec3.atBottomCenterOf(console.west(2)), console, HangarScreen.class);
             snap(HOLD_FRAMES);
             still("46-hangar-console-with-a-wreck-in-reach");
-            clickStartingWith("RESTORE NEAREST WRECK");
+            clickStartingWith("RESTORE WRECK");
             awaitServer(server -> directiveDone(server, "company_property/restore_prospector"));
             snap(HOLD_FRAMES);
             still("47-prospector-restored");
@@ -1437,17 +1438,46 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.screen(ctx, screen);
         }
 
-        /** The pilot uses a tow cable on the wreck, which fits it or takes it off; {@code outcome} names which, for the failure message. */
-        private void useTowCable(String outcome) {
-            onServer(server -> {
+        /** The pilot gets out, hooks the wreck behind the Mole with the cable on foot, and boards again. */
+        private void hookWreckWithTowCable() {
+            onFoot(server -> {
                 ServerPlayer real = real(server);
-                real.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
+                UseEntity.on(real, real.level(), InteractionHand.MAIN_HAND, pod(server, mole.get()));
                 InteractionResult result =
                         UseEntity.on(real, real.level(), InteractionHand.MAIN_HAND, pod(server, prospector.get()));
                 if (!result.consumesAction()) {
-                    throw new AssertionError("the tow cable was not " + outcome + ": " + result);
+                    throw new AssertionError("the tow cable was not fitted: " + result);
                 }
+            });
+        }
+
+        /** The pilot gets out, takes the cable off the wreck on foot, and boards again. */
+        private void freeWreckFromTowCable() {
+            onFoot(server -> {
+                ServerPlayer real = real(server);
+                InteractionResult result =
+                        UseEntity.on(real, real.level(), InteractionHand.MAIN_HAND, pod(server, prospector.get()));
+                if (!result.consumesAction()) {
+                    throw new AssertionError("the tow cable was not removed: " + result);
+                }
+            });
+        }
+
+        /**
+         * The tow cable does nothing from a seat (#1605): the pilot steps out for {@code use}, holding it, and sits
+         * down again.
+         */
+        private void onFoot(Consumer<MinecraftServer> use) {
+            onServer(server -> {
+                ServerPlayer real = real(server);
+                Entity seat = real.getVehicle();
+                real.stopRiding();
+                real.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
+                use.accept(server);
                 real.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+                if (seat != null && !real.startRiding(seat)) {
+                    throw new AssertionError("the pilot could not board again after hooking the cable");
+                }
                 return null;
             });
         }

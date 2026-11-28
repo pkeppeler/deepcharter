@@ -301,7 +301,7 @@ public class OvergrowthScenario extends EvidenceScenario {
     private void drillThrough(ClientGameTestContext context, TestSingleplayerContext singleplayer, Scene scene) {
         BlockPos site = scene.site();
         UUID podId = scene.pod();
-        float fuel = singleplayer.getServer().computeOnServer(server -> {
+        singleplayer.getServer().runOnServer(server -> {
             PodEntity pod = pod(server, podId);
             pod.setPos(site.getX() - OFFSET + 0.5, FLOOR_Y, site.getZ() - 3.5);
             pod.setYRot(0f);
@@ -310,6 +310,11 @@ public class OvergrowthScenario extends EvidenceScenario {
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(
                     TestLayers.level(server, 1), pod.getX(), pod.getY(), pod.getZ(), Set.of(), 0f, LOOK_DOWN, true);
+        });
+        ClientWait.arrived(context, singleplayer.getServer());
+        float fuel = singleplayer.getServer().computeOnServer(server -> {
+            PodEntity pod = pod(server, podId);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod");
             }

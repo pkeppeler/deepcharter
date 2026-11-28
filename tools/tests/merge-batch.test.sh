@@ -79,7 +79,7 @@ STUB
 real_git=$(command -v git)
 cat >"$work/bin/git" <<STUB
 #!/usr/bin/env bash
-if [[ \$1 == push && " \$* " == *":refs/heads/main "* ]]; then echo "git \$*" >>"\$LOG"; fi
+if [[ \$1 == push && (" \$* " == *":refs/heads/main "* || " \$* " == *" batch/"*) ]]; then echo "git \$*" >>"\$LOG"; fi
 if [[ \$1 == push && " \$* " == *":refs/heads/main "* && -e \$ST/race ]]; then
   k=\$((\$(cat "\$ST/race_n" 2>/dev/null || echo 0) + 1))
   echo "\$k" >"\$ST/race_n"
@@ -159,6 +159,10 @@ cat >"$ORIGIN/hooks/pre-receive" <<'HOOK'
 #!/usr/bin/env bash
 while read -r _ _ ref; do
   if [[ $ref == refs/heads/main && -e $ST/push_deny ]]; then echo "push denied by the test hook" >&2; exit 1; fi
+  if [[ $ref == refs/heads/batch/* && -e $ST/batch_push_deny ]]; then
+    for i in $(seq 1 30); do echo "hook line $i" >&2; done
+    exit 1
+  fi
 done
 HOOK
 chmod +x "$ORIGIN/hooks/pre-receive"
@@ -272,6 +276,7 @@ if [[ $body == *"Closes #3"* && $body == *"Co-Authored-By: Claude"* ]]; then pas
 count "green: one batch PR opened" "gh api -X POST repos/pkeppeler/deepcharter/pulls " 1
 logged_part "green: the batch PR is labelled gameplay and no-demo" "labels[]=gameplay -f labels[]=no-demo"
 logged_part "green: the batch branch is the stamp" "head=batch/S"
+logged_part "green: the integration push skips the pre-push hook" "git push --no-verify origin batch/S"
 logged_part "green: the landing push skips the pre-push hook" "git push --no-verify origin "
 not_logged "green: no merge request (the repo allows squash only)" "/merge"
 logged_part "green: the batch PR gets a comment naming the landed sha" "issues/100/comments -f body=Landed on main as $(git --git-dir="$ORIGIN" rev-parse refs/heads/main) by a fast-forward push."
@@ -361,7 +366,7 @@ not_logged "single: no merge request" "/merge"
 if [[ $(main_subjects) == "Title 1 (#1)|" ]]; then pass "single: main holds the PR's squash commit"; else fail "single: $(main_subjects)"; fi
 if [[ $(git --git-dir="$ORIGIN" log -1 --format=%s refs/heads/main) == "Regenerate roadmap after batch #100" ]]; then pass "single: the roadmap commit is part of the landing, on top of the squash"; else fail "single: head of main: $(git --git-dir="$ORIGIN" log -1 --format=%s refs/heads/main)"; fi
 if [[ $(roadmap_on_main) == "roadmap --landing 1:1 --hide 100" ]]; then pass "single: the roadmap is rendered as landed, without the batch PR in flight"; else fail "single: roadmap args: $(roadmap_on_main)"; fi
-count "single: one push to main for the landing, none after it" "git push --no-verify origin " 1
+count "single: one push to main for the landing, none after it" ":refs/heads/main" 1
 not_logged "single: no roadmap push from a separate worktree" "HEAD:main"
 
 # --- the roadmap folded into a batch names every PR and its issue ---
@@ -369,7 +374,7 @@ reset
 mkpr 1; mkpr 2
 run_b 1 2
 if [[ $(roadmap_on_main) == "roadmap --landing 1:1 --landing 2:2 --hide 100" ]]; then pass "roadmap: every landed PR and its issue is named"; else fail "roadmap args: $(roadmap_on_main)"; fi
-count "roadmap: one roadmap commit for the batch" "git push --no-verify origin " 1
+count "roadmap: one roadmap commit for the batch" ":refs/heads/main" 1
 landed_subjects=$(git --git-dir="$ORIGIN" log --format=%s "$base..refs/heads/main")
 if [[ $(grep -c '^Regenerate roadmap' <<<"$landed_subjects") -eq 1 ]]; then pass "roadmap: one commit, not one per PR"; else fail "roadmap: commits"; fi
 
@@ -480,6 +485,16 @@ count "push error: only one batch PR was opened (no rebuild)" "gh api -X POST re
 logged "push error: the exit trap closes the open batch PR" "gh api -X $close_verb repos/pkeppeler/deepcharter/pulls/100 -f $close_arg"
 logged "push error: the exit trap deletes the batch branch" "gh api -X DELETE repos/pkeppeler/deepcharter/git/refs/heads/batch/S"
 printed "push error: nothing merged" "merged:  none"
+
+# --- a failed integration push says why: the last 20 lines of git's output ---
+reset
+mkpr 1
+: >"$ST/batch_push_deny"
+run_b 1
+exited "batch push error: exit 1" 1
+printed "batch push error: the message names the failed push" "could not push batch/S"
+printed "batch push error: it carries the end of git's output" "hook line 30"
+if [[ $out == *"hook line 10"* ]]; then fail "batch push error: only the last lines are shown"; else pass "batch push error: only the last lines are shown"; fi
 
 # --- a batch of one retries a stale base by rebuilding, up to the limit ---
 reset

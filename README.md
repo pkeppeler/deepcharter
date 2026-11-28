@@ -148,7 +148,7 @@ A gas pocket looks like plain stone. Fit the seep sounder and the readout counts
 
 ![A working pod beside a dark wreck](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true)
 
-A pod with no hull goes dark and stays where it fell, and its owners are told. A crew can rescue each other: hold a tow cable and right-click the wreck to pull it home, as in the picture at the top. The cable is long, so the wreck trails well behind you.
+A pod with no hull goes dark and stays where it fell, and its owners are told. A crew can rescue each other: get out, hold a tow cable and right-click the working pod, then the wreck, and drive it home with the wreck in tow, as in the picture at the top. The cable is long, so the wreck trails well behind you.
 
 ### 13. The breach
 

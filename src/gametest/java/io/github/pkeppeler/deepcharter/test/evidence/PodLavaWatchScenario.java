@@ -52,6 +52,7 @@ public class PodLavaWatchScenario extends EvidenceScenario {
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, 0f, true);
             });
             ClientWait.lightSettled(context, singleplayer.getServer(), 1, X + TUNNEL / 2, Z, TUNNEL / 2 + 5);
+            ClientWait.arrived(context, singleplayer.getServer());
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
