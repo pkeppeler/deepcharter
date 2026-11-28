@@ -48,10 +48,8 @@ import net.minecraft.world.item.Items;
  * Client GameTest for the quest map (#847): each chapter's directives as a flowchart on the handbook paper, the chapter tabs, the index
  * card of a step with the items it needs, the book opening where it was left, the popup of a finished step and the L key. The screens
  * are driven by hand and read from the text they draw ({@link DrawnText}); the keys and the real game are in
- * {@code HandbookScreenClientTest} and the quest map scenario. The whole test runs in one world: the cards draw item
- * stacks, and
- * item components are bound only once a world is loaded ("Components not bound yet" before it, #1124), so the test
- * must not
+ * {@code HandbookScreenClientTest} and the quest map scenario. The whole test runs in one world: the cards draw item stacks, and
+ * item components are bound only once a world is loaded ("Components not bound yet" before it, #1124), so the test must not
  * lean on an earlier class's world (#1574).
  */
 public class QuestMapClientTest implements FabricClientGameTest {
