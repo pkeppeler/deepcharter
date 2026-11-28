@@ -174,7 +174,7 @@ One job each. They can point at each other; a transmission can unlock a handbook
 |---------|-----|
 | Handbook | How to progress (Directives). |
 | Work orders | Repeatable money tasks. |
-| Transmissions | The story. The comms log (J) keeps every one received. |
+| Transmissions | The story. The comms log (K) keeps every one received. |
 
 ### The world is a mystery; the rules never are
 
@@ -381,7 +381,7 @@ Original lore with the original game's shape (a cheerful employer, vanishing min
 - **Post-game hook:** the Ramp is the wall around the creature's heart, the Motherload. Both endings lead to the uncharted layers below it ([LORE.md](LORE.md#13-post-game)). A splice is the creature stirring ("the depths moved").
 - Every change after the finale is presentation for that charter only, never a world edit.
 - **Transmissions** go to the whole charter. Most trigger at the charter's deepest point reached; the bootstrap repairs and the finale beats trigger on events.
-- **Comms log** (#1615): a key (J) opens every transmission the charter has sent the player, in order, each with when it came (its zone, breach or event), to read again or replay with its sounds. It is the transmissions channel's own screen, not a handbook page. It lists only what has reached the player, so it spoils nothing, and a member who joins later reads the charter's whole log. A garbled transmission stays garbled.
+- **Comms log** (#1615): a key (K) opens every transmission the charter has sent the player, in order, each with when it came (its zone, breach or event), to read again or replay with its sounds. It is the transmissions channel's own screen, not a handbook page. It lists only what has reached the player, so it spoils nothing, and a member who joins later reads the charter's whole log. A garbled transmission stays garbled.
 - A personal build could swap in the original's transmission text ([REFERENCE.md](../original_flash_game/REFERENCE.md)).
 - **Altimeter:** each layer has its own trick, presentation only ([LORE.md](LORE.md#11-layers)). "UNCHARTED" shows below the ramp.
 

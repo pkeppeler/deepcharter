@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -175,7 +176,8 @@ public class PodChaseClientTest implements FabricClientGameTest {
 
     /**
      * #1680: the navigator's seat chases as the pilot's does. The mock takes a Prospector's pilot seat and the real
-     * player its second seat; leaving brings back the view the player had.
+     * player its second seat. When the mock gets out the player moves up to the pilot's seat and keeps the view;
+     * leaving brings back the view the player had.
      */
     private static void theSecondSeatChasesToo(ClientGameTestContext context, TwoPlayerServer two) {
         UUID mock = two.mock().player().getUUID();
@@ -199,6 +201,20 @@ public class PodChaseClientTest implements FabricClientGameTest {
         require(
                 camera(context) == CameraType.THIRD_PERSON_BACK,
                 "taking the navigator's seat should switch to the third-person chase view, it is " + camera(context));
+
+        // The pilot gets out: the navigator is now the pilot, in the same pod, and keeps the view.
+        two.server().runOnServer(server -> two.mock().player().stopRiding());
+        ClientWait.until(
+                context,
+                "the client moved up to the Prospector's pilot seat",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
+                        && PodSeat.find(pod, ClientSession.player(client)).equals(Optional.of(PodSeat.PILOT)));
+        context.waitTicks(5);
+        require(
+                camera(context) == CameraType.THIRD_PERSON_BACK,
+                "moving up from the navigator's seat to the pilot's should keep the chase view, it is "
+                        + camera(context));
+
         two.server().runOnServer(server -> realPlayer(server, mock).stopRiding());
         ClientWait.until(
                 context,
