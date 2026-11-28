@@ -70,6 +70,10 @@ public final class CataloguePanel {
     private @Nullable CatalogueLayout layout;
     /** The spec sheet that covers the screen, or null. */
     private @Nullable SpecSheet sheet;
+    /** Whether the sheet shown is the latest offered, which it says, rather than the item the cursor was on. */
+    private boolean sheetLatest;
+    /** Whether the spec sheet key that opened the sheet has not been let go yet: its repeats put nothing away. */
+    private boolean sheetKeyHeld;
     /** Where the sheet stands at the screen's size and what it says there; null while no sheet is open. */
     private @Nullable Placed placed;
 
@@ -138,9 +142,11 @@ public final class CataloguePanel {
         }
     }
 
-    /** Shows the spec sheet of {@code item} over the screen, until a click or Escape puts it away. */
-    void showSheet(Item item) {
-        sheet = SpecSheets.of(item);
+    /** Shows the spec sheet {@code request} asks for over the screen, until a click or Escape puts it away. */
+    void showSheet(SheetRequest request) {
+        sheet = SpecSheets.of(request.item());
+        sheetLatest = request.latest();
+        sheetKeyHeld = request.keyHeld();
         planSheet();
     }
 
@@ -155,7 +161,7 @@ public final class CataloguePanel {
         SpecSheet shown = sheet;
         placed = shown == null
                 ? null
-                : SpecSheetView.place(shown, screenWidth, screenHeight, look(), CrtTuning.current(), font);
+                : SpecSheetView.place(shown, sheetLatest, screenWidth, screenHeight, look(), CrtTuning.current(), font);
     }
 
     /** The item whose spec sheet covers the screen, or null. */
@@ -663,10 +669,13 @@ public final class CataloguePanel {
         }
         if (sheet != null) {
             // The sheet covers everything, so no key may reach the slot under the mouse (a digit would swap it into the
-            // hotbar, Q drop it). The key that closes the inventory is the screen's and ends it all; any other puts the
-            // sheet away and is the sheet's.
+            // hotbar, Q drop it). The key that closes the inventory is the screen's and ends it all; the spec sheet key
+            // still held from opening the sheet repeats, and is ignored; any other puts the sheet away.
             if (Minecraft.getInstance().options.keyInventory.matches(event)) {
                 return false;
+            }
+            if (sheetKeyHeld && CatalogueKeys.SPEC_SHEET.matches(event)) {
+                return true;
             }
             closeSheet();
             return true;
@@ -717,6 +726,13 @@ public final class CataloguePanel {
             return true;
         }
         return false;
+    }
+
+    /** A key let go: the spec sheet key that opened the sheet, once let go, is a new press the next time. */
+    void keyReleased(KeyEvent event) {
+        if (CatalogueKeys.SPEC_SHEET.matches(event)) {
+            sheetKeyHeld = false;
+        }
     }
 
     private boolean searchKey(KeyEvent event) {

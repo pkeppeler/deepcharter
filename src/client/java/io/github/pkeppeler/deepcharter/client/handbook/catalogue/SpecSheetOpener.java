@@ -35,7 +35,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class SpecSheetOpener {
     /** Sheets asked for and not yet shown, in the order they came. */
-    private static final Deque<Item> WAITING = new ArrayDeque<>();
+    private static final Deque<SheetRequest> WAITING = new ArrayDeque<>();
 
     /** The sheet most recently offered, which the key opens; null before one was. */
     private static @Nullable Item latest;
@@ -69,7 +69,8 @@ public final class SpecSheetOpener {
         while (CatalogueKeys.SPEC_SHEET.consumeClick()) {
             Item item = latest;
             if (item != null && client.player != null && !onItsWay(client, item)) {
-                show(item);
+                // With no screen open the key reads as held for as long as it is down.
+                queue(new SheetRequest(item, true, CatalogueKeys.SPEC_SHEET.isDown()));
             }
         }
         drain(client);
@@ -89,8 +90,9 @@ public final class SpecSheetOpener {
     }
 
     /**
-     * The spec sheet key in {@code screen}, before the screen sees it. Returns whether it opened, or had already
-     * opened, a sheet.
+     * The spec sheet key in {@code screen}, before the screen sees it: the sheet of the item under the cursor; nothing
+     * over an empty slot; the latest sheet offered, marked LATEST, when the cursor is on no slot and no item. Returns
+     * whether it opened, or had already opened, a sheet.
      */
     private static boolean keyPressed(Screen screen, KeyEvent event) {
         Minecraft client = Minecraft.getInstance();
@@ -98,6 +100,9 @@ public final class SpecSheetOpener {
             return false;
         }
         Item hovered = hoveredIn(screen);
+        if (hovered == null && onEmptySlot(screen)) {
+            return false;
+        }
         Item item = hovered == null ? latest : hovered;
         if (item == null) {
             return false;
@@ -105,13 +110,22 @@ public final class SpecSheetOpener {
         if (onItsWay(client, item)) {
             return true;
         }
+        SheetRequest request = new SheetRequest(item, hovered == null, true);
         CataloguePanel panel = CatalogueScreens.panelOf(screen);
         if (panel != null && panel.layout() != null) {
-            show(item);
+            queue(request);
         } else {
-            client.gui.setScreen(new SpecSheetScreen(screen, item));
+            client.gui.setScreen(new SpecSheetScreen(screen, request));
         }
         return true;
+    }
+
+    /** Whether the cursor is on a slot with nothing in it, where the key opens nothing rather than an unrelated sheet. */
+    private static boolean onEmptySlot(Screen screen) {
+        // The screen sets it each frame from the mouse; it is public through deepcharter.classtweaker.
+        return screen instanceof AbstractContainerScreen<?> container
+                && container.hoveredSlot != null
+                && !container.hoveredSlot.hasItem();
     }
 
     /** Whether a text field has the keyboard, so the key is a letter typed. */
@@ -143,7 +157,7 @@ public final class SpecSheetOpener {
 
     /** Whether the sheet of {@code item} is queued or already shown, so a key tapped again asks for it twice. */
     private static boolean onItsWay(Minecraft client, Item item) {
-        if (WAITING.contains(item)) {
+        if (WAITING.stream().anyMatch(waiting -> waiting.item() == item)) {
             return true;
         }
         Screen open = client.gui.screen();
@@ -156,7 +170,11 @@ public final class SpecSheetOpener {
 
     /** Queues the sheet of {@code item} and shows it at once if nothing is in its way. */
     public static void show(Item item) {
-        WAITING.add(item);
+        queue(SheetRequest.of(item));
+    }
+
+    private static void queue(SheetRequest request) {
+        WAITING.add(request);
         drain(Minecraft.getInstance());
     }
 
@@ -167,7 +185,7 @@ public final class SpecSheetOpener {
         }
         Screen open = client.gui.screen();
         if (open == null) {
-            client.gui.setScreen(new SpecSheetScreen(WAITING.remove()));
+            client.gui.setScreen(new SpecSheetScreen(null, WAITING.remove()));
             return;
         }
         CataloguePanel panel = CatalogueScreens.panelOf(open);
