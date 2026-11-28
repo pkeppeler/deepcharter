@@ -77,11 +77,6 @@ public class EconomyAffordabilityTest {
      * deliberate spend (#1458).
      */
     private static final int STRAIGHT_SHAFT_RUNS = 3;
-    /** A later charter's first refurbished Mole, with no pod yet, and its second one. */
-    private static final int REFURBISHED_FIRST_RUNS = 2;
-
-    private static final int REFURBISHED_SECOND_RUNS = 3;
-
     /**
      * Each repair station item against the run of the layer where it starts to matter (the transmitter, a layer 3 item, is measured in
      * layer 2 runs), as a band of that run's net. See {@link Consumable} for the scale.
@@ -770,40 +765,6 @@ public class EconomyAffordabilityTest {
                     sold,
                     CATALYST_SALE_SHARE * 100,
                     run.net());
-        }
-        helper.succeed();
-    }
-
-    @GameTest
-    public void aRefurbishedMoleIsModestForALaterCharter(GameTestHelper helper) {
-        Run run = stockRunInLayerOne();
-        long first = HangarTuning.DEFAULT.refurbishedPrice(0);
-        long second = HangarTuning.DEFAULT.refurbishedPrice(1);
-        int firstRuns = run.toAfford(first);
-        int secondRuns = run.toAfford(second);
-        LOGGER.info(
-                "[economy] refurbished Mole: ${} for the first pod ({} runs), ${} for the second ({} runs)",
-                first,
-                firstRuns,
-                second,
-                secondRuns);
-        if (firstRuns > REFURBISHED_FIRST_RUNS) {
-            throw failure(
-                    helper,
-                    "a first refurbished Mole costs $%d, which is %d runs of $%.0f; at most %d are allowed",
-                    first,
-                    firstRuns,
-                    run.net(),
-                    REFURBISHED_FIRST_RUNS);
-        }
-        if (secondRuns > REFURBISHED_SECOND_RUNS) {
-            throw failure(
-                    helper,
-                    "a second refurbished Mole costs $%d, which is %d runs of $%.0f; at most %d are allowed",
-                    second,
-                    secondRuns,
-                    run.net(),
-                    REFURBISHED_SECOND_RUNS);
         }
         helper.succeed();
     }

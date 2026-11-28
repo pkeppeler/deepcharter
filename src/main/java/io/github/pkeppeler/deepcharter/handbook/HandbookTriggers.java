@@ -156,8 +156,8 @@ public final class HandbookTriggers {
             // The terminal installs what it sells, in the same action.
             Directives.fire(player, BUY_COMPONENT);
             Directives.fire(player, INSTALL_COMPONENT);
-        } else if (type == HangarTerminal.TYPE && action.equals(HangarTerminal.BUY_MOLE)) {
-            // A charter that came after the founding charter repairs nothing: it buys a refurbished Mole.
+        } else if (type == HangarTerminal.TYPE && action.equals(HangarTerminal.ASSEMBLE_MOLE)) {
+            // A charter that came after the founding charter repairs nothing: it assembles a Mole.
             Directives.fire(player, REPAIR_MOLE);
         } else if (type == TerminalTypes.REPAIR_STATION
                 && (action.equals(RepairStation.REPAIR) || action.equals(RepairStation.REPAIR_TOTAL))) {

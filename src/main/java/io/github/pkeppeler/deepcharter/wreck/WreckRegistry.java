@@ -37,6 +37,15 @@ public final class WreckRegistry {
                             AttachmentSyncPredicate.all()));
 
     /**
+     * What the crew carried when the hull ran out, kept in the wreck. Saved, not synced; read it through {@link
+     * Wrecks}.
+     */
+    public static final AttachmentType<Versioned<WreckPack>> PACK = AttachmentRegistry.create(
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "wreck_pack"),
+            builder -> builder.persistent(Versioned.codec(WreckPack.VERSION, WreckPack.BODY))
+                    .initializer(() -> Versioned.of(WreckPack.EMPTY)));
+
+    /**
      * What a wreck kills its crew with ({@link CrewFate}): vanilla's {@code generic_kill} in all but name (its tags let it through armour,
      * resistance and invulnerability, as a kill), so the Continuity Event can say HULL LOSS (#1337).
      */

@@ -31,7 +31,48 @@ public final class WreckEvents {
                 }
             });
 
+    /**
+     * A pod became a wreck: its hull ran out, or it loaded at hull 0. Fires after the state is set and before the crew
+     * die, once per change. A listener that throws is logged and does not stop the others.
+     */
+    public static final Event<Wrecked> WRECKED = EventFactory.createArrayBacked(Wrecked.class, listeners -> pod -> {
+        for (Wrecked listener : listeners) {
+            try {
+                listener.onWrecked(pod);
+            } catch (RuntimeException e) {
+                DeepCharter.LOGGER.error(
+                        "A wreck listener failed for pod {}: the other listeners still run", pod.getUUID(), e);
+            }
+        }
+    });
+
+    /**
+     * A wreck was made a working pod again, by whatever repairs it: the hangar console today, the field kit later.
+     * Fires from {@link Wrecks#restore} after the state is set. A listener that throws is logged and does not stop the
+     * others.
+     */
+    public static final Event<Restored> RESTORED = EventFactory.createArrayBacked(Restored.class, listeners -> pod -> {
+        for (Restored listener : listeners) {
+            try {
+                listener.onRestored(pod);
+            } catch (RuntimeException e) {
+                DeepCharter.LOGGER.error(
+                        "A wreck restore listener failed for pod {}: the other listeners still run", pod.getUUID(), e);
+            }
+        }
+    });
+
     private WreckEvents() {}
+
+    @FunctionalInterface
+    public interface Wrecked {
+        void onWrecked(PodEntity pod);
+    }
+
+    @FunctionalInterface
+    public interface Restored {
+        void onRestored(PodEntity pod);
+    }
 
     @FunctionalInterface
     public interface Reported {

@@ -102,7 +102,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 - Start from the colony's salvage and fungal "wood". This replaces "start like normal Minecraft" on the user's art direction ([art direction](design/art-direction.md) section 11, decided with the user on 2026-10-08, issue #225, PR #234; built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)). Salvage crates supply wood, cloth and scrap (scrap iron and scrap copper, melted in a furnace) and redstone. They are littered round the colony within a set block radius, not only at it (none stand on the pad or its margin): the radius is one number, `min_inclusive` and `max_exclusive` of `data/deepcharter/worldgen/density_function/surface/yard.json`: a ring from 100 to 160 blocks, which starts past the colony's pad and its graded margin. Hardy alien fungal stalks on crater floors, in patches among the crates, and in the caves of layer 1, are gatherable stand-ins for trees: a stalk presses into four planks, burns, and chars to charcoal. A new player reaches tools, a light and the first terminal repair with no tree and no ore.
 - Craft the first scanner too: a **scanner unit** from 4 iron, 2 copper and 2 redstone, about four crates' worth of the yard ([mechanics.md](design/mechanics.md#the-crafted-scanner-483-a)). It is the tier 1 part of the first mining pod, made like the Mole's own parts (SPEC section 7, Scanner); the upgrade terminal does not sell it.
 - Repair the colony's terminals one by one (fuel pump, then ore processor, then upgrade terminal, and so on). Each is a crafting goal; the employer gets in touch as they come back online.
-- The first charter also repairs the founding pod (the Mole) in the colony hangar.
+- The first charter also repairs the founding pod (the Mole) in the colony hangar. Every other member crafts their own Mole from four parts at the hangar console, one each (section 7, Getting more pods).
 
 ### Economy
 
@@ -113,7 +113,7 @@ After the bootstrap, progression is money: sell ore at terminals, buy pod upgrad
 - **Ore names:** original-style (Ironium, Bronzium…) for shallow tiers, new minerals deeper.
 - **Prices:** fixed base prices, plus employer work orders ("deliver 20 X for a bonus") that can carry story beats.
 - **Numbers:** upgrade costs and ore values start from the original's ([REFERENCE.md](../original_flash_game/REFERENCE.md)), scaled to fit, then tuned in playtesting.
-- **Catalysts:** every chassis, and every couple of component tiers, also needs a rare material found in one specific layer, on top of money.
+- **Catalysts:** every chassis after the Mole, and every couple of component tiers, also needs a rare material found in one specific layer, on top of money. The Mole is crafted, so it needs none ([ADR 0117](adr/0117-each-charter-member-crafts-one-mole-and-a-wreck-keeps-its-owners-place.md)).
 - **Records board:** at the colony, one entry per charter: deepest breach, wealth hauled, wrecks salvaged and so on. No single score.
 
 ## 5. Employee Handbook and teaching the rules
@@ -214,7 +214,7 @@ A pod is a vehicle with seats. There is no walkable interior while it moves. See
 
 | # | Chassis | Seats | Where it comes from | Built for, and leaning |
 |---|---------|-------|---------------------|------------------------|
-| 1 | Mole | 1 | Founding pod: repaired in the colony hangar by the first charter; later charters buy a refurbished one | Layers 1–2 |
+| 1 | Mole | 1 | Founding pod: repaired in the colony hangar by the first charter. Every charter member crafts one more of their own from four parts at the hangar, no fee | Layers 1–2 |
 | 2 | Prospector | 2 | Wreck in layer 2, at the end of onboarding | Up to layer 3. The first crew seat (navigator) |
 | 3 | Badger | 2–3 | Wreck in layer 3 or 4 | Up to layer 4. Adds the operator seat; leans toward the drill |
 | 4 | Hauler | 3 | Wreck in layer 4 or 5 | Up to layer 5. Leans toward cargo |
@@ -233,11 +233,14 @@ A pod is a vehicle with seats. There is no walkable interior while it moves. See
 
 ### Getting more pods
 
-- **Founding pod:** the first charter repairs the hangar Mole. Later charters buy a refurbished Mole at the colony for a modest fee.
-- **Wrecks:** more chassis come from salvaging wrecks in specific layers (see the chassis table). Tow one home and pay to restore it.
-- **Registration fees** grow with every pod a charter adds.
+- **One crafted Mole each:** every charter member can craft one base Mole, from the four crafted hangar parts (the bootstrap tier: iron, copper and redstone), at the hangar console. A crafted Mole pays no registration fee and needs no catalyst. The founding pod counts as its founder's one Mole. There is no refurbished Mole to buy.
+- **The wreck keeps the place:** a Mole that is wrecked keeps its owner's one place, and a second cannot be crafted while it exists. Only the wreck frees the place: towed home and restored or scrapped at the hangar, or repaired where it lies (the field kit, [#1608](https://github.com/pkeppeler/deepcharter/issues/1608)). Nothing scraps a wreck from afar, so money cannot buy a way out of a rescue.
+- **The wreck keeps what was in it:** the fitted upgrades and the hold's ore stay in the wreck, and what each crew member carried moves into the wreck with them, so it is not lost to a fall or a fire; it goes back to the player who carried it, or to the Mole's owner if they are away. A new Mole starts bare, so recovering a wreck is worth more than replacing it.
+- **Write-off:** for a wreck that cannot be reached (lava, the void), the hangar console can write it off. It costs a lot and, after you confirm it, frees the place after one in-game day (20 minutes of real time), and the wreck is destroyed with its parts and cargo. A Mole that still works cannot be written off.
+- **No wreck decay:** a wreck stays until someone restores, scraps or writes it off.
+- **Wrecks:** more chassis come from salvaging wrecks in specific layers (see the chassis table). Tow one home and pay to restore it: fees still apply to wreck chassis (money, and catalysts for every chassis after the Mole: restoring a Mole wreck takes money only).
 - Each pod buys its own components.
-- Together these stop a second charter's free Mole from being a cheap deep miner: a capped Mole stays a shallow helper.
+- Together these keep a free Mole from being a cheap deep miner: a crafted Mole is a capped Mole, a shallow helper, and the chassis above it come only from wrecks.
 
 ### Movement
 
