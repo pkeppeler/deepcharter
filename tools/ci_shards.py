@@ -1,12 +1,11 @@
 """The shard partitions CI computes, mirrored from gradle/gametest.gradle.kts (`GametestScan.shardOf`, `campaignUnits` and the scan's
-class lists), so a test can say how loaded each CI job is without running Gradle. test_ci_budget.py uses it; the Gradle selection
-itself is tested in client_filter_gate_check.py and server_shard_gate_check.py, and test_ci_budget.py's mirror test compares the two
-on the real tree when Gradle's generated list exists."""
+class lists), so a tool or test can say how loaded each CI job is without running Gradle: ci_affected.py sizes the PR tier's shard
+counts with it, and test_ci_budget.py checks the full tier's. The Gradle selection itself is tested in client_filter_gate_check.py
+and server_shard_gate_check.py, which also check that this mirror picks the same shards on the real tree."""
 import re
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
-JAVA = REPO / "src/gametest/java"
+REPO = Path(__file__).resolve().parents[1]
 DEFAULT_CLIENT_WEIGHT = 10
 DEFAULT_SERVER_WEIGHT = 6
 
@@ -39,15 +38,16 @@ def weight_of(name: str, weights: dict[str, int], default: int) -> int:
     return weights.get(name, weights.get(simple, fallback))
 
 
-def scan() -> tuple[list[str], list[str], dict[str, set[str]]]:
+def scan(root: Path = REPO) -> tuple[list[str], list[str], dict[str, set[str]]]:
     """(server classes, client classes, server class to the campaign environments it names), fully qualified."""
-    files = sorted(JAVA.rglob("*.java"))
+    java = root / "src/gametest/java"
+    files = sorted(java.rglob("*.java"))
     environments = {
         m[1] for f in files if f.name == "CampaignEnvironments.java" for m in _ENVIRONMENT_NAME.finditer(f.read_text())
     }
     server, client, named = [], [], {}
     for source in files:
-        name = ".".join(source.relative_to(JAVA).with_suffix("").parts)
+        name = ".".join(source.relative_to(java).with_suffix("").parts)
         text = _LITERALS_AND_COMMENTS.sub(lambda m: " " if m[0].startswith("/") else '""', source.read_text())
         if _ABSTRACT.search(text):
             continue
@@ -93,10 +93,10 @@ def loads(parts: list[list[str]], weights: dict[str, int], default: int) -> list
     return [sum(weight_of(c, weights, default) for c in part) for part in parts]
 
 
-def budgets() -> dict[str, float]:
+def budgets(root: Path = REPO) -> dict[str, float]:
     """gradle/ci-budget.txt: `<name> <number>` lines."""
     found = {}
-    for raw in (REPO / "gradle/ci-budget.txt").read_text().splitlines():
+    for raw in (root / "gradle/ci-budget.txt").read_text().splitlines():
         line = raw.split("#")[0].strip()
         if line:
             name, number = line.split()

@@ -131,7 +131,7 @@ run() {
   : >"$STUB_CURL"
   rm -rf "$work/.gradle"
   mkdir -p "$work/.gradle/configuration-cache" # an entry from an earlier step
-  rm -rf "$GRADLE_USER_HOME/init.d"
+  rm -rf "$GRADLE_USER_HOME/init.d" "$GRADLE_USER_HOME/gradle.properties"
   mkdir -p "$GRADLE_USER_HOME/caches/modules-2"
   local status=0
   (cd "$work" && bash "$tools/ci-gradle-resolve.sh" "$@" >"$work/out" 2>&1) || status=$?
@@ -204,6 +204,10 @@ check "not on GitHub Actions: no init script is installed" "no" \
   "$(run ok >/dev/null; [[ -e $work/home/init.d ]] && echo yes || echo no)"
 check "on GitHub Actions: the mirror init script is installed unchanged" "same" \
   "$(ACTIONS=true run ok >/dev/null; cmp -s "$tools/../gradle/$init_script" "$work/home/init.d/$init_script" && echo same || echo differs)"
+check "not on GitHub Actions: the build cache stays off" "no" \
+  "$(run ok >/dev/null; [[ -e $work/home/gradle.properties ]] && echo yes || echo no)"
+check "on GitHub Actions: the build cache is on, once however many calls" "1" \
+  "$(ACTIONS=true run ok >/dev/null; ACTIONS=true run ok >/dev/null; grep -cxF 'org.gradle.caching=true' "$work/home/gradle.properties")"
 check "on GitHub Actions: the probe asks the mirror too" \
   "$portal/$marker;$central/$marker;$mirror/$marker" "$(ACTIONS=true run 'plugin ok' >/dev/null; paste -sd ';' "$work/curl")"
 check "on GitHub Actions, no artifact named: the probe asks a known-good URL on the mirror too" "yes" \
