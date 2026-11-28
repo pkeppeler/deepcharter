@@ -12,8 +12,8 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Client GameTest for the pod screen on the inventory key (#1537): a seated pilot presses the inventory key and sees the
- * pod screen, as a rider sees a horse's; the same key closes it; and on foot the key still opens the player's own
+ * Client GameTest for the pod screen on the inventory key (#1537): a seated pilot presses the inventory key and sees
+ * the pod screen, as a rider sees a horse's; the same key closes it; and on foot the key still opens the player's own
  * inventory.
  */
 public class PodScreenKeyClientTest implements FabricClientGameTest {
