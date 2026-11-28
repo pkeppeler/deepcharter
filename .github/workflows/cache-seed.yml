@@ -57,6 +57,13 @@ jobs:
       # Restores main's previous entry, so a broken one would otherwise stay broken (#830); also retries a
       # repository or an asset download that fails to answer (#1358, #1703).
       - run: tools/ci-gradle-resolve.sh classes downloadAssets
+      - name: Loom assets fetched
+        env:
+          ASSETS: ${{ steps.assets.outputs.path }}
+          RESTORED: ${{ steps.assets.outputs.objects }}
+        run: |
+          objects=$(find "$ASSETS/objects" -type f 2>/dev/null | wc -l)
+          echo "::notice title=Loom assets::downloadAssets fetched $((objects - RESTORED)) objects from Mojang ($RESTORED restored from the cache, $objects on disk)"
       # A hit saves nothing: the key is the Minecraft version, and its asset set does not change.
       - name: Save the Loom assets
         if: steps.assets.outputs.cache-hit != 'true'
