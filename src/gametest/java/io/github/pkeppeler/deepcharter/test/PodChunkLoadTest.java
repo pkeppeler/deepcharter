@@ -47,8 +47,10 @@ public class PodChunkLoadTest {
     private static final int BUILD_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
     /**
-     * The first site's chunk. A site and its eight neighbours are 48 x 48 columns that nothing else may load or hold (the test fails when
-     * a neighbour is loaded), so they are claimed in TestSiteTable, away from every test that forces chunks (#1694: RetainedOnFootTest's
+     * The first site's chunk. A site and its eight neighbours are 48 x 48 columns that nothing else may load or hold
+     * (the test fails when
+     * a neighbour is loaded), so they are claimed in TestSiteTable, away from every test that forces chunks (#1694:
+     * RetainedOnFootTest's
      * tickets at 7424 loaded the neighbours of the sites that stood there).
      */
     private static final int FIRST_CHUNK_X = 3500;
