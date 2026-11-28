@@ -573,11 +573,14 @@ def lamp_out():
     return dsp.normalize(dsp.Clip(out, list(out)), 0.6)
 
 
-def _buzz(freqs, detune, length, chop, drive, floor):
+MINOR_SECOND = 1.0595  # the ratio of a semitone: two saws this far apart grate
+
+
+def _buzz(freqs, length, chop, drive, floor):
     """One alarm pulse: two detuned saws a minor second apart (they grate), chopped by a square `chop` Hz, then driven hard and thinned of its lows."""
     count = dsp.seconds(length)
     voices = []
-    for ratio in (1.0, detune):
+    for ratio in (1.0, MINOR_SECOND):
         phases = dsp.phase_of([f * ratio for f in freqs])
         voices.append([(p / dsp.TAU) % 1.0 * 2 - 1 for p in phases])
     gate = [0.45 + 0.55 * (1.0 if v > 0 else 0.0) for v in dsp.sine(count, chop)]
@@ -588,7 +591,7 @@ def _buzz(freqs, detune, length, chop, drive, floor):
 
 def fuel_low():
     """The low-fuel alarm (#1597): one short, grating buzzer pulse. Steady pitch, at the pace of the slow beep."""
-    pulse = _buzz([415.0] * dsp.seconds(0.3), 1.0595, 0.3, 48, 5, 220)
+    pulse = _buzz([415.0] * dsp.seconds(0.3), 0.3, 48, 5, 220)
     return dsp.normalize(dsp.widen(pulse, 4), 0.8)
 
 
@@ -597,7 +600,7 @@ def fuel_critical():
     count = dsp.seconds(0.46)
     half = count // 2
     freqs = [880.0] * half + [660.0] * (count - half)
-    pulse = _buzz(freqs, 1.0595, 0.46, 90, 9, 300)
+    pulse = _buzz(freqs, 0.46, 90, 9, 300)
     return dsp.normalize(dsp.widen(pulse, 4), 0.98)
 
 
