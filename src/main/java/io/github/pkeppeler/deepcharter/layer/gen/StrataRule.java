@@ -258,8 +258,8 @@ public record StrataRule(
     }
 
     /**
-     * Whether row {@code above} over a sharp contact, 0 for the contact's own row, is in its thin bed of the lower rock.
-     * {@code RockTint} draws a tint-only sharp contact with the same bed.
+     * Whether row {@code above} over a sharp contact, 0 for the contact's own row, is in its thin bed of the lower
+     * rock. {@code RockTint} draws a tint-only sharp contact with the same bed.
      */
     public static boolean inBed(int above) {
         return above >= ON_CONTACT && above < ON_CONTACT + BED_ROWS;

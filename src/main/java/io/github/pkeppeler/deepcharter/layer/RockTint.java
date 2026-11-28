@@ -117,9 +117,9 @@ public final class RockTint {
     }
 
     /**
-     * The tint of every layer that has one, top first, layer 1 at index 0. Layer 1's contacts are its strata rule's ({@code
-     * claim_strata.json}, a test holds them equal); layers 2 and 3 have one rock each and their contacts lie on their
-     * zones' edges, so layer 3's interbedding falls across the rock shelf between its top two halls.
+     * The tint of every layer that has one, top first, layer 1 at index 0. Layer 1's contacts are its strata rule's
+     * ({@code claim_strata.json}, a test holds them equal); layers 2 and 3 have one rock each and their contacts lie on
+     * their zones' edges, so layer 3's interbedding falls across the rock shelf between its top two halls.
      */
     private static final List<Profile> PROFILES = List.of(
             new Profile(
