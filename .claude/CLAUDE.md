@@ -8,6 +8,12 @@ This file holds only what is specific to Deep Charter. Where it conflicts with t
 - **Every PR, doc-only included, gets the full pipeline** (CI green, reviewer, simplifier, reviewer cycle 2). This overrides the profile's doc-only shortcut.
 - **Not used here:** there is no `tools/gate.conf`, and verification uses GameTests, mcpfabric and the evidence rules below, not a `verify-<app>` skill. The profile's never-block (`docs/BLOCKERS.md`, `stage:blocked`) and decision-log rules apply.
 - **A `gameplay` PR also gets `player-experience-reviewer`**, beside `reviewer` in cycle 1 and cycle 2, with its Critical and Warning findings fixed. After its cycle-2 PASS the orchestrator adds the `px-reviewed` label; `tools/mark-review-passed.sh` and the merge gate refuse a `gameplay` PR without it (PRs numbered below `PX_REVIEW_FIRST_PR` in `tools/lib/pr-body-checks.sh` are exempt). The label is not pinned to a sha: cycle 2 re-judges after any push. `/refresh-player-experience` keeps the checklist current from `playtest-feedback` issues.
+- **Each implementation task runs in its own cloud session**, not a local subagent: local agents share one Gradle slot.
+  - Start one with `create_session` in the `deepcharter` environment for each issue or agreed bundle. Its prompt is the structured handoff: the issue numbers, the branch named from the first, one PR that closes them all, and no reviewing or merging.
+  - Review fixes go back to the session that built the PR, with `send_message`.
+  - Reviewers, the simplifier and merges stay with the orchestrator.
+  - Track each session through its PR and `get_session`, not by waiting for a reply.
+  - Without `create_session` (a session on the user's machine), use local implementers.
 - **Code, test, evidence-scenario or tool work loads the `deepcharter-conventions` skill first.** It holds the M2 rules and the toolchain commands.
 - Settled decisions are in [docs/SPEC.md](../docs/SPEC.md).
 
