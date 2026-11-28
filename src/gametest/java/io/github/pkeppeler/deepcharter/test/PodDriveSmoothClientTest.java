@@ -35,10 +35,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The drives over flat ground, up a climb and into a wall,
- * under a jittery network, are {@link PodDriveSmoothDrivesClientTest}'s (a class of their own, so neither outruns a CI shard, #1574).
+ * Client GameTest for #961: a pod drives as smoothly on a client as a boat. The drives over flat ground, up a climb
+ * and into a wall,
+ * under a jittery network, are {@link PodDriveSmoothDrivesClientTest}'s (a class of their own, so neither outruns a
+ * CI shard, #1574).
  *
- * <p>This class covers what a server does to a pod besides driving it (ADR 0082): a push, a teleport behind a coasting pod or one still
+ * <p>This class covers what a server does to a pod besides driving it (ADR 0082): a push, a teleport behind a
+ * coasting pod or one still
  * being driven, a pin while the server reports a speed, and a coast at a thin wall; and the two late-server drives where the pod
  * meets a block, a 6-tick stall across the arrival at a wall and a 5-tick stall across a landing from 10 blocks (never drawn inside
  * a block, never below the ground). The other late-server drives are {@link PodDriveLateClientTest}'s.

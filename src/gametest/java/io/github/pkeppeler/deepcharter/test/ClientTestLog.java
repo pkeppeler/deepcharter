@@ -8,7 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Names each client GameTest in the log when it starts, starts its wall-clock limit ({@link ClientTestWatchdog}), arms {@link WorldBeforeItems} and, when asked, records the
+ * Names each client GameTest in the log when it starts, starts its wall-clock limit ({@link ClientTestWatchdog}),
+ * arms {@link WorldBeforeItems} and, when asked, records the
  * heap ({@link HeapHistogram}). Fabric's
  * client GameTest runner logs nothing between tests, so a stalled CI run (issue 175) could not say which test it stalled in.
  * Every {@code runTest} calls this first. It also turns the pilot's chase camera ({@code PodChase}) off, because a test

@@ -26,7 +26,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 
 /**
- * Client GameTests for #858 (ADR 0069), in two classes, {@link HandBreakClientTest} and {@link HandBreakIronClientTest}, so that neither outruns a CI shard (#1574): the real client mines pod-only crust as the attack button does, and the client
+ * Client GameTests for #858 (ADR 0069), in two classes, {@link HandBreakClientTest} and {@link
+ * HandBreakIronClientTest}, so that neither outruns a CI shard (#1574): the real client mines pod-only crust as the
+ * attack button does, and the client
  * and the server agree. A diamond pick breaks the block on both sides, with no ghost break and no block that comes
  * back, and so does an iron pick, which the block destroys as it goes; a bare hand breaks it on neither, however long
  * it swings.
@@ -45,8 +47,10 @@ abstract class HandBreakCases implements FabricClientGameTest {
     static final int SETTLE_TICKS = 40;
 
     /**
-     * What each concrete class's {@code runTest} runs after {@code ClientTestLog.start(this)}: the call stays in the concrete class, which the
-     * log lint reads, and this base is a client test in the scan's eyes (so its code is judged by the client gates, not the server ones).
+     * What each concrete class's {@code runTest} runs after {@code ClientTestLog.start(this)}: the call stays in the
+     * concrete class, which the
+     * log lint reads, and this base is a client test in the scan's eyes (so its code is judged by the client gates,
+     * not the server ones).
      */
     final void runCases(ClientGameTestContext context) {
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {

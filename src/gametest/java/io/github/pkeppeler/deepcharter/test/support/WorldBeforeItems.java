@@ -4,10 +4,14 @@ import net.minecraft.client.Minecraft;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Fails a client GameTest class that reads an item's components before the class has joined a world. Item components are bound only once
- * a world has loaded ("Components not bound yet", #1124), and the client JVM keeps them bound afterwards, so a class with no world of its
- * own passes behind a class that joined one and fails when sharding puts it first (#1574). {@code ClientTestLog.start} calls
- * {@link #begin}; {@code WorldBeforeItemsMixin} calls {@link #check} on every {@code Holder.Reference.components()} on the client thread, when test code is on the stack. Once the
+ * Fails a client GameTest class that reads an item's components before the class has joined a world. Item components
+ * are bound only once
+ * a world has loaded ("Components not bound yet", #1124), and the client JVM keeps them bound afterwards, so a class
+ * with no world of its
+ * own passes behind a class that joined one and fails when sharding puts it first (#1574). {@code
+ * ClientTestLog.start} calls
+ * {@link #begin}; {@code WorldBeforeItemsMixin} calls {@link #check} on every {@code Holder.Reference.components()}
+ * on the client thread, when test code is on the stack. Once the
  * client has a level the class is clear for good, so a class that joins a world first is never slowed or stopped.
  */
 public final class WorldBeforeItems {
@@ -43,7 +47,8 @@ public final class WorldBeforeItems {
     }
 
     /**
-     * Whether a test class's code is on the stack. Loading a world binds the components, and reads them on this thread while the client
+     * Whether a test class's code is on the stack. Loading a world binds the components, and reads them on this
+     * thread while the client
      * has no level yet, with no test frame in between (the test only waits for it); a test's own draw or stack has one.
      */
     private static boolean calledFromTestCode() {

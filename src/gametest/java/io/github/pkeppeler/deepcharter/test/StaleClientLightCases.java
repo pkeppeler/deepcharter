@@ -47,22 +47,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client GameTest for #427: can a real player be left with a client light that differs from the server's? Each case places blocks as the
- * mod does, with a real client in range or arriving, waits until the server's light engine is idle, and compares the light the client
- * reads with the server's ({@link ClientLight}). Nothing in the test sends light: a mismatch is a light the client keeps. The cases run
- * as four classes, each in a world of its own, because the whole took about 290 s, longer than one CI shard may (#1574): {@link
+ * Client GameTest for #427: can a real player be left with a client light that differs from the server's? Each case
+ * places blocks as the
+ * mod does, with a real client in range or arriving, waits until the server's light engine is idle, and compares the
+ * light the client
+ * reads with the server's ({@link ClientLight}). Nothing in the test sends light: a mismatch is a light the client
+ * keeps. The cases run
+ * as four classes, each in a world of its own, because the whole took about 290 s, longer than one CI shard may
+ * (#1574): {@link
  * StaleClientLightClientTest} and the three {@code StaleClientLightTrials*ClientTest}.
  */
 abstract class StaleClientLightCases implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(StaleClientLightCases.class);
     private static final int RADIUS = 4;
     private static final int HEIGHT = 4;
-    /** Far enough from the colony and the player that no chunk of the room is in the client's view before the test sends it. */
+    /** Far enough from the colony and the player that no chunk of the room is in the client's view before the test
+     * sends it. */
     private static final int FAR = 1_600;
     /** The first spacing cell of the layer structures this test draws, far from the colony's Conduit. */
     private static final int CELL = 3;
     /**
-     * How many times a path that races the light engine is tried. The light engine works off the server thread, so whether a chunk is sent
+     * How many times a path that races the light engine is tried. The light engine works off the server thread, so
+     * whether a chunk is sent
      * while its light is pending depends on timing: one try can pass by luck.
      */
     private static final int TRIALS = 6;
@@ -81,7 +87,8 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
     /** The cases this class runs, once the world has its player and its colony. */
     abstract void cases(ClientGameTestContext context, TestServerContext server);
 
-    /** The cases that visit the overworld, the campaign level and the colony: the part of the suite before the layer trials. */
+    /** The cases that visit the overworld, the campaign level and the colony: the part of the suite before the layer
+     * trials. */
     final void overworldCases(ClientGameTestContext context, TestServerContext server) {
         carveInRange(context, server);
         digIntoSealedRoom(context, server);
@@ -93,7 +100,8 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
     }
 
     /**
-     * Part {@code part} (0 to {@link #TRIAL_PARTS} - 1) of the {@link #TRIALS} layer-structure trials, a pair of layers each; the
+     * Part {@code part} (0 to {@link #TRIAL_PARTS} - 1) of the {@link #TRIALS} layer-structure trials, a pair of
+     * layers each; the
      * classes of the parts together run every trial once.
      */
     final void layerTrials(ClientGameTestContext context, TestServerContext server, int part) {
@@ -111,8 +119,10 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
     }
 
     /**
-     * What each concrete class's {@code runTest} runs after {@code ClientTestLog.start(this)}: the call stays in the concrete class, which the
-     * log lint reads, and this base is a client test in the scan's eyes (so its code is judged by the client gates, not the server ones).
+     * What each concrete class's {@code runTest} runs after {@code ClientTestLog.start(this)}: the call stays in the
+     * concrete class, which the
+     * log lint reads, and this base is a client test in the scan's eyes (so its code is judged by the client gates,
+     * not the server ones).
      */
     final void runCases(ClientGameTestContext context) {
         // Long by design: a tall campaign level. A loaded runner stretches a class past what it takes alone.
@@ -144,7 +154,8 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
 
     // ---------------------------------------------------------------------------------------------- the cases
 
-    /** A sealed room is carved with {@code setBlock}, as a breach pocket or {@code RoomCarver} does, while the player stands in range of it. */
+    /** A sealed room is carved with {@code setBlock}, as a breach pocket or {@code RoomCarver} does, while the player
+     * stands in range of it. */
     private void carveInRange(ClientGameTestContext context, TestServerContext server) {
         BlockPos floor = server.computeOnServer(
                 s -> surface(s.overworld(), player(s).blockPosition().offset(30, 0, 0)));
@@ -158,7 +169,8 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
                 room(floor));
     }
 
-    /** A player digs the roof of a sealed room: ordinary block updates; the client must read the sky light that falls in. */
+    /** A player digs the roof of a sealed room: ordinary block updates; the client must read the sky light that falls
+     * in. */
     private void digIntoSealedRoom(ClientGameTestContext context, TestServerContext server) {
         BlockPos floor = server.computeOnServer(
                 s -> surface(s.overworld(), player(s).blockPosition().offset(-30, 0, 0)));
@@ -183,7 +195,8 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
     }
 
     /**
-     * A room is carved in chunks the client has not been sent, and the player arrives in the same tick or after the light has settled: the
+     * A room is carved in chunks the client has not been sent, and the player arrives in the same tick or after the
+     * light has settled: the
      * breach does the first (it carves the pocket and teleports the entity in one tick).
      */
     private void carveThenArrive(ClientGameTestContext context, TestServerContext server, boolean sameTick) {
@@ -240,7 +253,8 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
     }
 
     /**
-     * The player leaves the overworld for layer 1 of the campaign level and the cases after it bring them back: the client then has the
+     * The player leaves the overworld for layer 1 of the campaign level and the cases after it bring them back: the
+     * client then has the
      * overworld's chunks sent again, as the breach crossings this test made before they were in place did.
      */
     private void visitTheCampaignLevel(ClientGameTestContext context, TestServerContext server) {
@@ -255,8 +269,10 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
     }
 
     /**
-     * The piece of the colony that the player stands in is wiped and placed again from its structure file, as {@code ColonyBuilder} places
-     * its pieces, with the player in the colony. (The build runs when the server starts, before any player is in range; this is the
+     * The piece of the colony that the player stands in is wiped and placed again from its structure file, as {@code
+     * ColonyBuilder} places
+     * its pieces, with the player in the colony. (The build runs when the server starts, before any player is in
+     * range; this is the
      * same placement with one in range.)
      */
     private void colonyPieceReplaced(ClientGameTestContext context, TestServerContext server) {
@@ -335,8 +351,10 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
     }
 
     /**
-     * The player arrives in a layer next to a cell whose chunks are not generated: each chunk draws its structures when it loads
-     * ({@code LayerStructures}), with lit candles and the Prospector wreck's lights, while the client is sent the chunk.
+     * The player arrives in a layer next to a cell whose chunks are not generated: each chunk draws its structures
+     * when it loads
+     * ({@code LayerStructures}), with lit candles and the Prospector wreck's lights, while the client is sent the
+     * chunk.
      */
     private void layerStructuresOnArrival(
             ClientGameTestContext context, TestServerContext server, int layer, int cell) {
@@ -400,9 +418,12 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
     }
 
     /**
-     * Waits until the client is in {@code dimension} with no screen open (the loading screen of a level change is one), holds the chunks
-     * of {@code box} and has rendered them, the server holds those chunks as sendable (full, light done), its light engine is idle and its
-     * ticks are back under the 50 ms budget. Never waits on the two sides' light agreeing: that is what the comparison after it checks.
+     * Waits until the client is in {@code dimension} with no screen open (the loading screen of a level change is
+     * one), holds the chunks
+     * of {@code box} and has rendered them, the server holds those chunks as sendable (full, light done), its light
+     * engine is idle and its
+     * ticks are back under the 50 ms budget. Never waits on the two sides' light agreeing: that is what the
+     * comparison after it checks.
      */
     private static void quiet(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, Box box) {
@@ -420,7 +441,8 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
                                 + " server behind");
     }
 
-    /** Moves the player to {@code at} in {@code dimension} and waits until the client has the chunk, so the player is in range. */
+    /** Moves the player to {@code at} in {@code dimension} and waits until the client has the chunk, so the player is
+     * in range. */
     private static void arrive(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, BlockPos at) {
         server.runOnServer(s -> teleport(s, ClientLight.serverLevel(s, dimension), at));
@@ -445,7 +467,8 @@ abstract class StaleClientLightCases implements FabricClientGameTest {
                 near.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING, near.getX(), near.getZ()), near.getZ());
     }
 
-    /** A stone shell with air in it, written block by block with notification, as a breach pocket and the tour's dark room are. */
+    /** A stone shell with air in it, written block by block with notification, as a breach pocket and the tour's dark
+     * room are. */
     private static void carveRoom(ServerLevel level, BlockPos floor) {
         for (int dx = -RADIUS - 1; dx <= RADIUS + 1; dx++) {
             for (int dz = -RADIUS - 1; dz <= RADIUS + 1; dz++) {
