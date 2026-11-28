@@ -133,11 +133,30 @@ class ShardsFitTheBudgetTest(unittest.TestCase):
             self.assertIn("job-start: ${{ env.JOB_START }}", text, workflow)
             self.assertIn('echo "JOB_START=$(date +%s)" >> "$GITHUB_ENV"', text, workflow)
         # And it does not end a shard that would still finish inside the worst-job seconds on a slow runner: the job's setup, start-up
-        # and the budget's tests, all slower by the factor, fit the deadline.
+        # and the budget's tests, all slower by the factor, fit the deadline with the margin to spare (#1695).
         slow_job = (self.budget["client-overhead-seconds"] + self.budget["client-shard-seconds"]) * self.budget["slow-runner-factor"]
-        self.assertGreaterEqual(deadline, slow_job)
+        margin = self.budget["client-deadline-margin-seconds"]
+        self.assertLessEqual(
+            slow_job + margin,
+            deadline,
+            f"a full client shard on a slow runner takes {slow_job:.0f} s, not {margin:.0f} s under the {deadline} s deadline: lower"
+            " client-shard-seconds and raise CLIENT_SHARDS (#1695)",
+        )
         # At the measured speed (1.0x) a full shard leaves at least 30 s of the limit.
         self.assertLessEqual(self.budget["client-overhead-seconds"] + self.budget["client-shard-seconds"] + 30, limit)
+
+    def test_the_client_overhead_is_the_measured_one(self):
+        # gradle/client-overhead.txt is generated from job logs with the weights (tools/client_weights.py). The budget's overhead is at
+        # least the typical shard's, and the slow-runner factor covers the slow tail: a hand-picked 80 s let shards run out of time when
+        # the measured median was 84 s (#1695).
+        measured = shards.parse_weights(REPO / "gradle/client-overhead.txt")
+        overhead, factor = self.budget["client-overhead-seconds"], self.budget["slow-runner-factor"]
+        self.assertGreaterEqual(overhead, measured["p50"], f"client-overhead-seconds is under the measured p50 of {measured['p50']} s")
+        self.assertGreaterEqual(
+            overhead * factor,
+            measured["p90"],
+            f"client-overhead-seconds at the slow-runner factor is under the measured p90 of {measured['p90']} s",
+        )
 
     def test_no_client_class_outweighs_a_client_shard(self):
         budget = self.budget["client-shard-seconds"]

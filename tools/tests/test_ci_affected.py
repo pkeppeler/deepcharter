@@ -108,7 +108,7 @@ class MappingTest(unittest.TestCase):
         self.assertEqual(("0", "0"), (result["server-count"], result["client-count"]))
 
     def test_docs_tools_and_weights_run_no_game_test(self):
-        for path in ("docs/design/a.md", "README.md", "tools/merge-pr.sh", ".claude/CLAUDE.md", "gradle/client-test-weights.txt", "gradle/ci-budget.txt"):
+        for path in ("docs/design/a.md", "README.md", "tools/merge-pr.sh", ".claude/CLAUDE.md", "gradle/client-test-weights.txt", "gradle/client-overhead.txt", "gradle/ci-budget.txt"):
             with self.subTest(path):
                 result = plan([path])
                 self.assertEqual(("false", "false", "0", "0"), (result["server-full"], result["client-full"], result["server-count"], result["client-count"]))

@@ -152,9 +152,9 @@ runs:
         deadline=$((SECONDS + 120))
         # The job stops at 5 minutes with no message, so the run ends first, with one. Its deadline counts from the job's start
         # (JOB_START, the first step's `date +%s`), not from this step's: the setup before the step (checkout, download, Gradle
-        # cache, apt) takes 60 to 150 s and is not ours to bound. job_deadline leaves 30 s of the 300 for the post steps and the
-        # runner's own teardown (tools/tests/test_ci_budget.py ties it to gradle/ci-budget.txt). Within it the step runs Gradle
-        # (about 17 s), Minecraft (about 25 s) and the shard's tests, at most the budget's seconds by weight.
+        # cache, apt) took 20 to 76 s over 374 shard jobs (#1695) and is not ours to bound. job_deadline leaves 30 s of the 300 for
+        # the post steps and the runner's own teardown (tools/tests/test_ci_budget.py ties it to gradle/ci-budget.txt). Within it the
+        # step runs Gradle (about 23 s), Minecraft (about 18 s) and the shard's tests, at most the budget's seconds by weight.
         # The whole-suite branch (no client-shard) is record-evidence.yml's one scenario: the same limit.
         job_deadline=270
         setup_seconds=$(( $(date +%s) - JOB_START ))

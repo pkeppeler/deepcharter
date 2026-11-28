@@ -69,6 +69,29 @@ class WeightsTest(unittest.TestCase):
         self.assertEqual(client_weights.weights([{"AlphaClientTest": 0.0, "BetaClientTest": 90.0}])["AlphaClientTest"], 1)
 
 
+class OverheadTest(unittest.TestCase):
+    # 2026-11-27T17:00:00Z as the epoch seconds a job's first step records.
+    JOB_START = 1795798800
+
+    def test_the_overhead_runs_from_the_jobs_start_to_the_first_class(self):
+        log = "\n".join(["\ufeff" + stamp(1) + " Set up job", f"{stamp(2)}   JOB_START: {self.JOB_START}", shard_log()])
+        self.assertEqual(client_weights.overhead_seconds(log), 10.5)
+
+    def test_a_log_without_the_jobs_start_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "JOB_START"):
+            client_weights.overhead_seconds(shard_log())
+
+    def test_the_distribution_is_by_nearest_rank_rounded_up(self):
+        found = client_weights.overhead([float(s) for s in range(1, 11)] + [99.2])
+        self.assertEqual(found, {"jobs": 11, "p50": 6, "p90": 10, "max": 100})
+
+    def test_the_file_names_every_run_and_holds_one_number_a_line(self):
+        text = client_weights.render_overhead({"jobs": 3, "p50": 80, "p90": 99, "max": 120}, ["111 (aaaa)", "222 (bbbb)"])
+        self.assertIn("111 (aaaa) and 222 (bbbb)", text)
+        entries = [line for line in text.splitlines() if not line.startswith("#")]
+        self.assertEqual(entries, ["jobs 3", "p50 80", "p90 99", "max 120"])
+
+
 class RenderTest(unittest.TestCase):
     def test_the_file_names_every_run_and_lists_the_classes_in_order(self):
         text = client_weights.render({"BetaClientTest": 45, "AlphaClientTest": 30}, ["111 (aaaa)", "222 (bbbb)"])
