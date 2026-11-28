@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.client.hangar;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
+import io.github.pkeppeler.deepcharter.client.ui.AboutTip;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
@@ -16,6 +17,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -125,37 +127,43 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
         int upperY = lowerY - GAP - BUTTON_HEIGHT;
         int rightX = left + HALF_WIDTH + GAP;
         addRenderableWidget(new CrtButton(
-                left,
-                upperY,
-                HALF_WIDTH,
-                BUTTON_HEIGHT,
-                Component.translatable("screen.deepcharter.hangar.assemble"),
-                button -> send(HangarTerminal.ASSEMBLE_MOLE)));
+                        left,
+                        upperY,
+                        HALF_WIDTH,
+                        BUTTON_HEIGHT,
+                        Component.translatable("screen.deepcharter.hangar.assemble"),
+                        button -> send(HangarTerminal.ASSEMBLE_MOLE))
+                .about(TerminalWares.about(HangarTerminal.TYPE, HangarTerminal.ware(HangarTerminal.ASSEMBLE_MOLE))));
         // The wreck the server restores or scraps is the nearest one, so the lines under the buttons name the price of
         // each chassis.
         addRenderableWidget(new CrtButton(
-                rightX,
-                upperY,
-                HALF_WIDTH,
-                BUTTON_HEIGHT,
-                Component.translatable("screen.deepcharter.hangar.restore"),
-                button -> send(HangarTerminal.RESTORE_WRECK)));
+                        rightX,
+                        upperY,
+                        HALF_WIDTH,
+                        BUTTON_HEIGHT,
+                        Component.translatable("screen.deepcharter.hangar.restore"),
+                        button -> send(HangarTerminal.RESTORE_WRECK))
+                .about(TerminalWares.about(HangarTerminal.TYPE, HangarTerminal.ware(HangarTerminal.RESTORE_WRECK))));
         addRenderableWidget(new CrtButton(
-                left,
-                lowerY,
-                HALF_WIDTH,
-                BUTTON_HEIGHT,
-                Component.translatable("screen.deepcharter.hangar.scrap"),
-                button -> send(HangarTerminal.SCRAP_WRECK)));
+                        left,
+                        lowerY,
+                        HALF_WIDTH,
+                        BUTTON_HEIGHT,
+                        Component.translatable("screen.deepcharter.hangar.scrap"),
+                        button -> send(HangarTerminal.SCRAP_WRECK))
+                // Scrap pays nothing and costs nothing, so it is no ware; the row still says what it does.
+                .about(Component.translatable("screen.deepcharter.hangar.about.scrap_wreck")));
         addRenderableWidget(new CrtButton(
-                rightX,
-                lowerY,
-                HALF_WIDTH,
-                BUTTON_HEIGHT,
-                armed()
-                        ? Component.translatable("screen.deepcharter.hangar.write_off_confirm", tuning.writeOffCost())
-                        : Component.translatable("screen.deepcharter.hangar.write_off", tuning.writeOffCost()),
-                button -> send(HangarTerminal.WRITE_OFF)));
+                        rightX,
+                        lowerY,
+                        HALF_WIDTH,
+                        BUTTON_HEIGHT,
+                        armed()
+                                ? Component.translatable(
+                                        "screen.deepcharter.hangar.write_off_confirm", tuning.writeOffCost())
+                                : Component.translatable("screen.deepcharter.hangar.write_off", tuning.writeOffCost()),
+                        button -> send(HangarTerminal.WRITE_OFF))
+                .about(TerminalWares.about(HangarTerminal.TYPE, HangarTerminal.ware(HangarTerminal.WRITE_OFF))));
     }
 
     /** One sentence on where the player's one Mole stands, so a refused button has its reason on the screen. */
@@ -225,6 +233,37 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
         ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), action, new CompoundTag()));
     }
 
+    /** The content area, which a row's tip stays inside. */
+    public AboutTip.Bounds tipBounds() {
+        return new AboutTip.Bounds(
+                contentLeft(MARGIN),
+                contentTop(MARGIN),
+                contentRight(MARGIN),
+                contentBottom(MARGIN),
+                contentTop(MARGIN) + font.lineHeight + 14,
+                headerBottom() - font.lineHeight - GAP);
+    }
+
+    /**
+     * The readouts the tip must not cover: the account line, the price lines and the Mole's status (the write-off
+     * terms while it is armed), as they stand once the welcome has typed out.
+     */
+    public List<AboutTip.Rect> tipReadouts() {
+        List<AboutTip.Rect> readouts = new ArrayList<>();
+        readouts.add(new AboutTip.Rect(
+                contentLeft(MARGIN), headerBottom() - font.lineHeight, contentWidth(MARGIN), font.lineHeight));
+        for (PriceLine line : priceLines) {
+            readouts.add(AboutTip.Rect.ofText(font, line.text(), line.x(), line.y()));
+        }
+        for (PriceLine line : advanceLines) {
+            readouts.add(AboutTip.Rect.ofText(font, line.text(), line.x(), line.y()));
+        }
+        for (PriceLine line : moleLines) {
+            readouts.add(AboutTip.Rect.ofText(font, line.text(), line.x(), line.y()));
+        }
+        return readouts;
+    }
+
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         if (armedUntilMillis != 0 && !armed()) {
@@ -261,5 +300,6 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
             CrtDraw.glowText(graphics, font, line.text(), line.x(), line.y(), tuning.phosphorColor());
         }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        AboutTip.draw(graphics, font, this, tipBounds(), tipReadouts(), mouseX, mouseY);
     }
 }
