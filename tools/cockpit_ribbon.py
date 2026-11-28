@@ -57,14 +57,15 @@ TITLE_KEYS = {"fuel": "fuel", "hull": "hull", "cargo": "load", "depth": "depth",
 _LANG = json.loads((ROOT / "src/lang/en_us/pod.json").read_text(encoding="utf-8"))
 TITLES = {gauge: _LANG["hud.deepcharter.cockpit." + key] for gauge, key in TITLE_KEYS.items()}
 # The altimeter's recess at the band's middle. The room under it is the altimeter's (#1432 hangs the sink rate there), so no title takes it. It holds the longest reading,
-# "-12,345 ft.", drawn in the pixel digits (#1539) and centred, so the recess is that reading's width (LONGEST_READING_W, 37) and a pixel each side, rounded up to the even 38 + 2 = 40.
+# "-12,345 m", drawn in the pixel digits (#1539) and centred. It was sized for the feet reading "-12,345 ft." (37 wide and a pixel each side, made even: 40) and kept at 40
+# when depth went to metres (#1604), so the gauges round it stay where they are; the metres reading (31) sits in it with room to spare.
 RECESS_H, RECESS_Y = 7, 2
 # The altimeter's digits (#1539): a sheet of white glyphs the game tints, drawn at the HUD's pixel scale so they never smooth-scale. WIDE_GLYPHS are DIGIT_W wide and
 # come first in the sheet, then NARROW_GLYPHS, DIGIT_NARROW_W wide; a space is blank and as wide as a narrow glyph, so it takes no room in the sheet. The client reads the
 # same sizes from the theme (digitsW, digitsH, digitsGap, digitsNarrowW) and the glyph order from PixelDigits.
 DIGIT_W, DIGIT_H, DIGIT_GAP, DIGIT_NARROW_W = 3, 5, 1, 1
-LONGEST_READING = "-12,345 ft."
-WIDE_GLYPHS = "0123456789-ft"
+LONGEST_READING = "-12,345 m"
+WIDE_GLYPHS = "0123456789-m"
 NARROW_GLYPHS = ",."
 DIGITS_SHEET = ASSETS / "textures/gui/cockpit/digits.png"
 GLYPHS = {
@@ -79,8 +80,7 @@ GLYPHS = {
     "8": ("###", "#.#", "###", "#.#", "###"),
     "9": ("###", "#.#", "###", "..#", "###"),
     "-": ("...", "...", "###", "...", "..."),
-    "f": (".##", "#..", "##.", "#..", "#.."),
-    "t": (".#.", "###", ".#.", ".#.", ".##"),
+    "m": ("...", "#.#", "###", "#.#", "#.#"),
     ",": (".", ".", ".", "#", "#"),
     ".": (".", ".", ".", ".", "#"),
 }
@@ -243,8 +243,9 @@ def digits_width(text):
 
 
 LONGEST_READING_W = digits_width(LONGEST_READING)
-# A pixel each side, rounded up to an even width: the band is centred on the screen and its bars are even, so an odd recess would move them by a pixel on odd screens.
-RECESS_W = LONGEST_READING_W + 2 + LONGEST_READING_W % 2
+# Even: the band is centred on the screen and its bars are even, so an odd recess would move them by a pixel on odd screens. Fixed at the feet-era width (above).
+RECESS_W = 40
+assert RECESS_W % 2 == 0 and RECESS_W - LONGEST_READING_W >= 2, "the longest reading and a pixel each side fit the recess"
 
 
 def draw_digits(img, x, y, text, color):
@@ -618,7 +619,7 @@ def preview_look(look, state):
         img.blit(nine_slice(sprites["tab"].img, sprites["tab"].border, right - left, bottom - top), left, top)
         img.mask(ICONS[GAUGE_ICONS[name]], left + inset, top + inset, rgb(SHARED[name + "Color"]))
         img.text(left + inset + SHARED["iconWidth"] + SHARED["iconGap"], top + inset, TITLES[name], rgb(SHARED[name + "Color"]))
-    draw_digits(img, (SCREEN_W - digits_width("-1,234 ft.")) // 2, t[STYLE + "AltimeterY"], "-1,234 ft.", rgb("#FFFFFF"))
+    draw_digits(img, (SCREEN_W - digits_width("-1,234 m")) // 2, t[STYLE + "AltimeterY"], "-1,234 m", rgb("#FFFFFF"))
     width, height = plate_size(look, state)
     inset_left, inset_top, _, _ = plate_inset(look)
     plate = Placed(width, height, t[STYLE + "ReadoutAnchorX"], t[STYLE + "ReadoutAnchorY"], t[STYLE + "ReadoutX"], t[STYLE + "ReadoutY"])

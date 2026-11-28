@@ -358,6 +358,11 @@ public class ScannerDescentClientTest implements FabricClientGameTest {
                             .getString();
                     String labelled = Component.translatable("deepcharter.breach.altimeter", label.text())
                             .getString();
+                    // #1591: one block is a metre (#1604), so a label lands on a round number of metres.
+                    int metres = Integer.parseInt(label.text().replace(",", "").replace("-", ""));
+                    if (metres % ScannerLook.current().rulerLabelBlocks() != 0) {
+                        return Stream.of("the label '%s' is not a round number of metres".formatted(label.text()));
+                    }
                     return reading.equals(labelled)
                             ? Stream.<String>empty()
                             : Stream.of(

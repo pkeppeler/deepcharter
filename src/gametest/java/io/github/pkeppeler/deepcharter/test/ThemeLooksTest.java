@@ -626,26 +626,26 @@ public class ThemeLooksTest {
         if (PixelDigits.width("", digits) != 0 || PixelDigits.width("7", digits) != 3) {
             throw failure(helper, "no text is 0 wide and one digit is as wide as a digit");
         }
-        // "-1,2 f": the minus, the 1, the comma, the 2, a space, the f, each a gap apart.
-        List<PixelDigits.Cell> cells = PixelDigits.layout("-1,2 f", digits);
+        // "-1,2 m": the minus, the 1, the comma, the 2, a space, the m, each a gap apart.
+        List<PixelDigits.Cell> cells = PixelDigits.layout("-1,2 m", digits);
         List<PixelDigits.Cell> expected = List.of(
                 new PixelDigits.Cell(0, 10 * 3, 3),
                 new PixelDigits.Cell(4, 1 * 3, 3),
-                new PixelDigits.Cell(8, 13 * 3, 1),
+                new PixelDigits.Cell(8, 12 * 3, 1),
                 new PixelDigits.Cell(10, 2 * 3, 3),
                 new PixelDigits.Cell(16, 11 * 3, 3));
         if (!cells.equals(expected)) {
-            throw failure(helper, "\"-1,2 f\" is laid out as %s, not %s", cells, expected);
+            throw failure(helper, "\"-1,2 m\" is laid out as %s, not %s", cells, expected);
         }
-        if (PixelDigits.width("-1,2 f", digits) != 19) {
-            throw failure(helper, "\"-1,2 f\" is 19 wide, got %s", PixelDigits.width("-1,2 f", digits));
+        if (PixelDigits.width("-1,2 m", digits) != 19) {
+            throw failure(helper, "\"-1,2 m\" is 19 wide, got %s", PixelDigits.width("-1,2 m", digits));
         }
-        // The longest reading is 37 wide: 8 wide glyphs, 3 narrow ones and 10 gaps.
-        if (PixelDigits.width("-12,345 ft.", digits) != 37) {
-            throw failure(helper, "the longest reading is 37 wide, got %s", PixelDigits.width("-12,345 ft.", digits));
+        // The longest reading is 31 wide: 7 wide glyphs, 2 narrow ones and 8 gaps (#1604: metres).
+        if (!PixelDigits.LONGEST_READING.equals("-12,345 m") || PixelDigits.width("-12,345 m", digits) != 31) {
+            throw failure(helper, "the longest reading is -12,345 m, 31 wide, got %s", PixelDigits.LONGEST_READING);
         }
         try {
-            PixelDigits.layout("12 m", digits);
+            PixelDigits.layout("12 ft", digits);
             throw failure(helper, "a letter with no glyph must be refused, not drawn blank");
         } catch (IllegalArgumentException expectedRefusal) {
             // the refusal is the pass

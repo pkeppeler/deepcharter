@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Kind;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Line;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
@@ -211,7 +210,7 @@ public final class CockpitHud {
         return look.fits(guiWidth, guiHeight) ? Optional.of(look.ribbon()) : Optional.empty();
     }
 
-    /** Whether the cockpit's plate shows the text readout: the local player is the pilot of a pod and the Ribbon fits. The plain HUD's readout and account line stay quiet then. */
+    /** Whether the cockpit's plate shows the text readout: the local player is the pilot of a pod and the Ribbon fits. The plain HUD's readout stays quiet then. */
     public static boolean showsReadout(Minecraft client) {
         return showsReadout(
                 client,
@@ -671,7 +670,7 @@ public final class CockpitHud {
 
     /**
      * The rows of the plate: the tally on one row (hull, fuel and depth each in its gauge's colour after its gauge's icon, and the bay's ore count in the cargo colour
-     * after the {@link Icon#CART}), the account line, and under them every other line of the readout, so the numbers stay where they are as lines come and go.
+     * after the {@link Icon#CART}), and under it every other line of the readout, so the numbers stay where they are as lines come and go.
      */
     public static List<Row> rows(PodEntity pod, CockpitReading reading, CockpitLook look, List<Line> readout) {
         boolean fuelLow = PodFuel.isLow(pod.fuel());
@@ -700,9 +699,6 @@ public final class CockpitHud {
                                 Component.translatable("hud.deepcharter.pod.tally_depth", Math.round(pod.getY())),
                                 look.depthColor()),
                         Meter.DEPTH.icon())))));
-        AccountHud.text()
-                .ifPresent(
-                        text -> rows.add(Row.of(new Line(text, HudLook.current().accountColor()))));
         readout.stream().filter(line -> line.kind() != Kind.BASE).map(Row::of).forEach(rows::add);
         return rows;
     }

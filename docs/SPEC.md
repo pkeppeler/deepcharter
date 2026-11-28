@@ -382,7 +382,7 @@ Original lore with the original game's shape (a cheerful employer, vanishing min
 - Every change after the finale is presentation for that charter only, never a world edit.
 - **Transmissions** go to the whole charter. Most trigger at the charter's deepest point reached; the bootstrap repairs and the finale beats trigger on events.
 - A personal build could swap in the original's transmission text ([REFERENCE.md](../original_flash_game/REFERENCE.md)).
-- **Altimeter:** each layer has its own trick, presentation only ([LORE.md](LORE.md#11-layers)). "UNCHARTED" shows below the ramp.
+- **Altimeter:** depth reads in metres, one block to a metre, with the unit m: the cockpit altimeter, the scanner ruler, chat and terminals ([#1604](https://github.com/pkeppeler/deepcharter/issues/1604)). Each layer has its own trick, presentation only ([LORE.md](LORE.md#11-layers)). "UNCHARTED" shows below the ramp.
 
 ## 15. Presentation
 

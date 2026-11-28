@@ -12,7 +12,7 @@
   "message.deepcharter.towing.refused.not_allowed_to_tow": "That pod belongs to another charter, so you cannot hook a cable to it",
   "message.deepcharter.towing.refused.not_on_foot": "Get out of the pod, then right-click one pod and the other",
   "message.deepcharter.towing.refused.same_pod": "A pod cannot tow itself",
-  "message.deepcharter.towing.refused.too_far": "The pods must be within %s blocks of each other",
+  "message.deepcharter.towing.refused.too_far": "The pods must be within %s m of each other",
   "message.deepcharter.towing.refused.towed_tows": "That pod is towing a pod, so it cannot be towed",
   "message.deepcharter.towing.refused.tower_is_towed": "That pod is being towed, so it cannot tow",
   "message.deepcharter.towing.refused.tower_is_wreck": "A wreck cannot tow. Click the working pod first",

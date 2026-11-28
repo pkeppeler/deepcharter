@@ -546,7 +546,7 @@ a cell; the area grows with the tier up to tier 4. Source `client/scanner/Scanne
 
 ### Altimeter
 
-Top centre, always on while in a world: white vanilla text "46 ft." (depth in feet, negative below sea level), which jitters during a breach.
+Top centre, always on while in a world: white vanilla text "46 m" (depth in metres, one block to a metre, negative below sea level), which jitters during a breach.
 Source `layer/Altimeter.java`, `client/layer/BreachHud.java`. Visible in every HUD still. Vanilla: **no**.
 Swap **(c)** `BreachHud.java:27` (colour), `:36-43` (position).
 
@@ -554,8 +554,8 @@ Swap **(c)** `BreachHud.java:27` (colour), `:36-43` (position).
 
 ### Account HUD
 
-Left, at half height: the charter name and balance ("Design Tour Co.  $5000") in CRT green. Source `client/market/AccountHud.java`. It is in the
-pod HUD stills above. Vanilla: **no**. Swap **(c)** `AccountHud.java:41`.
+Left, at half height: the charter name and balance ("Design Tour Co.  $5000") in CRT green, in the same spot on foot and in the pilot's seat
+(#1642: it is no longer a row of the cockpit's plate). Source `client/market/AccountHud.java`. It is in the pod HUD stills above. Vanilla: **no**. Swap **(c)** `AccountHud.java:41`.
 
 ### Transmission overlay
 
