@@ -173,8 +173,8 @@ public final class OreProcessor {
 
     /**
      * The processor's view: the work orders, the ore in the cargo of the readable pods parked here that the player
-     * may use, and their spoil and slag brick beside the brick in the player's pack. Never throws on unreadable saved
-     * data.
+     * may use, and the slag brick in their racks beside the brick in the player's pack. Never throws on unreadable
+     * saved data.
      */
     public static ProcessorView view(
             MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
@@ -191,21 +191,18 @@ public final class OreProcessor {
         return new ProcessorView(WorkOrders.view(server, player, charter, pos), cargo, bricks(player, parked));
     }
 
-    /** The spoil and racked brick of the parked pods whose lining can be read, and the brick in the player's pack. */
+    /** The racked brick of the parked pods whose lining can be read, and the brick in the player's pack. */
     private static ProcessorView.Bricks bricks(ServerPlayer player, List<PodEntity> parked) {
-        int spoil = 0;
         int racked = 0;
         int rackSize = 0;
         for (PodEntity pod : parked) {
             Optional<PodLining.State> state = PodLining.readable(pod);
             if (state.isPresent()) {
-                spoil += state.get().spoil();
                 racked += state.get().bricks();
                 rackSize += PodLiningTuning.DEFAULT.brickCapacity();
             }
         }
-        return new ProcessorView.Bricks(
-                spoil, racked, rackSize, player.getInventory().countItem(SlagBrick.item()));
+        return new ProcessorView.Bricks(racked, rackSize, player.getInventory().countItem(SlagBrick.item()));
     }
 
     /** What the fuse does for one pod: the bricks it can make from the pod's spoil, and where each goes. */

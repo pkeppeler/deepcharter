@@ -777,8 +777,7 @@ public class OreProcessorTest {
                                 Charters.readableCharterOf(server, serverPlayer.getUUID()),
                                 processor)
                         .bricks();
-                ProcessorView.Bricks expected = new ProcessorView.Bricks(
-                        0, expectedRack, PodLiningTuning.DEFAULT.brickCapacity(), expectedCarried);
+                ProcessorView.Bricks expected = new ProcessorView.Bricks(expectedRack, PodLiningTuning.DEFAULT.brickCapacity(), expectedCarried);
                 if (!shown.equals(expected)) {
                     throw failure(
                             helper, "%s: the screen should show %s after the fuse, shows %s", what, expected, shown);

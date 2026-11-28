@@ -340,7 +340,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             TerminalView manyView = new TerminalView(
                     processor,
                     TerminalTypes.ORE_PROCESSOR.id(),
-                    Optional.of(new ProcessorView(many, List.of(), new ProcessorView.Bricks(0, 0, 0, 0))),
+                    Optional.of(new ProcessorView(many, List.of(), new ProcessorView.Bricks(0, 0, 0))),
                     List.of());
             for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                 context.setScreen(() -> new OreProcessorScreen(manyView));

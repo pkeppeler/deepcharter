@@ -195,7 +195,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                         Arrays.stream(OreType.values())
                                 .map(ore -> new ProcessorView.Hold(ore, 99999))
                                 .toList(),
-                        new ProcessorView.Bricks(999, 999, 999, 9999)));
+                        new ProcessorView.Bricks(999, 999, 9999)));
         return features;
     }
 

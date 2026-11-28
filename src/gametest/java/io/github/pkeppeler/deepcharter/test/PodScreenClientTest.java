@@ -235,6 +235,9 @@ public class PodScreenClientTest implements FabricClientGameTest {
         SlotClicks.click(context, screen, SlotClicks.inventorySlot(context, screen, Items.TORCH));
         SlotClicks.click(context, screen, offhand);
         awaitOffhand(context, singleplayer, TORCHES, "a click puts the torches in the offhand");
+        // A click elsewhere first: a shift-click on the slot just clicked is vanilla's shift-double-click, which moves
+        // every torch of the pack on into the hold.
+        SlotClicks.click(context, screen, SlotClicks.inventorySlot(context, screen, Items.AIR));
         SlotClicks.shiftClick(context, screen, offhand);
         awaitOffhand(context, singleplayer, 0, "a shift-click sends them back to the pack");
         SlotClicks.hover(context, screen, SlotClicks.inventorySlot(context, screen, Items.TORCH));

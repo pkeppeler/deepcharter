@@ -14,8 +14,7 @@ import net.minecraft.network.codec.StreamCodec;
  *
  * @param orders the work orders
  * @param cargo  the ore the readable pods the player may use hold between them, by ore in the enum's order; an ore none holds is absent
- * @param bricks the spoil and slag brick of those pods and the brick in the player's pack, which MAKE SLAG BRICK
- *               changes (#1649)
+ * @param bricks the slag brick in those pods' racks and in the player's pack, which MAKE SLAG BRICK changes (#1649)
  */
 public record ProcessorView(WorkOrdersView orders, List<Hold> cargo, Bricks bricks) implements TerminalFeature {
     public static final StreamCodec<ByteBuf, ProcessorView> STREAM_CODEC = StreamCodec.composite(
@@ -38,17 +37,14 @@ public record ProcessorView(WorkOrdersView orders, List<Hold> cargo, Bricks bric
     }
 
     /**
-     * The spoil and slag brick the parked pods whose lining can be read hold between them, and the brick in the pack.
+     * The slag brick the parked pods whose lining can be read hold in their racks, and the brick in the pack.
      *
-     * @param spoil    the spoil in their hoppers
      * @param racked   the bricks in their racks
      * @param rackSize what their racks hold when full; 0 when no such pod is parked
      * @param carried  the slag brick in the player's pack
      */
-    public record Bricks(int spoil, int racked, int rackSize, int carried) {
+    public record Bricks(int racked, int rackSize, int carried) {
         public static final StreamCodec<ByteBuf, Bricks> STREAM_CODEC = StreamCodec.composite(
-                ByteBufCodecs.VAR_INT,
-                Bricks::spoil,
                 ByteBufCodecs.VAR_INT,
                 Bricks::racked,
                 ByteBufCodecs.VAR_INT,
