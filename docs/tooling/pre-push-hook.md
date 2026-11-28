@@ -26,4 +26,10 @@ The setting lives in the clone's shared `.git/config`, so every worktree of the 
 
 ## `--no-verify`
 
-A push never skips the hook, with these exceptions: the hook itself is broken on `main` (say so in the PR), or a machine cannot run Gradle at all (a docs-only branch there already skips it). A hook that fails on your own change is a fix to make, not a bypass. A push that needs `--no-verify` says why in the PR's Decisions.
+A push never skips the hook, with these exceptions:
+
+- `tools/merge-batch.sh` pushes its `batch/<stamp>` integration branch and the landing commit to `main` with `--no-verify`. The hook checks the working tree, and the batch's CI runs the same checks on the same tree, so the batch push gains nothing from running it.
+- The hook itself is broken on `main` (say so in the PR).
+- A machine cannot run Gradle at all (a docs-only branch there already skips it).
+
+A hook that fails on your own change is a fix to make, not a bypass. A push that needs `--no-verify` says why in the PR's Decisions.
