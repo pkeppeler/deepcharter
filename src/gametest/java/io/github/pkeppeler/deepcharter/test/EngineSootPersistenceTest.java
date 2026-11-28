@@ -149,8 +149,8 @@ public class EngineSootPersistenceTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
     public void theSootCrossesABreachWithThePod(GameTestHelper helper) {
-        double x = 2100.5;
-        double z = 2100.5;
+        double x = 34100.5;
+        double z = 34100.5;
         ServerLevel one = TestLayers.level(helper, 1);
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carvePocketBelow(one, 1, column.getX() - 1, column.getX() + 1, column.getZ() - 1, column.getZ() + 1);

@@ -66,6 +66,24 @@ object GametestScan {
 	// or the comment line above it.
 	private const val FORCE_MARKER = "// force-ok:"
 	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
+	// A server test that stages at a fixed place of the shared worlds names its columns in test/support/TestSiteTable (#1182), so two tests never
+	// share a column of a layer. TestSites fails a carve or a force outside the caller's claims at run time; this scan is the part a run cannot
+	// see: a server test that calls FarChunks to wait for or force a chunk, RoomCarver.carve, or holds a coordinate constant (int/long/float/double
+	// whose name is x, z, *X, *Z, *COLUMN, *SITE or *ORIGIN set to a literal of 1000 or more) must be named in the table, as a claim or an exempt.
+	private const val SITE_TABLE = "TestSiteTable.java"
+	private val stagingCall = Regex("""\bFarChunks\s*\.\s*(?:force|pin|release|await\w*|whenBlocksLoaded)\s*\(|\bRoomCarver\s*\.\s*carve\w*\s*\(""")
+	private val coordinateConstant = Regex("""\b(?:int|long|float|double)\s+(\w+)\s*=\s*-?(\d[\d_]*)(?:\.\d+)?[dDfFlL]?\s*;""")
+	private val coordinateName = Regex("""^[xz]$|(?:^|_)[XZ]$|[a-z][XZ]$|(?:^|_)(?:COLUMN|SITE|ORIGIN)$|[a-z](?:Column|Site|Origin)$""")
+	private const val MIN_COORDINATE = 1000
+
+	/** What makes a server test class fixed-site, or null: the first staging call or coordinate constant of its code. */
+	fun fixedSite(code: String): String? {
+		stagingCall.find(code)?.let { return it.value.trimEnd('(').trim() }
+		return coordinateConstant.findAll(code)
+			.firstOrNull { coordinateName.containsMatchIn(it.groupValues[1]) && it.groupValues[2].replace("_", "").toLong() >= MIN_COORDINATE }
+			?.let { "the constant " + it.groupValues[1] }
+	}
+
 	// A pin made by a test class exists only in the shard that holds it (#1482, #1586); outside support/ it is flagged or marked.
 	private val worldPin = Regex("""\bFarChunks\s*\.\s*pin\s*\(|\bColonyChunks\s*\.\s*force\s*\(|\bimport\s+static\s+[\w.]*\b(?:FarChunks\s*\.\s*(?:pin|\*)|ColonyChunks\s*\.\s*(?:force|\*))\s*;""")
 	private val inSupport = Regex("""(?:^|\.)support\.""")
@@ -514,6 +532,7 @@ object GametestScan {
 		val serverEnvironments = mutableMapOf<String, Set<String>>()
 		var client = mutableListOf<String>()
 		val problems = mutableListOf<String>()
+		val siteTable = javaFiles.firstOrNull { it.name == SITE_TABLE }?.readText() ?: ""
 		val campaignEnvironments = javaFiles.filter { it.name == "CampaignEnvironments.java" }
 			.flatMap { file -> campaignEnvironmentName.findAll(file.readText()).map { it.groupValues[1] }.toList() }
 		for (source in javaFiles) {
@@ -621,6 +640,13 @@ object GametestScan {
 				continue
 			}
 			val isServer = gameTestAnnotation.containsMatchIn(text)
+			if (isServer && !isClientSide) {
+				fixedSite(text)?.let { staging ->
+					if (!siteTable.contains("\"$simpleName\"")) {
+						problems.add("$className stages at a fixed place ($staging) but $SITE_TABLE (test/support) names no \"$simpleName\"; claim its block columns with claim or row so no other test shares them, or exempt it with the reason it needs no claim (#1182)")
+					}
+				}
+			}
 			if (isServer && isClientSide) {
 				problems.add("$className has both an @GameTest method and is a client GameTest; split it in two")
 			} else if (isServer) {
