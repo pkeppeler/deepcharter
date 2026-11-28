@@ -400,7 +400,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /**
      * Ticks a pod pinned {@code past} blocks behind where it is drawn is watched: the settle delay, then the ticks that giving back
      * {@code settleShare} of the gap a tick takes to bring it within {@link PodDrives#SETTLE_TOLERANCE}, and {@link #PIN_SLACK_TICKS}. A faster
-     * pod coasts further past the pin, so it is watched longer (46 ticks at the 0.4 cruise).
+     * pod coasts further past the pin, so it is watched longer (40 ticks at the stock speed).
      */
     private static int pinnedTicks(double past) {
         PodGlideTuning tuning = PodGlideTuning.DEFAULT;
