@@ -30,8 +30,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Server GameTests for #893: a pod whose hard landing empties or nearly empties the hull stays on the floor it landed
  * on, in the campaign world where the layers are bands of one level. A probe pod of full hull drops first and says what
- * the landing costs; the subject then drops the same way with that much hull, one more or one less. Columns 22000 to
- * 22399 are this class's; each case's two shafts sit inside one forced chunk.
+ * the landing costs; the subject then drops the same way with that much hull, one more or one less. Each case's two
+ * shafts sit inside one forced chunk.
  */
 public class PodNearLethalLandingTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";

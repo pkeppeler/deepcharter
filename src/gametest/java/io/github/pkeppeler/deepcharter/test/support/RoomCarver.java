@@ -42,6 +42,7 @@ public final class RoomCarver {
                 new BlockPos(Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
         BlockPos max =
                 new BlockPos(Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
+        TestSites.guardCarve(level, min, max);
         RoomSeal.seal(level, min, max);
         for (BlockPos pos : BlockPos.betweenClosed(min, max)) {
             level.setBlock(pos, fill, flags);

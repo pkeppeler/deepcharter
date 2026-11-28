@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
+import io.github.pkeppeler.deepcharter.pod.PodLoad;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -18,6 +19,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeView;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -26,6 +28,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.locale.Language;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Mth;
 
 /**
@@ -166,18 +169,38 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
             // to be fitted.
             boolean crafted = tier == 1;
             boolean needsFirst = selected.needsFirstTier() && tier > 1 && !counts;
-            String capped = tier > pod.cap()
-                    ? Component.translatable("screen.deepcharter.upgrade.capped", pod.cap())
-                            .getString()
-                    : "";
-            Component label = here && held.installed() == tier
-                    ? Component.translatable("screen.deepcharter.upgrade.installed", tier)
-                            .append(capped)
-                    : crafted
-                            ? Component.translatable("screen.deepcharter.upgrade.crafted", tier)
-                            : needsFirst
-                                    ? Component.translatable("screen.deepcharter.upgrade.needs_first", tier, price)
-                                    : Component.translatable("screen.deepcharter.upgrade.buy", tier, price, capped);
+            // The cap note, longest first; an engine row gives up the long note, then any note, to keep its lift
+            // inside the button.
+            List<String> notes = tier > pod.cap()
+                    ? List.of(
+                            Component.translatable("screen.deepcharter.upgrade.capped", pod.cap())
+                                    .getString(),
+                            Component.translatable("screen.deepcharter.upgrade.capped_short", pod.cap())
+                                    .getString(),
+                            "")
+                    : List.of("");
+            MutableComponent label = Component.empty();
+            for (String note : notes) {
+                label = here && held.installed() == offered
+                        ? Component.translatable("screen.deepcharter.upgrade.installed", offered)
+                                .append(note)
+                        : crafted
+                                ? Component.translatable("screen.deepcharter.upgrade.crafted", offered)
+                                : needsFirst
+                                        ? Component.translatable(
+                                                "screen.deepcharter.upgrade.needs_first", offered, price)
+                                        : Component.translatable(
+                                                "screen.deepcharter.upgrade.buy", offered, price, note);
+                if (selected == ComponentTrack.ENGINE) {
+                    // What the pod gets from it: a tier above the cap works as the cap's.
+                    label = label.append(Component.translatable(
+                            "screen.deepcharter.upgrade.lifts", PodLoad.shownEngineLift(Math.min(offered, pod.cap()))));
+                }
+                if (selected != ComponentTrack.ENGINE
+                        || CrtText.width(font, label.getString()) <= tierWidth - LABEL_ROOM) {
+                    break;
+                }
+            }
             CrtButton button = addRenderableWidget(new CrtButton(
                     tierX,
                     listTop() + (tier - 1) * PITCH,

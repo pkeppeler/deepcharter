@@ -179,6 +179,12 @@ public class PodSprintScenario extends EvidenceScenario {
             pod.setPos(POD_START);
             pod.setYRot(SOUTH);
             player.teleportTo(one, POD_START.x, POD_START.y, POD_START.z, Set.of(), SOUTH, 0f, true);
+        });
+        ClientWait.arrived(context, singleplayer.getServer());
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = TestLayers.level(server, 1);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            PodEntity pod = pod(one, podId);
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not take the seat");
             }

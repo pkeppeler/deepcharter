@@ -192,10 +192,14 @@ public class ExplosiveTiersScenario extends EvidenceScenario {
             fresh.setPos(site.x(), FLOOR_Y, Z);
             one.addFreshEntity(fresh);
             player.teleportTo(one, site.x(), FLOOR_Y, Z, Set.of(), 0, 0, true);
-            if (!player.startRiding(fresh)) {
+            return fresh;
+        });
+        ClientWait.arrived(context, singleplayer.getServer());
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod at " + site);
             }
-            return fresh;
         });
         int ticks = 0;
         while (!singleplayer.getServer().computeOnServer(server -> pod.onGround()) && ticks < 200) {

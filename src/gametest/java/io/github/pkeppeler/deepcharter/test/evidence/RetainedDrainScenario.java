@@ -117,6 +117,7 @@ public class RetainedDrainScenario extends EvidenceScenario {
                 pod.setYRot(DOWN_THE_CHAMBER);
                 level.addFreshEntity(pod);
                 podId = pod.getId();
+                // arrived-ok: onto the spot enterLayer already brought the player to and waited at
                 player.teleportTo(level, pod.getX(), pod.getY(), pod.getZ(), Set.of(), DOWN_THE_CHAMBER, 12f, true);
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the player could not mount the pod");

@@ -56,6 +56,7 @@ public class PodLightsScenario extends EvidenceScenario {
                                 floor.offset(pillar * 4, 1 + height, 7), Blocks.QUARTZ_BLOCK.defaultBlockState(), 3);
                     }
                 }
+                // arrived-ok: a block from the spawn, in a chunk the player already holds
                 player.teleportTo(level, spot.x, spot.y, spot.z - 1, Set.of(), 0f, 0f, true);
                 pod[0] = TestEntities.create(PodRegistry.POD, level);
                 pod[0].setPos(spot.x - 2.6, spot.y, spot.z + 3);

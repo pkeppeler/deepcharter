@@ -1620,7 +1620,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         // A search too long to show is cut from the front, so the end that is typed stays on screen.
         CatalogueScene.hover(context, search);
         context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
-        context.getInput().typeChars("a very long search that cannot fit the field");
+        RealInput.type(context, "a very long search that cannot fit the field");
         context.waitTicks(1);
         everyStringIsInsideItsGlass(context, screen, "with a long search typed");
         require(

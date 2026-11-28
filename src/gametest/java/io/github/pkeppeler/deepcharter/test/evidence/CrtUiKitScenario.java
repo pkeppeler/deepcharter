@@ -3,8 +3,8 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.minecraft.client.input.CharacterEvent;
 
 /**
  * Evidence scenario "m2-crt-ui-kit" for #53: the demo screen types its text out, then a name is typed into the
@@ -29,7 +29,7 @@ public class CrtUiKitScenario extends EvidenceScenario {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
         }
-        context.runOnClient(client -> "RIGGS".chars().forEach(c -> screen.charTyped(new CharacterEvent(c))));
+        RealInput.type(context, "RIGGS");
         for (int i = 0; i < END_FRAMES; i++) {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);

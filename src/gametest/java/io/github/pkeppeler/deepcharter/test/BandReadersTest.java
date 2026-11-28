@@ -66,8 +66,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Server GameTests for the readers that key on the band at a Y and not on the level (#799, ADR 0059), in
  * {@code deepcharter:campaign_sample}, where the surface and both layers are Y bands of one level. The layer dimensions keep their own
- * tests: in them the band is the whole level. Columns 23000 to 23999 are this class's; the figures and the structures have their own
- * classes ({@code BandFiguresTest}, {@code BandStructuresTest}).
+ * tests: in them the band is the whole level.  The figures and the structures have their own classes
+ * ({@code BandFiguresTest}, {@code BandStructuresTest}).
  */
 public class BandReadersTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";

@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.RealInput;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -77,7 +78,7 @@ public class PartsCatalogueScenario extends EvidenceScenario {
 
         CatalogueScene.hover(context, layout.shelf().search());
         context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
-        context.getInput().typeChars("iron");
+        RealInput.type(context, "iron");
         context.waitTicks(2);
         hold(context);
         screenshot(context, "console-search");
