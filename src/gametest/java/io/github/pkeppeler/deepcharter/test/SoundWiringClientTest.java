@@ -58,9 +58,9 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for #71: a listener on the sound manager confirms that each wired event plays. The pod loops, the
- * low-fuel buzzer and the critical klaxon, the terminal music, the typewriter, the sale, the purchase, the error and the
- * music of every layer, and (#249) the Lamp Hymn on founding a charter and the drone bed of every layer, which the client starts by itself from the biome's {@code ambient_sounds}.
- * Event ids are literals on purpose: they are what the private audio pack is keyed by.
+ * low-fuel buzzer and the critical klaxon, the terminal music, the typewriter, the sale, the purchase, the error and
+ * the music of every layer, and (#249) the Lamp Hymn on founding a charter and the drone bed of every layer, which the
+ * client starts by itself from the biome's {@code ambient_sounds}.
  */
 public class SoundWiringClientTest implements FabricClientGameTest {
     private static final int SETTLE_TICKS = 60;
