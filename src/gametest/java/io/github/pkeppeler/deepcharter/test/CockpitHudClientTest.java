@@ -341,7 +341,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
-    /** The whole line and the balance alone group the money the same way, so it does not change as the line shortens. */
+    /**
+     * The whole line and the balance alone group the money the same way, so it does not change as the line shortens.
+     */
     private static void expectTheAccountMoneyReadsTheSameInBothForms() {
         String whole = AccountHud.whole("Scanner Player0", 12_345).getString();
         String money = AccountHud.money(12_345).getString();
