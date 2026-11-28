@@ -98,9 +98,11 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          # What the PR changed since it left its base branch (main for a PR into main): the same paths as main..merged head.
-          git diff --no-renames --name-only "$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
-          tools/py tools/ci_affected.py --head-ref "$HEAD_REF" --labels "$LABELS" \
+          # What the PR changed since it left its base branch (main for a PR into main): the same paths as main..merged head. The plan
+          # reads that commit's copies too, to narrow a change to the members and keys it touched (ADR 0121).
+          base=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
+          git diff --no-renames --name-only "$base" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
+          tools/py tools/ci_affected.py --head-ref "$HEAD_REF" --labels "$LABELS" --base "$base" \
             --server-shards "$BUILD_SHARDS" --client-shards 1 < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
 
   # Compiles every source set once and hands build/ and .gradle/ to the jobs below, so none of them compiles for a minute or two

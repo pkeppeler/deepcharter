@@ -62,7 +62,9 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           # What the PR changed since it left its base branch (main for a PR into main): the same paths as main..merged head.
-          git diff --no-renames --name-only "$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
+          base=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
+          git diff --no-renames --name-only "$base" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
           echo "run=$(tools/ci-client-needed.sh "$GAMEPLAY_LABEL" < "$RUNNER_TEMP/changed.txt")" >> "$GITHUB_OUTPUT"
       # Is main's Gradle cache seeded (cache-seed.yml saves a marker)? A cold PR-tier compile does not fit a job's five minutes, so the jobs
       # take the compile job's output instead (ADR 0116). A lookup only: nothing is downloaded.
@@ -79,8 +81,9 @@ jobs:
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BASE: ${{ steps.decide.outputs.base }}
         run: |
-          tools/py tools/ci_affected.py --head-ref "$HEAD_REF" --labels "$LABELS" \
+          tools/py tools/ci_affected.py --head-ref "$HEAD_REF" --labels "$LABELS" --base "$BASE" \
             --server-shards 1 --client-shards "$CLIENT_SHARDS" < "$RUNNER_TEMP/changed.txt" | tee -a "$GITHUB_OUTPUT"
 
   # Compiles every source set once and hands build/ and .gradle/ to the shards (.github/actions/upload-compiled), so no shard spends a

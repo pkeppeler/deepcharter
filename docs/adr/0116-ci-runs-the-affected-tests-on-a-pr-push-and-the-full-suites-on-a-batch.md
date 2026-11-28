@@ -4,6 +4,8 @@ status: accepted
 
 # CI runs the affected tests on a PR push and the full suites on a batch
 
+Amended 2026-11-28 (#1721) by [ADR 0121](0121-a-pr-push-selects-the-gametests-its-changed-members-reach.md): a change reaches tests by the member names it touched, a hub and a test pass nothing on, a change is followed one game class deep, and init code, lang keys and assets are narrowed instead of running everything. The entry-point and mixin-reach rules below are replaced; a changed mixin still runs everything.
+
 Issue #1592, part 2 of #1574. [ADR 0115](0115-no-ci-job-runs-longer-than-five-minutes.md) cut every suite into shards that fit five minutes: 29 client shards, 16 server shards, 8 tool-test parts, a compile job each for CI and the client suite, and the aggregates, about 50 jobs. Run on every PR push, that is more than the account's concurrent-job cap allows more than one PR at a time, and most pushes change one class.
 
 ## Decision

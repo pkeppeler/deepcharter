@@ -10,6 +10,8 @@ test_block_model_particles.py 1
 test_build_shards.py 1
 test_check_homage.py 1
 test_checkout_credentials.py 1
+test_ci_affected.py 15
+test_ci_reach.py 4
 test_client_shards.py 1
 test_closing_refs.py 1
 test_cockpit_ribbon.py 1
