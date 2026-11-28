@@ -28,7 +28,8 @@ import net.minecraft.world.level.GameType;
  * GUI scale 2 (the 854 x 480 window) and GUI scale 4 (a 1920 x 1080 window, where the Ribbon still fits), in a lit
  * stone chamber in layer 1. The four stills {@code account-spot-foot-gui2}, {@code account-spot-seated-gui2},
  * {@code account-spot-seated-gui4} and {@code account-spot-foot-gui4} show the line in one spot at the left edge, and
- * the altimeter, the plate's depth and the scanner's ruler in metres. The GUI scale 4 stills are of another window
+ * {@code account-spot-foot-gui4-small} (the 854 x 480 window at GUI scale 4, 213 x 120) shows it above the hearts.
+ * The altimeter, the plate's depth and the scanner's ruler read metres. The 1920 x 1080 stills are of another window
  * size, so they go to the client's screenshot folder, build/run/clientGameTest/screenshots.
  */
 public class AccountSpotScenario extends EvidenceScenario {
@@ -71,6 +72,11 @@ public class AccountSpotScenario extends EvidenceScenario {
                 settle(context);
                 screenshot(context, "account-spot-foot-gui2");
                 frame(context);
+                // The smallest GUI, 213 x 120, where the plain HUD is drawn and the line rises over the status rows.
+                context.runOnClient(client -> client.getWindow().setGuiScale(BIG_GUI_SCALE));
+                settle(context);
+                screenshot(context, "account-spot-foot-gui4-small");
+                context.runOnClient(client -> client.getWindow().setGuiScale(GUI_SCALE));
                 ride(context, singleplayer, true);
                 settle(context);
                 screenshot(context, "account-spot-seated-gui2");

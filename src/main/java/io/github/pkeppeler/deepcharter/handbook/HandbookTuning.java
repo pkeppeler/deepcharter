@@ -7,7 +7,7 @@ package io.github.pkeppeler.deepcharter.handbook;
  *                             completes a directive up to this long after it happens; {@code Directives.fire} does not wait
  * @param triggerPollTicks     how often the directives that watch the world are checked: a pod's pilot, and a terminal that was
  *                             repaired before the charter began
- * @param drillDownBlocks      how far below the colony's ground a pod must drill for the directive "Drill down ten blocks"
+ * @param drillDownBlocks      how far below the colony's ground a pod must drill for the directive "Drill down ten metres"
  * @param findProspectorBlocks how close a player must come to a Prospector wreck to have found it: a wreck site's bay reaches
  *                             six blocks from its middle
  * @param pencilReachBlocks    how close to a structure a player must come to have reached the place a pencil path points to, in

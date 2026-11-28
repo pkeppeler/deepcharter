@@ -220,6 +220,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectTheSignalDecayDarkensTheCockpitAndKeepsTheFairChannels(context, singleplayer, pod);
                 expectAPackCanTurnTheCockpitOff(context);
                 expectASmallGuiGivesBackThePlainHud(context);
+                expectTheAccountLineClearsVanillaOnFootOnEveryGui(context);
                 expectTheSinkPlateShowsWhileThePodSinks(context, singleplayer, pod);
             } finally {
                 EvidencePins.reset();
@@ -828,6 +829,45 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             }
         } finally {
             context.runOnClient(client -> client.getWindow().setGuiScale(GUI_SCALE));
+        }
+    }
+
+    /**
+     * On foot, the account line clears vanilla's hotbar, status rows and crosshair on every window at every GUI
+     * scale, the smallest plain-HUD GUI (854 x 480 at GUI scale 4, 213 x 120) included, where it rises above the
+     * status rows and gives way to the balance alone rather than cross the crosshair (#1642). On a GUI 240 or more
+     * high it also clears the title, subtitle, held item name and action bar.
+     */
+    private void expectTheAccountLineClearsVanillaOnFootOnEveryGui(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            List<String> found = new ArrayList<>();
+            List<int[]> guis = new ArrayList<>(List.of(new int[] {213, 120}));
+            for (int[] window : WINDOWS) {
+                for (int requested : GUI_SCALES) {
+                    guis.add(guiSize(window[0], window[1], requested));
+                }
+            }
+            Component line = Component.translatable(AccountHud.KEY, "Scanner Player0", "12,345");
+            Component money = Component.translatable(AccountHud.MONEY_KEY, "12,345");
+            for (int[] gui : guis) {
+                HudKeepClear.Rect crosshair = AccountHud.crosshair(gui[0], gui[1]);
+                HudKeepClear.Rect box = AccountHud.box(
+                        client.font, AccountHud.fitted(client.font, line, money, gui[1], List.of(crosshair)), gui[1]);
+                if (box.overlaps(crosshair)) {
+                    found.add(gui[0] + " x " + gui[1] + ": the account line " + box + " crosses the crosshair");
+                }
+                for (HudKeepClear.Rect row : VanillaHudRows.rects(gui[0], gui[1])) {
+                    boolean always = row.what().equals("hotbar") || row.what().equals("status rows");
+                    if ((always || gui[1] >= 240) && box.overlaps(row)) {
+                        found.add(gui[0] + " x " + gui[1] + ": the account line " + box + " is in vanilla's "
+                                + row.what() + " " + row);
+                    }
+                }
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The account line must clear vanilla's HUD on foot: " + problems);
         }
     }
 

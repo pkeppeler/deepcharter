@@ -5,7 +5,9 @@ import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
@@ -28,6 +30,15 @@ public final class AccountHud {
     /** The balance alone, which the line falls back to where the whole of it would run into the cockpit. */
     public static final String MONEY_KEY = "hud.deepcharter.account_money";
 
+    /**
+     * Vanilla's armour and air row, the top of its status rows over the hotbar, is this far above the bottom of the GUI
+     * (26.3's {@code Hud}). On a short GUI the line rises to stay above it.
+     */
+    private static final int VANILLA_STATUS_TOP = 49;
+
+    /** Vanilla's crosshair sprite, this many GUI pixels square in the middle of the GUI. */
+    private static final int CROSSHAIR = 15;
+
     private AccountHud() {}
 
     public static void init() {
@@ -36,17 +47,14 @@ public final class AccountHud {
     }
 
     /**
-     * Where {@code text} is drawn on a GUI {@code guiHeight} tall: the left edge, {@code accountY} down, one line. What
-     * is drawn and what is kept clear are this one box.
+     * Where {@code text} is drawn on a GUI {@code guiHeight} tall: the left edge, {@code accountY} down, one line, and
+     * no lower than a pixel above vanilla's status rows, which a short GUI (213 x 120) brings up to it. What is drawn
+     * and what is kept clear are this one box.
      */
     public static HudKeepClear.Rect box(Font font, Component text, int guiHeight) {
         HudLook look = HudLook.current();
-        return new HudKeepClear.Rect(
-                "account line",
-                look.accountMargin(),
-                (int) (guiHeight * look.accountY()),
-                font.width(text),
-                font.lineHeight);
+        int top = Math.min((int) (guiHeight * look.accountY()), guiHeight - VANILLA_STATUS_TOP - font.lineHeight - 1);
+        return new HudKeepClear.Rect("account line", look.accountMargin(), top, font.width(text), font.lineHeight);
     }
 
     /**
@@ -66,9 +74,25 @@ public final class AccountHud {
                 .map(charter -> fitted(
                         client.font,
                         full,
-                        Component.translatable(MONEY_KEY, charter.balance()),
+                        Component.translatable(MONEY_KEY, String.format(Locale.US, "%,d", charter.balance())),
                         guiHeight,
-                        CockpitHud.covers(client, guiWidth, guiHeight))));
+                        covered(client, guiWidth, guiHeight))));
+    }
+
+    /**
+     * What the whole line must not run into, or it gives way to the balance: the cockpit, and the crosshair, which a
+     * short GUI (213 x 120) brings down to the line.
+     */
+    public static List<HudKeepClear.Rect> covered(Minecraft client, int guiWidth, int guiHeight) {
+        List<HudKeepClear.Rect> covered = new ArrayList<>(CockpitHud.covers(client, guiWidth, guiHeight));
+        covered.add(crosshair(guiWidth, guiHeight));
+        return covered;
+    }
+
+    /** Vanilla's crosshair on a GUI {@code guiWidth} x {@code guiHeight}. */
+    public static HudKeepClear.Rect crosshair(int guiWidth, int guiHeight) {
+        return new HudKeepClear.Rect(
+                "crosshair", (guiWidth - CROSSHAIR) / 2, (guiHeight - CROSSHAIR) / 2, CROSSHAIR, CROSSHAIR);
     }
 
     private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {

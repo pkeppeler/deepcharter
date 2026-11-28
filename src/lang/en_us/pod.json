@@ -4,7 +4,7 @@
   "commands.deepcharter.pod.spawn.success_scanner": "Spawned a pod for your charter, with a tier 1 scanner",
   "deepcharter.pod.dump.no_pod": "You are not riding a pod",
   "deepcharter.pod.dump.success": "Dumped %s ore",
-  "deepcharter.pod.first_sprint": "Sprint: hold %s with %s and the pod runs %s%% faster on open ground and in the air, for about %s%% more fuel a block. It drills no faster.",
+  "deepcharter.pod.first_sprint": "Sprint: hold %s with %s and the pod runs %s%% faster on open ground and in the air, for about %s%% more fuel a metre. It drills no faster.",
   "deepcharter.pod.hard_landing": "Hard landing: the hull took %s. Brake with the rotor",
   "deepcharter.pod.lining.done": "Slab lined: %s slag brick placed, %s left",
   "deepcharter.pod.lining.no_power": "No power to line",
