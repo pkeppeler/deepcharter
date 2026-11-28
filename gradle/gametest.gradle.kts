@@ -141,9 +141,19 @@ object GametestScan {
 	// method of a client GameTest or scenario is read in source order as carves, waits and seats, where a call or method reference to a
 	// same-file method stands for that method's steps; a seat after a carve with no wait between fails. The marker goes on the seat's
 	// statement, or on the call that reaches it.
-	// Heuristic: a call through another object or class (a support helper, a base class, another scenario) is not followed, a method is
-	// matched by name across its overloads, and the order is the text's, so a loop that seats before it carves again is not seen.
+	// A call to a helper in another class cannot be followed, so a helper that seats a pod (its body matches podSeat) carries SEATS_POD_MARKER, with a
+	// reason, on its declaration or the comment line above it, and a call `Class.helper(...)` from a client test or scenario stands for a seat.
+	// The gate fails an unmarked helper that a client test or scenario calls that way, so the marker cannot be forgotten (#1455).
+	// A static import of a seating helper, or of every member of its class, fails too: the bare call that follows would not be seen.
+	// Heuristic: a call through an object (`scene.seat(...)`) or a base class is not followed, a method is matched by name across its overloads,
+	// and a marked helper is trusted (its marker is not checked against its body).
+	// A helper that reaches a seat through another scanned method needs the marker too. That call is matched by name, so a same-named method
+	// of another class can make a helper a seater; two files with one simple name fail the scan, because helpers are keyed by it.
+	// The order is the text's, so a loop that seats before it carves again is not seen.
 	private const val LIGHT_SETTLED_MARKER = "// light-settled-ok:"
+	private const val SEATS_POD_MARKER = "// seats-pod:"
+	private val qualifiedCall = Regex("""\b([A-Z]\w*)\s*\.\s*(\w+)\s*\(""")
+	private val staticImport = Regex("""\bimport\s+static\s+(?:\w+\s*\.\s*)*([A-Z]\w*)\s*\.\s*(\w+|\*)\s*;""")
 	private val roomCarve = Regex("""\bRoomCarver\s*\.\s*carve\w*\s*\(""")
 	private val podSeat = Regex("""\bstartRiding\s*\(|\baddFreshEntity\s*\(\s*(?:\w+\s*\.\s*)*\w*[pP]od\w*\b|\b\w*[pP]od\w*\s*(?:\((?:[^()]|\([^()]*\))*\)\s*|\[[^\]]*]\s*)?\.\s*(?:setPos|teleportTo|teleport)\s*\(""")
 	private val lightSettledWait = Regex("""\bClientWait\s*\.\s*lightSettled\s*\(""")
@@ -299,10 +309,62 @@ object GametestScan {
 		if (bodyClose < 0) null else nameAt to next..bodyClose
 	}.toList()
 
+	// Every method in [files] that seats a pod, itself or through a method it calls (an unqualified call or `Class.method(` that names a method of
+	// the scanned files), as class simple name to method name to whether it carries SEATS_POD_MARKER.
+	private fun seatHelpers(
+		files: List<File>,
+		blankLiterals: (String) -> String,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): Map<String, Map<String, Boolean>> {
+		class Helper(val owner: String, val name: String, val marked: Boolean, var seats: Boolean, val callees: Set<Pair<String, String>>)
+		val helpers = mutableListOf<Helper>()
+		for (source in files) {
+			val sourceText = source.readText()
+			val text = literalsAndComments.replace(sourceText) { match ->
+				(if (match.value.startsWith("/")) " " else "\"\"") + match.value.replace(notNewline, "")
+			}
+			val methods = methodBodies(text)
+			if (methods.isEmpty()) continue
+			val rawLines = blankLiterals(sourceText).reader().readLines()
+			val owner = source.nameWithoutExtension
+			fun innermost(at: Int) = methods.filter { at in it.second }.minByOrNull { it.second.last - it.second.first }?.second
+			for ((nameAt, body) in methods) {
+				fun inBody(regex: Regex) = regex.findAll(text, body.first).takeWhile { it.range.first < body.last }.filter { innermost(it.range.first) == body }
+				val callees = inBody(namedCall).filter { it.groupValues[1] !in notMethodNames }.map { owner to it.groupValues[1] }.toSet() +
+					inBody(qualifiedCall).map { it.groupValues[1] to it.groupValues[2] }.toSet()
+				helpers.add(
+					Helper(
+						owner,
+						namedCall.find(text, nameAt)!!.groupValues[1],
+						marked(markedNear, rawLines, lineOf(text, nameAt), SEATS_POD_MARKER),
+						inBody(podSeat).any(),
+						callees,
+					),
+				)
+			}
+		}
+		do {
+			var changed = false
+			for (helper in helpers.filter { !it.seats }) {
+				if (helpers.any { it.seats && (it.owner to it.name) in helper.callees && it !== helper }) {
+					helper.seats = true
+					changed = true
+				}
+			}
+		} while (changed)
+		val found = mutableMapOf<String, MutableMap<String, Boolean>>()
+		for (helper in helpers.filter { it.seats }) {
+			val byName = found.getOrPut(helper.owner) { mutableMapOf() }
+			byName[helper.name] = (byName[helper.name] ?: true) && helper.marked
+		}
+		return found
+	}
+
 	private fun lightSettledProblems(
 		className: String,
 		text: String,
 		rawLines: List<String>,
+		helpers: Map<String, Map<String, Boolean>>,
 		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
 	): List<String> {
 		val methods = methodBodies(text)
@@ -329,6 +391,13 @@ object GametestScan {
 			return (receiver == "this" || receiver == simpleName) && (receiverStart < 0 || text[receiverStart] != '.')
 		}
 		val memo = mutableMapOf<String, List<SettleStep>>()
+		val unmarkedHelpers = sortedSetOf<String>()
+		for (import in staticImport.findAll(text)) {
+			val (owner, member) = import.destructured
+			if (owner != simpleName && (member == "*" && helpers[owner]?.isNotEmpty() == true || helpers[owner]?.containsKey(member) == true)) {
+				unmarkedHelpers.add("$className:${lineOf(text, import.range.first) + 1} imports static $owner.$member, which seats a pod, so a bare call of it escapes the light-settled gate; import $owner and call it qualified ($owner.helper(...)) (#1455)")
+			}
+		}
 		fun steps(body: Pair<Int, IntRange>, stack: Set<String>): List<SettleStep> {
 			val range = body.second
 			fun inBody(regex: Regex) = regex.findAll(text, range.first).takeWhile { it.range.first < range.last }
@@ -337,6 +406,15 @@ object GametestScan {
 			for ((kind, regex) in listOf(SettleKind.CARVE to roomCarve, SettleKind.WAIT to lightSettledWait, SettleKind.SEAT to podSeat)) {
 				inBody(regex).map { it.range.first }.filter { own(it) && !(kind == SettleKind.SEAT && isMarked(it)) }
 					.forEach { found.add(SettleStep(kind, it, false)) }
+			}
+			for (call in inBody(qualifiedCall)) {
+				val helper = helpers[call.groupValues[1]]?.get(call.groupValues[2]) ?: continue
+				if (call.groupValues[1] == simpleName || !own(call.range.first)) continue
+				if (!helper) {
+					unmarkedHelpers.add("$className:${lineOf(text, call.range.first) + 1} calls ${call.groupValues[1]}.${call.groupValues[2]}, which seats a pod and carries no '$SEATS_POD_MARKER <reason>', so the light-settled gate cannot see the seat; mark the helper's declaration, and call ClientWait.lightSettled after a carve and before the call (#1455)")
+				} else if (!isMarked(call.range.first)) {
+					found.add(SettleStep(SettleKind.SEAT, call.range.first, false))
+				}
 			}
 			val calls = inBody(namedCall).map { Triple(it.range.first, it.groupValues[1], false) } +
 				inBody(methodReference).map { Triple(it.range.first, it.groupValues[1], true) }
@@ -365,6 +443,7 @@ object GametestScan {
 				}
 			}
 		}
+		problems.addAll(unmarkedHelpers)
 		return problems
 	}
 
@@ -569,6 +648,10 @@ object GametestScan {
 		val serverEnvironments = mutableMapOf<String, Set<String>>()
 		var client = mutableListOf<String>()
 		val problems = mutableListOf<String>()
+		for ((name, same) in javaFiles.filter { it.name != "package-info.java" }.groupBy { it.nameWithoutExtension }.filter { it.value.size > 1 }) {
+			problems.add("${same.joinToString(" and ") { javaRoot.toPath().relativize(it.toPath()).toString() }} share the simple name $name, which the light-settled gate keys its cross-class seat helpers by; rename one (#1455)")
+		}
+		val helpers = seatHelpers(javaFiles, blankLiterals, markedNear)
 		val siteTable = javaFiles.firstOrNull { it.name == SITE_TABLE }?.readText() ?: ""
 		val campaignEnvironments = javaFiles.filter { it.name == "CampaignEnvironments.java" }
 			.flatMap { file -> campaignEnvironmentName.findAll(file.readText()).map { it.groupValues[1] }.toList() }
@@ -666,7 +749,7 @@ object GametestScan {
 			}
 			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
 			if (isClientSide) {
-				problems.addAll(lightSettledProblems(className, text, rawLines, markedNear))
+				problems.addAll(lightSettledProblems(className, text, rawLines, helpers, markedNear))
 			}
 			if (clientImplements.containsMatchIn(text) || className.contains(".test.support.") || className.contains(".test.evidence.")) {
 				problems.addAll(arrivedProblems(className, text, rawLines, markedNear))
