@@ -138,8 +138,7 @@ public class ZoneColoursScenario extends EvidenceScenario {
     private static void ride(ClientGameTestContext context, TestServerContext server, int layer, int top, int tier) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            player.teleportTo(
-                    TestLayers.level(minecraftServer, layer), x + 1.0, top, z + 1.0, Set.of(), 0f, 0f, true);
+            player.teleportTo(TestLayers.level(minecraftServer, layer), x + 1.0, top, z + 1.0, Set.of(), 0f, 0f, true);
             player.getAbilities().mayfly = true;
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
