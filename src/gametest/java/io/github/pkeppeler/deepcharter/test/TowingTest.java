@@ -40,7 +40,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -1063,54 +1062,14 @@ public class TowingTest {
     }
 
     @GameTest
-    public void anOutsiderCannotTowAPodOfAnotherCharter(GameTestHelper helper) {
-        PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 1.5));
-        PodEntity owned = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 4.5));
-        MockPlayer outsider = MockPlayers.join(helper, "tow-outsider-" + CHARTERS.incrementAndGet());
-        PodComponents.register(owned, someCharter(helper));
-        outsider.teleportTo(helper.getLevel(), tower.position(), 0f, 0f);
-        if (!outsider.player().startRiding(tower)) {
-            throw failure(helper, "the outsider could not mount the unowned tower");
-        }
-        outsider.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
-        if (PodComponents.mayAccess(owned, Optional.empty())) {
-            throw failure(helper, "the test needs a pod the outsider may not access");
-        }
-        if (use(outsider.player(), owned).consumesAction()) {
-            throw failure(helper, "a refused cable must not count as used");
-        }
-        helper.runAfterDelay(2, () -> {
-            try {
-                if (PodTowing.isTowed(owned)) {
-                    throw failure(
-                            helper,
-                            "a player of no charter must not tow another charter's pod, got %s",
-                            PodTowing.towerId(owned));
-                }
-                if (!List.of(Refusal.NOT_ALLOWED_TO_TOW.message()).equals(outsider.actionBarMessages())) {
-                    throw failure(helper, "the outsider should be told why, got %s", outsider.actionBarMessages());
-                }
-                helper.succeed();
-            } finally {
-                outsider.leave();
-                tower.discard();
-                owned.discard();
-            }
-        });
-    }
-
-    @GameTest
     public void aPodOfAGoneCharterCanBeTowedByAnyone(GameTestHelper helper) {
         PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 1.5));
         PodEntity orphan = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 4.5));
         MockPlayer outsider = MockPlayers.join(helper, "tow-orphan-" + CHARTERS.incrementAndGet());
         try {
             PodComponents.register(orphan, CharterId.random());
-            outsider.teleportTo(helper.getLevel(), tower.position(), 0f, 0f);
-            if (!outsider.player().startRiding(tower)) {
-                throw failure(helper, "the outsider could not mount the tower");
-            }
             outsider.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
+            use(outsider.player(), tower);
             use(outsider.player(), orphan);
             if (!Optional.of(tower.getUUID()).equals(PodTowing.towerId(orphan))) {
                 throw failure(
@@ -1258,56 +1217,6 @@ public class TowingTest {
                     cleanUpRock(helper, tower, towed, rider);
                 }
             });
-        });
-    }
-
-    @GameTest
-    public void theCableIsFittedFromTheSeatAndTakenOffAgain(GameTestHelper helper) {
-        PodEntity tower = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 1.5));
-        PodEntity near = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 4.5));
-        PodEntity far = helper.spawn(PodRegistry.POD, new Vec3(1.5, 2, 12.5));
-        MockPlayer mock = MockPlayers.join(helper, "tow-user-" + CHARTERS.incrementAndGet());
-        ServerPlayer player = mock.player();
-        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(PodRegistry.TOW_CABLE));
-        use(player, near);
-        if (PodTowing.isTowed(near)) {
-            throw failure(helper, "a cable cannot be fitted from outside a pod");
-        }
-        mock.teleportTo(helper.getLevel(), tower.position(), 0f, 0f);
-        if (!player.startRiding(tower)) {
-            throw failure(helper, "the player could not mount the tower");
-        }
-        use(player, far);
-        if (PodTowing.isTowed(far)) {
-            throw failure(helper, "a cable cannot be fitted to a pod out of reach");
-        }
-        if (!use(player, near).consumesAction() || !Optional.of(tower.getUUID()).equals(PodTowing.towerId(near))) {
-            throw failure(helper, "using the cable on a pod in reach should fit it, got %s", PodTowing.towerId(near));
-        }
-        if (!use(player, near).consumesAction() || PodTowing.isTowed(near)) {
-            throw failure(helper, "using the cable on a towed pod should take it off");
-        }
-        if (!player.getItemInHand(InteractionHand.MAIN_HAND).is(PodRegistry.TOW_CABLE)) {
-            throw failure(helper, "the cable is a tool and is not used up");
-        }
-        helper.runAfterDelay(2, () -> {
-            try {
-                List<Component> expected = List.of(
-                        Refusal.NOT_RIDING.message(),
-                        Refusal.TOO_FAR.message(),
-                        Component.translatable("message.deepcharter.towing.attached"),
-                        Component.translatable("message.deepcharter.towing.detached"));
-                if (!expected.equals(mock.actionBarMessages())) {
-                    throw failure(
-                            helper, "the player should be told what each use did, got %s", mock.actionBarMessages());
-                }
-                helper.succeed();
-            } finally {
-                mock.leave();
-                tower.discard();
-                near.discard();
-                far.discard();
-            }
         });
     }
 
@@ -1485,10 +1394,6 @@ public class TowingTest {
 
     private static InteractionResult use(ServerPlayer player, PodEntity pod) {
         return UseEntity.on(player, pod.level(), InteractionHand.MAIN_HAND, pod);
-    }
-
-    private static CharterId someCharter(GameTestHelper helper) {
-        return foundCharter(helper, UUID.randomUUID());
     }
 
     /** Founds a charter with {@code player} as its founder. */

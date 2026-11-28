@@ -21,5 +21,6 @@ public final class PodClientRegistry {
         MenuScreens.register(PodMenu.TYPE, PodScreen::new);
         TowChainRenderer.init();
         TetherLineRenderer.init();
+        TowPickLineRenderer.init();
     }
 }
