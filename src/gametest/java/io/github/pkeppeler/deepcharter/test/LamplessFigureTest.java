@@ -421,6 +421,7 @@ public class LamplessFigureTest {
     /** A level holds {@code maxPerBand} figures however many sites ask. The End has no fades, no tick spawns and no other figure test. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void aLevelHoldsNoMoreFiguresThanItsCap(GameTestHelper helper) {
+        // cap-shared: it runs in the End, where no other figure test counts.
         ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), Level.END);
         List<StructureSite> sites = new ArrayList<>();
         for (int i = 0; i <= TUNING.maxPerBand(); i++) {
@@ -481,6 +482,7 @@ public class LamplessFigureTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
     public void aLoadedRailSiteOfLayerTwoGetsOneFigureWhenAPlayerIsNear(GameTestHelper helper) {
+        // cap-shared: it only reads layer 2's count, a band no other figure test fills for more than one callback.
         ServerLevel level = TestLayers.level(helper.getLevel().getServer(), StructureKind.RAILS.layer());
         LayerChain.Band levelBand = TestLayers.band(level, StructureKind.RAILS.layer());
         BlockPos conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT)

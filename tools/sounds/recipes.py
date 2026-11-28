@@ -573,6 +573,41 @@ def lamp_out():
     return dsp.normalize(dsp.Clip(out, list(out)), 0.6)
 
 
+MINOR_SECOND = 1.0595  # the ratio of a semitone: two saws this far apart grate
+
+
+def _buzz(freqs, chop, drive, floor):
+    """One alarm pulse, as long as `freqs` (a pitch in Hz per sample): two detuned saws a minor second apart (they grate), chopped by a square `chop` Hz, then driven hard and thinned of its lows."""
+    count = len(freqs)
+    voices = []
+    for ratio in (1.0, MINOR_SECOND):
+        phases = dsp.phase_of([f * ratio for f in freqs])
+        voices.append([(p / dsp.TAU) % 1.0 * 2 - 1 for p in phases])
+    gate = [0.45 + 0.55 * (1.0 if v > 0 else 0.0) for v in dsp.sine(count, chop)]
+    raw = dsp.times(dsp.plus(*voices), gate)
+    harsh = dsp.filt(dsp.shape(raw, drive), "hp", floor, 0.7)
+    return dsp.fade(harsh, 0.003, 0.02)
+
+
+def fuel_low():
+    """The low-fuel alarm (#1597): one short, grating buzzer pulse. Steady pitch, at the pace of the slow beep."""
+    pulse = _buzz([415.0] * dsp.seconds(0.3), 48, 5, 220)
+    return dsp.normalize(dsp.widen(pulse, 4), 0.7)
+
+
+def fuel_critical():
+    """The nearly-dry alarm (#1597): a 0.3 s klaxon, two pulses a fourth apart, then 0.2 s of silence so the pod's other cues come through.
+
+    Higher, louder and denser than `fuel_low`; the whole clip is the 10-tick period `LowFuelBeep` repeats it at.
+    """
+    count = dsp.seconds(0.3)
+    half = count // 2
+    freqs = [880.0] * half + [660.0] * (count - half)
+    pulse = _buzz(freqs, 90, 9, 300)
+    gap = [0.0] * dsp.seconds(0.2)
+    return dsp.normalize(dsp.widen(pulse + gap, 4), 0.85)
+
+
 def rest():
     """Three seconds of silence: the placeholder of the layers' music slots, so the drone beds are all a layer plays until a score is dropped in."""
     count = dsp.seconds(3.0)
@@ -615,6 +650,8 @@ RECIPES = {
     "ui/refused": ui_refused,
     "breach/rumble": breach_rumble,
     "layer/cave_in": cave_in,
+    "alarm/fuel_low": fuel_low,
+    "alarm/fuel_critical": fuel_critical,
     "music/rest": rest,
     "continuity/needle": needle,
     "continuity/lamp_out": lamp_out,
