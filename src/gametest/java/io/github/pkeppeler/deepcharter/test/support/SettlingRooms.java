@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Ledger;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Pending;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Report;
 import io.github.pkeppeler.deepcharter.outpost.SettlingTuning;
+import io.github.pkeppeler.deepcharter.outpost.ShellTuning;
 import io.github.pkeppeler.deepcharter.outpost.SettlingTuning.LayerRates;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
@@ -38,7 +40,10 @@ public final class SettlingRooms {
 
     private static final int HALL_RADIUS = 4;
     private static final int HALL_HEIGHT = 5;
-    private static final int ROCK_HEIGHT = 20;
+    /** Rock is carved this high over the floor: the hall, its ceiling and a shaft of {@link #SHAFT_HEIGHT} over it, with a roof. */
+    private static final int ROCK_HEIGHT = HALL_HEIGHT + 1 + ShellTuning.DEFAULT.openSpan() + 2;
+    /** The shaft of {@link #openToOutside}: one block more than a closed pocket may span, so that the hall's air is outside. */
+    private static final int SHAFT_HEIGHT = ShellTuning.DEFAULT.openSpan() + 1;
     /** How many columns apart two rooms are: more than a zone and its reach. */
     private static final int SPACING = 64;
 
@@ -101,10 +106,21 @@ public final class SettlingRooms {
     }
 
     /**
-     * Carves room number {@code slot} in layer 1 (its rock, a sealed dark hall, a barrel) for an outpost of {@code charter}. Call from the
-     * test method; the room's chunks load as it is carved, and {@link #requireLoaded} waits until they are all there.
+     * As {@link #stageSealed}, with the hall open to the outside ({@link #openToOutside}): the room a visit can reach, which is what a
+     * test of what visits do needs.
      */
     public static Room stage(GameTestHelper helper, int slot, CharterId charter) {
+        Room room = stageSealed(helper, slot, charter);
+        openToOutside(room);
+        return room;
+    }
+
+    /**
+     * Carves room number {@code slot} in layer 1 (its rock, a sealed dark hall, a barrel) for an outpost of {@code charter}. Nothing a visit
+     * can reach is in it: the hall's air is a room, so the Retained find no storage. Call from the test method; the room's chunks load as it
+     * is carved, and {@link #requireLoaded} waits until they are all there.
+     */
+    public static Room stageSealed(GameTestHelper helper, int slot, CharterId charter) {
         ServerLevel level = TestLayers.level(helper, 1);
         int x = FIRST_X + slot * SPACING;
         BlockPos floor =
@@ -125,6 +141,35 @@ public final class SettlingRooms {
         BlockPos barrel = floor.offset(3, 1, 3);
         level.setBlock(barrel, Blocks.BARREL.defaultBlockState(), 3);
         return new Room(level, new Outpost(charter, 1, level.dimension(), floor), barrel);
+    }
+
+    /**
+     * Lines the room's walls and ceiling with {@code wall}, over the rock they were cut in, and puts the barrel back. Call from the test
+     * method, before {@link #openToOutside} and before the room's chunks are awaited.
+     */
+    public static void lineShell(Room room, BlockState wall) {
+        BlockPos floor = room.floor();
+        RoomCarver.carve(
+                room.level(),
+                floor.offset(-HALL_RADIUS - 1, 1, -HALL_RADIUS - 1),
+                floor.offset(HALL_RADIUS + 1, HALL_HEIGHT + 1, HALL_RADIUS + 1),
+                wall);
+        RoomCarver.carve(
+                room.level(),
+                floor.offset(-HALL_RADIUS, 1, -HALL_RADIUS),
+                floor.offset(HALL_RADIUS, HALL_HEIGHT, HALL_RADIUS),
+                Blocks.AIR.defaultBlockState());
+        room.level().setBlock(room.barrel(), Blocks.BARREL.defaultBlockState(), 3);
+    }
+
+    /**
+     * Cuts a 1 by 1 shaft up from the middle of the room's ceiling, one block taller than a closed pocket may span, so that the hall's air
+     * joins an outside (ADR 0092). The room's rock is carved to hold it, and {@link RoomCarver} seals its shell before it cuts. Call from
+     * the test method, as {@link #stageSealed} is.
+     */
+    public static void openToOutside(Room room) {
+        BlockPos from = room.floor().offset(0, HALL_HEIGHT + 1, 0);
+        RoomCarver.carve(room.level(), from, from.above(SHAFT_HEIGHT - 1), Blocks.AIR.defaultBlockState());
     }
 
     /**

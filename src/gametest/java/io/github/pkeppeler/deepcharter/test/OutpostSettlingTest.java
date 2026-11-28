@@ -21,6 +21,10 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Report;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Survey;
 import io.github.pkeppeler.deepcharter.outpost.SettlingTuning;
 import io.github.pkeppeler.deepcharter.outpost.SettlingTuning.LayerRates;
+import io.github.pkeppeler.deepcharter.outpost.OutpostShell;
+import io.github.pkeppeler.deepcharter.outpost.OutpostShell.Shell;
+import io.github.pkeppeler.deepcharter.outpost.OutpostShell.Terrain;
+import io.github.pkeppeler.deepcharter.outpost.ShellTuning;
 import io.github.pkeppeler.deepcharter.outpost.VisitBreaks;
 import io.github.pkeppeler.deepcharter.outpost.VisitBreaks.Broken;
 import io.github.pkeppeler.deepcharter.outpost.VisitCause;
@@ -288,6 +292,39 @@ public class OutpostSettlingTest {
                             visits,
                             visits * SettlingTuning.DEFAULT.maxFuelItemsPerVisit(),
                             taken);
+                })
+                .thenSucceed();
+    }
+
+    /** The Retained come for what they can walk up to: fuel in a hall whose air is a room is out of reach, and the same hall opened loses it. */
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
+    public void aClosedShellKeepsTheRetainedOutOfStorageAndAnOpenedOneDoesNot(GameTestHelper helper) {
+        Room sealed = SettlingRooms.stageSealed(helper, 20, SettlingRooms.nobody());
+        Room opened = SettlingRooms.stage(helper, 21, SettlingRooms.nobody());
+        SettlingRooms.stock(sealed, Items.COAL, 64);
+        SettlingRooms.stock(opened, Items.COAL, 64);
+        whenLoaded(helper, sealed, opened)
+                .thenExecute(() -> {
+                    Ledger closed = settle(sealed, sealed.ledger(), 3, SettlingRooms.SURE_RETAINED);
+                    expect(
+                            helper,
+                            SettlingRooms.count(sealed.storage(), Items.COAL) == 64,
+                            "a closed shell keeps the Retained out: %s of 64 coal left",
+                            SettlingRooms.count(sealed.storage(), Items.COAL));
+                    expect(
+                            helper,
+                            closed.survey().map(Survey::fuelItems).equals(Optional.of(0))
+                                    && closed.unread().isEmpty(),
+                            "fuel out of reach is not counted and brings no visit: %s",
+                            closed);
+                    Ledger reached = settle(opened, opened.ledger(), 3, SettlingRooms.SURE_RETAINED);
+                    expect(
+                            helper,
+                            SettlingRooms.count(opened.storage(), Items.COAL) == 27
+                                    && reached.unread().visits() == 3,
+                            "the opened hall loses its fuel to 3 visits: %s coal left, %s",
+                            SettlingRooms.count(opened.storage(), Items.COAL),
+                            reached.unread());
                 })
                 .thenSucceed();
     }
@@ -561,8 +598,7 @@ public class OutpostSettlingTest {
                             floor.getY() + 4,
                             floor.getZ() + 4);
                     Predicate<BlockState> holds = state -> state.is(ColonyKit.RIVETED_PLATE);
-                    Broken broken =
-                            VisitBreaks.apply(level, room.outpost(), hall, holds, 1, 10, RandomSource.create(7));
+                    Broken broken = VisitBreaks.apply(level, shell(level, hall, holds), 1, 10, RandomSource.create(7));
                     expect(
                             helper,
                             level.getBlockState(cobble).isAir(),
@@ -597,9 +633,7 @@ public class OutpostSettlingTest {
                     }
                     Broken some = VisitBreaks.apply(
                             level,
-                            room.outpost(),
-                            hall,
-                            holds.or(state -> state.is(WreckRegistry.HEAP)),
+                            shell(level, hall, holds.or(state -> state.is(WreckRegistry.HEAP))),
                             2,
                             2,
                             RandomSource.create(9));
@@ -691,6 +725,15 @@ public class OutpostSettlingTest {
                             stranger.player().containerMenu);
                 })
                 .thenSucceed();
+    }
+
+    /** The shell of {@code zone}, whose candidates are the blocks {@code holds} does not hold, bar the ones no visit ever touches. */
+    private static Shell shell(ServerLevel level, BoundingBox zone, Predicate<BlockState> holds) {
+        return OutpostShell.survey(
+                Terrain.of(level),
+                zone,
+                ShellTuning.DEFAULT,
+                state -> !state.isAir() && !state.is(OutpostSettling.NEVER_SETTLED) && !holds.test(state));
     }
 
     private static void expectNoItemEntities(GameTestHelper helper, Room room) {

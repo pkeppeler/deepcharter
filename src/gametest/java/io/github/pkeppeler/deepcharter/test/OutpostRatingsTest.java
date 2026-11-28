@@ -53,6 +53,7 @@ public class OutpostRatingsTest {
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
     private static final String SHORT_ON = "readout.deepcharter.placement.short_on";
     private static final String NOTHING_RATED = "readout.deepcharter.placement.nothing_rated";
+    private static final String INSIDE_SHELL = "readout.deepcharter.placement.inside_shell";
     /** An example of what a later layer might ask, not set for any layer: heat and quake at 2, pressure and flooding at 1. */
     private static final Ratings EXAMPLE_LAYER = new Ratings(2, 1, 1, 2);
 
@@ -212,13 +213,65 @@ public class OutpostRatingsTest {
         helper.succeed();
     }
 
+    /**
+     * A block that would not hold on its own reads SHELTERED when it would stand inside a closed shell that does hold: the rule of ADR 0092.
+     * What shelters is {@code OutpostShellTest}'s; here the words, and that a holding block never asks.
+     */
+    @GameTest
+    public void aBlockThatWouldNotHoldReadsShelteredInsideAClosedShell(GameTestHelper helper) {
+        Optional<Ratings> layer = DepthRatings.forLayer(3);
+        Optional<Readout> inside = Placements.readout(layer, Blocks.OAK_PLANKS.defaultBlockState(), () -> true);
+        expect(
+                helper,
+                inside.map(Readout::verdict).equals(Optional.of(Verdict.SHELTERED))
+                        && inside.flatMap(Readout::reason).map(OutpostRatingsTest::key).orElse("").equals(INSIDE_SHELL),
+                "a plank in a closed shell should read SHELTERED with its reason, read %s",
+                inside);
+        expect(
+                helper,
+                key(Verdict.SHELTERED.label()).equals("readout.deepcharter.placement.sheltered"),
+                "the verdict's words are the lang key's");
+        expectReadout(helper, layer, SlagBrick.BLOCK, Optional.of(Verdict.HOLDS_HERE), "");
+        boolean[] asked = {false};
+        Optional<Readout> holds = Placements.readout(layer, SlagBrick.BLOCK.defaultBlockState(), () -> {
+            asked[0] = true;
+            return true;
+        });
+        expect(
+                helper,
+                holds.map(Readout::verdict).equals(Optional.of(Verdict.HOLDS_HERE)) && !asked[0],
+                "a block that holds says so without asking the shell, read %s",
+                holds);
+        Optional<Readout> open = Placements.readout(layer, Blocks.OAK_PLANKS.defaultBlockState(), () -> false);
+        expect(
+                helper,
+                open.map(Readout::verdict).equals(Optional.of(Verdict.WILL_NOT_HOLD))
+                        && open.flatMap(Readout::reason).map(OutpostRatingsTest::key).orElse("").equals(SHORT_ON),
+                "a plank in the open still will not hold, read %s",
+                open);
+        expect(
+                helper,
+                Placements.readout(Optional.empty(), SlagBrick.BLOCK.defaultBlockState(), () -> true)
+                        .flatMap(Readout::reason)
+                        .map(OutpostRatingsTest::key)
+                        .orElse("")
+                        .equals(NOTHING_RATED),
+                "where nothing is rated nothing shelters, whatever is round it");
+        expect(
+                helper,
+                Placements.readout(Optional.of(Ratings.NONE), Blocks.OAK_PLANKS.defaultBlockState(), () -> true)
+                        .isEmpty(),
+                "where the depth asks nothing the readout says nothing, sheltered or not");
+        helper.succeed();
+    }
+
     private static void expectReadout(
             GameTestHelper helper,
             Optional<Ratings> required,
             Block block,
             Optional<Verdict> verdict,
             String reasonKey) {
-        Optional<Readout> readout = Placements.readout(required, block.defaultBlockState());
+        Optional<Readout> readout = Placements.readout(required, block.defaultBlockState(), () -> false);
         Optional<Verdict> said = readout.map(Readout::verdict);
         String reason =
                 readout.flatMap(Readout::reason).map(OutpostRatingsTest::key).orElse("");

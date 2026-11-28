@@ -18,6 +18,7 @@ public final class Placements {
     /** What the readout says about a block in hand at the aimed spot. */
     public enum Verdict {
         HOLDS_HERE,
+        SHELTERED,
         WILL_NOT_HOLD;
 
         public Component label() {
@@ -38,6 +39,12 @@ public final class Placements {
     /** The readout for {@code state} placed at {@code pos} in {@code level}: empty where the depth asks nothing. */
     public static Optional<Readout> readout(Level level, BlockPos pos, BlockState state) {
         return readout(DepthRatings.requiredAt(level, pos.getY()), state);
+    }
+
+    /** STUB. */
+    public static Optional<Readout> readout(
+            Optional<Ratings> required, BlockState state, java.util.function.BooleanSupplier sheltered) {
+        return readout(required, state);
     }
 
     /** As {@link #readout(Level, BlockPos, BlockState)} for a depth that asks {@code required}, empty for a depth with no rated material. */

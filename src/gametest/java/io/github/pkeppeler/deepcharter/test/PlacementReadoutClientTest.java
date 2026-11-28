@@ -89,7 +89,7 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
             require(stone.size() == 1, "a block rated nothing keeps its plain tooltip, listed " + stone);
 
             // The longest reason: a block rated nothing against a depth that asks level 1 of all four axes.
-            Component worst = Placements.readout(Optional.of(new Ratings(1, 1, 1, 1)), Blocks.STONE.defaultBlockState())
+            Component worst = Placements.readout(Optional.of(new Ratings(1, 1, 1, 1)), Blocks.STONE.defaultBlockState(), () -> false)
                     .orElseThrow()
                     .reason()
                     .orElseThrow();
