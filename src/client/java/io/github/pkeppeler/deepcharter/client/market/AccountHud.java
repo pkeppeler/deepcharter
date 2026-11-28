@@ -16,8 +16,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * The charter's name and balance, at the left edge halfway down so it clears the pod readout and the altimeter. Shown
- * while on a charter, in the same spot on foot and in the pilot's seat (#1642), so the money never moves.
+ * The charter's name and balance at the left edge, {@code accountY} down: below the pod readout and the cockpit's
+ * gauge titles, between vanilla's subtitle and its action bar. Shown while on a charter, in the same spot on foot and
+ * in the pilot's seat (#1642), so the money never moves.
  */
 public final class AccountHud {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "account");

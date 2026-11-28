@@ -482,7 +482,8 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                             digits.height()));
         }
         Optional<Component> account = AccountHud.text();
-        if (account.isPresent() && !CockpitHud.showsReadout(client, width, height)) {
+        // On foot and seated alike (#1642).
+        if (account.isPresent()) {
             hud.put(
                     "account line",
                     new Box(

@@ -554,8 +554,8 @@ Swap **(c)** `BreachHud.java:27` (colour), `:36-43` (position).
 
 ### Account HUD
 
-Left, at half height: the charter name and balance ("Design Tour Co.  $5000") in CRT green, in the same spot on foot and in the pilot's seat
-(#1642: it is no longer a row of the cockpit's plate). Source `client/market/AccountHud.java`. It is in the pod HUD stills above. Vanilla: **no**. Swap **(c)** `AccountHud.java:41`.
+Left, below the middle (`accountY` 0.645, between vanilla's subtitle and action bar): the charter name and balance ("Design Tour Co.  $5000") in CRT green, in the same spot on foot and in the pilot's seat
+(#1642: it is no longer a row of the cockpit's plate). Where the whole line would run into the cockpit on a narrow GUI, it shows the balance alone. Source `client/market/AccountHud.java`. It is in the pod HUD stills above. Vanilla: **no**. Swap **(c)** `AccountHud.java:41`.
 
 ### Transmission overlay
 
@@ -677,7 +677,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Pod status HUD | White text lines at top left, margin 4 | `client/pod/PodStatusHud.java:22-23`, `:54-56` |
 | Scanner HUD | Cell colours (air, rock, ore, gold, gas, pod, frame), 3-pixel cells, margin 4, panel layout, white title | `main/scanner/ScannerTuning.java:30-32`, `client/scanner/ScannerHud.java:35-37`, `:106-128` |
 | Altimeter | White text at top centre, margin 4 | `client/layer/BreachHud.java:26-27`, `:36-45` |
-| Account HUD | CRT-green text at the left, half height | `client/market/AccountHud.java:21`, `:41` |
+| Account HUD | CRT-green text at the left, below the middle | `client/market/AccountHud.java:21`, `:41` |
 | Transmission overlay | Panel fill `#EA050A06`, text `#7CFC9A`, relay `#FFC857`, unknown sender `#FF5A4F`, panel size and position, cursor block | `client/transmission/TransmissionOverlay.java:34-40`, `TransmissionHud.java:30-36`, `:52-88` |
 | Breach fade | Black full-screen fill, fade timings (20 ticks: 8 in, 4 black), jitter 3 pixels over 10 ticks | `client/layer/BreachEffects.java:15-20`, `client/layer/BreachHud.java:46-52` |
 | Colony layout and buildings | Every building, its size, position and blocks, the paving, the Host and the pipe | `tools/colony/town.py` (then `tools/colony/build.py`), `data/deepcharter/colony/layout.json`, `data/deepcharter/structure/colony/*.nbt`; the ground noise in `main/colony/ColonyBuilder.java`, the Host's hands in `main/colony/FounderStatue.java`, the Conduit in `main/colony/Conduit.java` |

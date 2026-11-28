@@ -1141,7 +1141,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece.getKey());
                     }
                 }
-                problems.addAll(accountProblems(font, guiHeight, fixed, plate, slots, where));
+                problems.addAll(accountProblems(font, guiWidth, guiHeight, fixed, plate, slots, where));
                 for (HudKeepClear.Rect slot : slots) {
                     if (overlap(plateBox, box(slot))) {
                         problems.add(where + ": the plate with " + kept.size() + " rows covers the " + slot.what()
@@ -1167,6 +1167,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
      */
     private static List<String> accountProblems(
             Font font,
+            int guiWidth,
             int guiHeight,
             List<HudKeepClear.Rect> fixed,
             CockpitHud.Box plate,
@@ -1184,6 +1185,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         covered.stream()
                 .filter(line::overlaps)
                 .forEach(piece -> problems.add(where + ": the account line covers the " + piece.what()));
+        // Between vanilla's subtitle and its action bar, so a title, a subtitle or an action-bar line never lands on it
+        // and the left column above it stays whole for a step popup.
+        VanillaHudRows.rects(guiWidth, guiHeight).stream()
+                .filter(line::overlaps)
+                .forEach(row -> problems.add(where + ": the account line is in vanilla's " + row.what() + " row"));
         return problems;
     }
 
