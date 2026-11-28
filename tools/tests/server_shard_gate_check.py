@@ -1,15 +1,19 @@
 """Tests -PgametestShard=i/n in gradle/gametest.gradle.kts: the n shards partition the server GameTest list, and classes that share a
-campaign environment share a shard (ADR 0111).
+campaign environment share a shard (ADR 0111), unless the group is heavier than a server shard may be (ADR 0115).
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25, like client_filter_gate_check.py.
 Usage: tools/py tools/tests/gate_checks.py server_shard
 """
 import re
+import sys
 import unittest
 
 import gate_batch
 from gate_batch import REPO, Case
+
+sys.path.insert(0, str(REPO / "tools"))
+import ci_shards  # noqa: E402
 
 PREFIX = "io.github.pkeppeler.deepcharter.test."
 REAL_TREE = REPO / "src/gametest/java"
@@ -17,6 +21,8 @@ REAL_TREE = REPO / "src/gametest/java"
 CI_SHARDS = int(re.search(r"^\s+BUILD_SHARDS: (\d+)\s*$", (REPO / ".github/workflows/ci.yml").read_text(), re.M)[1])
 # A class with no weight counts as this (DEFAULT_SERVER_WEIGHT in gradle/gametest.gradle.kts).
 DEFAULT_WEIGHT = int(re.search(r"\bDEFAULT_SERVER_WEIGHT = (\d+)\b", (REPO / "gradle/gametest.gradle.kts").read_text())[1])
+# A campaign group heavier than this is broken into its classes (gradle/ci-budget.txt).
+UNIT_LIMIT = int(re.search(r"^server-shard-seconds (\d+)\s*$", (REPO / "gradle/ci-budget.txt").read_text(), re.M)[1])
 
 
 def server(name: str, environment: str | None = None) -> str:
@@ -67,9 +73,18 @@ BAD_SPECS = ("0/2", "3/2", "1", "a/b", "1/0", "1/2/3")
 CASES = {
     **{f"shard {i}/{n}": Case(FILES, None, server_shard=f"{i}/{n}") for n in COUNTS for i in range(1, n + 1)},
     **{f"weighted shard {i}/2": Case(FILES, None, server_shard=f"{i}/2", server_weights={"GolfTest": 100}) for i in (1, 2)},
-    **{f"real shard {i}/{CI_SHARDS}": Case(REAL_TREE, None, server_shard=f"{i}/{CI_SHARDS}", server_weights=real_weights())
+    **{f"real shard {i}/{CI_SHARDS}": Case(REAL_TREE, None, server_shard=f"{i}/{CI_SHARDS}", server_weights=real_weights(), server_unit_limit=UNIT_LIMIT)
        for i in range(1, CI_SHARDS + 1)},
     "real whole": Case(REAL_TREE, None),
+    "filter two": Case(FILES, None, server_filter="AlphaTest,GolfTest"),
+    "filter by full name": Case(FILES, None, server_filter=PREFIX + "HotelTest"),
+    "filter no such class": Case(FILES, None, server_filter="AlphaTest,NoSuchTest"),
+    "filter empty term": Case(FILES, None, server_filter="AlphaTest,"),
+    "filter then shard 1/2": Case(FILES, None, server_filter="AlphaTest,BridgeTest,DeltaTest,GolfTest", server_shard="1/2"),
+    "filter then shard 2/2": Case(FILES, None, server_filter="AlphaTest,BridgeTest,DeltaTest,GolfTest", server_shard="2/2"),
+    # The three classes that name B or C weigh 18 s: over a limit of 12 they are broken apart, under 18 they stay together.
+    **{f"limited shard {i}/3": Case(FILES, None, server_shard=f"{i}/3", server_unit_limit=12) for i in (1, 2, 3)},
+    **{f"unlimited shard {i}/3": Case(FILES, None, server_shard=f"{i}/3", server_unit_limit=18) for i in (1, 2, 3)},
     **{f"bad shard {spec}": Case(FILES, None, server_shard=spec) for spec in BAD_SPECS},
     "more shards than units": Case(FILES, None, server_shard="6/6"),
 }
@@ -120,13 +135,34 @@ class ServerShardTest(unittest.TestCase):
         self.assertGreater(len(whole), 100)
         self.assert_partition(self.shards("real shard ", CI_SHARDS), whole)
 
-    def test_the_ci_shards_keep_each_campaign_environment_in_one_shard(self):
+    def test_a_group_heavier_than_the_limit_is_broken_into_its_classes(self):
+        # AlphaTest, BridgeTest and DeltaTest are one group of 18 s (6 s a class): a limit of 12 splits it, 18 keeps it.
+        split = self.shards("limited shard ", 3)
+        self.assert_partition(split, WHOLE)
+        self.assertGreater(sum(1 for shard in split if JOINED & set(shard)), 1, f"the group stayed whole above the limit: {split}")
+        kept = [shard for shard in self.shards("unlimited shard ", 3) if JOINED & set(shard)]
+        self.assertEqual(len(kept), 1, f"the group was split at the limit: {kept}")
+        self.assertLessEqual(JOINED, set(kept[0]))
+
+    def test_the_ci_shards_keep_each_campaign_environment_in_one_shard_unless_it_outweighs_one(self):
         shards = [{name.rsplit(".", 1)[1] for name in shard} for shard in self.shards("real shard ", CI_SHARDS)]
         environments = real_environments()
         self.assertTrue({"A", "B", "C", "D"} <= environments.keys(), environments.keys())
+        weights = real_weights()
+        # The groups the scan builds: environments that share a class are one group, transitively.
+        groups: list[tuple[set[str], set[str]]] = []
         for constant, users in environments.items():
-            with self.subTest(constant):
-                self.assertEqual(sum(1 for shard in shards if users & shard), 1, f"{constant} is split across shards")
+            joined = [g for g in groups if g[1] & users]
+            groups = [g for g in groups if g not in joined]
+            groups.append(({constant}.union(*(g[0] for g in joined)), set(users).union(*(g[1] for g in joined))))
+        for constants, users in groups:
+            weight = sum(weights.get(name, DEFAULT_WEIGHT) for name in users)
+            held = sum(1 for shard in shards if users & shard)
+            with self.subTest(sorted(constants)):
+                if weight <= UNIT_LIMIT:
+                    self.assertEqual(held, 1, f"{sorted(constants)} ({weight} s) is split across shards")
+                else:
+                    self.assertGreater(held, 1, f"{sorted(constants)} ({weight} s) is over {UNIT_LIMIT} s and was kept whole")
 
     def test_the_ci_shards_are_balanced_by_weight(self):
         weights = real_weights()
@@ -143,6 +179,8 @@ class ServerShardTest(unittest.TestCase):
                 continue
             joined = [unit for unit in units if unit & named]
             units = [unit for unit in units if not unit & named] + [set().union(*joined)]
+        # A unit over the limit is broken into its classes, as the scan does.
+        units = [part for unit in units for part in ([{name} for name in unit] if weight(unit) > UNIT_LIMIT else [unit])]
         shards = [set(shard) for shard in self.shards("real shard ", CI_SHARDS)]
         loads = [weight(shard) for shard in shards]
         self.assertLessEqual(max(loads) - min(loads), max(map(weight, units)), loads)
@@ -153,6 +191,29 @@ class ServerShardTest(unittest.TestCase):
             self.assertEqual(set().union(*mine), shard, "a unit is split across shards")
             with self.subTest(load=load):
                 self.assertLessEqual(load - min(map(weight, mine)), min(loads), loads)
+
+    def test_the_python_mirror_of_the_partition_is_the_scans(self):
+        # ci_shards.py is what tools/tests/test_ci_budget.py sizes the CI shard counts with: it must pick the scan's shards.
+        server, _client, environments = ci_shards.scan()
+        mirror = ci_shards.shards(ci_shards.campaign_units(server, environments), CI_SHARDS, real_weights(), DEFAULT_WEIGHT, UNIT_LIMIT)
+        self.assertEqual(sorted(sorted(part) for part in mirror), sorted(sorted(part) for part in self.shards("real shard ", CI_SHARDS)))
+
+    def test_a_filter_keeps_only_the_named_classes(self):
+        self.assertEqual(outcome("filter two").server, (PREFIX + "AlphaTest", PREFIX + "GolfTest"))
+        self.assertEqual(outcome("filter by full name").server, (PREFIX + "HotelTest",))
+
+    def test_a_filter_naming_no_class_or_an_empty_term_fails_and_says_so(self):
+        for label, message in (("filter no such class", "'NoSuchTest' match no server GameTest class"), ("filter empty term", "-PgametestClasses")):
+            with self.subTest(label):
+                result = outcome(label)
+                self.assertFalse(result.ok)
+                self.assertIn(message, result.message)
+
+    def test_a_shard_applies_after_the_filter_and_keeps_the_environment_group_together(self):
+        halves = [outcome(f"filter then shard {i}/2").server for i in (1, 2)]
+        self.assert_partition(halves, tuple(PREFIX + n for n in ("AlphaTest", "BridgeTest", "DeltaTest", "GolfTest")))
+        holding = [half for half in halves if JOINED & set(half)]
+        self.assertEqual(len(holding), 1, f"the B and C classes are split: {halves}")
 
     def test_a_malformed_shard_fails_and_says_so(self):
         for spec in BAD_SPECS:

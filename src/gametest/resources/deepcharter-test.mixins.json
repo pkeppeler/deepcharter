@@ -36,9 +36,12 @@
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
     "MinecraftAttackMixin",
+    "MinecraftInstanceAccess",
     "SkyRendererMixin",
     "SoundManagerStopProbeMixin",
-    "SpriteAnimationStateMixin"
+    "SpriteAnimationStateMixin",
+    "WorldBeforeItemsMixin",
+    "WorldBuilderMixin"
   ],
   "injectors": {
     "defaultRequire": 1
