@@ -1128,6 +1128,58 @@ not_logged "mark refuses a gameplay PR without px-reviewed before writing anythi
 px_run "$mark" "$px_first" "$gpx"
 exited "mark allows a gameplay PR with px-reviewed" 0
 count "the px check reads no comments (no lookup that can fail open)" "comments?per_page" 0
+# The gate sweep (#1639): a PR that changes gate code says what its sweep found, with a `Gate sweep:` body line. A PR numbered
+# below GATE_SWEEP_FIRST_PR is exempt (it was open before the rule).
+gs_first=$(sed -n 's/^GATE_SWEEP_FIRST_PR=\([0-9][0-9]*\)$/\1/p' "$tools/lib/pr-body-checks.sh")
+[[ -n $gs_first ]] || { echo "cannot read GATE_SWEEP_FIRST_PR from tools/lib/pr-body-checks.sh" >&2; exit 1; }
+gate_files="STUB_FILES=$(files modified:gradle/keybind-gate.gradle.kts)"
+# gs_run <who> <pr> <body line or empty> [VAR=value ...]: a PR whose body is "Closes #12" plus the line. <who> is mark,
+# merge (the direct merge) or preflight.
+gs_run() {
+  local who=$1 n=$2 line=$3 s=$script flag=(--direct)
+  shift 3
+  reset
+  rc=0
+  [[ $who != mark ]] || { s=$mark; flag=(); }
+  [[ $who != preflight ]] || flag=(--preflight)
+  out=$(env "STUB_BODY=Closes #12${line:+
+$line}" "$@" PATH="$work/bin:$PATH" bash "$s" ${flag[@]+"${flag[@]}"} "$n" 2>&1) || rc=$?
+}
+gs_refused() { # <name>
+  if [[ $rc -eq 1 && $out == *"has no 'Gate sweep:' line"* ]]; then pass "$1"; else fail "$1 (rc=$rc out=$out)"; fi
+}
+gs_allowed() { # <name>
+  if [[ $out == *"Gate sweep"* ]]; then fail "$1 (out: $out)"; else pass "$1"; fi
+}
+for who in mark merge preflight; do
+  gs_run "$who" "$gs_first" "" "$gate_files"
+  gs_refused "$who: a gate PR with no Gate sweep line is refused"
+  printed "$who: names the sweep command" "tools/gate-sweep.sh $gs_first"
+  gs_run "$who" "$gs_first" "Gate sweep: none affected" "$gate_files"
+  gs_allowed "$who: 'none affected' passes"
+  gs_run "$who" "$gs_first" "Gate sweep: #1546 fixed, #1542 notified" "$gate_files"
+  gs_allowed "$who: a list of PRs passes"
+  gs_run "$who" "$gs_first" "Gate sweep: none affected"$'\r' "$gate_files"
+  gs_allowed "$who: a CRLF line passes"
+  gs_run "$who" "$gs_first" "Gate sweep:   " "$gate_files"
+  gs_refused "$who: an empty Gate sweep line is refused"
+  gs_run "$who" "$gs_first" "Gate sweep: done" "$gate_files"
+  gs_refused "$who: a Gate sweep line that names neither 'none affected' nor a PR is refused"
+  gs_run "$who" "$gs_first" "- Gate sweep: none affected" "$gate_files"
+  gs_refused "$who: a Gate sweep line not at line start is refused"
+  gs_run "$who" $((gs_first - 1)) "" "$gate_files"
+  gs_allowed "$who: a PR below GATE_SWEEP_FIRST_PR is exempt"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:README.md modified:tools/merge-pr.sh)"
+  gs_allowed "$who: a PR that changes no gate needs no line"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files renamed:docs/x.md:tools/old_gate.py)"
+  gs_refused "$who: a PR that renames a gate away is a gate PR"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:gradle/keybind-allowlist.txt)"
+  gs_refused "$who: a gate list change is a gate change"
+  gs_run "$who" "$gs_first" "" "STUB_FILES=$(files modified:.githooks/pre-push)"
+  gs_refused "$who: a pre-push hook change is a gate change"
+done
+gs_run mark "$gs_first" "" "$gate_files"
+not_logged "mark refuses a gate PR with no sweep line before writing anything" "^gh api -X POST"
 # merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
 # check_pr_body_and_labels: the two lists must hold the same steps.
 lib=$tools/lib/pr-body-checks.sh

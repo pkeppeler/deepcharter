@@ -10,6 +10,8 @@ refuse() {
 
 # shellcheck source=gh-rest.sh
 source "$(dirname "${BASH_SOURCE[0]}")/gh-rest.sh"
+# shellcheck source=gate-paths.sh
+source "$(dirname "${BASH_SOURCE[0]}")/gate-paths.sh"
 
 pr_field() { pr_get "$pr" "$1"; }
 
@@ -136,6 +138,23 @@ check_px_review() {
   refuse "is labelled 'gameplay' but lacks the 'px-reviewed' label: run player-experience-reviewer (cycle 1, cycle 2) and label the PR after its PASS"
 }
 
+# A PR that changes gate code (tools/lib/gate-paths.sh) must say what `tools/gate-sweep.sh <pr>` found among the open PRs, so a
+# new or tightened gate does not break review-passed PRs after it lands (#1639): a body line `Gate sweep: none affected`, or
+# `Gate sweep: <the PRs fixed or notified>` (each named #N). A PR numbered below GATE_SWEEP_FIRST_PR was open before the rule
+# and is exempt. Needs $pr_files, $pr and $body.
+GATE_SWEEP_FIRST_PR=1640
+check_gate_sweep() {
+  local gate_file= path previous
+  [[ $pr -ge $GATE_SWEEP_FIRST_PR ]] || return 0
+  while IFS=$'\t' read -r _ path previous; do
+    if is_gate_path "$path"; then gate_file=$path; break; fi
+    if is_gate_path "$previous"; then gate_file=$previous; break; fi
+  done <<<"$pr_files"
+  [[ -n $gate_file ]] || return 0
+  grep -qiE '^Gate sweep:[[:space:]]*(none affected|[^#]*#[0-9]+)' <<<"$body" \
+    || refuse "changes gate code ($gate_file) but its body has no 'Gate sweep:' line: run tools/gate-sweep.sh $pr and add 'Gate sweep: none affected', or 'Gate sweep: #N fixed, #M notified' naming each open PR it would break"
+}
+
 # All the body and label checks, for a caller that does not need them interleaved with others
 # (tools/mark-review-passed.sh). Needs $sha.
 check_pr_body_and_labels() {
@@ -146,4 +165,5 @@ check_pr_body_and_labels() {
   check_map_change
   check_map_fresh
   check_px_review
+  check_gate_sweep
 }
