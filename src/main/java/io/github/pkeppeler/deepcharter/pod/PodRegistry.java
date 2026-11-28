@@ -33,7 +33,10 @@ public final class PodRegistry {
     public static final EntityType<PodEntity> PROSPECTOR =
             register(id("prospector"), Chassis.PROSPECTOR, PROSPECTOR_SEATS);
 
-    /** Used on a pod, it fits a tow cable from the pod the player rides, or takes one off (see {@link PodTowing}). */
+    /**
+     * Used on one pod and then another by a person on foot, it hooks the first to tow the second; used on a towed pod
+     * it takes the cable off (see {@link PodTowing}).
+     */
     public static final Item TOW_CABLE = towCable();
 
     private PodRegistry() {}
@@ -100,7 +103,7 @@ public final class PodRegistry {
         return Registry.register(
                 BuiltInRegistries.ITEM,
                 key,
-                new Item(new Item.Properties().setId(key).stacksTo(1)));
+                new TowCableItem(new Item.Properties().setId(key).stacksTo(1)));
     }
 
     public static void register() {
