@@ -180,7 +180,10 @@ public final class Wrecks {
         return charters;
     }
 
-    /** Tells the charter's online members where the pod went down, then fires {@link WreckEvents#REPORTED}. */
+    /**
+     * Tells the charter's online members where the pod went down, and in a layer that a tow cable brings it home,
+     * then fires {@link WreckEvents#REPORTED}.
+     */
     private static void report(ServerLevel level, Charter charter, PodEntity pod) {
         MinecraftServer server = level.getServer();
         BlockPos pos = pod.blockPosition();
@@ -195,6 +198,9 @@ public final class Wrecks {
             ServerPlayer player = server.getPlayerList().getPlayer(member);
             if (player != null) {
                 player.sendSystemMessage(message);
+                if (layer.isPresent()) {
+                    player.sendSystemMessage(Component.translatable("deepcharter.wreck.tow_hint"));
+                }
             }
         }
         WreckEvents.REPORTED.invoker().onReported(server, charter, pod, layer, pos);

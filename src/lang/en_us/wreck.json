@@ -1,4 +1,5 @@
 {
+  "deepcharter.wreck.tow_hint": "A crewmate can tow the wreck home with a tow cable.",
   "block.deepcharter.salvage_heap": "Salvage Heap",
   "deepcharter.wreck.report.layer": "Wreck report: a pod was lost in layer %s at %s, %s, %s.",
   "deepcharter.wreck.report.surface": "Wreck report: a pod was lost on the surface at %s, %s, %s.",
