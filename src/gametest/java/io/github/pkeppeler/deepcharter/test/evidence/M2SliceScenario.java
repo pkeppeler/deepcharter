@@ -1463,7 +1463,10 @@ public class M2SliceScenario extends EvidenceScenario {
             });
         }
 
-        /** The tow cable does nothing from a seat (#1605): the pilot steps out for {@code use}, holding it, and sits down again. */
+        /**
+         * The tow cable does nothing from a seat (#1605): the pilot steps out for {@code use}, holding it, and sits
+         * down again.
+         */
         private void onFoot(Consumer<MinecraftServer> use) {
             onServer(server -> {
                 ServerPlayer real = real(server);

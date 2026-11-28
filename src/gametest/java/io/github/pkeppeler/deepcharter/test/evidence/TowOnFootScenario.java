@@ -25,9 +25,10 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "tow-on-foot" (#1605): the real player, out of every pod, holds a tow cable and right-clicks one pod, then the
- * other. The first click picks the pod: a chain is drawn from it to the player, and the bar says what to click next. The second
- * hooks the pods: the bar says so, the cable hangs between them, and the crewmate in the first pod drives off with the second in tow.
+ * Evidence scenario "tow-on-foot" (#1605): the real player, out of every pod, holds a tow cable and right-clicks one
+ * pod, then the other. The first click picks the pod: a chain is drawn from it to the player, and the bar says what to
+ * click next. The second hooks the pods: the bar says so, the cable hangs between them, and the crewmate in the first
+ * pod drives off with the second in tow.
  */
 public class TowOnFootScenario extends EvidenceScenario {
     private static final int X = 800;

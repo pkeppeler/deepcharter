@@ -8,8 +8,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 
 /**
- * The tow cable. Used on a pod it is {@link PodTowing}'s; used on nothing (the air or a block) it puts away the pod the person picked
- * first, so a click on empty ground clears the pick.
+ * The tow cable. Used on a pod it is {@link PodTowing}'s; used on nothing (the air or a block) it puts away the pod the
+ * person picked first, so a click on empty ground clears the pick.
  */
 public final class TowCableItem extends Item {
     public TowCableItem(Properties properties) {
@@ -21,7 +21,7 @@ public final class TowCableItem extends Item {
         if (PodTowing.pickedPodId(player).isEmpty()) {
             return InteractionResult.PASS;
         }
-        if (player instanceof ServerPlayer person) {
+        if (player instanceof ServerPlayer person && !PodTowing.pickedJustNow(person)) {
             PodTowing.putAway(person);
         }
         return InteractionResult.SUCCESS;

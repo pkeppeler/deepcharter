@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.pod.PodTowing.Refusal;
 import io.github.pkeppeler.deepcharter.pod.TowReachProbe;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -32,14 +33,18 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for #1605, the tow cable on foot: a person who is out of every pod right-clicks one pod with the cable, which picks
- * it as the tower, and then another, which it tows. A seated use does nothing (the crosshair of a seated player meets their own hull,
- * so the seat was no place to aim a cable from). Every step says what happened, and a refused hook says why and keeps the first pod.
+ * Server GameTests for #1605, the tow cable on foot: a person who is out of every pod right-clicks one pod with the
+ * cable, which picks it as the tower, and then another, which it tows. A seated use does nothing (the crosshair of a
+ * seated player meets their own hull, so the seat was no place to aim a cable from). Every step says what happened, and
+ * a refused hook says why and keeps the first pod.
  */
 public class TowCableOnFootTest {
     private static final AtomicInteger NAMES = new AtomicInteger();
     /** Beyond the longest cable's reach of the first pod, which is at z 1.5. */
     private static final Vec3 FAR = new Vec3(1.5, 2, 12.5);
+
+    /** Blocks a test's ray reaches. */
+    private static final double RAY = 4.5;
 
     private static final Vec3 FIRST = new Vec3(1.5, 2, 1.5);
     private static final Vec3 SECOND = new Vec3(1.5, 2, 4.5);
@@ -115,7 +120,9 @@ public class TowCableOnFootTest {
                 PodTowing.towerId(second));
         helper.runAfterDelay(2, () -> {
             expectMessages(
-                    helper, person, List.of(say("picked"), refused("same_pod"), refused("too_far"), say("attached")));
+                    helper,
+                    person,
+                    List.of(say("picked"), refused("same_pod"), Refusal.TOO_FAR.message(), say("attached")));
             helper.succeed();
         });
     }
@@ -155,17 +162,18 @@ public class TowCableOnFootTest {
         use(stranger, open);
         use(stranger, foreign);
         expect(helper, !PodTowing.isTowed(foreign), "another charter's pod is not towed");
-        stranger.player()
-                .getItemInHand(InteractionHand.MAIN_HAND)
-                .use(helper.getLevel(), stranger.player(), InteractionHand.MAIN_HAND);
-        use(stranger, foreign);
-        use(stranger, open);
-        expect(helper, !PodTowing.isTowed(open), "and it is not the tower of anything either");
-        helper.runAfterDelay(2, () -> {
-            Component outsider = refused("not_allowed_to_tow");
-            expectMessages(
-                    helper, stranger, List.of(say("picked"), outsider, say("put_away"), outsider, say("picked")));
-            helper.succeed();
+        // A click on nothing soon after the pick is read as the item use of the same click, so the put-away waits.
+        helper.runAfterDelay(8, () -> {
+            useInAir(helper, stranger);
+            use(stranger, foreign);
+            use(stranger, open);
+            expect(helper, !PodTowing.isTowed(open), "and it is not the tower of anything either");
+            helper.runAfterDelay(2, () -> {
+                Component outsider = refused("not_allowed_to_tow");
+                expectMessages(
+                        helper, stranger, List.of(say("picked"), outsider, say("put_away"), outsider, say("picked")));
+                helper.succeed();
+            });
         });
     }
 
@@ -177,15 +185,17 @@ public class TowCableOnFootTest {
         InteractionResult none = useInAir(helper, person);
         expect(helper, !none.consumesAction(), "a cable used with nothing picked has nothing to put away");
         use(person, first);
-        expect(helper, useInAir(helper, person).consumesAction(), "a click on nothing should put the cable away");
-        use(person, second);
-        expect(
-                helper,
-                !PodTowing.isTowed(first) && !PodTowing.isTowed(second),
-                "a click on a pod after the cable was put away picks it, and hooks nothing");
-        helper.runAfterDelay(2, () -> {
-            expectMessages(helper, person, List.of(say("picked"), say("put_away"), say("picked")));
-            helper.succeed();
+        helper.runAfterDelay(8, () -> {
+            expect(helper, useInAir(helper, person).consumesAction(), "a click on nothing should put the cable away");
+            use(person, second);
+            expect(
+                    helper,
+                    !PodTowing.isTowed(first) && !PodTowing.isTowed(second),
+                    "a click on a pod after the cable was put away picks it, and hooks nothing");
+            helper.runAfterDelay(2, () -> {
+                expectMessages(helper, person, List.of(say("picked"), say("put_away"), say("picked")));
+                helper.succeed();
+            });
         });
     }
 
@@ -256,25 +266,27 @@ public class TowCableOnFootTest {
     }
 
     /**
-     * The seat's failure (#1605): the ridden pod's own box held the crosshair, so no other pod was ever picked. On foot the person stands
-     * flush against the first pod, with the second beyond it: the ray past the first pod's box must end on the second, and one aimed at
-     * the first must end on it, so neither box intercepts the click meant for the other.
+     * The seat's failure (#1605): the ridden pod's own box held the crosshair, so no other pod was ever picked. On foot
+     * the person stands level with the first pod's east face, 0.3 blocks off it, and the second pod lies straight ahead
+     * past that face. The ray runs along the first pod's box without entering it, so it must end on the second pod; a
+     * ray aimed at the first must end on it. A pod directly in line would block a ray, as any entity does: the person
+     * then steps aside.
      */
     @GameTest
-    public void aPersonFlushBesideAPodAimsPastItAtTheNextPod(GameTestHelper helper) {
+    public void aPersonBesideAPodAimsPastItsEdgeAtTheNextPod(GameTestHelper helper) {
         double width = Chassis.MOLE.width();
-        double standX = FIRST.x + width / 2 + 0.4;
+        double standX = FIRST.x + width / 2 + 0.3;
         PodEntity first = helper.spawn(PodRegistry.POD, FIRST);
-        PodEntity second = helper.spawn(PodRegistry.POD, new Vec3(standX + 0.4 + width / 2 + 2.0, FIRST.y, FIRST.z));
+        PodEntity second = helper.spawn(PodRegistry.POD, new Vec3(standX, FIRST.y, FIRST.z + 3.0));
         MockPlayer person = onFoot(helper);
-        person.teleportTo(helper.getLevel(), helper.absoluteVec(new Vec3(standX, FIRST.y, FIRST.z)), 0f, 0f);
+        person.teleportTo(helper.getLevel(), helper.absoluteVec(new Vec3(standX, FIRST.y, FIRST.z - 0.5)), 0f, 0f);
         for (PodEntity wanted : List.of(second, first)) {
             Vec3 eye = person.player().getEyePosition();
             Vec3 toward = wanted.getBoundingBox().getCenter().subtract(eye).normalize();
-            Vec3 end = eye.add(toward.scale(4.5));
+            Vec3 end = eye.add(toward.scale(RAY));
             AABB search = person.player()
                     .getBoundingBox()
-                    .expandTowards(toward.scale(4.5))
+                    .expandTowards(toward.scale(RAY))
                     .inflate(1.0);
             EntityHitResult hit = ProjectileUtil.getEntityHitResult(
                     person.player(),
@@ -282,7 +294,7 @@ public class TowCableOnFootTest {
                     end,
                     search,
                     entity -> entity.isPickable() && !entity.isSpectator(),
-                    4.5 * 4.5);
+                    RAY * RAY);
             expect(
                     helper,
                     hit != null && hit.getEntity() == wanted,
@@ -290,7 +302,85 @@ public class TowCableOnFootTest {
                     wanted.getUUID(),
                     hit == null ? null : hit.getEntity().getUUID());
         }
+        expect(
+                helper,
+                second.getBoundingBox().minZ - first.getBoundingBox().maxZ > 1.0,
+                "the pods should not touch, or the ray test says nothing");
         helper.succeed();
+    }
+
+    /**
+     * One right-click on a pod: the use of the pod, then, as Minecraft does when the client's result passes, the item's
+     * own use, in the same tick.
+     */
+    @GameTest
+    public void aPickSurvivesTheItemUseThatFollowsTheClickOnThePodInTheSameTick(GameTestHelper helper) {
+        PodEntity first = helper.spawn(PodRegistry.POD, FIRST);
+        PodEntity second = helper.spawn(PodRegistry.POD, SECOND);
+        MockPlayer person = onFoot(helper);
+        use(person, first);
+        expect(helper, useInAir(helper, person).consumesAction(), "the item use that follows is consumed");
+        expect(helper, PodTowing.pickedPodId(person.player()).isPresent(), "the pick must survive the same click");
+        helper.runAfterDelay(2, () -> {
+            expect(helper, PodTowing.pickedPodId(person.player()).isPresent(), "and the ticks after it");
+            use(person, second);
+            expect(helper, PodTowing.isTowed(second), "so the second click hooks");
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void aPickedPodThatIsRemovedLapsesAndTheNextClickPicksAgain(GameTestHelper helper) {
+        PodEntity first = helper.spawn(PodRegistry.POD, FIRST);
+        PodEntity second = helper.spawn(PodRegistry.POD, SECOND);
+        MockPlayer person = onFoot(helper);
+        use(person, first);
+        first.discard();
+        use(person, second);
+        expect(helper, !PodTowing.isTowed(second), "a pod that was removed tows nothing");
+        helper.runAfterDelay(2, () -> {
+            expectMessages(helper, person, List.of(say("picked"), say("lapsed"), say("picked")));
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void aTowerThatBecomesTowedBetweenTheClicksIsRefused(GameTestHelper helper) {
+        PodEntity first = helper.spawn(PodRegistry.POD, FIRST);
+        PodEntity second = helper.spawn(PodRegistry.POD, SECOND);
+        PodEntity third = helper.spawn(PodRegistry.POD, new Vec3(4.5, 2, 1.5));
+        MockPlayer person = onFoot(helper);
+        use(person, first);
+        PodTowing.attach(third, first);
+        use(person, second);
+        expect(helper, !PodTowing.isTowed(second), "a pod that is being towed cannot tow");
+        helper.runAfterDelay(2, () -> {
+            expectMessages(helper, person, List.of(say("picked"), refused("tower_is_towed")));
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void aCableInTheOffHandHooksAndKeepsItsPick(GameTestHelper helper) {
+        PodEntity first = helper.spawn(PodRegistry.POD, FIRST);
+        PodEntity second = helper.spawn(PodRegistry.POD, SECOND);
+        MockPlayer person = onFoot(helper);
+        person.player().setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        person.player().setItemInHand(InteractionHand.OFF_HAND, new ItemStack(PodRegistry.TOW_CABLE));
+        UseEntity.on(person.player(), first.level(), InteractionHand.OFF_HAND, first);
+        helper.runAfterDelay(3, () -> {
+            expect(
+                    helper,
+                    PodTowing.pickedPodId(person.player()).isPresent(),
+                    "a cable in the off hand keeps its pick");
+            UseEntity.on(person.player(), second.level(), InteractionHand.OFF_HAND, second);
+            expect(
+                    helper,
+                    Optional.of(first.getUUID()).equals(PodTowing.towerId(second)),
+                    "the off-hand cable should hook, got %s",
+                    PodTowing.towerId(second));
+            helper.succeed();
+        });
     }
 
     @GameTest

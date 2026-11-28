@@ -35,27 +35,31 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Client GameTest for #1605: a real client on foot hooks two pods with real right-clicks on the crosshair, the way the seat could not.
- * The crosshair is aimed at the first pod and right-clicked: the pod is picked, and the client sees the pick and draws the line to it.
- * It is aimed at the second and right-clicked: the first pod tows the second, which a crewmate sits in, and the client sees the cable
- * and the pick gone. A right-click on the towed pod takes the cable off. The tower of the cable is the pod the person clicked first.
+ * Client GameTest for #1605: a real client on foot hooks two pods with real right-clicks on the crosshair, the way the
+ * seat could not. The crosshair is aimed at the first pod and right-clicked: the pod is picked, and the client sees the
+ * pick and draws the line to it. It is aimed at the second and right-clicked: the first pod tows the second, which a
+ * crewmate sits in, and the client sees the cable and the pick gone. A right-click on the towed pod takes the cable
+ * off. The tower of the cable is the pod the person clicked first.
  */
 public class TowCableOnFootClientTest implements FabricClientGameTest {
     private static final int X = 700;
     private static final int Z = 700;
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     private static final double WIDTH = Chassis.MOLE.width();
-    /** Blocks the person stands off the first pod's east face: flush beside it, so its box is the nearest thing to the crosshair. */
-    private static final double OFF_FIRST = 0.4;
-    /** Blocks of open air between the person and the second pod's west face, inside the reach of an interaction. */
-    private static final double TO_SECOND = 2.0;
-    /** Blocks between the two pods' middles. */
-    private static final double APART = WIDTH + OFF_FIRST + OFF_FIRST + TO_SECOND;
+    /**
+     * Blocks the person stands off the first pod's east face, level with it, so the box is the nearest thing beside the
+     * crosshair.
+     */
+    private static final double OFF_FIRST = 0.3;
+    /**
+     * Blocks between the two pods' middles along z: the second lies straight ahead of the person, past the first pod's
+     * face.
+     */
+    private static final double APART = 3;
 
     private static final Vec3 FIRST_AT = new Vec3(X + 0.5, FLOOR_Y, Z + 0.5);
-    private static final Vec3 SECOND_AT = FIRST_AT.add(APART, 0, 0);
-    /** Flush against the first pod's east face, in line with both: the ray to the second runs past the first pod's box, which must not catch it. */
-    private static final Vec3 STAND_AT = FIRST_AT.add(WIDTH / 2 + OFF_FIRST, 0, 0);
+    private static final Vec3 SECOND_AT = FIRST_AT.add(WIDTH / 2 + OFF_FIRST, 0, APART);
+    private static final Vec3 STAND_AT = FIRST_AT.add(WIDTH / 2 + OFF_FIRST, 0, -0.5);
 
     private record Rig(UUID first, UUID second) {}
 
@@ -76,6 +80,22 @@ public class TowCableOnFootClientTest implements FabricClientGameTest {
                     client -> crosshairPod(client).filter(rig.first()::equals).isPresent(),
                     client -> "the crosshair is on " + crosshairPod(client));
             context.getInput().pressKey(options -> options.keyUse);
+            // Split the wait: the server's pick first, so a click the server undid is told apart from a client
+            // sync that did not arrive.
+            ClientWait.until(
+                    context,
+                    "the server holding the first pod as the person's pick",
+                    () -> two.server()
+                            .computeOnServer(server -> PodTowing.pickedPodId(real(server.overworld(), two))
+                                    .filter(rig.first()::equals)
+                                    .isPresent()),
+                    () -> two.server().computeOnServer(server -> {
+                        ServerPlayer person = real(server.overworld(), two);
+                        return "the server's pick is " + PodTowing.pickedPodId(person) + ", the person holds "
+                                + person.getMainHandItem() + " and rides " + person.getVehicle() + ", "
+                                + person.distanceTo(TestEntities.require(server.overworld(), rig.first()))
+                                + " blocks from the first pod";
+                    }));
             ClientWait.until(
                     context,
                     "the client sees the first pod picked",

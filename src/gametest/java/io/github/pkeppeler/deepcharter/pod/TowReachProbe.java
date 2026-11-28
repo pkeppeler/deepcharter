@@ -4,7 +4,10 @@ import java.util.List;
 import java.util.Optional;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Gives the tests in other packages the tow reach checks of {@link PodTowing}, which take their tunables as an argument, and a way to age a pick. */
+/**
+ * Gives the tests in other packages the tow reach checks of {@link PodTowing}, which take their tunables as an
+ * argument, and a way to age a pick.
+ */
 public final class TowReachProbe {
     private TowReachProbe() {}
 

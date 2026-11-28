@@ -54,16 +54,18 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * The tow cable between two pods. A person on foot, holding a {@link PodRegistry#TOW_CABLE}, right-clicks one pod to pick it and then
- * another within {@link TowTuning#reachFor} of it: the first pod tows the second. Right-clicking a towed pod with the cable takes it
- * off. A person in a pod cannot work the cable (#1605): the crosshair of a seated player meets their own hull, so the click only ever
- * picked the pod they sat in. A pod moved where its owner did not choose needs a rule for who may do it: a player may hook a pod only
- * when {@link PodComponents#mayAccess} lets their charter at it, and the tower's charter or the towed pod's owner charter may free it,
- * so an owner can always recover a pod someone else towed. A wreck is towed home the same way, but cannot be the tower.
+ * The tow cable between two pods. A person on foot, holding a {@link PodRegistry#TOW_CABLE}, right-clicks one pod to
+ * pick it and then another within {@link TowTuning#reachFor} of it: the first pod tows the second. Right-clicking a
+ * towed pod with the cable takes it off. A person in a pod cannot work the cable (#1605): the crosshair of a seated
+ * player meets their own hull, so the click only ever picked the pod they sat in. A pod moved where its owner did not
+ * choose needs a rule for who may do it: a player may hook a pod only when {@link PodComponents#mayAccess} lets their
+ * charter at it, and the tower's charter or the towed pod's owner charter may free it, so an owner can always recover a
+ * pod someone else towed. A wreck is towed home the same way, but cannot be the tower.
  *
- * <p>The first click is a person's attachment, {@link #PICK}, synced to that person only (the client draws a line from the pod to them)
- * and never saved. It ends by the hook, a click on nothing with the cable ({@link TowCableItem}), the cable leaving the hands, the
- * person boarding a pod, the pod going, or {@link TowTuning#pickTicks}; a refused second click keeps it.
+ * <p>The first click is a person's attachment, {@link #PICK}, synced to that person only (the client draws a line from
+ * the pod to them) and never saved. It ends by the hook, a click on nothing with the cable ({@link TowCableItem}), the
+ * cable leaving the hands, the person boarding a pod, the pod going, or {@link TowTuning#pickTicks}; a refused second
+ * click keeps it.
  *
  * <p>The link is one versioned attachment on the towed pod, {@link #STATE}, holding the tower's UUID. It is saved and synced, and a
  * pod keeps its UUID when a breach recreates it, so the link outlives unloading and crossing. While the tower is in the towed pod's
@@ -100,6 +102,9 @@ public final class PodTowing {
             Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
     /** The motion of each towed pod on its line. Server only and not saved: a loaded pod starts at rest with no path behind its tower. */
     private static final Map<PodEntity, Line> LINES = Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** Ticks after a pick in which the item use of the same click is not a click on nothing: well under a person's next click. */
+    private static final int PICK_GRACE_TICKS = 5;
 
     private static final double EPSILON = 1e-7;
     /** Blocks a tick the line must drag a towed pod, across the ground, for it to turn toward the drag. */
@@ -185,7 +190,10 @@ public final class PodTowing {
         }
     }
 
-    /** Server only, not saved: the game tick each person picked their pod at. Weak, and holds no entity, so a person who leaves keeps nothing. */
+    /**
+     * Server only, not saved: the game tick each person picked their pod at. Weak, and holds no entity, so a person who
+     * leaves keeps nothing.
+     */
     private static final Map<ServerPlayer, Long> PICKED_AT = Collections.synchronizedMap(new WeakHashMap<>());
 
     /** The pod this one is towed by, if any. */
@@ -214,8 +222,8 @@ public final class PodTowing {
     public static final int PICK_VERSION = 1;
 
     /**
-     * Not persistent: a pick is a session's, and a new session starts with none. {@link Versioned} is for the sync, so that a client on
-     * another build reads it as a marker. Synced to the person only: nobody else draws the line.
+     * Not persistent: a pick is a session's, and a new session starts with none. {@link Versioned} is for the sync, so
+     * that a client on another build reads it as a marker. Synced to the person only: nobody else draws the line.
      */
     public static final AttachmentType<Versioned<Pick>> PICK = AttachmentRegistry.create(
             Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tow_pick"),
@@ -237,7 +245,10 @@ public final class PodTowing {
         UNREADABLE;
 
         public Component message() {
-            return Component.translatable("message.deepcharter.towing.refused." + name().toLowerCase(Locale.ROOT));
+            String key = "message.deepcharter.towing.refused." + name().toLowerCase(Locale.ROOT);
+            return this == TOO_FAR
+                    ? Component.translatable(key, (int) Math.floor(reach(TowTuning.DEFAULT)))
+                    : Component.translatable(key);
         }
     }
 
@@ -253,7 +264,9 @@ public final class PodTowing {
         ServerTickEvents.END_SERVER_TICK.register(PodTowing::lapsePicks);
     }
 
-    /** The UUID of the pod the person has picked with the cable, whether or not it is in the world. Safe on either side. */
+    /**
+     * The UUID of the pod the person has picked with the cable, whether or not it is in the world. Safe on either side.
+     */
     public static Optional<UUID> pickedPodId(Player person) {
         return Versioned.readable(person, PICK).flatMap(Pick::pod);
     }
@@ -262,6 +275,16 @@ public final class PodTowing {
     private static void pick(ServerPlayer person, PodEntity pod) {
         person.setAttached(PICK, Versioned.of(new Pick(Optional.of(pod.getUUID()))));
         PICKED_AT.put(person, person.level().getGameTime());
+    }
+
+    /**
+     * True when the person picked their pod this tick or the one before. One right-click on a pod sends the use of the
+     * pod and then, when the client's own result passes, the use of the item in the same tick, so {@link TowCableItem}
+     * must not read that second use as a click on nothing.
+     */
+    static boolean pickedJustNow(ServerPlayer person) {
+        Long at = PICKED_AT.get(person);
+        return at != null && person.level().getGameTime() - at <= PICK_GRACE_TICKS;
     }
 
     /** Server only: forgets the person's pick. Returns false, and changes nothing, when they had none. */
@@ -274,7 +297,10 @@ public final class PodTowing {
         return true;
     }
 
-    /** Server only: a click on nothing with the cable. Returns false, and says nothing, when there was no pick to put away. */
+    /**
+     * Server only: a click on nothing with the cable. Returns false, and says nothing, when there was no pick to put
+     * away.
+     */
     static boolean putAway(ServerPlayer person) {
         if (!clearPick(person)) {
             return false;
@@ -283,7 +309,10 @@ public final class PodTowing {
         return true;
     }
 
-    /** The pod the person has picked, when it is in their level and still there. A pick of a pod that is gone is dropped. */
+    /**
+     * The pod the person has picked, when it is in their level and still there. A pick of a pod that is gone is
+     * dropped.
+     */
     private static Optional<PodEntity> picked(ServerPlayer person) {
         Optional<UUID> id = pickedPodId(person);
         if (id.isEmpty()) {
@@ -299,7 +328,10 @@ public final class PodTowing {
         return Optional.empty();
     }
 
-    /** Ends a pick that has outlived {@link TowTuning#pickTicks}, whose cable left the hands, whose person boarded a pod, or whose pod is gone. */
+    /**
+     * Ends a pick that has outlived {@link TowTuning#pickTicks}, whose cable left the hands, whose person boarded a
+     * pod, or whose pod is gone.
+     */
     private static void lapsePicks(MinecraftServer server) {
         for (ServerPlayer person : server.getPlayerList().getPlayers()) {
             if (pickedPodId(person).isEmpty()) {
