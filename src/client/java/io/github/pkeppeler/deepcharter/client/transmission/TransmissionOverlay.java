@@ -80,8 +80,9 @@ public final class TransmissionOverlay {
     }
 
     /**
-     * Replays a transmission from the comms log (#1615): it types out with its sounds as it did when it came, next after the one on
-     * screen, ahead of any still waiting. One that cannot be shown is dropped as {@link #enqueue} drops it.
+     * Replays a transmission from the comms log (#1615): it types out with its sounds as it did when it came, next
+     * after the one on screen, ahead of any still waiting. One that cannot be shown is dropped as {@link #enqueue}
+     * drops it.
      */
     public static void replay(TransmissionPayload payload) {
         if (showable(payload)) {

@@ -15,10 +15,10 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence for #1606: the surface under the held sky, the deep night's colours with the dusk's fog distances, on the open
- * plain, into the great pit's crater and at the closest mesa, so a reviewer can judge that the terrain still reads. Each view
- * is shot at two ticks of the sky clock, the old brightest dusk (0) and the playtest's moment (80993): the pairs match,
- * because the sky no longer moves.
+ * Evidence for #1606: the surface under the held sky, the deep night's colours with the dusk's fog distances, on the
+ * open plain, into the great pit's crater and at the closest mesa, so a reviewer can judge that the terrain still
+ * reads. Each view is shot at two ticks of the sky clock, the old brightest dusk (0) and the playtest's moment (80993):
+ * the pairs match, because the sky no longer moves.
  */
 public class SurfaceHeldSkyScenario extends EvidenceScenario {
     /** Sky-clock ticks the views are shot at. */

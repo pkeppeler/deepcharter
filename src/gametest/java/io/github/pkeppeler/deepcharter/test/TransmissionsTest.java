@@ -326,9 +326,9 @@ public class TransmissionsTest {
     }
 
     /**
-     * #1615: the log a member opens lists every transmission they have been sent, in the order the charter received them, under the
-     * charter's name. A member who is offline when one fires has not been sent it, so it is not in their log until they log in: the log
-     * never shows what has not reached the player.
+     * #1615: the log a member opens lists every transmission they have been sent, in the order the charter received
+     * them, under the charter's name. A member who is offline when one fires has not been sent it, so it is not in
+     * their log until they log in: the log never shows what has not reached the player.
      */
     @GameTest
     public void theLogListsWhatTheMemberHasReceivedInOrder(GameTestHelper helper) {

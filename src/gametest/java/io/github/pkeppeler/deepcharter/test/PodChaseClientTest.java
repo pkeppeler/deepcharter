@@ -23,10 +23,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 
 /**
- * Client GameTest for #1281 (and #1268, #1680): the crew's camera. Taking any seat switches to the third-person chase view
- * and leaving it brings back the view the player had; F5 still cycles while seated. In first person the view turns with
- * the pod, as a vanilla boat's rider does, and the angle between the view and the pod stays where the mouse put it. In
- * third person the camera settles behind a pod that drives.
+ * Client GameTest for #1281 (and #1268, #1680): the crew's camera. Taking any seat switches to the third-person chase
+ * view and leaving it brings back the view the player had; F5 still cycles while seated. In first person the view turns
+ * with the pod, as a vanilla boat's rider does, and the angle between the view and the pod stays where the mouse put
+ * it. In third person the camera settles behind a pod that drives.
  */
 public class PodChaseClientTest implements FabricClientGameTest {
     /** How far the player has looked away from the pod's nose with the mouse. */
@@ -174,8 +174,8 @@ public class PodChaseClientTest implements FabricClientGameTest {
     }
 
     /**
-     * #1680: the navigator's seat chases as the pilot's does. The mock takes a Prospector's pilot seat and the real player
-     * its second seat; leaving brings back the view the player had.
+     * #1680: the navigator's seat chases as the pilot's does. The mock takes a Prospector's pilot seat and the real
+     * player its second seat; leaving brings back the view the player had.
      */
     private static void theSecondSeatChasesToo(ClientGameTestContext context, TwoPlayerServer two) {
         UUID mock = two.mock().player().getUUID();

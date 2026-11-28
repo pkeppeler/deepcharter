@@ -9,8 +9,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
 /**
- * Serverbound: the player pressed the comms log key (#1615). It carries nothing: the server answers with the sender's own log
- * ({@link Transmissions#log}), so a client can never ask for another charter's.
+ * Serverbound: the player pressed the comms log key (#1615). It carries nothing: the server answers with the sender's
+ * own log ({@link Transmissions#log}), so a client can never ask for another charter's.
  */
 public record TransmissionLogRequest() implements CustomPacketPayload {
     public static final Type<TransmissionLogRequest> TYPE =

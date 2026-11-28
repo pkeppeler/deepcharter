@@ -127,9 +127,10 @@ public final class Transmissions {
     }
 
     /**
-     * The comms log of {@code player} (#1615): every transmission they have been sent, in the order their charter received them, so a
-     * member who joined later reads the charter's whole story and nobody reads one that has not reached them. A transmission the data
-     * file no longer lists is left out. Empty, and never a throw, for a player in no charter or with unreadable data.
+     * The comms log of {@code player} (#1615): every transmission they have been sent, in the order their charter
+     * received them, so a member who joined later reads the charter's whole story and nobody reads one that has not
+     * reached them. A transmission the data file no longer lists is left out. Empty, and never a throw, for a player in
+     * no charter or with unreadable data.
      */
     public static TransmissionLogPayload log(MinecraftServer server, ServerPlayer player) {
         TransmissionData data = TransmissionData.get(server);

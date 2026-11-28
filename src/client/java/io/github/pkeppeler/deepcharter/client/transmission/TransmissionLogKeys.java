@@ -10,8 +10,8 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.KeyMapping;
 
 /**
- * Opens the comms log (#1615): J by default, from the world with no screen open, seated or on foot. The key asks the server for the
- * player's log, and the answer opens {@link TransmissionLogScreen} unless a screen has opened meanwhile.
+ * Opens the comms log (#1615): J by default, from the world with no screen open, seated or on foot. The key asks the
+ * server for the player's log, and the answer opens {@link TransmissionLogScreen} unless a screen has opened meanwhile.
  */
 public final class TransmissionLogKeys {
     public static final KeyMapping OPEN = new KeyMapping(

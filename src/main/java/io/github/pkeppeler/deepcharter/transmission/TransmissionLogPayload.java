@@ -9,9 +9,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
 /**
- * Clientbound, the answer to {@link TransmissionLogRequest} (#1615): every transmission the player has been sent, in the order their
- * charter received them, with the values of the two fields, as {@link TransmissionPayload} carries them for one. Empty for a player in
- * no charter. The client looks each one up in its own {@link TransmissionCatalog}.
+ * Clientbound, the answer to {@link TransmissionLogRequest} (#1615): every transmission the player has been sent, in
+ * the order their charter received them, with the values of the two fields, as {@link TransmissionPayload} carries them
+ * for one. Empty for a player in no charter. The client looks each one up in its own {@link TransmissionCatalog}.
  *
  * @param charter  the charter's name, for {@code [CHARTER]}; empty with no charter
  * @param director the Director's name, for {@code [DIRECTOR]}

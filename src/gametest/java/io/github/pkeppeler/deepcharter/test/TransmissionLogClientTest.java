@@ -25,9 +25,10 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Client GameTest for #1615: the comms log. Its key opens a screen of the transmissions the charter has sent the player, in order,
- * each row saying when it came, and none it has not been sent. The latest is chosen; its text reads as it came, a garbled one still
- * garbled. A row chooses another, and REPLAY closes the log and types the chosen one out again on the overlay.
+ * Client GameTest for #1615: the comms log. Its key opens a screen of the transmissions the charter has sent the
+ * player, in order, each row saying when it came, and none it has not been sent. The latest is chosen; its text reads
+ * as it came, a garbled one still garbled. A row chooses another, and REPLAY closes the log and types the chosen one
+ * out again on the overlay.
  */
 public class TransmissionLogClientTest implements FabricClientGameTest {
     private static final String CREW_NAME = "Comms Log Crew";

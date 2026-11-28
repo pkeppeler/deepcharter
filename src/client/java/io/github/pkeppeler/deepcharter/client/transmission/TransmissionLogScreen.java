@@ -18,10 +18,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
 /**
- * The comms log (#1615): every transmission the charter has sent this player, oldest first, each row saying when it came. The chosen
- * one's header and text read below the list, the wheel scrolling a long text, and REPLAY closes the log and types it out again with its
- * sounds, as it came. The rows are in the transmissions channel and nowhere else (SPEC section 5): the log only shows what the server
- * says has reached the player, so it spoils nothing, and a garbled text is the same text it was.
+ * The comms log (#1615): every transmission the charter has sent this player, oldest first, each row saying when it
+ * came. The chosen one's header and text read below the list, the wheel scrolling a long text, and REPLAY closes the
+ * log and types it out again with its sounds, as it came. The rows are in the transmissions channel and nowhere else
+ * (SPEC section 5): the log only shows what the server says has reached the player, so it spoils nothing, and a garbled
+ * text is the same text it was.
  */
 public final class TransmissionLogScreen extends CrtScreen {
     private static final int MARGIN = 24;
@@ -73,7 +74,7 @@ public final class TransmissionLogScreen extends CrtScreen {
                 .getString();
     }
 
-    /** The lines of the chosen text as wrapped to the screen: its header, when it came, and the text with its closing line. */
+    /** The lines of the chosen text as wrapped to the screen, with the framing's closing line. */
     public List<String> chosenLines() {
         return chosen().map(this::linesOf).orElse(List.of());
     }

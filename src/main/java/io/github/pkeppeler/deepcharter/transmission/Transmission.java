@@ -71,8 +71,9 @@ public record Transmission(
     }
 
     /**
-     * The lang key of when the transmission came, as the comms log shows it (#1615): the zone or breach of its trigger, which takes the
-     * layer as its one argument ({@link #whenLayer}), or for an event its own line, since only the transmission knows what the event was.
+     * The lang key of when the transmission came, as the comms log shows it (#1615): the zone or breach of its trigger,
+     * which takes the layer as its one argument ({@link #whenLayer}), or for an event its own line, since only the
+     * transmission knows what the event was.
      */
     public String whenKey() {
         return switch (trigger) {

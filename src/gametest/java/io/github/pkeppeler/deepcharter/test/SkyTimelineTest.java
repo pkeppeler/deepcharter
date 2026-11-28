@@ -23,10 +23,11 @@ import net.minecraft.world.timeline.Timeline;
 import org.joml.Vector3fc;
 
 /**
- * Server GameTests for #239 and #1606 (art-direction.md section 2): the overworld sky is a visual timeline on its own world clock,
- * held at the deep night with the dusk's fog distances, and it does not touch the gameplay clock or the layers. The timeline is evaluated at a
- * sky-clock tick of the test's choosing through a {@link ClockManager} that only the test holds, so no world clock is written and a
- * test running beside this one is not affected. The expected colours are written out here, not read from the timeline.
+ * Server GameTests for #239 and #1606 (art-direction.md section 2): the overworld sky is a visual timeline on its own
+ * world clock, held at the deep night with the dusk's fog distances, and it does not touch the gameplay clock or the
+ * layers. The timeline is evaluated at a sky-clock tick of the test's choosing through a {@link ClockManager} that only
+ * the test holds, so no world clock is written and a test running beside this one is not affected. The expected colours
+ * are written out here, not read from the timeline.
  */
 public class SkyTimelineTest {
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
@@ -39,8 +40,9 @@ public class SkyTimelineTest {
     private static final long[] ACROSS_THE_PERIOD = {0, 40_000, 80_993, NIGHT, 200_000, PERIOD - 1};
 
     /**
-     * #1606: the surface holds the deep night's colours (sky, fog, sky light, stars) at every tick of the sky clock, and the fog
-     * distances stay at the dusk values, so the dark does not close in. The clock still runs; only what it reads stands still.
+     * #1606: the surface holds the deep night's colours (sky, fog, sky light, stars) at every tick of the sky clock,
+     * and the fog distances stay at the dusk values, so the dark does not close in. The clock still runs; only what it
+     * reads stands still.
      */
     @GameTest
     public void theSkyHoldsTheDeepNightWithDuskFogDistances(GameTestHelper helper) {
