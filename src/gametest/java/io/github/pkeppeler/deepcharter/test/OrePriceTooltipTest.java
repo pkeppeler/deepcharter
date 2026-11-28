@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -65,7 +66,7 @@ public class OrePriceTooltipTest {
     public void theTooltipReadsTheRatesTheProcessorPaysFrom(GameTestHelper helper) {
         for (OreType ore : OreType.values()) {
             List<String> shown = shownPrices(helper, OreRegistry.stack(ore));
-            long colony = OutpostRates.orePrice(helper.getLevel(), helper.absolutePos(helper.origin()).getY(), ore);
+            long colony = OutpostRates.orePrice(helper.getLevel(), helper.absolutePos(BlockPos.ZERO).getY(), ore);
             expect(
                     helper,
                     dollars(shown.get(0)) == colony && colony == OutpostRates.colonyOrePrice(ore),

@@ -93,7 +93,7 @@ public class SpecSheetKeyClientTest implements FabricClientGameTest {
         pressTheKeyAndSeeTheSheetOverTheCatalogue(context, panel, drill, "a hovered catalogue cell");
 
         AbstractContainerScreen<?> inventory =
-                context.computeOnClient(client -> (AbstractContainerScreen<?>) client.gui.screen());
+                context.computeOnClient(client -> ClientSession.screen(client, AbstractContainerScreen.class));
         CatalogueScene.hover(
                 context, CatalogueScene.slotCell(context, inventory, slot -> slot.getItem().is(dynamite)));
         pressTheKeyAndSeeTheSheetOverTheCatalogue(context, panel, dynamite, "a hovered inventory slot");
