@@ -72,11 +72,7 @@ public final class AccountHud {
     private static Optional<Component> shown(Minecraft client, int guiWidth, int guiHeight) {
         return text().flatMap(full -> ClientCharter.view()
                 .map(charter -> fitted(
-                        client.font,
-                        full,
-                        Component.translatable(MONEY_KEY, String.format(Locale.US, "%,d", charter.balance())),
-                        guiHeight,
-                        covered(client, guiWidth, guiHeight))));
+                        client.font, full, money(charter.balance()), guiHeight, covered(client, guiWidth, guiHeight))));
     }
 
     /**
@@ -104,7 +100,22 @@ public final class AccountHud {
      * check it without reading pixels.
      */
     public static Optional<Component> text() {
-        return ClientCharter.view().map(charter -> Component.translatable(KEY, charter.name(), charter.balance()));
+        return ClientCharter.view().map(charter -> whole(charter.name(), charter.balance()));
+    }
+
+    /** The whole line for a charter named {@code name} with {@code balance} dollars: "Name  $12,345". */
+    public static Component whole(String name, long balance) {
+        return Component.translatable(KEY, name, grouped(balance));
+    }
+
+    /** The balance alone, "$12,345", grouped as in the whole line so the money reads the same in both. */
+    public static Component money(long balance) {
+        return Component.translatable(MONEY_KEY, grouped(balance));
+    }
+
+    private static String grouped(long balance) {
+        // Locale.US so the thousands separator is the same on every machine.
+        return String.format(Locale.US, "%,d", balance);
     }
 
     public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {

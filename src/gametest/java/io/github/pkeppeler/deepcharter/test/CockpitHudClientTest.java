@@ -204,6 +204,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectTheCockpitHidesExactlyTheVanillaBars();
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
                 expectTheAccountLineIsNotOnThePlate(context);
+                expectTheAccountMoneyReadsTheSameInBothForms();
                 expectTheAccountLineKeepsItsSpotSeated(context);
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
                 expectTheAltimeterIsSmallPixelDigitsInItsRecessAtGuiScales(context);
@@ -337,6 +338,16 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         });
         if (onPlate) {
             throw new AssertionError("The account line is drawn at the left edge, not as a row of the plate");
+        }
+    }
+
+    /** The whole line and the balance alone group the money the same way, so it does not change as the line shortens. */
+    private static void expectTheAccountMoneyReadsTheSameInBothForms() {
+        String whole = AccountHud.whole("Scanner Player0", 12_345).getString();
+        String money = AccountHud.money(12_345).getString();
+        if (!whole.equals("Scanner Player0  $12,345") || !money.equals("$12,345")) {
+            throw new AssertionError("the account line reads 'Scanner Player0  $12,345' and '$12,345', got '" + whole
+                    + "' and '" + money + "'");
         }
     }
 
