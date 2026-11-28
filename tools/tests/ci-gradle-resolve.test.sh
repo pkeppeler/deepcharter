@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Tests tools/ci-gradle-resolve.sh with a stub ./gradlew: a clean run is not retried; a verification failure clears
 # modules-2 and retries once with --refresh-dependencies, and a second one fails the step; a download failure
-# (#1358) is retried with backoff up to the attempt bound and then fails with a clear message; any other failure,
-# including a download-looking line in the build's own output before Gradle's failure report, is not retried. Each
+# (#1358), Loom's asset download included (#1703), is retried with backoff up to the attempt bound and then fails
+# with a clear message; any other failure, including a download-looking line in the build's own output before
+# Gradle's failure report, is not retried. Each
 # download failure prints diagnostics (a retry's --info lines about HTTP statuses and cached results, and curl probes,
 # whose failure never fails the script), and the last retry adds --refresh-dependencies. On GitHub Actions only, the
 # script installs the Central mirror init script into the Gradle home's init.d before the first run (#1365), and the
@@ -66,6 +67,11 @@ case ${modes[$n]} in
   refused)
     echo "FAILURE: Build failed with an exception."
     echo "   > Connect to repo.maven.apache.org:443 [repo.maven.apache.org/1.2.3.4] failed: Connection refused"
+    exit 1
+    ;;
+  asset) # job 140952182124 (#1703's shard 32): Loom's downloadAssets gives up on one object after three attempts
+    echo "FAILURE: Build failed with an exception."
+    echo "> net.fabricmc.loom.util.download.DownloadException: Failed to download https://resources.download.minecraft.net/80/8030dd9dc315c0381d52c4782ea36c6baf6e8135 after 3 attempts: java.lang.IllegalStateException: This operation (Download Assets - Download Assets) has not been started."
     exit 1
     ;;
   noisy-verify) # a compile failure after build output that mentions verification
@@ -154,7 +160,7 @@ check "second verification failure: fails, no third run" \
 
 check "plugin not found, then success: passes after one retry, cache kept" \
   "0|gradlew classes;gradlew --info classes|yes" "$(run 'plugin ok')"
-expect_line "the download retry is logged" "::warning::Gradle could not download a plugin or dependency (failure 1 of 3)" "$work/out"
+expect_line "the download retry is logged" "::warning::Gradle could not download a plugin, dependency or Minecraft asset (failure 1 of 3)" "$work/out"
 expect_line "the failed run's output passes through" "was not found in any of the following sources" "$work/out"
 check "the retry runs without the configuration cache entry the failed run stored" "present;absent" "$(paste -sd ';' "$work/cc")"
 expect_line "a download failure opens a diagnostics group" "::group::Download diagnostics (failure 1 of 3)" "$work/out"
@@ -176,9 +182,11 @@ check "Could not find g:a:v.: the probe drops Gradle's full stop from the versio
   "$portal/net/fabricmc/fabric-loader/0.17.2/fabric-loader-0.17.2.pom;$central/net/fabricmc/fabric-loader/0.17.2/fabric-loader-0.17.2.pom" \
   "$(run 'missing ok' >/dev/null; paste -sd ';' "$work/curl")"
 check "connection refused, then success: passes after one retry" "0|gradlew classes;gradlew --info classes|yes" "$(run 'refused ok')"
+check "Loom asset download failure, then success: passes after one retry" \
+  "0|gradlew classes downloadAssets;gradlew --info classes downloadAssets|yes" "$(run 'asset ok' classes downloadAssets)"
 check "download failure every time: fails after three runs" \
   "1|gradlew classes;gradlew --info classes;gradlew --refresh-dependencies --info classes|yes" "$(run plugin)"
-expect_line "giving up says why" "::error::Gradle failed to download a plugin or dependency 3 times" "$work/out"
+expect_line "giving up says why" "::error::Gradle failed to download a plugin, dependency or Minecraft asset 3 times" "$work/out"
 check "CI_GRADLE_RESOLVE_ATTEMPTS bounds the runs" \
   "1|gradlew classes;gradlew --refresh-dependencies --info classes|yes" "$(ATTEMPTS=2 run plugin)"
 check "the last retry's --refresh-dependencies does not start a verification retry" \
@@ -190,7 +198,7 @@ check "verification retry, then download failures: the bound counts download fai
   "1|gradlew classes;gradlew --stop;gradlew --refresh-dependencies classes;gradlew --refresh-dependencies --info classes;gradlew --refresh-dependencies --info classes|no" \
   "$(run 'verify http')"
 expect_line "giving up after a verification retry counts the download failures" \
-  "::error::Gradle failed to download a plugin or dependency 3 times" "$work/out"
+  "::error::Gradle failed to download a plugin, dependency or Minecraft asset 3 times" "$work/out"
 
 check "other failure: its status, no retry, cache kept" "3|gradlew classes|yes" "$(run 'other ok')"
 check "a download-looking line before Gradle's failure report: no retry" "4|gradlew classes|yes" "$(run 'noisy ok')"
