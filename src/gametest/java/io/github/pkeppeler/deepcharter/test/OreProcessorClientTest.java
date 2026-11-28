@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
+import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -29,6 +30,7 @@ import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -49,6 +51,8 @@ import net.minecraft.world.item.ItemStack;
  */
 public class OreProcessorClientTest implements FabricClientGameTest {
     private static final String CHARTER = "Processor Test Charter";
+    /** The widest brick line likely: two parked pods' full racks and a pack full of brick. */
+    private static final ProcessorView.Bricks WIDEST_BRICKS = new ProcessorView.Bricks(48, 48, 36 * 64);
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -129,6 +133,14 @@ public class OreProcessorClientTest implements FabricClientGameTest {
                     "fusing is free, the HUD shows '" + hud(context) + "'");
             PodLining.State fused = singleplayer.getServer().computeOnServer(server -> PodLining.of(parkedPod(server)));
             require(fused.bricks() == 2 && fused.spoil() == 0, "four spoil make two bricks in the rack, got " + fused);
+            // #1649: the result stays on screen: the rack and the pack as they are after the fuse.
+            String rack = "RACK 2/" + PodLiningTuning.DEFAULT.brickCapacity();
+            ClientWait.until(
+                    context,
+                    "the brick line showing '" + rack + "' and an empty pack",
+                    client -> screen.bricksLine().contains(rack)
+                            && screen.bricksLine().contains("PACK 0"),
+                    client -> "brick line '" + screen.bricksLine() + "'");
 
             // #470: forty-eight spoil are two salvage crates in the pack, and the account is not charged.
             singleplayer
@@ -331,7 +343,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             TerminalView manyView = new TerminalView(
                     processor,
                     TerminalTypes.ORE_PROCESSOR.id(),
-                    Optional.of(new ProcessorView(many, List.of())),
+                    Optional.of(new ProcessorView(many, List.of(), WIDEST_BRICKS)),
                     List.of());
             for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                 context.setScreen(() -> new OreProcessorScreen(manyView));
@@ -355,6 +367,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
                                 + context.computeOnClient(
                                         client -> crowded.orderLines().getFirst()));
                 checkLayout(context, crowded, "page 1 at " + size[0] + " by " + size[1]);
+                checkBrickLine(context, crowded, size[0] >= 427);
                 for (int page = 2; page <= pages; page++) {
                     context.clickScreenButton(">");
                     String heading = "ORDERS  " + page + "/" + pages;
@@ -395,6 +408,39 @@ public class OreProcessorClientTest implements FabricClientGameTest {
     /** An entry of the crowded list: the Morale Initiative with {@code n} rounds done, so each row reads differently. */
     private static WorkOrdersView.Entry entry(int rounds) {
         return new WorkOrdersView.Entry(WorkOrder.MORALE_INITIATIVE, rounds, rounds);
+    }
+
+    /**
+     * #1649: the brick line sits on the title's row, right of the title and inside the screen, in its long form on the
+     * default window and its short form at 320 wide. Prints the measured widths.
+     */
+    private static void checkBrickLine(ClientGameTestContext context, OreProcessorScreen screen, boolean longForm) {
+        String problem = context.computeOnClient(client -> {
+            String title = screen.getTitle().getString().toUpperCase(Locale.ROOT);
+            String line = screen.bricksLine();
+            List<DrawnText.Drawn> drawn = DrawnText.of(screen);
+            Optional<DrawnText.Drawn> titleText =
+                    drawn.stream().filter(text -> text.text().equals(title)).findFirst();
+            Optional<DrawnText.Drawn> lineText =
+                    drawn.stream().filter(text -> text.text().equals(line)).findFirst();
+            if (titleText.isEmpty() || lineText.isEmpty()) {
+                return "the title '" + title + "' or the brick line '" + line + "' was not drawn";
+            }
+            System.out.println("[processor-bricks] screen " + screen.width + " wide: title "
+                    + titleText.get().box() + ", brick line '" + line + "' "
+                    + lineText.get().box());
+            if (lineText.get().box().x() <= titleText.get().box().right()
+                    || lineText.get().box().right() > screen.width) {
+                return "the brick line " + lineText.get().box() + " overlaps the title "
+                        + titleText.get().box() + " or leaves the " + screen.width + " px screen";
+            }
+            if (line.startsWith("SLAG BRICK") != longForm) {
+                return "the brick line at " + screen.width + " wide should be the " + (longForm ? "long" : "short")
+                        + " form, got '" + line + "'";
+            }
+            return "";
+        });
+        require(problem.isEmpty(), problem);
     }
 
     /** Every button lies inside the screen, none overlaps another, and the order rows start under the account line. */
@@ -474,6 +520,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
     }
 
     private static String hud(Minecraft client) {
-        return AccountHud.text().map(text -> text.getString()).orElse("");
+        // The amounts, not their grouping (AccountHud pins "$12,345"), are what this test checks.
+        return AccountHud.text().map(text -> text.getString().replace(",", "")).orElse("");
     }
 }

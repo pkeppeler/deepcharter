@@ -29,7 +29,7 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Surface and colony
 
-- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). No monster lives on it, vanilla or ours: the colony's emptiness is the dread ([CREATURES.md](CREATURES.md#surface), decided in the creatures session on 2026-11-21, which replaced the plan to reskin the vanilla night monsters). The surface has no ore and no vanilla ore is promised near it: early metal is salvage (see Bootstrap in section 4, [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)), and the first ores are the layers'. The only life on it is pale fungal stalks on crater floors and in patches among the salvage crates (#855). No villages or settlements besides the colony. No Nether or End; the depths replace them.
+- **Surface:** our own regolith plains, craters and terraced mesas, under a sky held at deep night, with the fog kept far (#1606, [art direction](design/art-direction.md), [ADR 0120](adr/0120-the-surface-sky-is-held-at-the-deep-night-with-the-dusks-fog-distances.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). No monster lives on it, vanilla or ours: the colony's emptiness is the dread ([CREATURES.md](CREATURES.md#surface), decided in the creatures session on 2026-11-21, which replaced the plan to reskin the vanilla night monsters). The surface has no ore and no vanilla ore is promised near it: early metal is salvage (see Bootstrap in section 4, [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)), and the first ores are the layers'. The only life on it is pale fungal stalks on crater floors and in patches among the salvage crates (#855). No villages or settlements besides the colony. No Nether or End; the depths replace them.
 - **Never called Mars:** the world may look like Mars, but the game never calls it Mars (lore guardrail).
 - **Colony:** one derelict mining colony per world, at spawn, named Prosperity. Its terminals are repaired once per world: when any charter fixes one, every charter can use it. The contract terminal works from the start.
 - **Conduit:** an undiggable Company pipe runs from the colony's ore processor straight down through every layer, at the same coordinates in each, ending in the Furnace. It is a landmark and the story's first clue ([LORE.md](LORE.md#8-prosperity)).
@@ -174,7 +174,7 @@ One job each. They can point at each other; a transmission can unlock a handbook
 |---------|-----|
 | Handbook | How to progress (Directives). |
 | Work orders | Repeatable money tasks. |
-| Transmissions | The story. |
+| Transmissions | The story. The comms log (K) keeps every one received. |
 
 ### The world is a mystery; the rules never are
 
@@ -267,7 +267,7 @@ The original's rules, in 3D.
 
 ### Camera
 
-Normal Minecraft 3D, first or third person.
+Normal Minecraft 3D, first or third person. Taking any seat of a pod switches to the third-person chase view, and leaving restores the view the player had; F5 still cycles it ([ADR 0095](adr/0095-pods-steer-like-a-boat-and-the-pilots-camera-chases-them.md), #1680).
 
 ## 8. Crew roles and co-op between pods
 
@@ -381,8 +381,9 @@ Original lore with the original game's shape (a cheerful employer, vanishing min
 - **Post-game hook:** the Ramp is the wall around the creature's heart, the Motherload. Both endings lead to the uncharted layers below it ([LORE.md](LORE.md#13-post-game)). A splice is the creature stirring ("the depths moved").
 - Every change after the finale is presentation for that charter only, never a world edit.
 - **Transmissions** go to the whole charter. Most trigger at the charter's deepest point reached; the bootstrap repairs and the finale beats trigger on events.
+- **Comms log** (#1615): a key (K) opens every transmission the charter has sent the player, in order, each with when it came (its zone, breach or event), to read again or replay with its sounds. It is the transmissions channel's own screen, not a handbook page. It lists only what has reached the player, so it spoils nothing, and a member who joins later reads the charter's whole log. A garbled transmission stays garbled.
 - A personal build could swap in the original's transmission text ([REFERENCE.md](../original_flash_game/REFERENCE.md)).
-- **Altimeter:** each layer has its own trick, presentation only ([LORE.md](LORE.md#11-layers)). "UNCHARTED" shows below the ramp.
+- **Altimeter:** depth reads in metres, one block to a metre, with the unit m: the cockpit altimeter, the scanner ruler, chat and terminals ([#1604](https://github.com/pkeppeler/deepcharter/issues/1604)). Each layer has its own trick, presentation only ([LORE.md](LORE.md#11-layers)). "UNCHARTED" shows below the ramp.
 
 ## 15. Presentation
 

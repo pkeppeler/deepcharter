@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -180,7 +181,11 @@ public class LayerDimensionsTest {
                 helper,
                 Depth.of(surface, TestLayers.band(surface, TestLayers.SURFACE).minY()),
                 127);
-        expectInt(helper, Depth.feet(1000), 3280);
+        // #1604: the reading is metres, one to a block, negative below sea level, with its thousands grouped.
+        if (!Altimeter.number(1234).equals("-1,234") || !Altimeter.number(-5).equals("5")) {
+            throw helper.assertionException("the altimeter reads 1,234 blocks deep as -1,234 and 5 up as 5, got "
+                    + Altimeter.number(1234) + " and " + Altimeter.number(-5));
+        }
         helper.succeed();
     }
 

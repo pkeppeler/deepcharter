@@ -17,8 +17,10 @@ import net.minecraft.world.level.gamerules.GameRules;
 /** Holds an evidence world still for stills: the clocks, the weather, spawning and particles, and the visual sky's phase. */
 public final class EvidenceWorld {
     /**
-     * Where the visual sky stands on its own clock, {@code deepcharter:sky} (its timeline swings over 288000 ticks, which is hours of
-     * real time, so a scenario pins it): at its brightest dusk, half way to night, and at its darkest.
+     * Where the visual sky stands on its own clock, {@code deepcharter:sky} (its timeline swings over 288000 ticks,
+     * which is hours of real time, so a scenario pins it): at its brightest dusk, half way to night, and at its
+     * darkest. Since #1606 every track holds the deep night, so the three read the same; they stay so a pack that
+     * brings the swing back can be shot.
      */
     public static final long SKY_BRIGHTEST = 0;
 

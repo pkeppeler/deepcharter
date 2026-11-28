@@ -47,9 +47,11 @@ public final class PodDrill {
 
     public static void init() {}
 
-    /** Above sea level the depth is negative; the drill is no faster for it. */
-    public static int drillTicks(PodStats stats, float hardness, int depthFeet) {
-        double ticks = hardness * stats.ticksPerHardness() * (1 + Math.max(0, depthFeet) / 1000.0);
+    /** {@code depth} is in metres. Above sea level the depth is negative; the drill is no faster for it. */
+    public static int drillTicks(PodStats stats, float hardness, int depth) {
+        double ticks = hardness
+                * stats.ticksPerHardness()
+                * (1 + Math.max(0, depth) / PodTuning.DEFAULT.drill().doublingDepth());
         return Math.max(1, (int) Math.ceil(ticks));
     }
 
@@ -246,8 +248,8 @@ public final class PodDrill {
         }
 
         int drillTicks(PodStats stats) {
-            int depth = Depth.feet(Depth.of(
-                    level, cells.stream().mapToInt(BlockPos::getY).min().orElseThrow()));
+            int depth = Depth.of(
+                    level, cells.stream().mapToInt(BlockPos::getY).min().orElseThrow());
             int ticks = 1;
             for (BlockPos pos : cells) {
                 BlockState state = state(pos);

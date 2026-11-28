@@ -81,7 +81,6 @@ public class SeamSwapTest {
             LayerTuning d = LayerTuning.DEFAULT;
             return new LayerTuning(
                     d.seaLevel(),
-                    d.feetPerBlock(),
                     d.crustThickness(),
                     d.pocketRadius(),
                     d.pocketHeight(),

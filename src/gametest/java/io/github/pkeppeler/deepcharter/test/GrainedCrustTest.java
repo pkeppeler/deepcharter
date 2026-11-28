@@ -151,7 +151,7 @@ public class GrainedCrustTest {
             PodStats stats = PodStats.of(pod);
             float crustHardness =
                     LayerBlocks.GRAINED_CRUST.defaultBlockState().getDestroySpeed(level, pod.blockPosition());
-            int bore = PodDrill.drillTicks(stats, crustHardness, Depth.feet(Depth.of(level, FLOOR)));
+            int bore = PodDrill.drillTicks(stats, crustHardness, Depth.of(level, FLOOR));
             if (held[0] < 3 * bore) {
                 return;
             }

@@ -35,16 +35,16 @@ public final class GasHazard {
     }
 
     /**
-     * Hull points a blast costs: the depth in feet times the radiator factor times {@code OreTuning.gasDamagePerFoot}.
-     * The depth is clamped to 0, so gas above sea level does nothing.
+     * Hull points a blast costs: the depth in metres times the radiator factor times
+     * {@code OreTuning.gasDamagePerMetre}. The depth is clamped to 0, so gas above sea level does nothing.
      *
      * @throws IllegalArgumentException if {@code radiator} is negative or not a finite number
      */
-    public static float damage(int depthFeet, float radiator) {
+    public static float damage(int depth, float radiator) {
         if (!(radiator >= 0f) || Float.isInfinite(radiator)) {
             throw new IllegalArgumentException("A radiator factor is a finite number of at least 0, got " + radiator);
         }
-        return Math.max(0, depthFeet) * radiator * OreTuning.DEFAULT.gasDamagePerFoot();
+        return Math.max(0, depth) * radiator * OreTuning.DEFAULT.gasDamagePerMetre();
     }
 
     /** A gas pocket at {@code pos} has just been mined. */
@@ -65,12 +65,12 @@ public final class GasHazard {
         venting = true;
         try {
             int radius = OreTuning.DEFAULT.blastRadius();
-            int depthFeet = Depth.feet(Depth.of(level, pos.getY()));
+            int depth = Depth.of(level, pos.getY());
             // entity-query: the blast reaches blastRadius blocks round a pocket that a ticking pod has just bored, so
             // its chunks are entity-ticking
             for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, new AABB(pos).inflate(radius))) {
                 float radiator = PodComponents.radiatorRatio(pod);
-                float blast = damage(depthFeet, radiator);
+                float blast = damage(depth, radiator);
                 float taken = pod == drilling ? PodSounder.drilledBlast(pod, blast * drillingShare) : blast;
                 PodCues.hurtHull(
                         pod, taken, "deepcharter.ore.gas_blast", DeepSound.POD_EXPLOSION, ParticleTypes.SNEEZE, 24);

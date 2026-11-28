@@ -10,7 +10,7 @@ The game wants you to feel two things. The first is the pull of the upgrade loop
 
 It is a Fabric mod for Minecraft 26.3, for 2 to 4 friends (up to about 8). The plan is in [docs/SPEC.md](docs/SPEC.md).
 
-**Status.** This is an early friends build. It has the colony, layers 1 to 3 and the main machines, all in one tall world. There is no public release (not on Modrinth yet). The look is "Prosperity at dusk": a rust-red world under a slow dusk sky, a small riveted company town, and a black shaft below that your lamp barely lights ([art direction](docs/design/art-direction.md)). The ores, the town and the pods are in their new art. The sounds and the story text are still stand-ins.
+**Status.** This is an early friends build. It has the colony, layers 1 to 3 and the main machines, all in one tall world. There is no public release (not on Modrinth yet). The look is "Prosperity at night": a rust-red world under a held night sky, a small riveted company town, and a black shaft below that your lamp barely lights ([art direction](docs/design/art-direction.md)). The ores, the town and the pods are in their new art. The sounds and the story text are still stand-ins.
 
 ## Feature map
 
@@ -40,7 +40,7 @@ The tour follows one run, in the order of the game loop.
 
 ![The statue of the Host on its plinth in the middle of the Pithead Works town, with the hangar and the ore house beside it](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-square.png?raw=true)
 
-You start in Prosperity, a run-down Company mining town built on the spawn: the Pithead Works. The Host's statue stands in the square, ten blocks tall, and the hangar, ore house, pay office and the rest ring it on a pad of rust-red regolith. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn. The sky is at dusk, and it darkens into night.
+You start in Prosperity, a run-down Company mining town built on the spawn: the Pithead Works. The Host's statue stands in the square, ten blocks tall, and the hangar, ore house, pay office and the rest ring it on a pad of rust-red regolith. Its machines are offline. You repair them one by one, and each one that comes back is a new way to earn. The sky is held at night, near black with hard stars.
 
 ![The hangar, seen across the square](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/colony-hangar.png?raw=true)
 

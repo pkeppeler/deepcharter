@@ -7,7 +7,6 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.pkeppeler.deepcharter.command.FeatureCommands;
-import io.github.pkeppeler.deepcharter.layer.Depth;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
@@ -142,7 +141,7 @@ public final class CharterCommands {
                                 count(Noun.PERSON, found.roster().size()),
                                 count(Noun.APPLICATION, found.applications().size()),
                                 found.account(),
-                                Depth.feet(found.deepestPoint())),
+                                found.deepestPoint()),
                         false);
         return 1;
     }

@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Kind;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud.Line;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
@@ -12,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
@@ -211,7 +211,10 @@ public final class CockpitHud {
         return look.fits(guiWidth, guiHeight) ? Optional.of(look.ribbon()) : Optional.empty();
     }
 
-    /** Whether the cockpit's plate shows the text readout: the local player is the pilot of a pod and the Ribbon fits. The plain HUD's readout and account line stay quiet then. */
+    /**
+     * Whether the cockpit's plate shows the text readout: the local player is the pilot of a pod and the Ribbon fits.
+     * The plain HUD's readout stays quiet then.
+     */
     public static boolean showsReadout(Minecraft client) {
         return showsReadout(
                 client,
@@ -233,10 +236,19 @@ public final class CockpitHud {
      * the scanner's bezel when the pod has a map, and, with the readout, each gauge's title and the plate where it hangs.
      */
     private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        into.addAll(covers(client, guiWidth, guiHeight));
+    }
+
+    /**
+     * What the cockpit covers on a GUI {@code guiWidth} x {@code guiHeight} as it draws now, the rectangles
+     * {@link #keepClear} gives a popup; empty when it is not drawn. The account line reads it to stay clear (#1642).
+     */
+    public static List<HudKeepClear.Rect> covers(Minecraft client, int guiWidth, int guiHeight) {
+        List<HudKeepClear.Rect> into = new ArrayList<>();
         Optional<Layout> seated = seated(client, guiWidth, guiHeight);
         PodEntity pod = seatedPod(client);
         if (seated.isEmpty() || pod == null || client.player == null) {
-            return;
+            return into;
         }
         Layout layout = seated.get();
         into.add(rect("cockpit ribbon", layout.band(), guiWidth, guiHeight));
@@ -266,6 +278,7 @@ public final class CockpitHud {
             into.add(plateBox(client.font, layout, look, rows, guiWidth, guiHeight)
                     .rect("cockpit readout plate"));
         }
+        return into;
     }
 
     private static HudKeepClear.Rect rect(String what, Decal decal, int guiWidth, int guiHeight) {
@@ -670,8 +683,9 @@ public final class CockpitHud {
     }
 
     /**
-     * The rows of the plate: the tally on one row (hull, fuel and depth each in its gauge's colour after its gauge's icon, and the bay's ore count in the cargo colour
-     * after the {@link Icon#CART}), the account line, and under them every other line of the readout, so the numbers stay where they are as lines come and go.
+     * The rows of the plate: the tally on one row (hull, fuel and depth each in its gauge's colour after its gauge's
+     * icon, and the bay's ore count in the cargo colour after the {@link Icon#CART}), and under it every other line of
+     * the readout, so the numbers stay where they are as lines come and go.
      */
     public static List<Row> rows(PodEntity pod, CockpitReading reading, CockpitLook look, List<Line> readout) {
         boolean fuelLow = PodFuel.isLow(pod.fuel());
@@ -697,12 +711,11 @@ public final class CockpitHud {
                         Icon.CART),
                 new Cell(
                         new Line(
-                                Component.translatable("hud.deepcharter.pod.tally_depth", Math.round(pod.getY())),
+                                Component.translatable(
+                                        "hud.deepcharter.pod.tally_depth",
+                                        Altimeter.readingNumber(pod.level(), pod.getBlockY())),
                                 look.depthColor()),
                         Meter.DEPTH.icon())))));
-        AccountHud.text()
-                .ifPresent(
-                        text -> rows.add(Row.of(new Line(text, HudLook.current().accountColor()))));
         readout.stream().filter(line -> line.kind() != Kind.BASE).map(Row::of).forEach(rows::add);
         return rows;
     }
