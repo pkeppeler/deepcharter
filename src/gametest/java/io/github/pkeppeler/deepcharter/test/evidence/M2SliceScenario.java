@@ -1158,7 +1158,7 @@ public class M2SliceScenario extends EvidenceScenario {
             openTerminal(Vec3.atBottomCenterOf(console.west(2)), console, HangarScreen.class);
             snap(HOLD_FRAMES);
             still("46-hangar-console-with-a-wreck-in-reach");
-            clickStartingWith("RESTORE NEAREST WRECK");
+            clickStartingWith("RESTORE WRECK");
             awaitServer(server -> directiveDone(server, "company_property/restore_prospector"));
             snap(HOLD_FRAMES);
             still("47-prospector-restored");

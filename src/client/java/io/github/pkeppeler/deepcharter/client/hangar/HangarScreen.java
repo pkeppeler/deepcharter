@@ -113,35 +113,36 @@ public final class HangarScreen extends CrtScreen implements TerminalViewScreen 
         priceLines = placed(wrapped, pricesY, lineHeight);
         advanceLines = placed(advance, pricesY + wrapped.size() * lineHeight, lineHeight);
         moleLines = placed(status, moleY, lineHeight);
-        int scrapY = pricesY - GAP - BUTTON_HEIGHT;
-        int restoreY = scrapY - GAP - BUTTON_HEIGHT;
-        int assembleY = restoreY - GAP - BUTTON_HEIGHT;
+        // Two rows of two buttons: the stack of four would reach the header on the smallest GUI.
+        int lowerY = pricesY - GAP - BUTTON_HEIGHT;
+        int upperY = lowerY - GAP - BUTTON_HEIGHT;
+        int rightX = left + HALF_WIDTH + GAP;
         addRenderableWidget(new CrtButton(
                 left,
-                assembleY,
-                BUTTON_WIDTH,
+                upperY,
+                HALF_WIDTH,
                 BUTTON_HEIGHT,
                 Component.translatable("screen.deepcharter.hangar.assemble"),
                 button -> send(HangarTerminal.ASSEMBLE_MOLE)));
-        // The wreck the server restores is the nearest one, so the lines under the buttons name the price of
+        // The wreck the server restores or scraps is the nearest one, so the lines under the buttons name the price of
         // each chassis.
         addRenderableWidget(new CrtButton(
-                left,
-                restoreY,
-                BUTTON_WIDTH,
+                rightX,
+                upperY,
+                HALF_WIDTH,
                 BUTTON_HEIGHT,
                 Component.translatable("screen.deepcharter.hangar.restore"),
                 button -> send(HangarTerminal.RESTORE_WRECK)));
         addRenderableWidget(new CrtButton(
                 left,
-                scrapY,
+                lowerY,
                 HALF_WIDTH,
                 BUTTON_HEIGHT,
                 Component.translatable("screen.deepcharter.hangar.scrap"),
                 button -> send(HangarTerminal.SCRAP_WRECK)));
         addRenderableWidget(new CrtButton(
-                left + HALF_WIDTH + GAP,
-                scrapY,
+                rightX,
+                lowerY,
                 HALF_WIDTH,
                 BUTTON_HEIGHT,
                 Component.translatable("screen.deepcharter.hangar.write_off", tuning.writeOffCost()),

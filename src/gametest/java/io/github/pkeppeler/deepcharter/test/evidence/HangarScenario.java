@@ -108,7 +108,7 @@ public class HangarScenario extends EvidenceScenario {
                     player.getInventory().add(new ItemStack(part));
                 }
             });
-            context.clickScreenButton("ASSEMBLE YOUR MOLE: FOUR PARTS, NO FEE");
+            context.clickScreenButton("ASSEMBLE MOLE");
             context.waitTicks(10);
             hold(context);
             screenshot(context, "a-second-mole-is-refused");
@@ -126,7 +126,7 @@ public class HangarScenario extends EvidenceScenario {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);
             }
-            context.clickScreenButton("ASSEMBLE YOUR MOLE: FOUR PARTS, NO FEE");
+            context.clickScreenButton("ASSEMBLE MOLE");
             context.waitTicks(10);
             hold(context);
             screenshot(context, "a-wreck-keeps-the-place");
@@ -142,7 +142,7 @@ public class HangarScenario extends EvidenceScenario {
             // The day passes (the evidence cannot wait a day), and the wreck is destroyed with its parts and cargo.
             singleplayer.getServer().runOnServer(server -> Hangar.settleWriteOffs(server, Long.MAX_VALUE));
             await(context, singleplayer, server -> HangarPods.derelict(server).isEmpty());
-            context.clickScreenButton("ASSEMBLE YOUR MOLE: FOUR PARTS, NO FEE");
+            context.clickScreenButton("ASSEMBLE MOLE");
             await(
                     context,
                     singleplayer,
@@ -186,7 +186,7 @@ public class HangarScenario extends EvidenceScenario {
             screenshot(context, "the-company-advance-on-the-console");
             long restorePrice = tuning.restoreCost(Chassis.PROSPECTOR).money();
             long before = singleplayer.getServer().computeOnServer(HangarScenario::balance);
-            context.clickScreenButton("RESTORE NEAREST WRECK");
+            context.clickScreenButton("RESTORE WRECK");
             // Restoring the Prospector fires T17, which pays B3.
             await(
                     context,
