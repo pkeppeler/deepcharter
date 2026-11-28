@@ -111,10 +111,9 @@ public final class HangarData extends SavedData {
      * @param advanced the catalysts of the Company's advance that each charter has used. Absent from data saved before the advance
      *                 (it reads as nothing used), so the version stays 1.
      * @param moles    the crafted Mole of each player who has one. Absent from data saved before the one-Mole rule (it reads as
-     *                 none), so the version stays 1: a Mole of an older world holds no place, except the founding Mole, which is
-     *                 given to the founding charter's Director when it loads (see {@code Hangar}).
+     *                 none): a Mole of an older world holds no place, except the founding Mole ({@code legacyFoundingPlace}).
      * @param legacyFoundingPlace true for data saved before version 2, whose founding Mole has no place on record yet: it is given to
-     *                 the founding charter's Director when it loads, once
+     *                 the founding charter's Director when it loads, once (see {@code Hangar})
      * @param condemned the pods of written-off wrecks that were not loaded when the write-off took effect: each is destroyed when it
      *                 loads. Absent from older data (none).
      */

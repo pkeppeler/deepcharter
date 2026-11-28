@@ -243,8 +243,7 @@ public final class HangarTerminal {
         }
         UUID caller = context.player().getUUID();
         // The caller's own Mole first, wherever it lies among the wrecks in reach; otherwise the nearest wreck that
-        // holds no
-        // member's place, or that the Director may scrap as a fallback.
+        // holds no member's place, or that the Director may scrap as a fallback.
         PodEntity wreck = owned.stream()
                 .filter(pod -> data.get()
                         .slotHolding(pod.getUUID())
