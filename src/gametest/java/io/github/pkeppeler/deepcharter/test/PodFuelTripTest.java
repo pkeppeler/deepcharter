@@ -65,7 +65,7 @@ public class PodFuelTripTest {
 
     private static final float OLD_MOVING_LITRES_PER_SECOND = 0.027f;
     private static final float OLD_DRILLING_LITRES_PER_SECOND = 0.046f;
-    /** The user's call (#1596): a full tank of every tier lasts this share of the time it did, the litres unchanged. */
+    /** (#1596) A full tank of every tier lasts this share of the time it did, the litres unchanged. */
     private static final double TANK_TIME_SHARE = 0.7;
 
     private static final double TANK_TIME_TOLERANCE = 0.01;
@@ -114,8 +114,8 @@ public class PodFuelTripTest {
     }
 
     /**
-     * (#1596) The same litres last 70% of the time in every activity, and the tank ladder is flatter (the user's pick,
-     * 2026-11-28): 10, 13, 17, 22, 30, 45 and 65 L, so tier 2 no longer makes fuel a non-issue.
+     * (#1596) The same litres last 70% of the time in every activity, and the tank ladder is flatter: 10, 13, 17, 22,
+     * 30, 45 and 65 L, so tier 2 no longer makes fuel a non-issue.
      */
     @GameTest
     public void theSameLitresLastSeventyPercentAsLongAndTheTankLadderIsFlatter(GameTestHelper helper) {

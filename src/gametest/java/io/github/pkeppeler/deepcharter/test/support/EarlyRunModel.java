@@ -60,11 +60,11 @@ public final class EarlyRunModel {
     public static final double PRICING_RUN_TANK_SHARE = 1.0 / 7.0 / 0.7;
 
     /**
-     * (A) The tank litres the economy was priced on, by tank tier: the ladder before #1596 flattened it (to 10, 13,
-     * 17, 22, 30, 45 and 65 L, in {@link UpgradeTuning}). A run is a share of the tank, so the smaller tanks would
-     * shorten the pricing run of every tier and make every part dearer in runs; the user asked for less fuel, not for
-     * dearer parts, so a tier's run is still priced on its old tank. The tier is read off the live ladder (see
-     * {@link #pricingTankLitres}), never from a litre literal, so a retuned ladder still prices each tier here.
+     * (A) The tank litres the economy was priced on, by tank tier: the ladder before #1596 flattened it (see
+     * {@link UpgradeTuning}). A run is a share of the tank, so the smaller tanks would shorten every tier's pricing run
+     * and make every part dearer in runs; #1596 asked for less fuel, not dearer parts, so a tier's run is still priced
+     * on its old tank. {@link #pricingTankLitres} reads the tier off the live ladder, so a retuned ladder still prices
+     * each tier here.
      */
     private static final float[] PRICING_TANK_LITRES_BY_TIER = {10f, 15f, 25f, 40f, 60f, 100f, 150f};
 
