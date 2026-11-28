@@ -62,20 +62,23 @@ public final class AccountHud {
 
     /** The line drawn now, or empty when the player is on no charter. */
     private static Optional<Component> shown(Minecraft client, int guiWidth, int guiHeight) {
-        return ClientCharter.view()
+        return text().flatMap(full -> ClientCharter.view()
                 .map(charter -> fitted(
                         client.font,
-                        Component.translatable(KEY, charter.name(), charter.balance()),
+                        full,
                         Component.translatable(MONEY_KEY, charter.balance()),
                         guiHeight,
-                        CockpitHud.covers(client, guiWidth, guiHeight)));
+                        CockpitHud.covers(client, guiWidth, guiHeight))));
     }
 
     private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
         shown(client, guiWidth, guiHeight).ifPresent(text -> into.add(box(client.font, text, guiHeight)));
     }
 
-    /** The text shown, or empty when the player is on no charter. Public so tests can check it without reading pixels. */
+    /**
+     * The whole line, the charter's name and balance, or empty when the player is on no charter. Public so tests can
+     * check it without reading pixels.
+     */
     public static Optional<Component> text() {
         return ClientCharter.view().map(charter -> Component.translatable(KEY, charter.name(), charter.balance()));
     }

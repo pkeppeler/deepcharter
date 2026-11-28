@@ -216,7 +216,8 @@ public class ThemeLooksTest {
                         4,
                         0xFFFFFFFF,
                         4,
-                        0.5,
+                        // #1642: lowered from 0.5, between vanilla's subtitle and action bar.
+                        0.645,
                         0xFF7CFC9A),
                 HudLook.of(area("hud", null)));
         expect(
