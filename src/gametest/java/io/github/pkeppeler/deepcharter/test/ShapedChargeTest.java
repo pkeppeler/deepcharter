@@ -281,8 +281,9 @@ public class ShapedChargeTest {
     }
 
     /**
-     * A charge is never a suicide button (#1458): a pod left sitting on a shaped charge over a full {@code shapedDepth} column takes the blast
-     * and then falls the whole column, with no braking. At exactly that cost the charge is refused; just over it the pod lives through both.
+     * A charge is never a suicide button (#1458): a pod left sitting on a shaped charge over a full
+     * {@code shapedDepth} column takes the blast and then falls the whole column, with no braking. At exactly that
+     * cost the charge is refused; just over it the pod lives through both.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodJustOverTheGuardSurvivesTheBlastAndTheDropDownAFullColumn(GameTestHelper helper) {

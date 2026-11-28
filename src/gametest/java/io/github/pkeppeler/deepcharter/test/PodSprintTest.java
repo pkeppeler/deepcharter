@@ -217,7 +217,8 @@ public class PodSprintTest {
      * stock engine cruises at 4 blocks a second and sprints at 8 (#1594), the sprint is about double the cruise and
      * burns more fuel a block, and a clean engine's sprint outruns a sprint-jumping player. A stock Mole with soot just
      * short of limp mode keeps the ratio, and its boost multiplies with the soot's loss, which is half the speed there
-     * (#1594: the cap went back to 50%, since a cruise no longer has a runner to stay ahead of). Sprint with W never drills on open ground, and the pilot is told once.
+     * (#1594: the cap went back to 50%, since a cruise no longer has a runner to stay ahead of). Sprint with W never
+     * drills on open ground, and the pilot is told once.
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void sprintIsDoubleTheCruiseForMoreFuelABlockAndOutrunsAPlayerOnFoot(GameTestHelper helper) {

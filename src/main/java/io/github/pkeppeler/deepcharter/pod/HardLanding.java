@@ -58,7 +58,10 @@ public final class HardLanding {
         }
     }
 
-    /** Hull points a pod with these stats loses dropping {@code blocks} from rest onto plain ground, with no rotor held. */
+    /**
+     * Hull points a pod with these stats loses dropping {@code blocks} from rest onto plain ground, with no rotor
+     * held.
+     */
     public static float freeFallDamage(PodStats stats, double blocks) {
         return hullDamage(stats, freeFallSpeed(blocks), 1f);
     }

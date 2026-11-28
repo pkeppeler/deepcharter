@@ -73,13 +73,19 @@ public class PodHardLandingTest {
         helper.succeed();
     }
 
-    /** The distance rule cost 30 hull for a 10-block fall (4 free, 5 per block beyond); the speed rule costs about the same. */
+    /**
+     * The distance rule cost 30 hull for a 10-block fall (4 free, 5 per block beyond); the speed rule costs about the
+     * same.
+     */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aFreeFallOfTenBlocksCostsAboutWhatTheDistanceRuleDid(GameTestHelper helper) {
         freeFall(helper, SHAFT_X + 200, 10, false, 28f, 34f);
     }
 
-    /** The distance rule cost 80 hull for 20 blocks, where speed has nearly levelled off: the speed rule costs about 56. */
+    /**
+     * The distance rule cost 80 hull for 20 blocks, where speed has nearly levelled off: the speed rule costs about
+     * 56.
+     */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aFreeFallOfTwentyBlocksCostsLessThanTheDistanceRuleDid(GameTestHelper helper) {
         freeFall(helper, SHAFT_X + 250, 20, false, 50f, 62f);

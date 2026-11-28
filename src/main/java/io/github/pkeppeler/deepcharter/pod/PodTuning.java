@@ -18,7 +18,7 @@ public record PodTuning(Shell shell, Movement movement, Drill drill, Cargo cargo
      * Treads and rotor. Speeds are blocks per tick, accelerations blocks per tick squared, powers and
      * masses share one unit, damage is in hull points.
      *
-     * @param horizontalSpeed     speed along the one axis the pilot drives: 4 blocks a second, which sprint doubles (#1594)
+     * @param horizontalSpeed     speed along the one axis the pilot drives: 4 blocks a second, sprint doubles it (#1594)
      * @param enginePower         rotor power; lift is this minus the cargo mass
      * @param thrustAcceleration  upward acceleration at full lift (lift equal to engine power)
      * @param maxClimbSpeed       the rotor cannot push the pod up faster than this

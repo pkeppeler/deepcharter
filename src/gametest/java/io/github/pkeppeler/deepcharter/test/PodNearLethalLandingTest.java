@@ -106,7 +106,10 @@ public class PodNearLethalLandingTest {
         ZERO
     }
 
-    /** The lost hull of the probe at its landing, then {@code spare} more hull on the subject, which takes the same fall. */
+    /**
+     * The lost hull of the probe at its landing, then {@code spare} more hull on the subject, which takes the same
+     * fall.
+     */
     private static void drop(GameTestHelper helper, int x, Hit hit, float spare, boolean crewed) {
         ServerLevel level = helper.getLevel();
         int z = 22004;

@@ -706,7 +706,10 @@ public class PodCargoFuelTest {
     }
 
     private static final int DROP_BLOCKS = 6;
-    /** The distance rule charged 10 hull for a 6-block drop; the speed rule (#319) charges about 14, and a braked drop nothing. */
+    /**
+     * The distance rule charged 10 hull for a 6-block drop; the speed rule (#319) charges about 14, and a braked drop
+     * nothing.
+     */
     private static final float FREE_DROP_HULL_MIN = 10f;
 
     private static final float FREE_DROP_HULL_MAX = 18f;
