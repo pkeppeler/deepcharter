@@ -114,7 +114,8 @@ public class EntityQueryAuditTest {
     /**
      * The caps on figures count them with an entity query, which is right only because a figure is not saved: it is gone when its chunk
      * unloads, so no figure ever stands in a chunk that is not loaded. If figures are ever saved, the caps must move to saved data.
-     * It fills the Nether's whole band of figures, which {@code LamplessFigureTest}'s Nether test also counts, so it is a batch of
+     * It fills the Nether's whole band of figures, which {@code LamplessFigureTest}'s Nether test also counts, so it
+     * is a batch of
      * its own ({@link IsolatedBatches#FIGURE_BAND_CAP}).
      */
     @GameTest(maxTicks = CYCLE_TICKS, environment = IsolatedBatches.FIGURE_BAND_CAP)
