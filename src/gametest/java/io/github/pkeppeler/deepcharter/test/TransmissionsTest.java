@@ -315,13 +315,61 @@ public class TransmissionsTest {
                     transmission.senderKey(),
                     transmission.framing().headerKey(),
                     transmission.framing().endKey(),
-                    transmission.bodyKey())) {
+                    transmission.bodyKey(),
+                    transmission.whenKey())) {
                 if (!lang.has(key) || lang.get(key).getAsString().isBlank()) {
                     throw helper.assertionException("%s needs the lang key %s", transmission.id(), key);
                 }
             }
         }
         helper.succeed();
+    }
+
+    /**
+     * #1615: the log a member opens lists every transmission they have been sent, in the order the charter received
+     * them, under the charter's name. A member who is offline when one fires has not been sent it, so it is not in
+     * their log until they log in: the log never shows what has not reached the player.
+     */
+    @GameTest
+    public void theLogListsWhatTheMemberHasReceivedInOrder(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        withFreshWorldData(helper, data -> {
+            MockPlayer director = MockPlayers.join(helper, "tx-log1");
+            MockPlayer crew = MockPlayers.join(helper, "tx-log2");
+            CharterId charter = directCharter(
+                    helper, director.player().getUUID(), crew.player().getUUID());
+            crew.leave();
+            Transmissions.fire(server, charter, id("t03"));
+            Transmissions.fire(server, charter, id("t01"));
+            expectLog(helper, server, director, ids("t03", "t01"), "the online member's log");
+            expectLog(helper, server, crew, List.of(), "an offline member has been sent nothing yet");
+            Transmissions.deliverOnLogin(server, crew.player());
+            expectLog(helper, server, crew, ids("t03", "t01"), "the log once the member has logged in");
+            String name = Charters.findOrThrow(server, charter).orElseThrow().name();
+            if (!Transmissions.log(server, director.player()).charter().equals(name)) {
+                throw helper.assertionException("the log should carry the charter's name %s", name);
+            }
+        });
+        helper.succeed();
+    }
+
+    /** A player in no charter has an empty log, and asking for it changes nothing. */
+    @GameTest
+    public void aPlayerInNoCharterHasAnEmptyLog(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        withFreshWorldData(helper, data -> {
+            MockPlayer loner = MockPlayers.join(helper, "tx-log-loner");
+            expectLog(helper, server, loner, List.of(), "a player in no charter");
+        });
+        helper.succeed();
+    }
+
+    private static void expectLog(
+            GameTestHelper helper, MinecraftServer server, MockPlayer player, List<Identifier> expected, String what) {
+        List<Identifier> log = Transmissions.log(server, player.player()).received();
+        if (!log.equals(expected)) {
+            throw helper.assertionException("%s should list %s, lists %s", what, expected, log);
+        }
     }
 
     @GameTest
@@ -417,6 +465,7 @@ public class TransmissionsTest {
                 throw helper.assertionException(
                         "joining sends the story so far, in order, once each: %s", deliveredTo(crew));
             }
+            expectLog(helper, server, crew, ids("t17", "t18"), "a member who joins later reads the charter's log");
             if (Objects.requireNonNull(
                             data.progress(charter).cursors().get(crewId),
                             "data.progress(charter).cursors().get(crewId) is absent")
@@ -744,6 +793,7 @@ public class TransmissionsTest {
         paths.put("fire", () -> Transmissions.fire(charter, id("t01")));
         paths.put("deliver", () -> Transmissions.deliver(server, TransmissionData.get(server), charter));
         paths.put("replay", () -> Transmissions.replayTo(server, TransmissionData.get(server), charter));
+        paths.put("log", () -> Transmissions.log(server, crew.player()));
         paths.put("pay pending", () -> Transmissions.payPending(server, TransmissionData.get(server), charter));
         paths.put(
                 "forget",

@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.terminal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -18,6 +19,12 @@ public final class TerminalActions {
         if (ACTIONS.computeIfAbsent(type, key -> new HashMap<>()).putIfAbsent(action, handler) != null) {
             throw new IllegalArgumentException("terminal " + type.id() + " already has the action " + action);
         }
+    }
+
+    /** The id of every action registered on {@code type}. */
+    // test-seam: TerminalWaresTest walks every action of every terminal: each is a ware or named as no sale
+    public static Set<Identifier> registered(TerminalType type) {
+        return Set.copyOf(ACTIONS.getOrDefault(type, Map.of()).keySet());
     }
 
     static Optional<TerminalAction> find(TerminalType type, Identifier action) {

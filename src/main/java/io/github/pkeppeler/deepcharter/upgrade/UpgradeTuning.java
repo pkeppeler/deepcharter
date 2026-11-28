@@ -90,7 +90,7 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
         tracks.put(ComponentTrack.DRILL, new Tiers(List.of(2f, 2.8f, 4f, 5f, 7f, 9.5f, 12f), standardPrices));
         tracks.put(ComponentTrack.HULL, new Tiers(List.of(10f, 17f, 30f, 50f, 80f, 120f, 180f), standardPrices));
         tracks.put(ComponentTrack.ENGINE, new Tiers(List.of(150f, 160f, 170f, 180f, 190f, 200f, 210f), standardPrices));
-        tracks.put(ComponentTrack.FUEL_TANK, new Tiers(List.of(10f, 15f, 25f, 40f, 60f, 100f, 150f), standardPrices));
+        tracks.put(ComponentTrack.FUEL_TANK, new Tiers(List.of(10f, 13f, 17f, 22f, 30f, 45f, 65f), standardPrices));
         tracks.put(
                 ComponentTrack.RADIATOR,
                 new Tiers(

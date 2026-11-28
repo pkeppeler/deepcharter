@@ -6,7 +6,7 @@ Every visual is a drop-in skin ([#226](https://github.com/pkeppeler/deepcharter/
 
 ## The vision
 
-*Prosperity at dusk.* A rust-red world that is never named. (The lore's guardrail: it may look like Mars, but it is never called Mars.) Bare regolith, craters and terraced mesas under a sky that swings slowly between a Mars-style dusk and deep night, and never reaches full day. There is no grass, no tree, no animal and no water. The one living thing is the hardy fungus of the bootstrap (section 11).
+*Prosperity at dusk.* A rust-red world that is never named. (The lore's guardrail: it may look like Mars, but it is never called Mars.) Bare regolith, craters and terraced mesas under a sky held at deep night, near black with hard stars ([ADR 0120](../adr/0120-the-surface-sky-is-held-at-the-deep-night-with-the-dusks-fog-distances.md)). There is no grass, no tree, no animal and no water. The one living thing is the hardy fungus of the bootstrap (section 11).
 
 In the middle of it sits a small Company town: roofed, signed prefabs of riveted steel under sodium lamps, with a headframe 40 to 60 blocks tall and a giant bronze Founder statue over the Conduit. The town is cheerful, gaudy and a little too clean. Under it, a black hole goes down forever.
 
@@ -29,12 +29,12 @@ Rules for all areas:
 
 ## 1. Sky
 
-- **Decision:** a slow dusk-to-night cycle that never reaches full day. The sky swings between a Mars-style dusk and deep night over real-time hours. The gameplay day and night clock keeps running underneath. Fix the square vanilla sun with a small round one, and the over-wide sun glow with a narrower, fainter one.
-- **Material, palette, silhouette:** butterscotch to rust to maroon sky, a pale-blue glow close round a small low sun, dust haze at the horizon, no clouds. At the dark end: near-black with hard stars and a small moon.
+- **Decision (#1606, [ADR 0120](../adr/0120-the-surface-sky-is-held-at-the-deep-night-with-the-dusks-fog-distances.md)):** the sky is held at the deep night, with the dusk's fog distances (start 20, end 150), so it is dark but not foggy. The gameplay day and night clock keeps running underneath, and so does the sky clock; every track of the timeline holds one value. The first decision (2026-10-08) was a slow dusk-to-night swing over real-time hours; the friends playtest of 2026-11-27 chose the held night as creepier. Fix the square vanilla sun with a small round one, and the over-wide sun glow with a narrower, fainter one.
+- **Material, palette, silhouette:** a near-black sky (`#07050a`) with hard stars and a small moon, a dark rust fog (`#160c0a`), cool sky light at a low factor (0.16), thin dust, no clouds. The sun is below the horizon. The dusk palette (butterscotch to rust to maroon, a pale-blue glow round a small low sun) is what a pack restores by giving the tracks keyframes again.
 - **Tools:** vanilla 26.3 timelines and environment attributes (tooling-options "Atmosphere"); a texture swap for the sun. Optional later: Nuit for a sister planet.
 - **Dust:** drifting dust is an `ambient_particles` attribute with a dust particle of our own.
 - **Skin and data:** `data/deepcharter/timeline/*.json` plus the `in_overworld` tag; `assets/minecraft/textures/environment/celestial/sun.png`. Sky data is server data and needs a world reopen. Tryout sources: `docs/design/tryouts/`.
-- **Not chosen:** a fixed dusk (no rhythm), eternal night (too hard to read the terrain), `has_fixed_time` (freezes gameplay time and breaks beds).
+- **Not chosen:** a fixed dusk (no rhythm), the near-black deep night with its own fog (8 to 72: too foggy, #1606), `has_fixed_time` (freezes gameplay time and breaks beds). Eternal night was first set aside as too hard to read; the held night keeps the dusk's fog distances for that reason.
 
 ## 2. Surface
 

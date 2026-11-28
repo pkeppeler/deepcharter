@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeatures;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.terminal.TerminalWares;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -93,8 +94,18 @@ public final class HangarTerminal {
         TerminalActions.register(TYPE, RESTORE_WRECK, HangarTerminal::restoreWreck);
         TerminalActions.register(TYPE, SCRAP_WRECK, HangarTerminal::scrapWreck);
         TerminalActions.register(TYPE, WRITE_OFF, HangarTerminal::writeOff);
+        TerminalWares.register(
+                TYPE, ASSEMBLE_MOLE, ware(ASSEMBLE_MOLE), "screen.deepcharter.hangar.about.assemble_mole");
+        TerminalWares.register(
+                TYPE, RESTORE_WRECK, ware(RESTORE_WRECK), "screen.deepcharter.hangar.about.restore_wreck");
+        TerminalWares.register(TYPE, WRITE_OFF, ware(WRITE_OFF), "screen.deepcharter.hangar.about.write_off");
         TerminalFeatures.register(TYPE, HangarView.STREAM_CODEC, HangarTerminal::view);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> ARMED.clear());
+    }
+
+    /** The ware id of a row that one action sells. */
+    public static String ware(Identifier action) {
+        return action.getPath();
     }
 
     /**
